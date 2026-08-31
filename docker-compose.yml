@@ -16,7 +16,12 @@ services:
       retries: 10
 
   omnigate:
-    build: .
+    # Build context is the Server repo (pom.xml/src/web live there, not here) -- this Dockerfile
+    # lives in this repo instead, hence the explicit dockerfile: path back into it. Assumes the
+    # local layout this was set up with: Docker/ and Server/ as sibling directories.
+    build:
+      context: ../Server
+      dockerfile: ../Docker/Dockerfile
     depends_on:
       postgres:
         condition: service_healthy
