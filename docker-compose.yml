@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - ./docker/init-scott.sql:/docker-entrypoint-initdb.d/init-scott.sql:ro
+    ports:
+      - "5442:5432" # external 5442 to avoid clashing with a host-local Postgres on 5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  omnigate:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      OMNIGATE_PG_HOST: postgres
+      OMNIGATE_PG_PORT: "5432"
+      OMNIGATE_PG_DATABASE: postgres
+      OMNIGATE_PG_USER: postgres
+      OMNIGATE_PG_PASSWORD: postgres
+      OMNIGATE_AUTH_USER: scott
+      OMNIGATE_AUTH_PASSWORD: tiger
+      # Firewall/QoS/router are on by default with sane limits — see ProxyServer/ARCHITECTURE.md.
+      # Admin console/API (see OmniGateHttpServer) is UNAUTHENTICATED unless one of these is set —
+      # uncomment and change before exposing this compose stack beyond localhost:
+      # OMNIGATE_AUTH_USERS: "admin:<saltB64>:<hashB64>:admin"  # generate via PasswordHash, see ARCHITECTURE.md
+      # OMNIGATE_AUTH_API_TOKENS: "changeme-token:admin"
+      # Uncomment to try dual execution against a real Oracle instance too:
+      # OMNIGATE_DUAL_EXEC_ENABLED: "true"
+      # OMNIGATE_ORACLE_HOST: oracle
+      # OMNIGATE_ORACLE_PORT: "1521"
+      # OMNIGATE_ORACLE_SERVICE: FREEPDB1
+      # HTTPS admin console/API needs a mounted keystore — uncomment along with the volumes/ports below:
+      # OMNIGATE_TLS_KEYSTORE: /certs/omnigate.p12
+      # OMNIGATE_TLS_KEYSTORE_PASSWORD: changeit
+    # volumes:
+    #   - ./certs:/certs:ro
+    ports:
+      - "1521:1521"   # Oracle wire
+      - "5433:5433"   # Postgres wire
+      - "3306:3306"   # MySQL wire
+      - "7070:7070"   # native gRPC JDBC driver
+      - "8080:8080"   # HTTP admin console/API (/console, /api/*, /metrics)
+      # - "8443:8443" # HTTPS admin console/API — only listens if OMNIGATE_TLS_KEYSTORE is set above
