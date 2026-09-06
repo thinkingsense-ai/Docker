@@ -5,44 +5,27 @@ connection/backend-count caps baked in (`Edition.current()` reads a marker file 
 writes, which wins over any `OMNIGATE_EDITION` env var override — 100 concurrent connections, 2
 named backends; not feature-limited, only capped on scale).
 
-**The commercial (unrestricted) Dockerfile and the generic/default Dockerfile intentionally do not
-live here** — both stay in the `Server` repo, so only people with access to this repo (and thus the
-free-edition licensing limitations) get this recipe; the unrestricted build stays private.
-
-## Before you start: you need two repos, as siblings
-
-This repo holds the *recipe*, not a copy of the source — `docker-compose.yml`'s build step needs
-`pom.xml`, `src/`, and `web/` from the **`Server`** repo, checked out right next to this one:
-
-```bash
-git clone https://github.com/thinkingsense-ai/Server.git
-git clone https://github.com/thinkingsense-ai/Docker.git
-cd Docker
-```
-
-```
-your-workspace/
-├── Server/     ← the source (pom.xml, src/, web/)
-└── Docker/     ← this repo (you are here)
-```
-
-If `Server` isn't a sibling directory named exactly `Server`, the build fails at
-`COPY pom.xml .` with a "not found" error — that relative path (`context: ../Server`) is the one
-thing to get right before anything else here works.
+**This repo is fully self-contained and public.** It builds the image by downloading a
+pre-compiled `omnigate.jar` and the pre-built web UI from this repo's own
+[GitHub Releases](https://github.com/thinkingsense-ai/Docker/releases) — no other repo, no source
+code, and no private access of any kind is needed. OmniGate's source lives in a separate, private
+repo; you're running the compiled artifact, the same way you'd run any closed-source product's
+Docker image.
 
 ## The absolute minimum: one command, no config
 
-You need [Docker](https://docs.docker.com/get-docker/) and nothing else beyond the clone above.
-This starts OmniGate **and** a disposable, pre-seeded Postgres database (the classic
-`emp`/`dept` schema) — real, queryable data with zero setup, so you can see the whole product
-work before connecting anything of your own:
+You need [Docker](https://docs.docker.com/get-docker/) and nothing else:
 
 ```bash
+git clone https://github.com/thinkingsense-ai/Docker.git
+cd Docker
 docker compose up --build
 ```
 
-Give it a minute the first time (it's building the web UI, the Java backend from the sibling
-`Server` checkout, and pulling the Postgres image). Once the startup log settles, open:
+This starts OmniGate **and** a disposable, pre-seeded Postgres database (the classic `emp`/`dept`
+schema) — real, queryable data with zero setup, so you can see the whole product work before
+connecting anything of your own. Give it a minute the first time (it's downloading the jar/web UI
+and pulling the Postgres image). Once the startup log settles, open:
 
 - **`http://localhost:8080/admin`** — the admin console (data sources, ontology, access policy).
   **Unauthenticated by default** in this quick-start config — fine for trying it out locally,
@@ -139,8 +122,10 @@ data together — that's the federation story: one question, multiple real backe
 
 ## What's here
 
-- `Dockerfile` — the free-edition multi-stage build (bakes in the `free` edition marker; builds
-  the web UI and the Java backend from the sibling `Server` checkout, runs on a slim JRE).
+- `Dockerfile` — downloads the pre-compiled `omnigate.jar` and web UI from this repo's own
+  [Releases](https://github.com/thinkingsense-ai/Docker/releases) (pinned to a specific tag via
+  the `OMNIGATE_RELEASE_TAG` build arg) and packages them into a slim JRE image with the
+  free-edition marker baked in. No build tools, no source, nothing beyond `curl` and a JRE.
 - `docker-compose.yml` — the local dev stack described above (OmniGate + a seeded Postgres).
 - `docker/init-scott.sql` — the seed data for that Postgres service. Deliberately seeded into the
   default `public` schema, not a separate named schema — OmniGate's own schema introspection only
@@ -148,10 +133,8 @@ data together — that's the federation story: one question, multiple real backe
   NL2SQL/the Ontology with no error at all.
 - `.dockerignore`
 
-## Build context caveat
+## Picking up a newer release
 
-`docker-compose.yml`'s `build:` (and a plain `docker build -f Dockerfile ../Server` run from here)
-needs `pom.xml`, `src/`, and `web/` from the `Server` repo present as a sibling directory — see
-[Before you start](#before-you-start-you-need-two-repos-as-siblings) above. A CI pipeline building
-this image needs to check out `Server` alongside this repo (or an equivalent multi-context build)
-before running `docker build`.
+`docker build --build-arg OMNIGATE_RELEASE_TAG=v0.2.0 .` (or edit the `ARG` default in
+`Dockerfile`) points the build at a different published release without touching anything else in
+this repo.

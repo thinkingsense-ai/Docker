@@ -16,12 +16,10 @@ services:
       retries: 10
 
   omnigate:
-    # Build context is the Server repo (pom.xml/src/web live there, not here) -- this Dockerfile
-    # lives in this repo instead, hence the explicit dockerfile: path back into it. Assumes the
-    # local layout this was set up with: Docker/ and Server/ as sibling directories.
-    build:
-      context: ../Server
-      dockerfile: ../Docker/Dockerfile
+    # Self-contained build -- this repo's own Dockerfile downloads the pre-compiled jar/web UI
+    # from this repo's GitHub Release at build time (see Dockerfile's own comment). No other repo
+    # needed, nothing to check out alongside this one.
+    build: .
     depends_on:
       postgres:
         condition: service_healthy
