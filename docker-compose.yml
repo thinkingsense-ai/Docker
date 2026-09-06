@@ -26,13 +26,32 @@ services:
       postgres:
         condition: service_healthy
     environment:
+      # The seeded schema above becomes the primary backend automatically for schema
+      # introspection/wire-proxying -- see Server's GatewayComponents#autoIntrospectCatalog.
       OMNIGATE_PG_HOST: postgres
       OMNIGATE_PG_PORT: "5432"
       OMNIGATE_PG_DATABASE: postgres
       OMNIGATE_PG_USER: postgres
       OMNIGATE_PG_PASSWORD: postgres
-      OMNIGATE_AUTH_USER: scott
-      OMNIGATE_AUTH_PASSWORD: tiger
+      # Required to ask questions in plain English at all -- get a key at
+      # https://console.anthropic.com/ and put it in a .env file next to this one
+      # (`OMNIGATE_LLM_API_KEY=sk-ant-...`), or export it before running `docker compose up`.
+      # Leave unset and the gateway still starts fine -- the Ask app just can't translate English
+      # to SQL until this is set.
+      OMNIGATE_LLM_API_KEY: ${OMNIGATE_LLM_API_KEY:-}
+      # The Ask app (http://localhost:8080/) ALWAYS requires a real login -- unlike the admin
+      # console, there is no "auth disabled" mode, since every question runs through a real
+      # AccessContext. This is a real, working demo account -- username "demo", password "demo" --
+      # generated via:
+      #   docker run --rm --entrypoint java <this image> -cp omnigate.jar com.omnigate.http.auth.PasswordHash demo
+      # CHANGE OR REMOVE this before running anywhere reachable beyond your own machine.
+      OMNIGATE_APP_USERS: "demo:lJX+xXgLcPmnjyXStA9VQQ==:HdoV/jHar1OSBbnTk8Iu8fbLcoBGFJ/Qe83zERd4Mac=::"
+      # The Ask app also refuses every question until at least one backend is registered here --
+      # the OMNIGATE_PG_* vars above are only used for schema introspection/wire-proxying, they do
+      # NOT by themselves populate the backend registry. Registers the same seeded Postgres as a
+      # named backend, so it shows up in the admin console's "Data sources" page too, alongside
+      # anything you add later.
+      OMNIGATE_BACKENDS: "demo=jdbc:postgresql://postgres:5432/postgres|postgres|postgres"
       # Firewall/QoS/router are on by default with sane limits — see ProxyServer/ARCHITECTURE.md.
       # Admin console/API (see OmniGateHttpServer) is UNAUTHENTICATED unless one of these is set —
       # uncomment and change before exposing this compose stack beyond localhost:
@@ -53,5 +72,5 @@ services:
       - "5433:5433"   # Postgres wire
       - "3306:3306"   # MySQL wire
       - "7070:7070"   # native gRPC JDBC driver
-      - "8080:8080"   # HTTP admin console/API (/console, /api/*, /metrics)
+      - "8080:8080"   # HTTP admin console/API (/admin, /api/*) and the Ask app UI (/)
       # - "8443:8443" # HTTPS admin console/API — only listens if OMNIGATE_TLS_KEYSTORE is set above
