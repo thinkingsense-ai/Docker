@@ -25,19 +25,24 @@ docker compose up --build
 This starts OmniGate **and** a disposable, pre-seeded Postgres database (the classic `emp`/`dept`
 schema) — real, queryable data with zero setup, so you can see the whole product work before
 connecting anything of your own. Give it a minute the first time (it's downloading the jar/web UI
-and pulling the Postgres image). Once the startup log settles, open:
+and pulling the Postgres image).
 
-- **`http://localhost:8080/admin`** — the admin console (data sources, ontology, access policy).
-  **Unauthenticated by default** in this quick-start config — fine for trying it out locally,
-  **not** fine for anything reachable beyond your own machine (uncomment and set
-  `OMNIGATE_AUTH_USERS`/`OMNIGATE_AUTH_API_TOKENS` in `docker-compose.yml` before you expose this
-  anywhere).
-- **`http://localhost:8080/`** — the Ask app. Unlike the admin console, this **always** requires
-  signing in (a business-user question always runs under a real access-control identity, never
-  anonymously) — this compose file ships one working demo account for exactly this purpose:
-  **username `demo`, password `demo`**. Log in with it, then change or remove the
-  `OMNIGATE_APP_USERS` line in `docker-compose.yml` before running this anywhere but your own
-  machine.
+### Where to go once it's running
+
+| | URL | Sign in with |
+|---|---|---|
+| 🛠️ **Admin console** | **http://localhost:8080/admin** | *(no login by default — see warning below)* |
+| 💬 **Ask app** (ask a question in English) | **http://localhost:8080/** | username `demo`, password `demo` |
+
+That's it — two URLs, one on the same port by default. Open the Admin console to see your data
+sources and connect your own; open the Ask app and log in with `demo`/`demo` to actually ask it a
+question.
+
+> **⚠️ Before you put this anywhere reachable by anyone but you**: the admin console above ships
+> **unauthenticated** in this quick-start config — anyone who can reach that URL can see and change
+> everything. Uncomment and set `OMNIGATE_AUTH_USERS`/`OMNIGATE_AUTH_API_TOKENS` in
+> `docker-compose.yml` first. Same idea for the Ask app's `demo`/`demo` account — change or remove
+> the `OMNIGATE_APP_USERS` line before this leaves your own machine.
 
 **One thing you'll want to add before asking a real question**: an Anthropic API key, so the Ask
 app can actually translate English into SQL. Get one at
@@ -95,14 +100,17 @@ than sitting in a review queue because a plain declared foreign key is exactly t
 high-confidence, auto-acceptable case; a relationship inferred from data sampling instead of a
 declared FK would wait for a human to approve it.
 
-## Ports — Admin console vs. Ask app
+## Ports — the simple version
 
-By default **one port serves both apps**: `http://localhost:8080/admin` (the admin console) and
-`http://localhost:8080/` (the Ask app) — differentiated only by path, same server.
+**By default there is exactly one port: `8080`.** Both apps live there, split only by URL path —
+`/admin` for the admin console, `/` for the Ask app (the table above). You never need to think
+about ports at all unless you want the advanced setup below.
 
-If you want them on **two separate ports** instead (useful if you want to expose the Ask app
-publicly while keeping the admin console reachable only on an internal network), set
-`OMNIGATE_ASK_PORT` alongside the existing `OMNIGATE_HTTP_PORT`:
+### Advanced: putting the Ask app on its own separate port
+
+Only do this if you specifically want to expose the Ask app to the public internet while keeping
+the admin console reachable only from inside your own network. Set `OMNIGATE_ASK_PORT` alongside
+the existing `OMNIGATE_HTTP_PORT`:
 
 ```yaml
 environment:
