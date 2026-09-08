@@ -95,6 +95,42 @@ than sitting in a review queue because a plain declared foreign key is exactly t
 high-confidence, auto-acceptable case; a relationship inferred from data sampling instead of a
 declared FK would wait for a human to approve it.
 
+## Ports — Admin console vs. Ask app
+
+By default **one port serves both apps**: `http://localhost:8080/admin` (the admin console) and
+`http://localhost:8080/` (the Ask app) — differentiated only by path, same server.
+
+If you want them on **two separate ports** instead (useful if you want to expose the Ask app
+publicly while keeping the admin console reachable only on an internal network), set
+`OMNIGATE_ASK_PORT` alongside the existing `OMNIGATE_HTTP_PORT`:
+
+```yaml
+environment:
+  OMNIGATE_HTTP_PORT: "8080"   # admin console + /api + /app only, once ASK_PORT is set
+  OMNIGATE_ASK_PORT: "8081"    # Ask app only
+ports:
+  - "8080:8080"
+  - "8081:8081"
+```
+
+**This is a hard split, not a mirror**: once `OMNIGATE_ASK_PORT` is set, port 8080 stops serving
+the Ask app's own routes (404s them) and port 8081 stops serving `/admin`/admin API routes (404s
+those). Leave `OMNIGATE_ASK_PORT` unset (the default in this repo's `docker-compose.yml`) to keep
+the original single-port behavior — nothing else changes either way.
+
+Every port this image can expose, and what each one is for:
+
+| Port | Protocol | Purpose |
+|---|---|---|
+| `8080` | HTTP | Admin console (`/admin`) + Ask app (`/`) + `/api/*` + `/app/*` + `/mcp*` — unless split, see above |
+| `8081` | HTTP | Ask app only, when `OMNIGATE_ASK_PORT` is set |
+| `8443` | HTTPS | Same as 8080, when TLS is configured (`OMNIGATE_TLS_*`) |
+| `5433` | Postgres wire | Query any registered backend using a plain `psql`/Postgres client |
+| `3306` | MySQL wire | Same, using a MySQL client |
+| `1521` | Oracle wire | Same, using an Oracle client |
+| `7070` | gRPC | Native JDBC driver, if you're using OmniGate's own driver rather than a wire-protocol client |
+| `2484` | TCP | Oracle TLS variant, when TLS is configured |
+
 ## Add your own backend
 
 The seeded Postgres is a demo, not the point. Add a real backend one of two ways:
