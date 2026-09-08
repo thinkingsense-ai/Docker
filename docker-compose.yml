@@ -37,6 +37,7 @@ services:
       # Leave unset and the gateway still starts fine -- the Ask app just can't translate English
       # to SQL until this is set.
       OMNIGATE_LLM_API_KEY: ${OMNIGATE_LLM_API_KEY:-}
+      OMNIGATE_LLM_MODEL: ${OMNIGATE_LLM_MODEL:-claude-sonnet-5}
       # The Ask app (http://localhost:8080/) ALWAYS requires a real login -- unlike the admin
       # console, there is no "auth disabled" mode, since every question runs through a real
       # AccessContext. This is a real, working demo account -- username "demo", password "demo" --
