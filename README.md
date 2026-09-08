@@ -156,6 +156,17 @@ then `docker compose up --build` again.
 Either way, once a backend is registered you can ask questions that span it and the seeded demo
 data together — that's the federation story: one question, multiple real backends, one answer.
 
+## A bigger, real demo: the supply chain fixture
+
+Want to try a genuine multi-source federated question (real cross-database joins, not the
+single-table `emp`/`dept` demo above)? See [`fixtures/supply-chain/`](fixtures/supply-chain/) — a
+real supply-chain story with three infrastructure tiers to match what you have available: four
+real database engines (Postgres/MySQL/Oracle/SQL Server), a single-Postgres variant (just four
+schemas, zero extra infrastructure), or a mixed CSV/object-storage + Postgres variant. All three
+are live-verified to return the same correct answer to the same canonical question. See
+[`fixtures/supply-chain/DOCKER-USAGE.md`](fixtures/supply-chain/DOCKER-USAGE.md) for how to run
+each tier against this repo's own Docker image.
+
 ## What's here
 
 - `Dockerfile` — downloads the pre-compiled `omnigate.jar` and web UI from this repo's own

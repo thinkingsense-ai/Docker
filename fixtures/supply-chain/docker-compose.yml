@@ -1,0 +1,50 @@
+# Reusable 4-database "supply chain" federation fixture — real Postgres + MySQL + Oracle +
+# SQL Server, each with a real piece of a supply-chain story. Used for testing/demoing real
+# cross-database federation (Calcite and/or Trino), NL2SQL, and Federation Plans.
+#
+# Quick start:
+#   cd fixtures/supply-chain
+#   docker compose up -d
+#   ./seed.sh
+#
+# See README.md for the story, schema, real seeded rows, and example OmniGate config.
+
+networks:
+  default:
+    name: supply-chain-fixture-net
+
+services:
+  sc-postgres:
+    image: postgres:16-alpine
+    container_name: sc-postgres
+    ports:
+      - "15432:5432"
+    environment:
+      POSTGRES_PASSWORD: omnigate
+      POSTGRES_DB: suppliers
+
+  sc-mysql:
+    image: mysql:8.0
+    container_name: sc-mysql
+    ports:
+      - "13306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: omnigate
+      MYSQL_DATABASE: inventory
+
+  sc-oracle:
+    image: gvenzl/oracle-free:slim
+    container_name: sc-oracle
+    ports:
+      - "11521:1521"
+    environment:
+      ORACLE_PASSWORD: omnigate
+
+  sc-mssql:
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    container_name: sc-mssql
+    ports:
+      - "11433:1433"
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "OmniGate!Strong1"
