@@ -54,10 +54,11 @@ variables:
 
   omnigate_app_users:
     type: password
-    title: "Ask-app login (OMNIGATE_APP_USERS)"
-    description: "Format: username:saltB64:hashB64:: -- generate with: docker run --rm --entrypoint java <image> -cp omnigate.jar com.omnigate.http.auth.PasswordHash <password>. Required so this deployment doesn't ship the repo's well-known demo/demo login on a public LoadBalancer."
+    title: "Ask-app login -- a GENERATED hash, not a plain password"
+    description: "This is NOT the password itself. Step 1: run docker run --rm --entrypoint java <image> -cp omnigate.jar com.omnigate.http.auth.PasswordHash <your-chosen-password> -- it prints saltB64:hashB64. Step 2: paste it here PREFIXED with your chosen username and a colon, and SUFFIXED with two more colons: yourusername:saltB64:hashB64:: (that's it -- four colons total, nothing between the last two). Required so this deployment doesn't ship the repo's well-known demo/demo login on a public LoadBalancer -- a plain password typed directly here will be rejected."
     required: true
     sensitive: true
+    pattern: "^[^:]+:[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+::$"
 
   omnigate_llm_api_key:
     type: password

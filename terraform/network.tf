@@ -83,14 +83,73 @@ resource "oci_core_security_list" "nodes" {
     protocol = "all"
     source   = "10.0.0.0/16"
   }
-  # OmniGate's own HTTP port -- fronted by the LoadBalancer, but the LB talks to node ports over
-  # the VCN, so this is intra-VCN too, not a raw internet-facing rule.
+  # NodePort range -- the NLB's *internal* hop to the node (its own backend-to-node traffic, not
+  # what an external client connects to). Confirmed live this is NOT sufficient by itself: the NLB
+  # additionally needs its own listener port and health-check port open below, or the backend
+  # never gets marked healthy / the listener drops all inbound traffic with a silent timeout.
   ingress_security_rules {
     protocol = "6"
     source   = "0.0.0.0/0"
     tcp_options {
       min = 30000
       max = 32767
+    }
+  }
+  # OCI's NLB health-checks each backend via this exact port/path (kube-proxy's health endpoint)
+  # regardless of the Service's externalTrafficPolicy. Missing this, the backend is marked
+  # unhealthy and the NLB drops all traffic -- confirmed live, and easy to miss because the error
+  # is a silent connection timeout at the LB, not an explicit error anywhere.
+  ingress_security_rules {
+    protocol = "6"
+    source   = "0.0.0.0/0"
+    tcp_options {
+      min = 10256
+      max = 10256
+    }
+  }
+  # The actual public listener ports on the LB subnet (Ask app, and the wire-protocol NLB's
+  # ports when exposeWireProtocols=true) -- distinct from the NodePort range above. Confirmed
+  # live that opening only the NodePort range is NOT enough: clients connect to the LB on these
+  # ports directly, and without an explicit rule here that inbound connection is silently dropped
+  # (a bare connection timeout, not a clear error) even though the NodePort hop itself works fine.
+  ingress_security_rules {
+    protocol = "6"
+    source   = "0.0.0.0/0"
+    tcp_options {
+      min = 8080
+      max = 8080
+    }
+  }
+  ingress_security_rules {
+    protocol = "6"
+    source   = "0.0.0.0/0"
+    tcp_options {
+      min = 1521
+      max = 1521
+    }
+  }
+  ingress_security_rules {
+    protocol = "6"
+    source   = "0.0.0.0/0"
+    tcp_options {
+      min = 5433
+      max = 5433
+    }
+  }
+  ingress_security_rules {
+    protocol = "6"
+    source   = "0.0.0.0/0"
+    tcp_options {
+      min = 3306
+      max = 3306
+    }
+  }
+  ingress_security_rules {
+    protocol = "6"
+    source   = "0.0.0.0/0"
+    tcp_options {
+      min = 7070
+      max = 7070
     }
   }
   # Path MTU discovery -- OKE explicitly documents this as required for node registration.
@@ -107,15 +166,14 @@ resource "oci_core_security_list" "nodes" {
     destination = "0.0.0.0/0"
   }
 
-  # OKE's own LoadBalancer controller (cloud-controller-manager) mutates this exact security
-  # list directly, adding/removing a narrow per-NodePort rule as Services of type LoadBalancer
-  # come and go -- confirmed live (a rule for the LB's actual NodePort 30767 appeared here on its
-  # own). Our own 30000-32767 ingress rule above already covers the full NodePort range, so that
-  # CCM-managed rule is redundant for connectivity, but without this Terraform fights the
-  # controller every apply trying to prune it back to exactly what's declared here.
-  lifecycle {
-    ignore_changes = [ingress_security_rules]
-  }
+  # NOTE: OKE's own LoadBalancer controller (cloud-controller-manager) also mutates this exact
+  # security list, adding/removing a narrow per-NodePort rule as Services of type LoadBalancer
+  # come and go. Our own 30000-32767 ingress rule above already covers the full NodePort range,
+  # so that CCM-managed rule is redundant for connectivity -- a plain `terraform plan` may show a
+  # 1-rule diff wanting to prune it, which is harmless to apply. Deliberately NOT using
+  # `lifecycle { ignore_changes = [ingress_security_rules] }` here even though it would silence
+  # that diff: confirmed live that doing so also silently blocks any *legitimate* future edit to
+  # this rule list from ever being applied through Terraform again.
 }
 
 resource "oci_core_subnet" "k8s_api" {

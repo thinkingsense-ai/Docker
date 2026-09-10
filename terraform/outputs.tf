@@ -8,6 +8,6 @@ output "kubeconfig_command" {
 }
 
 output "ask_app_url" {
-  description = "Populated once the LoadBalancer gets a public IP -- may take a few minutes after apply finishes; check `kubectl get svc` if empty."
+  description = "Populated once the LoadBalancer gets a public IP -- may take a few minutes after apply finishes; check `kubectl get svc` if empty. Serves both the Ask app (/) and the admin console (/admin) on the same port -- see the OMNIGATE_ASK_PORT note in helm/omnigate/templates/omnigate.yaml for why these aren't split."
   value       = "http://<pending-lb-ip>:8080/  (run `kubectl get svc omnigate-omnigate-http` to get the real IP once provisioned)"
 }

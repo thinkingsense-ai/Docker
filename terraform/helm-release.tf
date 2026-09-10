@@ -34,9 +34,13 @@ provider "helm" {
 }
 
 resource "helm_release" "omnigate" {
-  name       = "omnigate"
-  chart      = "${path.module}/helm/omnigate"
-  timeout    = 600
+  name  = "omnigate"
+  chart = "${path.module}/helm/omnigate"
+  # A first-ever deploy pulls the (several-GB, bundles a compiled llama-server + a local
+  # embedding model) image on a brand-new node with nothing cached -- confirmed live that 600s
+  # wasn't enough: the release was still mid-pull when Terraform gave up and marked it "failed",
+  # even though the pods came up fine moments later on their own.
+  timeout    = 1500
   depends_on = [oci_containerengine_node_pool.this]
 
   set {

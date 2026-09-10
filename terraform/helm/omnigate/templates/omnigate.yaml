@@ -75,8 +75,15 @@ spec:
           persistentVolumeClaim:
             claimName: {{ include "omnigate.fullname" . }}-omnigate-data
 ---
-# HTTP only (Ask app + admin console) -- the LoadBalancer default. Deliberately not exposing the
-# DB wire ports here; see the wire-protocols Service below, which is opt-in.
+# HTTP (Ask app + admin console together, port 8080) -- the public LoadBalancer.
+#
+# NOTE: OMNIGATE_ASK_PORT (which would let us split the unauthenticated-by-default admin console
+# onto a ClusterIP-only Service, keeping only the Ask app public) is documented in this repo's own
+# README but confirmed NOT implemented in the currently published v0.1.0 image -- the app never
+# logs listening on the configured ask port, and setting it has no effect (the container still
+# only listens on 8080). Filed as a docs/release mismatch; revisit this split once a release that
+# actually honors OMNIGATE_ASK_PORT ships. Until then, both admin and Ask app are on this one
+# public Service, same as running it under plain docker compose.
 #
 # Uses OCI's Network Load Balancer (L4 passthrough), not the classic L7 "lb" default: confirmed
 # live that the classic Load Balancer buffers the Ask app's SSE (Server-Sent Events) streaming
