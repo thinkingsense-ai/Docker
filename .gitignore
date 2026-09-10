@@ -1,0 +1,5 @@
+.env
+omnigate-oke-stack.zip
+terraform/.terraform/
+terraform/*.tfstate*
+

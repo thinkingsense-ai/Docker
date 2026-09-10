@@ -20,11 +20,46 @@ RUN curl -fsSL -o omnigate.jar \
       "https://github.com/thinkingsense-ai/Docker/releases/download/${OMNIGATE_RELEASE_TAG}/web-dist.tar.gz" \
     && mkdir -p web/dist && tar -xzf web-dist.tar.gz -C web/dist && rm web-dist.tar.gz
 
+# Free, local NL2SQL model -- Qwen2.5-1.5B-Instruct (Apache-2.0), the same default the admin
+# console's LLM Settings page suggests for "Local (llama-server)" mode. Downloaded here (not at
+# container start) so `docker compose up` doesn't re-fetch ~1GB on every restart.
+RUN curl -fsSL -o qwen2.5-1.5b-instruct-q4_k_m.gguf \
+      "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+
+# Builds llama-server (llama.cpp) from source so the binary's architecture always matches this
+# image's own platform (no guessing which prebuilt release asset fits arm64 vs amd64). Base image
+# matches the final stage's Ubuntu version (jammy) so the built binary is ABI-compatible with it.
+FROM ubuntu:22.04 AS llama-build
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      build-essential cmake git ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+RUN git clone --depth 1 https://github.com/ggml-org/llama.cpp.git /llama.cpp
+WORKDIR /llama.cpp
+RUN cmake -B build -DCMAKE_BUILD_TYPE=Release -DLLAMA_CURL=OFF -DGGML_OPENMP=OFF \
+    && cmake --build build --target llama-server --config Release -j"$(nproc)"
+
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 COPY --from=fetch /fetch/omnigate.jar omnigate.jar
 COPY --from=fetch /fetch/web/dist ./web/dist
 ENV OMNIGATE_WEB_DIST_DIR=/app/web/dist
+
+# Local llama-server, used ONLY for ontology embeddings/vector-search (schema retrieval) --
+# NL2SQL answer generation itself now always goes through the hosted provider configured in the
+# admin console's LLM Settings, with no local fallback. Deliberately NOT setting
+# OMNIGATE_ASSISTANT_LLAMA_SERVER_PATH/MODEL_PATH/PORT: GatewayComponents only spins up the
+# "assistant" generation process (and NL2SQL's local-model fallback) when those are set, and only
+# derives an embedding process from them as a convenience default when OMNIGATE_EMBEDDING_* is
+# absent. Setting OMNIGATE_EMBEDDING_* explicitly instead keeps vector search working without ever
+# starting that generation/fallback process.
+COPY --from=llama-build /llama.cpp/build/bin/ /opt/llama.cpp/
+COPY --from=fetch /fetch/qwen2.5-1.5b-instruct-q4_k_m.gguf /opt/models/qwen2.5-1.5b-instruct-q4_k_m.gguf
+# llama-server links against its sibling libllama*.so/libggml*.so but has no rpath pointing at its
+# own directory, so the dynamic linker needs to be told where to find them explicitly.
+ENV LD_LIBRARY_PATH=/opt/llama.cpp
+ENV OMNIGATE_EMBEDDING_LLAMA_SERVER_PATH=/opt/llama.cpp/llama-server
+ENV OMNIGATE_EMBEDDING_MODEL_PATH=/opt/models/qwen2.5-1.5b-instruct-q4_k_m.gguf
+ENV OMNIGATE_EMBEDDING_PORT=8091
 
 # Edition.current() reads this before ever looking at OMNIGATE_EDITION -- see that class's javadoc.
 # This is what makes the free edition's cap resistant to a plain `docker run -e

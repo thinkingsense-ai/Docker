@@ -1,0 +1,154 @@
+title: "OmniGate on OKE"
+description: "Deploy OmniGate (NL2SQL gateway) with a seeded Postgres demo backend onto a new Oracle Kubernetes Engine cluster, sized for the Always Free tier."
+schemaVersion: 1.1.0
+version: "20230101"
+locale: "en"
+
+variableGroups:
+  - title: "Required Configuration"
+    visible: true
+    variables:
+      - compartment_ocid
+      - region
+
+  - title: "Application"
+    visible: true
+    variables:
+      - omnigate_app_users
+      - omnigate_llm_api_key
+      - omnigate_llm_model
+      - expose_wire_protocols
+
+  - title: "Compute Sizing (Always Free: VM.Standard.A1.Flex)"
+    visible: true
+    variables:
+      - node_pool_size
+      - node_ocpus
+      - node_memory_gb
+      - node_boot_volume_gb
+
+  - title: "Storage"
+    visible: true
+    variables:
+      - postgres_storage_gb
+      - omnigate_data_storage_gb
+
+  - title: "Advanced"
+    visible: true
+    variables:
+      - image_repository
+      - image_tag
+
+variables:
+  compartment_ocid:
+    type: oci:identity:compartment:id
+    title: "Compartment"
+    description: "Compartment to create the cluster, network, and node pool in."
+    required: true
+
+  region:
+    type: oci:identity:region:name
+    title: "Region"
+    description: "Deploy region. Must match a region your tenancy is subscribed to."
+    required: true
+
+  omnigate_app_users:
+    type: password
+    title: "Ask-app login (OMNIGATE_APP_USERS)"
+    description: "Format: username:saltB64:hashB64:: -- generate with: docker run --rm --entrypoint java <image> -cp omnigate.jar com.omnigate.http.auth.PasswordHash <password>. Required so this deployment doesn't ship the repo's well-known demo/demo login on a public LoadBalancer."
+    required: true
+    sensitive: true
+
+  omnigate_llm_api_key:
+    type: password
+    title: "Anthropic API key"
+    description: "From console.anthropic.com. Powers NL2SQL (English -> SQL translation). The gateway still deploys without one, but the Ask app can't answer questions until this is set."
+    required: false
+    sensitive: true
+
+  omnigate_llm_model:
+    type: enum
+    title: "Anthropic model"
+    description: "Model used for NL2SQL."
+    enum:
+      - "claude-sonnet-5"
+      - "claude-opus-5"
+      - "claude-haiku-4-5-20251001"
+    default: "claude-sonnet-5"
+    required: true
+
+  expose_wire_protocols:
+    type: boolean
+    title: "Expose DB wire protocols publicly"
+    description: "Also publish the Oracle/Postgres/MySQL wire-protocol ports (1521/5433/3306) on a second public LoadBalancer. Off by default -- turn on only if you plan to connect a wire-protocol client (e.g. psql, a BI tool) from outside the cluster."
+    default: false
+    required: true
+
+  node_pool_size:
+    type: integer
+    title: "Node count"
+    minimum: 1
+    maximum: 4
+    default: 1
+    required: true
+
+  node_ocpus:
+    type: integer
+    title: "OCPUs per node"
+    description: "Always Free tenancies share a limited Ampere A1 (VM.Standard.A1.Flex) allocation across the whole account -- check Governance & Administration > Limits, Quotas and Usage in the Console before raising node count x OCPUs beyond your tenancy's free allocation."
+    minimum: 1
+    maximum: 4
+    default: 2
+    required: true
+
+  node_memory_gb:
+    type: integer
+    title: "Memory (GB) per node"
+    minimum: 6
+    maximum: 24
+    default: 12
+    required: true
+
+  node_boot_volume_gb:
+    type: integer
+    title: "Boot volume size (GB) per node"
+    minimum: 50
+    maximum: 200
+    default: 50
+    required: true
+
+  postgres_storage_gb:
+    type: integer
+    title: "Postgres storage (GB)"
+    minimum: 1
+    maximum: 100
+    default: 5
+    required: true
+
+  omnigate_data_storage_gb:
+    type: integer
+    title: "OmniGate config storage (GB)"
+    description: "Holds OmniGate's own admin-set configuration (e.g. an API key entered live in the admin console) so it survives pod restarts."
+    minimum: 1
+    maximum: 20
+    default: 2
+    required: true
+
+  image_repository:
+    type: string
+    title: "Container image (advanced)"
+    description: "Fully-qualified OCIR path for the omnigate image. Leave as the default unless you've mirrored the image into your own registry."
+    default: "ocir.us-phoenix-1.oci.oraclecloud.com/ax8tpjdxhykk/omnigate"
+    required: false
+
+  image_tag:
+    type: string
+    title: "Image tag (advanced)"
+    default: "latest"
+    required: false
+
+outputGroups:
+  - title: "Access"
+    outputs:
+      - kubeconfig_command
+      - ask_app_url
