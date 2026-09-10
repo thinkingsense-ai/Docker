@@ -10,6 +10,17 @@
 > and pass it via `--build-arg OMNIGATE_RELEASE_TAG=<tag>` (see this repo's own README, "Picking up
 > a newer release").
 
+> **⚠️ Also real, also checked: this fixture exceeds the free edition's backend cap.** Step 2
+> below registers **5** named backends (`demo` + `suppliers`/`inventory`/`procurement`/
+> `logistics`) — the free edition keeps only the first 3 (see the main `README.md`'s "Free edition
+> limits" table) and silently drops the rest, logged as a warning. The canonical question in Step
+> 3 needs all four supply-chain backends, so it will fail (missing table) on the free image as
+> written. To actually run this fixture end-to-end on the free image, drop the `demo` backend from
+> `OMNIGATE_BACKENDS` (leaving exactly the 4 supply-chain backends — still one over the cap, so
+> also drop one of the four, e.g. `logistics`, and adjust the canonical question accordingly) — or
+> run against the commercial edition instead (build from the `Server` source repo with no
+> `OMNIGATE_EDITION` env var set, which defaults to commercial).
+
 The easiest path — **reuses the Postgres you already have running** from `docker compose up`, no
 new containers needed. This is Tier B (single Postgres) from `README.md`.
 

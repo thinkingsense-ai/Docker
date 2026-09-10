@@ -1,9 +1,10 @@
 # OmniGate — free-edition container image
 
-This repo holds the build recipe for OmniGate's **free edition** — the edition with the
-connection/backend-count caps baked in (`Edition.current()` reads a marker file this `Dockerfile`
-writes, which wins over any `OMNIGATE_EDITION` env var override — 100 concurrent connections, 2
-named backends; not feature-limited, only capped on scale).
+This repo holds the build recipe for OmniGate's **free edition** — the edition with real scale
+caps baked in (`Edition.current()` reads a marker file this `Dockerfile` writes, which wins over
+any `OMNIGATE_EDITION` env var override — see [Free edition limits](#free-edition-limits) below
+for the full, current list). **Not feature-limited** — every capability (federation, Ontology,
+NL2SQL, MCP, admin console) is the same code path as the commercial edition; only scale is capped.
 
 **This repo is fully self-contained and public.** It builds the image by downloading a
 pre-compiled `omnigate.jar` and the pre-built web UI from this repo's own
@@ -138,6 +139,32 @@ Every port this image can expose, and what each one is for:
 | `1521` | Oracle wire | Same, using an Oracle client |
 | `7070` | gRPC | Native JDBC driver, if you're using OmniGate's own driver rather than a wire-protocol client |
 | `2484` | TCP | Oracle TLS variant, when TLS is configured |
+
+## Free edition limits
+
+Real, enforced caps — not advertised limits that happen to not be checked anywhere. Each one is
+covered by an automated test in the source repo, and every one is baked into the image via the
+`/opt/omnigate/EDITION` marker file (not just an env var), so a plain `docker run -e
+OMNIGATE_EDITION=commercial` can't lift them.
+
+| Limit | Free edition | Commercial edition |
+|---|---|---|
+| Concurrent client connections | 100 (across every protocol combined) | Unlimited |
+| Named data sources (`OMNIGATE_BACKENDS` entries) | 3 — a 4th+ entry is silently dropped at startup, logged as a warning | Unlimited |
+| Questions in flight at once (Ask app / MCP / embed API) | 1 | Unlimited |
+| Parallel-join planner worker threads | 8 — a hard ceiling; setting `OMNIGATE_PARALLEL_JOIN_THREADS` higher has no effect | Unlimited (defaults to `min(8, cores)` unless set) |
+| Multi-node clustering | Not available — `OMNIGATE_CLUSTER_ENABLED=true` is accepted but ignored (logged as a warning, never a startup failure); every deployment runs single-node | Available, opt-in |
+
+A raw SQL statement over any native wire protocol (Postgres/MySQL/Oracle wire, gRPC) is
+**unaffected** by the questions-in-flight cap — that limit is specifically the LLM-mediated
+"ask a question in English" path (`/api/ask`, `/mcp/agent`, the group-scoped MCP's
+`ask_question` tool). Hitting the connection or question cap degrades to a clear rejection, not a
+crash or a silent hang.
+
+Check what a running container is actually capped at (rather than trusting this table) via the
+admin console's **Overview** page — the "About this deployment" card shows the real,
+live-computed values (`edition`, `maxBackends`, `maxConcurrentQuestions`,
+`maxParallelJoinThreads`, `clusterNodes`) straight from `GET /api/config`.
 
 ## Add your own backend
 
