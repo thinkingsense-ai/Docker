@@ -40,8 +40,12 @@ RUN mkdir -p /var/lib/omnigate/data
 VOLUME ["/var/lib/omnigate/data"]
 
 # Oracle wire, Postgres wire, MySQL wire, native gRPC driver, TCPS (TLS), HTTP admin console/API,
-# HTTPS admin console/API. The free edition isn't feature-limited, only capped on scale (100
-# concurrent connections total, 2 named backends).
+# HTTPS admin console/API. The free edition isn't feature-limited, only capped on scale: 100
+# concurrent connections total, 3 named backends, 1 question in flight at a time, 8 worker
+# threads for the parallel-join planner (an operator's own OMNIGATE_PARALLEL_JOIN_THREADS can
+# never raise this), and single-node only (OMNIGATE_CLUSTER_ENABLED=true is accepted but ignored,
+# logged as a warning, never a startup failure) -- see the README's own "Free edition limits"
+# section for the full, current list.
 EXPOSE 1521 5433 3306 7070 2484 8080 8443
 
 # Required only when OMNIGATE_CLUSTER_ENABLED=true -- Apache Ignite 2.x reflectively accesses
