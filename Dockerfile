@@ -7,7 +7,7 @@
 # Pin OMNIGATE_RELEASE_TAG to a specific published release; override at build time with
 # `docker build --build-arg OMNIGATE_RELEASE_TAG=vX.Y.Z .` to pick up a newer one without editing
 # this file.
-ARG OMNIGATE_RELEASE_TAG=v0.1.0
+ARG OMNIGATE_RELEASE_TAG=v0.2.0
 
 FROM eclipse-temurin:17-jre-jammy AS fetch
 ARG OMNIGATE_RELEASE_TAG

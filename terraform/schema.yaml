@@ -145,7 +145,7 @@ variables:
   image_tag:
     type: string
     title: "Image tag (advanced)"
-    default: "latest"
+    default: "v0.2.0"
     required: false
 
 outputGroups:

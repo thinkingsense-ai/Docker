@@ -40,7 +40,7 @@ storageClassName: oci-bv
 
 service:
   type: LoadBalancer
-  httpPort: 8080
+  askPort: 8081
 
 resources:
   omnigate:

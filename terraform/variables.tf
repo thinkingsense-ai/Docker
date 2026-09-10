@@ -49,7 +49,7 @@ variable "image_repository" {
 variable "image_tag" {
   description = "Image tag to deploy."
   type        = string
-  default     = "latest"
+  default     = "v0.2.0"
 }
 
 # --- Compute sizing (Always Free: VM.Standard.A1.Flex, Ampere) ------------------------------

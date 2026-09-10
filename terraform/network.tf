@@ -116,8 +116,8 @@ resource "oci_core_security_list" "nodes" {
     protocol = "6"
     source   = "0.0.0.0/0"
     tcp_options {
-      min = 8080
-      max = 8080
+      min = 8081
+      max = 8081
     }
   }
   ingress_security_rules {

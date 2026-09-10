@@ -10,6 +10,11 @@ data:
   OMNIGATE_PG_PORT: "5432"
   OMNIGATE_PG_DATABASE: {{ .Values.postgres.database | quote }}
   OMNIGATE_PG_USER: {{ .Values.postgres.user | quote }}
+  # Hard admin/Ask port split -- confirmed live this actually works as of v0.2.0 (not v0.1.0, see
+  # omnigate.yaml's Service comments). Once set, 8080 stops serving Ask app routes and 8081 stops
+  # serving /admin, which is what makes the ClusterIP-only admin Service a real security boundary.
+  OMNIGATE_HTTP_PORT: "8080"
+  OMNIGATE_ASK_PORT: "8081"
 ---
 apiVersion: v1
 kind: ConfigMap

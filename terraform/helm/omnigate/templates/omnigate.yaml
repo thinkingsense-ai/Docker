@@ -51,6 +51,8 @@ spec:
           ports:
             - name: http
               containerPort: 8080
+            - name: ask
+              containerPort: 8081
             - name: oracle-wire
               containerPort: 1521
             - name: pg-wire
@@ -63,9 +65,13 @@ spec:
             - name: data
               mountPath: /var/lib/omnigate/data
           readinessProbe:
+            # Port 8081, not 8080: once OMNIGATE_ASK_PORT is set, port 8080 (admin-only mode)
+            # 404s on bare "/" -- only 8081 (Ask app) still serves it. Confirmed live: the
+            # original port-8080 probe caused a permanently NotReady pod after this split, even
+            # though the app itself had booted fine and 8081 was already answering.
             httpGet:
               path: /
-              port: 8080
+              port: 8081
             initialDelaySeconds: 15
             periodSeconds: 10
           resources:
@@ -75,15 +81,32 @@ spec:
           persistentVolumeClaim:
             claimName: {{ include "omnigate.fullname" . }}-omnigate-data
 ---
-# HTTP (Ask app + admin console together, port 8080) -- the public LoadBalancer.
-#
-# NOTE: OMNIGATE_ASK_PORT (which would let us split the unauthenticated-by-default admin console
-# onto a ClusterIP-only Service, keeping only the Ask app public) is documented in this repo's own
-# README but confirmed NOT implemented in the currently published v0.1.0 image -- the app never
-# logs listening on the configured ask port, and setting it has no effect (the container still
-# only listens on 8080). Filed as a docs/release mismatch; revisit this split once a release that
-# actually honors OMNIGATE_ASK_PORT ships. Until then, both admin and Ask app are on this one
-# public Service, same as running it under plain docker compose.
+# Admin console (port 8080) -- ClusterIP only, deliberately NEVER a public LoadBalancer. The admin
+# console is unauthenticated by default (per the app's own README warning); OMNIGATE_ASK_PORT is
+# what makes it possible to keep it off the public LoadBalancer while still exposing the Ask app,
+# by making 8080 stop serving Ask app routes and 8081 stop serving /admin. Confirmed live this is
+# NOT honored by the v0.1.0 image (no effect at all -- see omnigate:v0.1.0 history of this file),
+# but IS honored starting with v0.2.0 (confirmed live: distinct "admin console/API only" vs.
+# "Ask app only" listeners logged on 8080/8081 respectively). Reach the admin console with
+# `kubectl port-forward svc/omnigate-omnigate-admin 8080:8080`.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "omnigate.fullname" . }}-omnigate-admin
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: omnigate
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: omnigate
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+# Ask app only (port 8081, via OMNIGATE_ASK_PORT) -- the public LoadBalancer.
 #
 # Uses OCI's Network Load Balancer (L4 passthrough), not the classic L7 "lb" default: confirmed
 # live that the classic Load Balancer buffers the Ask app's SSE (Server-Sent Events) streaming
@@ -93,7 +116,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "omnigate.fullname" . }}-omnigate-http
+  name: {{ include "omnigate.fullname" . }}-omnigate-ask
   labels:
     {{- include "omnigate.labels" . | nindent 4 }}
     app.kubernetes.io/component: omnigate
@@ -105,9 +128,9 @@ spec:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: omnigate
   ports:
-    - name: http
-      port: {{ .Values.service.httpPort }}
-      targetPort: 8080
+    - name: ask
+      port: {{ .Values.service.askPort }}
+      targetPort: 8081
 {{- if .Values.omnigate.exposeWireProtocols }}
 ---
 # Wire protocols (Oracle/Postgres/MySQL/gRPC), only created when exposeWireProtocols=true.
