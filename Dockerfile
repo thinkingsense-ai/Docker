@@ -7,10 +7,28 @@
 # Pin OMNIGATE_RELEASE_TAG to a specific published release; override at build time with
 # `docker build --build-arg OMNIGATE_RELEASE_TAG=vX.Y.Z .` to pick up a newer one without editing
 # this file.
-ARG OMNIGATE_RELEASE_TAG=v0.2.0
+ARG OMNIGATE_RELEASE_TAG=v0.3.0
 
-FROM eclipse-temurin:17-jre-jammy AS fetch
+# Semantic Reasoning Engine: a real, bundled local model + llama-server binary, so
+# OMNIGATE_LLM_MODE=local-only/local-first (see the Server repo's LlmMode) work out of the box
+# with zero external configuration -- the "runs privately, out of the box" story for this free/dev
+# image specifically. Real license diligence, not guessed: Microsoft's own MIT-licensed
+# Phi-3.5-mini-instruct was the initial candidate and would have been the safer default for a
+# commercially-licensed image, but this free/developer image is explicitly non-commercial-use --
+# per that scope, Qwen2.5-3B-Instruct is used instead (Alibaba's own "Qwen RESEARCH LICENSE
+# AGREEMENT" -- non-commercial only; the required attribution notice is shipped alongside it, see
+# NOTICE-qwen.txt below). Confirmed live before pinning: the real llama.cpp b10809 release build
+# needs a newer glibc/libstdc++ than Ubuntu 22.04 ("jammy") ships -- this is why the base image
+# below is "noble" (24.04), not jammy; verified end-to-end with a real container (model loads,
+# real /v1/chat/completions inference returns a correct answer) before committing to this image.
+ARG LLAMA_CPP_TAG=b10809
+ARG LOCAL_MODEL_URL=https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf
+
+FROM eclipse-temurin:17-jre-noble AS fetch
 ARG OMNIGATE_RELEASE_TAG
+ARG LLAMA_CPP_TAG
+ARG LOCAL_MODEL_URL
+ARG TARGETARCH
 WORKDIR /fetch
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
@@ -19,12 +37,37 @@ RUN curl -fsSL -o omnigate.jar \
     && curl -fsSL -o web-dist.tar.gz \
       "https://github.com/thinkingsense-ai/Docker/releases/download/${OMNIGATE_RELEASE_TAG}/web-dist.tar.gz" \
     && mkdir -p web/dist && tar -xzf web-dist.tar.gz -C web/dist && rm web-dist.tar.gz
+# Real bug found live: TARGETARCH is only auto-populated by a buildx/multi-platform build --
+# a plain `docker build` (confirmed live: this environment doesn't even have buildx installed)
+# leaves it empty, which silently fell through to the x64 asset on a native arm64 build machine,
+# producing an image whose llama-server binary only ran under qemu emulation (and then failed
+# outright -- "Could not open '/lib64/ld-linux-x86-64.so.2'", no 32/64-bit compat layer in this
+# base image at all). `uname -m` reflects the architecture this RUN step is actually executing on,
+# which is what a plain single-platform `docker build` needs; TARGETARCH is still honored first
+# for a genuine cross-compiled buildx build, where it's the authoritative signal instead.
+RUN ARCH="${TARGETARCH:-$(uname -m | sed -e 's/x86_64/amd64/' -e 's/aarch64/arm64/')}" \
+    && LLAMA_ARCH=$([ "$ARCH" = "arm64" ] && echo "ubuntu-arm64" || echo "ubuntu-x64") \
+    && curl -fsSL -o llama.tar.gz \
+      "https://github.com/ggml-org/llama.cpp/releases/download/${LLAMA_CPP_TAG}/llama-${LLAMA_CPP_TAG}-bin-${LLAMA_ARCH}.tar.gz" \
+    && mkdir -p llama && tar -xzf llama.tar.gz -C llama --strip-components=1 && rm llama.tar.gz \
+    && curl -fsSL -o model.gguf "${LOCAL_MODEL_URL}"
 
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:17-jre-noble
 WORKDIR /app
 COPY --from=fetch /fetch/omnigate.jar omnigate.jar
 COPY --from=fetch /fetch/web/dist ./web/dist
 ENV OMNIGATE_WEB_DIST_DIR=/app/web/dist
+
+# libgomp1 (OpenMP runtime) -- confirmed live this is the one runtime library llama-server needs
+# that isn't already bundled in its own release tarball; everything else it links against
+# (libc/libstdc++/libm) comes from the base image itself.
+RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=fetch /fetch/llama ./llama
+COPY --from=fetch /fetch/model.gguf /opt/omnigate/model.gguf
+COPY NOTICE-qwen.txt /opt/omnigate/NOTICE-qwen.txt
+ENV OMNIGATE_ASSISTANT_LLAMA_SERVER_PATH=/app/llama/llama-server
+ENV OMNIGATE_ASSISTANT_MODEL_PATH=/opt/omnigate/model.gguf
 
 # Edition.current() reads this before ever looking at OMNIGATE_EDITION -- see that class's javadoc.
 # This is what makes the free edition's cap resistant to a plain `docker run -e
