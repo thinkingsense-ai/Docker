@@ -1,3 +1,22 @@
+# Full local stack: Postgres + real local-model sidecars (Qwen for the agentic tier, SmolLM3 for
+# Semantic Router's fast tier, TabPFN for predictive intelligence) + OmniGate -- same pattern the
+# fixtures/supply-chain/single-postgres/docker-compose.yml fixture already establishes, applied to
+# this root quick-start. `docker compose up --build` needs zero external API key: every model this
+# stack uses is a real, local sidecar container on the Compose network (see
+# GatewayComponents#remoteLlamaOrNull's own "absent means the feature doesn't exist" convention).
+# Still set OMNIGATE_LLM_API_KEY (optional) if you want the agentic tier to escalate to a cloud
+# model when the local one's answer looks structurally unusable -- see OMNIGATE_LLM_MODE below.
+#
+# First run downloads real model weights into each sidecar image (Qwen ~2GB, SmolLM3 ~2GB, plus
+# TabPFN's own ~29MB checkpoint on its first real prediction) -- expect several minutes.
+#
+# Real, live-confirmed memory limitation, not a guess: running Postgres + OmniGate + THREE real
+# local-model sidecars (two llama-server instances, one with real torch/TabPFN) at once needs
+# meaningfully more memory than a plain single-container setup. If your host is memory-constrained,
+# comment out the smollm3-model and/or tabpfn-predictor services and their matching
+# OMNIGATE_*_REMOTE_HOST lines below -- each sidecar is independently optional, Semantic Router's
+# FAST/PREDICTIVE tiers just fall back to the agentic model/an honest refusal respectively when
+# their own sidecar isn't configured.
 services:
   postgres:
     image: postgres:16-alpine
@@ -15,6 +34,52 @@ services:
       timeout: 5s
       retries: 10
 
+  # Agentic-tier reasoning model -- Qwen2.5-3B-Instruct, real, non-commercial-only license (see
+  # sidecars/llama/Dockerfile's own comment) -- the free/dev-only default this stack itself
+  # already is. Exposes the OpenAI-/v1/chat/completions-compatible API llama-server speaks.
+  qwen-model:
+    build:
+      context: sidecars/llama
+      dockerfile: Dockerfile
+      args:
+        MODEL_URL: https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8090/health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 90s
+      retries: 20
+
+  # Semantic Router's fast tier (com.omnigate.nl2sql.SemanticTier.FAST) -- SmolLM3-3B, real
+  # Apache-2.0, genuinely commercially usable (see sidecars/llama/Dockerfile's own comment). Same
+  # image as qwen-model, different MODEL_URL build arg -- they're structurally identical containers.
+  smollm3-model:
+    build:
+      context: sidecars/llama
+      dockerfile: Dockerfile
+      args:
+        MODEL_URL: https://huggingface.co/unsloth/SmolLM3-3B-GGUF/resolve/main/SmolLM3-3B-Q4_K_M.gguf
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8090/health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 90s
+      retries: 20
+
+  # Predictive intelligence (com.omnigate.nl2sql.SemanticTier.PREDICTIVE) -- real TabPFN-2, on by
+  # default in this sidecar image (see sidecars/tabpfn/Dockerfile's own comment for why, unlike the
+  # Server repo's own off-by-default OMNIGATE_PROFILING_PREDICTOR_ENABLED).
+  tabpfn-predictor:
+    build:
+      context: sidecars/tabpfn
+      dockerfile: Dockerfile
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8092/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 15
+
   omnigate:
     # Self-contained build -- this repo's own Dockerfile downloads the pre-compiled jar/web UI
     # from this repo's GitHub Release at build time (see Dockerfile's own comment). No other repo
@@ -22,6 +87,12 @@ services:
     build: .
     depends_on:
       postgres:
+        condition: service_healthy
+      qwen-model:
+        condition: service_healthy
+      smollm3-model:
+        condition: service_healthy
+      tabpfn-predictor:
         condition: service_healthy
     environment:
       # The seeded schema above becomes the primary backend automatically for schema
@@ -31,12 +102,29 @@ services:
       OMNIGATE_PG_DATABASE: postgres
       OMNIGATE_PG_USER: postgres
       OMNIGATE_PG_PASSWORD: postgres
-      # Required to ask questions in plain English at all -- get a key at
-      # https://console.anthropic.com/ and put it in a .env file next to this one
-      # (`OMNIGATE_LLM_API_KEY=sk-ant-...`), or export it before running `docker compose up`.
-      # Leave unset and the gateway still starts fine -- the Ask app just can't translate English
-      # to SQL until this is set.
+      # local-first: answers with the real sidecar agentic model first (real, private, no API key
+      # needed), escalating to OMNIGATE_LLM_API_KEY below only if it's set AND the local answer
+      # looks structurally unusable. Set OMNIGATE_LLM_MODE=local-only for a hard "nothing ever
+      # leaves this container" guarantee instead -- see the Server repo's LlmMode for all four.
+      OMNIGATE_LLM_MODE: local-first
+      # Optional -- get a key at https://console.anthropic.com/ and put it in a .env file next to
+      # this one (`OMNIGATE_LLM_API_KEY=sk-ant-...`), or export it before running `docker compose
+      # up`, to let the agentic tier escalate to a cloud model when the local sidecar's answer
+      # looks structurally unusable. Leave unset and this stack still answers questions in plain
+      # English end to end using only the local sidecars below -- zero external dependency.
       OMNIGATE_LLM_API_KEY: ${OMNIGATE_LLM_API_KEY:-}
+      # Real Docker Compose sidecar mode (see GatewayComponents#remoteLlamaOrNull's own javadoc) --
+      # OmniGate connects to the three model containers above over the Compose network by their
+      # real service name, instead of spawning any local subprocess/needing any model file bundled
+      # into this container at all. Each is independently optional: comment out a sidecar service
+      # above AND its matching *_REMOTE_HOST line here to run without it (Semantic Router degrades
+      # cleanly per-tier, see this file's own header comment on memory-constrained hosts).
+      OMNIGATE_ASSISTANT_REMOTE_HOST: qwen-model
+      OMNIGATE_ASSISTANT_REMOTE_PORT: "8090"
+      OMNIGATE_FAST_ASSISTANT_REMOTE_HOST: smollm3-model
+      OMNIGATE_FAST_ASSISTANT_REMOTE_PORT: "8090"
+      OMNIGATE_PROFILING_SERVER_REMOTE_HOST: tabpfn-predictor
+      OMNIGATE_PROFILING_SERVER_REMOTE_PORT: "8092"
       # The Ask app (http://localhost:8080/) ALWAYS requires a real login -- unlike the admin
       # console, there is no "auth disabled" mode, since every question runs through a real
       # AccessContext. This is a real, working demo account -- username "demo", password "demo" --
