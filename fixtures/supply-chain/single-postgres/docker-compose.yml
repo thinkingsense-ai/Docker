@@ -50,6 +50,11 @@ services:
       dockerfile: Dockerfile
       args:
         MODEL_URL: https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf
+    # Real, optional LoRA adapter serving -- see sidecars/llama/entrypoint.sh's own comment for the
+    # full precedence order. Mount a real GGUF adapter here, read-only, to try it without
+    # rebuilding this image (see ../../../training/convert_lora_to_gguf.sh in the Server repo):
+    # volumes:
+    #   - ./my-trained-adapter.gguf:/opt/adapters/lora.gguf:ro
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8090/health"]
       interval: 10s

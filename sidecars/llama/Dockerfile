@@ -12,10 +12,18 @@
 # SmolLM3-3B/unsloth's own GGUF quant are both real Apache-2.0, no non-commercial restriction.
 ARG LLAMA_CPP_TAG=b10809
 ARG MODEL_URL
+# Optional -- a pre-converted GGUF LoRA adapter to bake into this image (see
+# training/convert_lora_to_gguf.sh in the Server repo for producing one from a trained PEFT/
+# Unsloth adapter directory). Leave unset for base-model-only inference, unchanged from before
+# this arg existed. A runtime-mounted adapter (see entrypoint.sh's own comment) takes precedence
+# over this build-time one either way, so baking one in is only useful for a from-scratch image
+# build that should always serve that adapter with no extra runtime config.
+ARG LORA_GGUF_URL
 
 FROM eclipse-temurin:17-jre-noble AS fetch
 ARG LLAMA_CPP_TAG
 ARG MODEL_URL
+ARG LORA_GGUF_URL
 ARG TARGETARCH
 WORKDIR /fetch
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
@@ -31,7 +39,8 @@ RUN ARCH="${TARGETARCH:-$(uname -m | sed -e 's/x86_64/amd64/' -e 's/aarch64/arm6
     && curl -fsSL -o llama.tar.gz \
       "https://github.com/ggml-org/llama.cpp/releases/download/${LLAMA_CPP_TAG}/llama-${LLAMA_CPP_TAG}-bin-${LLAMA_ARCH}.tar.gz" \
     && mkdir -p llama && tar -xzf llama.tar.gz -C llama --strip-components=1 && rm llama.tar.gz \
-    && curl -fsSL -o model.gguf "${MODEL_URL}"
+    && curl -fsSL -o model.gguf "${MODEL_URL}" \
+    && if [ -n "${LORA_GGUF_URL}" ]; then curl -fsSL -o lora.gguf "${LORA_GGUF_URL}"; else touch lora.gguf; fi
 
 FROM eclipse-temurin:17-jre-noble
 WORKDIR /app
@@ -41,6 +50,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 curl \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=fetch /fetch/llama ./llama
 COPY --from=fetch /fetch/model.gguf /opt/model.gguf
+# Real, optional LoRA adapter -- see entrypoint.sh's own comment for the full precedence order
+# (a runtime-mounted /opt/adapters/lora.gguf always wins over this build-time-baked one). The
+# fetch stage above always creates lora.gguf (a real, empty 0-byte placeholder when
+# LORA_GGUF_URL wasn't set -- a plain COPY of a literal path that doesn't exist FAILS the build in
+# this builder, so an always-present placeholder is the reliable "optional file" approach here);
+# entrypoint.sh checks the file is genuinely non-empty (`-s`, not just `-f`) before using it.
+COPY --from=fetch /fetch/lora.gguf /opt/lora.gguf
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 # Required attribution text for the Qwen RESEARCH LICENSE AGREEMENT, per the root Dockerfile's own
 # NOTICE-qwen.txt -- harmless to include even when this image is built with MODEL_URL pointing at
 # the (Apache-2.0, no attribution required) SmolLM3 model instead.
@@ -58,4 +76,5 @@ HEALTHCHECK --interval=10s --timeout=5s --start-period=60s --retries=20 \
 # model already makes -- no GPU dependency, works identically on any host. --host 0.0.0.0 (not
 # 127.0.0.1) is the one real, necessary difference from a locally-spawned instance: a sidecar
 # container must accept connections from OTHER containers on the Compose network, not just itself.
-ENTRYPOINT ["sh", "-c", "./llama/llama-server -m /opt/model.gguf --port ${LLAMA_PORT} --host 0.0.0.0 -c 4096 -ngl 0"]
+# See entrypoint.sh's own comment for the real, optional LoRA-adapter-loading logic this delegates to.
+ENTRYPOINT ["/app/entrypoint.sh"]
