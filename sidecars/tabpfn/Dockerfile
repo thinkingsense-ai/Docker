@@ -34,7 +34,7 @@ COPY server.py tabpfn_classifier.py tabpfn_predictor.py ./
 # default (off, since starting a Python subprocess with torch is a real, sizeable cost most
 # deployments haven't opted into), a dedicated sidecar container built specifically for this has
 # already paid that cost by existing at all, so it's on by default here.
-ENV OMNIGATE_PROFILING_TABPFN_ENABLED=true
+ENV OMNIGATE_PROFILING_PREDICTOR_ENABLED=true
 ENV OMNIGATE_PROFILING_SERVER_PORT=8092
 # Real bug found live (see server.py's own comment on this env var): binding only to 127.0.0.1
 # makes this container unreachable from another container on the same Compose network -- a

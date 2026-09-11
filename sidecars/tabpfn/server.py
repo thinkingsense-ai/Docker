@@ -37,7 +37,7 @@ tracked that down. Instead:
     end including a real ~29MB v2 checkpoint download from Hugging Face and real CPU inference.
     Pinned to `tabpfn==2.0.9` specifically (the design doc's licensing note: only v2's weights are
     commercially usable — 2.5/2.6/3 are non-commercial-only). Off by default
-    (`OMNIGATE_PROFILING_TABPFN_ENABLED`) since it pulls in `torch` — the heuristic classifier stays
+    (`OMNIGATE_PROFILING_PREDICTOR_ENABLED`) since it pulls in `torch` — the heuristic classifier stays
     the zero-dependency default so this sidecar keeps starting with nothing installed.
 """
 
@@ -106,13 +106,13 @@ def try_load_tabpfn():
     tabpfn_classifier.py for the real in-context classification this builds -- fits one
     TabPFNClassifier against a small hand-authored reference set at startup (downloading the real
     ~29MB v2 checkpoint from Hugging Face on first run if it isn't already cached locally)."""
-    if os.environ.get("OMNIGATE_PROFILING_TABPFN_ENABLED", "").lower() not in ("1", "true", "yes"):
+    if os.environ.get("OMNIGATE_PROFILING_PREDICTOR_ENABLED", "").lower() not in ("1", "true", "yes"):
         return None
     try:
         import tabpfn  # noqa: F401  -- real import, deliberately not vendored/stubbed
     except ImportError:
         sys.stderr.write(
-            "profiling-server: OMNIGATE_PROFILING_TABPFN_ENABLED is set but the tabpfn package "
+            "profiling-server: OMNIGATE_PROFILING_PREDICTOR_ENABLED is set but the tabpfn package "
             "isn't installed -- falling back to the heuristic classifier\n"
         )
         return None
@@ -223,7 +223,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/predict":
             if not PREDICTOR_AVAILABLE:
                 self._send_json(503, {"error": "no predictive engine available -- set "
-                                                "OMNIGATE_PROFILING_TABPFN_ENABLED=true and install tabpfn "
+                                                "OMNIGATE_PROFILING_PREDICTOR_ENABLED=true and install tabpfn "
                                                 "(see requirements-tabpfn.txt)"})
                 return
             try:

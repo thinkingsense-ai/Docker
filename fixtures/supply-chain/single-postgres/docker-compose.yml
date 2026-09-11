@@ -76,7 +76,7 @@ services:
 
   # Predictive intelligence (com.omnigate.nl2sql.SemanticTier.PREDICTIVE) -- real TabPFN-2, on by
   # default in this sidecar image (see ../../../sidecars/tabpfn/Dockerfile's own comment for why,
-  # unlike the Server repo's own off-by-default OMNIGATE_PROFILING_TABPFN_ENABLED).
+  # unlike the Server repo's own off-by-default OMNIGATE_PROFILING_PREDICTOR_ENABLED).
   tabpfn-predictor:
     build:
       context: ../../../sidecars/tabpfn
