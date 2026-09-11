@@ -7,44 +7,10 @@
 # Pin OMNIGATE_RELEASE_TAG to a specific published release; override at build time with
 # `docker build --build-arg OMNIGATE_RELEASE_TAG=vX.Y.Z .` to pick up a newer one without editing
 # this file.
-ARG OMNIGATE_RELEASE_TAG=v0.3.0
-
-# Semantic Reasoning Engine: a real, bundled local model + llama-server binary, so
-# OMNIGATE_LLM_MODE=local-only/local-first (see the Server repo's LlmMode) work out of the box
-# with zero external configuration -- the "runs privately, out of the box" story for this free/dev
-# image specifically. Real license diligence, not guessed: Microsoft's own MIT-licensed
-# Phi-3.5-mini-instruct was the initial candidate and would have been the safer default for a
-# commercially-licensed image, but this free/developer image is explicitly non-commercial-use --
-# per that scope, Qwen2.5-3B-Instruct is used instead (Alibaba's own "Qwen RESEARCH LICENSE
-# AGREEMENT" -- non-commercial only; the required attribution notice is shipped alongside it, see
-# NOTICE-qwen.txt below). Confirmed live before pinning: the real llama.cpp b10809 release build
-# needs a newer glibc/libstdc++ than Ubuntu 22.04 ("jammy") ships -- this is why the base image
-# below is "noble" (24.04), not jammy; verified end-to-end with a real container (model loads,
-# real /v1/chat/completions inference returns a correct answer) before committing to this image.
-ARG LLAMA_CPP_TAG=b10809
-ARG LOCAL_MODEL_URL=https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf
-
-# Semantic Router's "fast tier" model (com.omnigate.nl2sql.SemanticRoutingNl2SqlProvider,
-# SemanticTier.FAST) -- a second, smaller/faster model for short single-fact lookups ("how many
-# X", "what is Y"), separate from the assistant model above which stays the default for everything
-# else. Real license diligence, not guessed: confirmed live via the Hugging Face API before
-# pinning -- HuggingFaceTB/SmolLM3-3B itself and unsloth/SmolLM3-3B-GGUF's own Q4_K_M quant are
-# both real Apache-2.0, genuinely redistributable (no non-commercial restriction the way the
-# assistant model above has). Bundled into the image but NOT enabled by default -- see
-# OMNIGATE_FAST_ASSISTANT_MODEL_PATH being unset in this repo's own compose files: running a
-# second full model instance simultaneously needs real memory headroom beyond the single-model
-# assistant-only default (confirmed live this session: a ~7-8GB host already needed a workaround to
-# run just the ONE assistant model alongside its own embedding instance -- see this repo's README).
-# An operator with a bigger host sets OMNIGATE_FAST_ASSISTANT_MODEL_PATH=/opt/omnigate/fast-model.gguf
-# to turn this on.
-ARG FAST_MODEL_URL=https://huggingface.co/unsloth/SmolLM3-3B-GGUF/resolve/main/SmolLM3-3B-Q4_K_M.gguf
+ARG OMNIGATE_RELEASE_TAG=v0.4.0
 
 FROM eclipse-temurin:17-jre-noble AS fetch
 ARG OMNIGATE_RELEASE_TAG
-ARG LLAMA_CPP_TAG
-ARG LOCAL_MODEL_URL
-ARG FAST_MODEL_URL
-ARG TARGETARCH
 WORKDIR /fetch
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
@@ -53,21 +19,6 @@ RUN curl -fsSL -o omnigate.jar \
     && curl -fsSL -o web-dist.tar.gz \
       "https://github.com/thinkingsense-ai/Docker/releases/download/${OMNIGATE_RELEASE_TAG}/web-dist.tar.gz" \
     && mkdir -p web/dist && tar -xzf web-dist.tar.gz -C web/dist && rm web-dist.tar.gz
-# Real bug found live: TARGETARCH is only auto-populated by a buildx/multi-platform build --
-# a plain `docker build` (confirmed live: this environment doesn't even have buildx installed)
-# leaves it empty, which silently fell through to the x64 asset on a native arm64 build machine,
-# producing an image whose llama-server binary only ran under qemu emulation (and then failed
-# outright -- "Could not open '/lib64/ld-linux-x86-64.so.2'", no 32/64-bit compat layer in this
-# base image at all). `uname -m` reflects the architecture this RUN step is actually executing on,
-# which is what a plain single-platform `docker build` needs; TARGETARCH is still honored first
-# for a genuine cross-compiled buildx build, where it's the authoritative signal instead.
-RUN ARCH="${TARGETARCH:-$(uname -m | sed -e 's/x86_64/amd64/' -e 's/aarch64/arm64/')}" \
-    && LLAMA_ARCH=$([ "$ARCH" = "arm64" ] && echo "ubuntu-arm64" || echo "ubuntu-x64") \
-    && curl -fsSL -o llama.tar.gz \
-      "https://github.com/ggml-org/llama.cpp/releases/download/${LLAMA_CPP_TAG}/llama-${LLAMA_CPP_TAG}-bin-${LLAMA_ARCH}.tar.gz" \
-    && mkdir -p llama && tar -xzf llama.tar.gz -C llama --strip-components=1 && rm llama.tar.gz \
-    && curl -fsSL -o model.gguf "${LOCAL_MODEL_URL}" \
-    && curl -fsSL -o fast-model.gguf "${FAST_MODEL_URL}"
 
 FROM eclipse-temurin:17-jre-noble
 WORKDIR /app
@@ -75,25 +26,26 @@ COPY --from=fetch /fetch/omnigate.jar omnigate.jar
 COPY --from=fetch /fetch/web/dist ./web/dist
 ENV OMNIGATE_WEB_DIST_DIR=/app/web/dist
 
-# libgomp1 (OpenMP runtime) -- confirmed live this is the one runtime library llama-server needs
-# that isn't already bundled in its own release tarball; everything else it links against
-# (libc/libstdc++/libm) comes from the base image itself.
-RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
-COPY --from=fetch /fetch/llama ./llama
-COPY --from=fetch /fetch/model.gguf /opt/omnigate/model.gguf
-COPY --from=fetch /fetch/fast-model.gguf /opt/omnigate/fast-model.gguf
-COPY NOTICE-qwen.txt /opt/omnigate/NOTICE-qwen.txt
-ENV OMNIGATE_ASSISTANT_LLAMA_SERVER_PATH=/app/llama/llama-server
-ENV OMNIGATE_ASSISTANT_MODEL_PATH=/opt/omnigate/model.gguf
-# OMNIGATE_FAST_ASSISTANT_MODEL_PATH is deliberately NOT set here -- bundled (/opt/omnigate/fast-model.gguf,
-# SmolLM3-3B) but off by default, see this file's own comment on FAST_MODEL_URL above for why. Set
-# it (plus OMNIGATE_FAST_ASSISTANT_LLAMA_SERVER_PATH=/app/llama/llama-server, same binary serves
-# both) on a host with enough memory headroom to turn on Semantic Router's fast tier.
-
-# Edition.current() reads this before ever looking at OMNIGATE_EDITION -- see that class's javadoc.
-# This is what makes the free edition's cap resistant to a plain `docker run -e
-# OMNIGATE_EDITION=commercial` override -- the marker file wins over the env var by design.
+# Real architecture decision, changed from this image's own earlier version: the local reasoning
+# model(s) (Qwen2.5-3B-Instruct for the agentic tier, SmolLM3-3B for Semantic Router's fast tier)
+# and the TabPFN predictive-intelligence sidecar are NO LONGER bundled into this image -- each is
+# its own real Docker Compose sidecar container now (see sidecars/llama/Dockerfile and
+# sidecars/tabpfn/Dockerfile), the same pattern this repo's own Postgres service already
+# establishes. Real, deliberate tradeoffs of this change, stated plainly:
+#   - This image is now genuinely smaller (no ~2GB Qwen model, no SmolLM3 model, no llama-server
+#     binary bundled here at all) -- faster to pull, faster to rebuild on an unrelated code change.
+#   - "Runs privately, out of the box, zero configuration" (this image's own earlier framing) is
+#     now "runs privately, out of the box, with the sidecar compose file" instead -- a real,
+#     honest change in what "out of the box" means, not a silent regression: see the compose
+#     fixtures under fixtures/*/docker-compose.yml, which wire OMNIGATE_ASSISTANT_REMOTE_HOST/
+#     OMNIGATE_FAST_ASSISTANT_REMOTE_HOST/OMNIGATE_PROFILING_SERVER_REMOTE_HOST at the already-
+#     established Qwen/SmolLM3/TabPFN sidecar Compose service names.
+#   - OMNIGATE_ASSISTANT_LLAMA_SERVER_PATH/OMNIGATE_ASSISTANT_MODEL_PATH (spawn a local subprocess
+#     inside THIS container) still work unchanged, for anyone who'd rather bind-mount a model file
+#     in instead of running a sidecar -- this is additive, not a breaking removal of that mode (see
+#     the Server repo's own GatewayComponents#remoteLlamaOrNull, which checks the new
+#     _REMOTE_HOST env var first and falls through to that exact same existing local-spawn code
+#     path when it's unset).
 RUN mkdir -p /opt/omnigate && printf 'free' > /opt/omnigate/EDITION
 
 # Default ConfigStore location: a file-backed embedded HSQLDB instance under this path unless
