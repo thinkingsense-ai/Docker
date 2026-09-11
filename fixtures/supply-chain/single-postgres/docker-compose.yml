@@ -62,6 +62,16 @@ services:
       # leaves this container" guarantee instead -- see the Server repo's LlmMode for all four.
       OMNIGATE_LLM_MODE: local-first
       OMNIGATE_LLM_API_KEY: ${OMNIGATE_LLM_API_KEY:-}
+      # Real, live-confirmed limitation (see root README's "bundled local reasoning model"
+      # section): running BOTH the assistant llama-server AND a second, separate embedding
+      # llama-server at once needs more memory than a ~7-8GB Docker host has -- confirmed live on
+      # this exact host (OOMKilled=true, the assistant instance was the one killed, leaving
+      # NL2SQL failing with "NL2SQL local LLM call failed: null"). Pointing
+      # OMNIGATE_EMBEDDING_MODEL_PATH at a path that doesn't exist makes LocalLlamaProcess degrade
+      # cleanly (its own documented "opt-in, degrades cleanly" behavior) instead of starting a
+      # second model instance -- only one llama-server (the assistant one NL2SQL actually needs)
+      # loads. Remove this line on a host with more real memory headroom to get both back.
+      OMNIGATE_EMBEDDING_MODEL_PATH: /opt/omnigate/no-embedding-model-here.gguf
       # The Ask app (http://localhost:8080/) ALWAYS requires a real login. Real working demo
       # account, username "demo", password "demo" (generated the same way the root
       # docker-compose.yml's own comment documents) -- change or remove before running anywhere

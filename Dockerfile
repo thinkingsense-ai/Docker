@@ -24,10 +24,26 @@ ARG OMNIGATE_RELEASE_TAG=v0.3.0
 ARG LLAMA_CPP_TAG=b10809
 ARG LOCAL_MODEL_URL=https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf
 
+# Semantic Router's "fast tier" model (com.omnigate.nl2sql.SemanticRoutingNl2SqlProvider,
+# SemanticTier.FAST) -- a second, smaller/faster model for short single-fact lookups ("how many
+# X", "what is Y"), separate from the assistant model above which stays the default for everything
+# else. Real license diligence, not guessed: confirmed live via the Hugging Face API before
+# pinning -- HuggingFaceTB/SmolLM3-3B itself and unsloth/SmolLM3-3B-GGUF's own Q4_K_M quant are
+# both real Apache-2.0, genuinely redistributable (no non-commercial restriction the way the
+# assistant model above has). Bundled into the image but NOT enabled by default -- see
+# OMNIGATE_FAST_ASSISTANT_MODEL_PATH being unset in this repo's own compose files: running a
+# second full model instance simultaneously needs real memory headroom beyond the single-model
+# assistant-only default (confirmed live this session: a ~7-8GB host already needed a workaround to
+# run just the ONE assistant model alongside its own embedding instance -- see this repo's README).
+# An operator with a bigger host sets OMNIGATE_FAST_ASSISTANT_MODEL_PATH=/opt/omnigate/fast-model.gguf
+# to turn this on.
+ARG FAST_MODEL_URL=https://huggingface.co/unsloth/SmolLM3-3B-GGUF/resolve/main/SmolLM3-3B-Q4_K_M.gguf
+
 FROM eclipse-temurin:17-jre-noble AS fetch
 ARG OMNIGATE_RELEASE_TAG
 ARG LLAMA_CPP_TAG
 ARG LOCAL_MODEL_URL
+ARG FAST_MODEL_URL
 ARG TARGETARCH
 WORKDIR /fetch
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
@@ -50,7 +66,8 @@ RUN ARCH="${TARGETARCH:-$(uname -m | sed -e 's/x86_64/amd64/' -e 's/aarch64/arm6
     && curl -fsSL -o llama.tar.gz \
       "https://github.com/ggml-org/llama.cpp/releases/download/${LLAMA_CPP_TAG}/llama-${LLAMA_CPP_TAG}-bin-${LLAMA_ARCH}.tar.gz" \
     && mkdir -p llama && tar -xzf llama.tar.gz -C llama --strip-components=1 && rm llama.tar.gz \
-    && curl -fsSL -o model.gguf "${LOCAL_MODEL_URL}"
+    && curl -fsSL -o model.gguf "${LOCAL_MODEL_URL}" \
+    && curl -fsSL -o fast-model.gguf "${FAST_MODEL_URL}"
 
 FROM eclipse-temurin:17-jre-noble
 WORKDIR /app
@@ -65,9 +82,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=fetch /fetch/llama ./llama
 COPY --from=fetch /fetch/model.gguf /opt/omnigate/model.gguf
+COPY --from=fetch /fetch/fast-model.gguf /opt/omnigate/fast-model.gguf
 COPY NOTICE-qwen.txt /opt/omnigate/NOTICE-qwen.txt
 ENV OMNIGATE_ASSISTANT_LLAMA_SERVER_PATH=/app/llama/llama-server
 ENV OMNIGATE_ASSISTANT_MODEL_PATH=/opt/omnigate/model.gguf
+# OMNIGATE_FAST_ASSISTANT_MODEL_PATH is deliberately NOT set here -- bundled (/opt/omnigate/fast-model.gguf,
+# SmolLM3-3B) but off by default, see this file's own comment on FAST_MODEL_URL above for why. Set
+# it (plus OMNIGATE_FAST_ASSISTANT_LLAMA_SERVER_PATH=/app/llama/llama-server, same binary serves
+# both) on a host with enough memory headroom to turn on Semantic Router's fast tier.
 
 # Edition.current() reads this before ever looking at OMNIGATE_EDITION -- see that class's javadoc.
 # This is what makes the free edition's cap resistant to a plain `docker run -e
