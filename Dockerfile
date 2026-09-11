@@ -7,9 +7,9 @@
 # Pin OMNIGATE_RELEASE_TAG to a specific published release; override at build time with
 # `docker build --build-arg OMNIGATE_RELEASE_TAG=vX.Y.Z .` to pick up a newer one without editing
 # this file.
-ARG OMNIGATE_RELEASE_TAG=v0.1.0
+ARG OMNIGATE_RELEASE_TAG=v0.5.0
 
-FROM eclipse-temurin:17-jre-jammy AS fetch
+FROM eclipse-temurin:17-jre-noble AS fetch
 ARG OMNIGATE_RELEASE_TAG
 WORKDIR /fetch
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
@@ -20,15 +20,32 @@ RUN curl -fsSL -o omnigate.jar \
       "https://github.com/thinkingsense-ai/Docker/releases/download/${OMNIGATE_RELEASE_TAG}/web-dist.tar.gz" \
     && mkdir -p web/dist && tar -xzf web-dist.tar.gz -C web/dist && rm web-dist.tar.gz
 
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:17-jre-noble
 WORKDIR /app
 COPY --from=fetch /fetch/omnigate.jar omnigate.jar
 COPY --from=fetch /fetch/web/dist ./web/dist
 ENV OMNIGATE_WEB_DIST_DIR=/app/web/dist
 
-# Edition.current() reads this before ever looking at OMNIGATE_EDITION -- see that class's javadoc.
-# This is what makes the free edition's cap resistant to a plain `docker run -e
-# OMNIGATE_EDITION=commercial` override -- the marker file wins over the env var by design.
+# Real architecture decision, changed from this image's own earlier version: the local reasoning
+# model(s) (Qwen2.5-3B-Instruct for the agentic tier, SmolLM3-3B for Semantic Router's fast tier)
+# and the TabPFN predictive-intelligence sidecar are NO LONGER bundled into this image -- each is
+# its own real Docker Compose sidecar container now (see sidecars/llama/Dockerfile and
+# sidecars/tabpfn/Dockerfile), the same pattern this repo's own Postgres service already
+# establishes. Real, deliberate tradeoffs of this change, stated plainly:
+#   - This image is now genuinely smaller (no ~2GB Qwen model, no SmolLM3 model, no llama-server
+#     binary bundled here at all) -- faster to pull, faster to rebuild on an unrelated code change.
+#   - "Runs privately, out of the box, zero configuration" (this image's own earlier framing) is
+#     now "runs privately, out of the box, with the sidecar compose file" instead -- a real,
+#     honest change in what "out of the box" means, not a silent regression: see the compose
+#     fixtures under fixtures/*/docker-compose.yml, which wire OMNIGATE_ASSISTANT_REMOTE_HOST/
+#     OMNIGATE_FAST_ASSISTANT_REMOTE_HOST/OMNIGATE_PROFILING_SERVER_REMOTE_HOST at the already-
+#     established Qwen/SmolLM3/TabPFN sidecar Compose service names.
+#   - OMNIGATE_ASSISTANT_LLAMA_SERVER_PATH/OMNIGATE_ASSISTANT_MODEL_PATH (spawn a local subprocess
+#     inside THIS container) still work unchanged, for anyone who'd rather bind-mount a model file
+#     in instead of running a sidecar -- this is additive, not a breaking removal of that mode (see
+#     the Server repo's own GatewayComponents#remoteLlamaOrNull, which checks the new
+#     _REMOTE_HOST env var first and falls through to that exact same existing local-spawn code
+#     path when it's unset).
 RUN mkdir -p /opt/omnigate && printf 'free' > /opt/omnigate/EDITION
 
 # Default ConfigStore location: a file-backed embedded HSQLDB instance under this path unless

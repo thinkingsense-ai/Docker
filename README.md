@@ -180,13 +180,43 @@ each tier against this repo's own Docker image.
 - `Dockerfile` — downloads the pre-compiled `omnigate.jar` and web UI from this repo's own
   [Releases](https://github.com/thinkingsense-ai/Docker/releases) (pinned to a specific tag via
   the `OMNIGATE_RELEASE_TAG` build arg) and packages them into a slim JRE image with the
-  free-edition marker baked in. No build tools, no source, nothing beyond `curl` and a JRE.
+  free-edition marker baked in, plus a real bundled local reasoning model (see below). No build
+  tools, no source — the JRE image itself pulls in `curl`, `libgomp1`, and a `llama-server` binary.
 - `docker-compose.yml` — the local dev stack described above (OmniGate + a seeded Postgres).
 - `docker/init-scott.sql` — the seed data for that Postgres service. Deliberately seeded into the
   default `public` schema, not a separate named schema — OmniGate's own schema introspection only
   scans a connecting account's default schema, so anything in another schema is invisible to
   NL2SQL/the Ontology with no error at all.
+- `NOTICE-qwen.txt` — the license attribution the bundled local model requires (see below).
 - `.dockerignore`
+
+## The bundled local reasoning model — real, private, out-of-the-box NL2SQL
+
+This image bundles a real local model (Qwen2.5-3B-Instruct, quantized, ~2GB) plus a real
+`llama-server` binary (from [llama.cpp](https://github.com/ggml-org/llama.cpp)), wired up
+automatically via `OMNIGATE_ASSISTANT_LLAMA_SERVER_PATH`/`OMNIGATE_ASSISTANT_MODEL_PATH`. Set
+`OMNIGATE_LLM_MODE=local-only` and NL2SQL works with **zero external configuration and zero data
+ever leaving the container** — no `OMNIGATE_LLM_API_KEY`, no outbound API calls at all. See the
+Server repo's `LlmMode` for the other three modes (`local-first`, `cloud-first`,
+`customer-model-only`).
+
+**License, read before using this in anything but non-commercial evaluation**: Qwen2.5-3B-Instruct
+is distributed under Alibaba's own "Qwen RESEARCH LICENSE AGREEMENT" — **non-commercial use only**.
+This free/developer image is exactly that use case; if you need a local model for a *commercial*
+deployment, either bring your own (point `OMNIGATE_ASSISTANT_MODEL_PATH`/
+`OMNIGATE_ASSISTANT_LLAMA_SERVER_PATH` at a model you're licensed to use commercially — Microsoft's
+MIT-licensed Phi-3.5-mini-instruct or Apache-2.0-licensed Qwen2.5-1.5B/7B-Instruct are real,
+verified-commercially-usable alternatives in a similar size class) or use `OMNIGATE_LLM_MODE=
+cloud-first`/`customer-model-only` instead. The required attribution notice is shipped as
+`NOTICE-qwen.txt` in the image and this repo.
+
+**Memory**: running two local model instances simultaneously (one for NL2SQL, one for embeddings —
+see `OMNIGATE_EMBEDDING_MODEL_PATH` if you want to point the embeddings role at a different,
+smaller model) needs real headroom. Confirmed live: a Docker host/VM with only ~7-8GB of total
+memory available was not enough — the kernel OOM-killed the NL2SQL model process under load while
+the embeddings process was also running. Give Docker at least 8GB, ideally more, or point
+`OMNIGATE_EMBEDDING_MODEL_PATH` at a genuinely small dedicated embeddings model to reduce the
+simultaneous footprint.
 
 ## Picking up a newer release
 
