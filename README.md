@@ -182,11 +182,11 @@ each tier against this repo's own Docker image.
   the `OMNIGATE_RELEASE_TAG` build arg) and packages them into a slim JRE image with the
   free-edition marker baked in, plus a real bundled local reasoning model (see below). No build
   tools, no source — the JRE image itself pulls in `curl`, `libgomp1`, and a `llama-server` binary.
-- `docker-compose.yml` — the local dev stack described above (OmniGate + a seeded Postgres).
-- `docker/init-scott.sql` — the seed data for that Postgres service. Deliberately seeded into the
-  default `public` schema, not a separate named schema — OmniGate's own schema introspection only
-  scans a connecting account's default schema, so anything in another schema is invisible to
-  NL2SQL/the Ontology with no error at all.
+- `docker-compose.yml` — the local dev stack: a seeded Postgres (all four real supply-chain
+  schemas), the three real local-model sidecars (Qwen/SmolLM3/TabPFN), and OmniGate itself.
+- `docker/seed.sql` — the seed data for that Postgres service (same seed
+  `fixtures/supply-chain/single-postgres/seed.sql` uses) — four named schemas
+  (`suppliers`/`inventory`/`logistics`/`procurement`), each with its own real tables.
 - `NOTICE-qwen.txt` — the license attribution the bundled local model requires (see below).
 - `.dockerignore`
 
