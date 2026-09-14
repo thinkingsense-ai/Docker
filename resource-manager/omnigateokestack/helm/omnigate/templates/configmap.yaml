@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "omnigate.fullname" . }}-omnigate-config
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+data:
+  # OMNIGATE_LLM_MODEL intentionally NOT set here. Setting it explicitly to "claude-sonnet-5"
+  # (this chart's own values.yaml default) causes every Ask-app question to fail with a
+  # NullPointerException in AnthropicLlmProvider.planSteps -- confirmed live on OKE, filed as
+  # https://github.com/thinkingsense-ai/Server/issues/3. Leaving it unset falls back to the
+  # app's own internal default model, which works correctly. Re-wire
+  # `OMNIGATE_LLM_MODEL: {{ "{{" }} .Values.omnigate.llmModel | quote {{ "}}" }}` here once that
+  # issue is fixed upstream.
+  OMNIGATE_PG_HOST: {{ include "omnigate.postgresHost" . | quote }}
+  OMNIGATE_PG_PORT: "5432"
+  OMNIGATE_PG_DATABASE: {{ .Values.postgres.database | quote }}
+  OMNIGATE_PG_USER: {{ .Values.postgres.user | quote }}
+  # The OMNIGATE_PG_* vars above are only used for schema introspection/wire-proxying -- they do
+  # NOT by themselves register a queryable backend for the Ask app (see docker-compose.yml's own
+  # identical comment). Without this, the Ask app has zero backends and every question fails.
+  # Confirmed live on OKE (missing here originally).
+  OMNIGATE_BACKENDS: {{ printf "demo=jdbc:postgresql://%s:5432/%s|%s|%s" (include "omnigate.postgresHost" .) .Values.postgres.database .Values.postgres.user .Values.postgres.password | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "omnigate.fullname" . }}-init-scott
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+data:
+  init-scott.sql: |
+{{ .Files.Get "files/init-scott.sql" | indent 4 }}
