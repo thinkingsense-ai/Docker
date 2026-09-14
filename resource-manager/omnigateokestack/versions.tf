@@ -13,6 +13,14 @@ terraform {
       source  = "hashicorp/helm"
       version = "~> 2.12"
     }
+    local = {
+      source  = "hashicorp/local"
+      version = "~> 2.4"
+    }
+    null = {
+      source  = "hashicorp/null"
+      version = "~> 3.2"
+    }
   }
 }
 

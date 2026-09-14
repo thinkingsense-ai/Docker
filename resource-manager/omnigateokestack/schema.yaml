@@ -14,7 +14,8 @@ variableGroups:
   - title: "Application"
     visible: true
     variables:
-      - omnigate_app_users
+      - omnigate_app_username
+      - omnigate_app_password
       - omnigate_llm_api_key
       - omnigate_llm_model
       - expose_wire_protocols
@@ -52,10 +53,17 @@ variables:
     description: "Deploy region. Must match a region your tenancy is subscribed to."
     required: true
 
-  omnigate_app_users:
+  omnigate_app_username:
+    type: string
+    title: "Ask-app login username"
+    description: "Business-user login for the Ask app (not the same as an OCI account)."
+    default: "demo"
+    required: true
+
+  omnigate_app_password:
     type: password
-    title: "Ask-app login (OMNIGATE_APP_USERS)"
-    description: "Format: username:saltB64:hashB64:: -- generate with: docker run --rm --entrypoint java <image> -cp omnigate.jar com.omnigate.http.auth.PasswordHash <password>. Required so this deployment doesn't ship the repo's well-known demo/demo login on a public LoadBalancer."
+    title: "Ask-app login password"
+    description: "Plain text -- hashed automatically during Apply using the deployed image's own PasswordHash utility, so nothing to generate yourself. Required so this deployment doesn't ship the repo's well-known demo/demo login on a public LoadBalancer."
     required: true
     sensitive: true
 

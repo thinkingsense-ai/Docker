@@ -57,7 +57,7 @@ resource "helm_release" "omnigate" {
   }
   set_sensitive {
     name  = "omnigate.appUsers"
-    value = var.omnigate_app_users
+    value = local.omnigate_app_users_computed
   }
   set {
     name  = "omnigate.exposeWireProtocols"
