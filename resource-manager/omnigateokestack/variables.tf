@@ -26,8 +26,14 @@ variable "omnigate_llm_model" {
   default     = "claude-sonnet-5"
 }
 
-variable "omnigate_app_users" {
-  description = "Ask-app login, in OMNIGATE_APP_USERS format (\"username:saltB64:hashB64::\"). Generate with: docker run --rm --entrypoint java <image> -cp omnigate.jar com.omnigate.http.auth.PasswordHash <password>. Required -- refusing to ship the repo's well-known demo/demo login on a public LoadBalancer."
+variable "omnigate_app_username" {
+  description = "Ask-app login username. Required -- refusing to ship the repo's well-known demo/demo login on a public LoadBalancer."
+  type        = string
+  default     = "demo"
+}
+
+variable "omnigate_app_password" {
+  description = "Ask-app login password, plain text. Hashed automatically during apply (see password-hash.tf) using the same PasswordHash utility bundled in the deployed image -- no local Docker or manual hash generation needed."
   type        = string
   sensitive   = true
 }

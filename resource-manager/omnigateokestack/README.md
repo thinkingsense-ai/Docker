@@ -14,7 +14,7 @@ pulls from a registry.
 2. Upload this directory as a zip (working directory: `omnigateokestack`), or use a hosted zip
    URL with the `?zipUrl=` "Deploy to Oracle Cloud" pattern.
 3. Follow the wizard (driven by `schema.yaml`): compartment, region, an Ask-app login (see
-   `variables.tf` for the `PasswordHash` command to generate one), optionally an Anthropic API
+   `omnigate_app_password` -- plain text, hashed automatically during Apply), optionally an Anthropic API
    key for NL2SQL.
 4. **Terraform Actions → Apply**. Takes ~12-15 minutes (cluster ~8 min, node pool ~3 min, Helm
    release the rest).
@@ -27,7 +27,7 @@ oci resource-manager stack create \
   --compartment-id <tenancy-or-compartment-ocid> \
   --config-source resource-manager/omnigateokestack \
   --display-name omnigateokestack \
-  --variables '{"compartment_ocid":"<ocid>","region":"<region>","omnigate_app_users":"<user:salt:hash::>"}'
+  --variables '{"compartment_ocid":"<ocid>","region":"<region>","omnigate_app_password":"<plain-text-password>"}'
 ```
 
 Then `oci resource-manager job create-apply-job --stack-id <id> --execution-plan-strategy AUTO_APPROVED`.
