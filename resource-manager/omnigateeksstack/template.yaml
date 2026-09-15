@@ -1,0 +1,668 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  OmniGate on Amazon EKS -- one-click deploy: VPC, EKS cluster (Graviton
+  worker nodes, matching the published arm64-only image), EBS CSI driver,
+  AWS Load Balancer Controller (NLB, not the default Classic ELB -- a
+  Classic LB buffers Server-Sent Events, breaking the Ask app's live
+  streaming trace), and the OmniGate + Postgres Helm release itself via a
+  Lambda-backed custom resource. The Lambda's container image is built and
+  pushed into your own account's ECR automatically by CodeBuild as part of
+  this same stack -- nothing to build or push by hand.
+
+Parameters:
+  ClusterName:
+    Type: String
+    Default: omnigate-eks
+  KubernetesVersion:
+    Type: String
+    Default: "1.36"
+  NodeInstanceType:
+    Type: String
+    Default: t4g.medium
+  NodeGroupDesiredSize:
+    Type: Number
+    Default: 1
+  NodeGroupMinSize:
+    Type: Number
+    Default: 1
+  NodeGroupMaxSize:
+    Type: Number
+    Default: 2
+  SourceVersion:
+    Type: String
+    Default: eks-stack-v1.0.0
+    Description: >-
+      Git tag/ref in thinkingsense-ai/Docker that CodeBuild checks out to build the
+      helm-deployer Lambda image. Pinned to a release tag (not a branch) so the image built
+      always matches this template's own version, regardless of later commits to the repo.
+  OmnigateAppUsername:
+    Type: String
+    Default: demo
+  OmnigateAppPassword:
+    Type: String
+    NoEcho: true
+    Description: "Plain text -- hashed automatically during deploy using the app's own PasswordHash utility. No local Docker or manual hash generation needed."
+  OmnigateLlmApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: "Anthropic API key (console.anthropic.com) for NL2SQL. The gateway still deploys without one, but the Ask app can't answer questions until this is set."
+  ImageTag:
+    Type: String
+    Default: latest
+    Description: "OCIR docker tag for the omnigate image. Defaults to the publisher's own pre-built :latest image."
+
+Resources:
+  # ============================== Networking ==============================
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${ClusterName}-vpc
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.0.0/20
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${ClusterName}-public-a
+        - Key: !Sub kubernetes.io/cluster/${ClusterName}
+          Value: shared
+        - Key: kubernetes.io/role/elb
+          Value: "1"
+
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.16.0/20
+      AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${ClusterName}-public-b
+        - Key: !Sub kubernetes.io/cluster/${ClusterName}
+          Value: shared
+        - Key: kubernetes.io/role/elb
+          Value: "1"
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${ClusterName}-public-rt
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetA
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetB
+      RouteTableId: !Ref PublicRouteTable
+
+  # ============================== EKS cluster ==============================
+  EKSClusterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: eks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+
+  EKSCluster:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: !Ref ClusterName
+      Version: !Ref KubernetesVersion
+      RoleArn: !GetAtt EKSClusterRole.Arn
+      ResourcesVpcConfig:
+        SubnetIds:
+          - !Ref PublicSubnetA
+          - !Ref PublicSubnetB
+        EndpointPublicAccess: true
+      AccessConfig:
+        AuthenticationMode: API
+        BootstrapClusterCreatorAdminPermissions: true
+
+  NodeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+
+  NodeGroup:
+    Type: AWS::EKS::Nodegroup
+    Properties:
+      ClusterName: !Ref EKSCluster
+      NodeRole: !GetAtt NodeRole.Arn
+      Subnets:
+        - !Ref PublicSubnetA
+        - !Ref PublicSubnetB
+      InstanceTypes:
+        - !Ref NodeInstanceType
+      # Graviton (arm64), not x86_64 -- confirmed live: the published omnigate image is
+      # arm64-only (built on OCI's Ampere A1 nodes), so an x86_64 node group hits "no match
+      # for platform in manifest" on every pull.
+      AmiType: AL2023_ARM_64_STANDARD
+      ScalingConfig:
+        DesiredSize: !Ref NodeGroupDesiredSize
+        MinSize: !Ref NodeGroupMinSize
+        MaxSize: !Ref NodeGroupMaxSize
+
+  # ============================== OIDC / IRSA ==============================
+  OidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: !GetAtt EKSCluster.OpenIdConnectIssuerUrl
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        - 9e99a48a9960b14926bb7f3b02e22da2b0ab7280
+
+  # --- EBS CSI driver: EKS has no built-in CSI driver (unlike OKE), so Postgres's PVC would
+  # sit Pending forever without this.
+  EbsCsiDriverRole:
+    Type: AWS::IAM::Role
+    Properties:
+      # A dynamic map KEY (the OIDC host, only known at deploy time) can't be built with plain
+      # intrinsic functions -- CloudFormation resolves keys before functions run. Confirmed
+      # live: `StringEquals: {Fn::Sub: [...]}` validates but IAM rejects it at CreateRole
+      # ("Syntax error") because it resolves to a scalar string, not an object. Passing the
+      # whole document as one Fn::Sub'd JSON string sidesteps this -- the substitution happens
+      # before IAM ever parses it as an object.
+      AssumeRolePolicyDocument: !Sub
+        - |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {"Federated": "${OidcProviderArn}"},
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {
+                  "StringEquals": {
+                    "${OidcHost}:sub": "system:serviceaccount:kube-system:ebs-csi-controller-sa",
+                    "${OidcHost}:aud": "sts.amazonaws.com"
+                  }
+                }
+              }
+            ]
+          }
+        - OidcProviderArn: !Ref OidcProvider
+          OidcHost: !Select [1, !Split ["https://", !GetAtt EKSCluster.OpenIdConnectIssuerUrl]]
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
+
+  EbsCsiAddon:
+    Type: AWS::EKS::Addon
+    Properties:
+      ClusterName: !Ref ClusterName
+      AddonName: aws-ebs-csi-driver
+      ServiceAccountRoleArn: !GetAtt EbsCsiDriverRole.Arn
+      ResolveConflicts: OVERWRITE
+    DependsOn: NodeGroup
+
+  # --- AWS Load Balancer Controller: without it, Service type=LoadBalancer falls back to the
+  # deprecated in-tree provisioner, which only creates Classic ELBs.
+  LbcPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: "Official AWS Load Balancer Controller IAM policy (kubernetes-sigs/aws-load-balancer-controller v2.11.0)"
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: ["iam:CreateServiceLinkedRole"]
+            Resource: "*"
+            Condition:
+              StringEquals:
+                iam:AWSServiceName: elasticloadbalancing.amazonaws.com
+          - Effect: Allow
+            Action:
+              - ec2:DescribeAccountAttributes
+              - ec2:DescribeAddresses
+              - ec2:DescribeAvailabilityZones
+              - ec2:DescribeInternetGateways
+              - ec2:DescribeVpcs
+              - ec2:DescribeVpcPeeringConnections
+              - ec2:DescribeSubnets
+              - ec2:DescribeSecurityGroups
+              - ec2:DescribeInstances
+              - ec2:DescribeNetworkInterfaces
+              - ec2:DescribeTags
+              - ec2:GetCoipPoolUsage
+              - ec2:DescribeCoipPools
+              - ec2:GetSecurityGroupsForVpc
+              - elasticloadbalancing:DescribeLoadBalancers
+              - elasticloadbalancing:DescribeLoadBalancerAttributes
+              - elasticloadbalancing:DescribeListeners
+              - elasticloadbalancing:DescribeListenerCertificates
+              - elasticloadbalancing:DescribeSSLPolicies
+              - elasticloadbalancing:DescribeRules
+              - elasticloadbalancing:DescribeTargetGroups
+              - elasticloadbalancing:DescribeTargetGroupAttributes
+              - elasticloadbalancing:DescribeTargetHealth
+              - elasticloadbalancing:DescribeTags
+              - elasticloadbalancing:DescribeTrustStores
+              - elasticloadbalancing:DescribeListenerAttributes
+              - elasticloadbalancing:DescribeCapacityReservation
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - cognito-idp:DescribeUserPoolClient
+              - acm:ListCertificates
+              - acm:DescribeCertificate
+              - iam:ListServerCertificates
+              - iam:GetServerCertificate
+              - waf-regional:GetWebACL
+              - waf-regional:GetWebACLForResource
+              - waf-regional:AssociateWebACL
+              - waf-regional:DisassociateWebACL
+              - wafv2:GetWebACL
+              - wafv2:GetWebACLForResource
+              - wafv2:AssociateWebACL
+              - wafv2:DisassociateWebACL
+              - shield:GetSubscriptionState
+              - shield:DescribeProtection
+              - shield:CreateProtection
+              - shield:DeleteProtection
+            Resource: "*"
+          - Effect: Allow
+            Action: ["ec2:AuthorizeSecurityGroupIngress", "ec2:RevokeSecurityGroupIngress"]
+            Resource: "*"
+          - Effect: Allow
+            Action: ["ec2:CreateSecurityGroup"]
+            Resource: "*"
+          - Effect: Allow
+            Action: ["ec2:CreateTags"]
+            Resource: "arn:aws:ec2:*:*:security-group/*"
+            Condition:
+              StringEquals:
+                ec2:CreateAction: CreateSecurityGroup
+              "Null":
+                aws:RequestTag/elbv2.k8s.aws/cluster: "false"
+          - Effect: Allow
+            Action: ["ec2:CreateTags", "ec2:DeleteTags"]
+            Resource: "arn:aws:ec2:*:*:security-group/*"
+            Condition:
+              "Null":
+                aws:RequestTag/elbv2.k8s.aws/cluster: "true"
+                aws:ResourceTag/elbv2.k8s.aws/cluster: "false"
+          - Effect: Allow
+            Action: ["ec2:AuthorizeSecurityGroupIngress", "ec2:RevokeSecurityGroupIngress", "ec2:DeleteSecurityGroup"]
+            Resource: "*"
+            Condition:
+              "Null":
+                aws:ResourceTag/elbv2.k8s.aws/cluster: "false"
+          - Effect: Allow
+            Action: ["elasticloadbalancing:CreateLoadBalancer", "elasticloadbalancing:CreateTargetGroup"]
+            Resource: "*"
+            Condition:
+              "Null":
+                aws:RequestTag/elbv2.k8s.aws/cluster: "false"
+          - Effect: Allow
+            Action:
+              - elasticloadbalancing:CreateListener
+              - elasticloadbalancing:DeleteListener
+              - elasticloadbalancing:CreateRule
+              - elasticloadbalancing:DeleteRule
+            Resource: "*"
+          - Effect: Allow
+            Action: ["elasticloadbalancing:AddTags", "elasticloadbalancing:RemoveTags"]
+            Resource:
+              - "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*"
+              - "arn:aws:elasticloadbalancing:*:*:loadbalancer/net/*/*"
+              - "arn:aws:elasticloadbalancing:*:*:loadbalancer/app/*/*"
+            Condition:
+              "Null":
+                aws:RequestTag/elbv2.k8s.aws/cluster: "true"
+                aws:ResourceTag/elbv2.k8s.aws/cluster: "false"
+          - Effect: Allow
+            Action: ["elasticloadbalancing:AddTags", "elasticloadbalancing:RemoveTags"]
+            Resource:
+              - "arn:aws:elasticloadbalancing:*:*:listener/net/*/*/*"
+              - "arn:aws:elasticloadbalancing:*:*:listener/app/*/*/*"
+              - "arn:aws:elasticloadbalancing:*:*:listener-rule/net/*/*/*"
+              - "arn:aws:elasticloadbalancing:*:*:listener-rule/app/*/*/*"
+          - Effect: Allow
+            Action:
+              - elasticloadbalancing:ModifyLoadBalancerAttributes
+              - elasticloadbalancing:SetIpAddressType
+              - elasticloadbalancing:SetSecurityGroups
+              - elasticloadbalancing:SetSubnets
+              - elasticloadbalancing:DeleteLoadBalancer
+              - elasticloadbalancing:ModifyTargetGroup
+              - elasticloadbalancing:ModifyTargetGroupAttributes
+              - elasticloadbalancing:DeleteTargetGroup
+              - elasticloadbalancing:ModifyListenerAttributes
+              - elasticloadbalancing:ModifyCapacityReservation
+            Resource: "*"
+            Condition:
+              "Null":
+                aws:ResourceTag/elbv2.k8s.aws/cluster: "false"
+          - Effect: Allow
+            Action: ["elasticloadbalancing:AddTags"]
+            Resource:
+              - "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*"
+              - "arn:aws:elasticloadbalancing:*:*:loadbalancer/net/*/*"
+              - "arn:aws:elasticloadbalancing:*:*:loadbalancer/app/*/*"
+            Condition:
+              StringEquals:
+                elasticloadbalancing:CreateAction: ["CreateTargetGroup", "CreateLoadBalancer"]
+              "Null":
+                aws:RequestTag/elbv2.k8s.aws/cluster: "false"
+          - Effect: Allow
+            Action: ["elasticloadbalancing:RegisterTargets", "elasticloadbalancing:DeregisterTargets"]
+            Resource: "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*"
+          - Effect: Allow
+            Action:
+              - elasticloadbalancing:SetWebAcl
+              - elasticloadbalancing:ModifyListener
+              - elasticloadbalancing:AddListenerCertificates
+              - elasticloadbalancing:RemoveListenerCertificates
+              - elasticloadbalancing:ModifyRule
+            Resource: "*"
+
+  LbcRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: !Sub
+        - |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {"Federated": "${OidcProviderArn}"},
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {
+                  "StringEquals": {
+                    "${OidcHost}:sub": "system:serviceaccount:kube-system:aws-load-balancer-controller",
+                    "${OidcHost}:aud": "sts.amazonaws.com"
+                  }
+                }
+              }
+            ]
+          }
+        - OidcProviderArn: !Ref OidcProvider
+          OidcHost: !Select [1, !Split ["https://", !GetAtt EKSCluster.OpenIdConnectIssuerUrl]]
+      ManagedPolicyArns:
+        - !Ref LbcPolicy
+
+  # ============================== Helm-deployer image build ==============================
+  # Lambda container images must live in an ECR repo in the SAME account and Region as the
+  # function -- there's no way to reference our own pre-built image across accounts the way the
+  # OCI stack references its public OCIR repo. So this stack builds its own copy, in the
+  # deploying customer's own account, via CodeBuild, before the Lambda function is created.
+  HelmDeployerRepo:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${AWS::StackName}-helm-deployer"
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      EmptyOnDelete: true
+
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: build-and-push
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: "*"
+              - Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:PutImage
+                  - ecr:InitiateLayerUpload
+                  - ecr:UploadLayerPart
+                  - ecr:CompleteLayerUpload
+                Resource: !GetAtt HelmDeployerRepo.Arn
+
+  HelmDeployerBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "${AWS::StackName}-helm-deployer-build"
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      TimeoutInMinutes: 20
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_MEDIUM
+        Image: aws/codebuild/standard:7.0
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: REPOSITORY_URI
+            Value: !GetAtt HelmDeployerRepo.RepositoryUri
+          - Name: IMAGE_TAG
+            Value: latest
+      Source:
+        Type: GITHUB
+        Location: https://github.com/thinkingsense-ai/Docker.git
+        BuildSpec: resource-manager/omnigateeksstack/helm-deployer-lambda/buildspec.yml
+      SourceVersion: !Ref SourceVersion
+
+  # Custom resource that kicks off the CodeBuild build and blocks until it finishes, so the
+  # Lambda function resource (further below) isn't created until its image actually exists.
+  BuildTriggerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: run-build
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                Resource: !GetAtt HelmDeployerBuildProject.Arn
+
+  BuildTriggerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt BuildTriggerRole.Arn
+      Timeout: 900
+      MemorySize: 256
+      Code:
+        ZipFile: |
+          import json
+          import time
+          import urllib.request
+          import boto3
+
+
+          def handler(event, context):
+              try:
+                  if event["RequestType"] in ("Create", "Update"):
+                      cb = boto3.client("codebuild")
+                      build_id = cb.start_build(
+                          projectName=event["ResourceProperties"]["ProjectName"]
+                      )["build"]["id"]
+                      status = "IN_PROGRESS"
+                      deadline = time.time() + 800
+                      while status == "IN_PROGRESS" and time.time() < deadline:
+                          time.sleep(10)
+                          status = cb.batch_get_builds(ids=[build_id])["builds"][0]["buildStatus"]
+                      if status != "SUCCEEDED":
+                          raise RuntimeError(f"CodeBuild build {build_id} ended with status {status}")
+                  send(event, context, "SUCCESS")
+              except Exception as e:
+                  print("ERROR:", repr(e))
+                  send(event, context, "FAILED", str(e)[:1000])
+
+
+          def send(event, context, status, reason=""):
+              body = json.dumps({
+                  "Status": status,
+                  "Reason": reason or f"See CloudWatch Logs: {context.log_stream_name}",
+                  "PhysicalResourceId": event.get("PhysicalResourceId") or context.log_stream_name,
+                  "StackId": event["StackId"],
+                  "RequestId": event["RequestId"],
+                  "LogicalResourceId": event["LogicalResourceId"],
+                  "Data": {},
+              }).encode("utf-8")
+              req = urllib.request.Request(
+                  event["ResponseURL"], data=body, method="PUT",
+                  headers={"Content-Type": "", "Content-Length": str(len(body))},
+              )
+              urllib.request.urlopen(req)
+
+  BuildTrigger:
+    Type: AWS::CloudFormation::CustomResource
+    DependsOn: HelmDeployerBuildProject
+    Properties:
+      ServiceToken: !GetAtt BuildTriggerFunction.Arn
+      ProjectName: !Ref HelmDeployerBuildProject
+
+  # ============================== Helm-deploy Lambda ==============================
+  HelmDeployerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: eks-describe
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - eks:DescribeCluster
+                Resource: "*"
+
+  HelmDeployerAccessEntry:
+    Type: AWS::EKS::AccessEntry
+    Properties:
+      ClusterName: !Ref ClusterName
+      PrincipalArn: !GetAtt HelmDeployerRole.Arn
+      AccessPolicies:
+        - PolicyArn: arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
+          AccessScope:
+            Type: cluster
+    DependsOn: NodeGroup
+
+  HelmDeployerFunction:
+    Type: AWS::Lambda::Function
+    DependsOn:
+      - HelmDeployerAccessEntry
+      - EbsCsiAddon
+      - BuildTrigger
+    Properties:
+      PackageType: Image
+      Code:
+        ImageUri: !Sub "${HelmDeployerRepo.RepositoryUri}:latest"
+      Role: !GetAtt HelmDeployerRole.Arn
+      Timeout: 900
+      MemorySize: 1536
+      EphemeralStorage:
+        # omnigate.jar is ~607MB -- default 512MB /tmp isn't enough. Confirmed live: the
+        # download failed at exactly ~513MB every time.
+        Size: 2048
+      Architectures:
+        - x86_64
+
+  OmnigateHelmRelease:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt HelmDeployerFunction.Arn
+      ClusterName: !Ref ClusterName
+      Region: !Ref "AWS::Region"
+      VpcId: !Ref VPC
+      LbcRoleArn: !GetAtt LbcRole.Arn
+      ReleaseName: omnigate
+      Namespace: default
+      HelmSetValues:
+        image.repository: ocir.us-phoenix-1.oci.oraclecloud.com/ax8tpjdxhykk/omnigate
+        image.tag: !Ref ImageTag
+      AppUsername: !Ref OmnigateAppUsername
+      AppPassword: !Ref OmnigateAppPassword
+      LlmApiKey: !Ref OmnigateLlmApiKey
+
+Outputs:
+  ClusterName:
+    Value: !Ref EKSCluster
+  KubeconfigCommand:
+    Value: !Sub "aws eks update-kubeconfig --name ${EKSCluster} --region ${AWS::Region}"
+  AskAppUrl:
+    Value: !GetAtt OmnigateHelmRelease.AskAppUrl
