@@ -241,7 +241,13 @@ Resources:
   EbsCsiAddon:
     Type: AWS::EKS::Addon
     Properties:
-      ClusterName: !Ref ClusterName
+      # !Ref EKSCluster (not the ClusterName parameter) -- referencing the resource, not the
+      # parameter's literal string value, gives CloudFormation an explicit dependency edge on
+      # EKSCluster. Confirmed live: referencing the parameter instead trips AWS's early
+      # validation (AWS::EarlyValidation::ResourceExistenceCheck), which checks whether a
+      # cluster with that name already exists -- it can't tell the name is supposed to come
+      # from this same stack's not-yet-created cluster.
+      ClusterName: !Ref EKSCluster
       AddonName: aws-ebs-csi-driver
       ServiceAccountRoleArn: !GetAtt EbsCsiDriverRole.Arn
       ResolveConflicts: OVERWRITE
@@ -622,7 +628,7 @@ Resources:
   HelmDeployerAccessEntry:
     Type: AWS::EKS::AccessEntry
     Properties:
-      ClusterName: !Ref ClusterName
+      ClusterName: !Ref EKSCluster
       PrincipalArn: !GetAtt HelmDeployerRole.Arn
       AccessPolicies:
         - PolicyArn: arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
@@ -654,7 +660,7 @@ Resources:
     Type: AWS::CloudFormation::CustomResource
     Properties:
       ServiceToken: !GetAtt HelmDeployerFunction.Arn
-      ClusterName: !Ref ClusterName
+      ClusterName: !Ref EKSCluster
       Region: !Ref "AWS::Region"
       VpcId: !Ref VPC
       LbcRoleArn: !GetAtt LbcRole.Arn
