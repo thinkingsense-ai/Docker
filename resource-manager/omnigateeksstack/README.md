@@ -13,9 +13,9 @@ Nothing to build or push by hand.
 
 ## Deploy via the AWS Console
 
-1. **CloudFormation → Stacks → Create stack → With new resources**, template URL pointing at
-   this directory's `template.yaml` (see the "Deploy to AWS" button on the docs site for a
-   pre-filled link).
+1. **CloudFormation → Stacks → Create stack → With new resources**, either upload
+   `template.yaml` directly, or use the "Deploy to AWS" button on the docs site for a
+   pre-filled link (see note below on why that link points at S3, not GitHub).
 2. Fill in the Ask-app login (`OmnigateAppUsername` / `OmnigateAppPassword` — plain text, hashed
    automatically during deploy), optionally an Anthropic API key for NL2SQL.
 3. Acknowledge the IAM capability checkbox (the stack creates IAM roles) and create the stack.
@@ -36,6 +36,23 @@ aws cloudformation create-stack \
 
 Then poll with `aws cloudformation describe-stacks --stack-name omnigate-eks` until
 `StackStatus` is `CREATE_COMPLETE`.
+
+## Publishing a release (maintainers)
+
+CloudFormation's `TemplateURL` (both the Console's quick-create deep link and the
+`create-stack --template-url` CLI flag) only accepts a template hosted in an S3 bucket or an
+SSM document -- confirmed live: a GitHub raw-content URL is rejected outright ("Template URL
+must be supported URL"). So alongside cutting a GitHub release zip of this directory, also
+upload `template.yaml` to the public S3 bucket the docs site's Launch Stack button points at:
+
+```bash
+aws s3 cp template.yaml \
+  s3://thinkingsense-cfn-templates/eks-stack-vX.Y.Z/template.yaml \
+  --content-type text/yaml
+```
+
+Then update the `eks-stack-vX.Y.Z` references in `deploy-aws.html` (both the Launch Stack link
+and the CLI snippet's `--template-url`) on the docs site to match.
 
 ## Prerequisites in your account
 
