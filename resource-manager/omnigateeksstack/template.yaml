@@ -69,15 +69,6 @@ Resources:
 
   VPCGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
-    # DependsOn SgCleanup so that, on delete, VPCGatewayAttachment (detaching the IGW) waits
-    # until SgCleanup has removed any leftover Load Balancer Controller security groups.
-    # Confirmed live: with no ordering constraint between these two siblings (both only
-    # reference VPC), CloudFormation attempted to detach the IGW in parallel with NodeGroup/
-    # SgCleanup rather than after them, and failed with the same DependencyViolation-class error
-    # every time. SgCleanup's own ClusterName property deliberately uses the ClusterName
-    # *parameter* here, not !Ref EKSCluster, so this added dependency doesn't also pull in the
-    # ~10 minute EKSCluster creation as a prerequisite for this early networking resource.
-    DependsOn: SgCleanup
     Properties:
       VpcId: !Ref VPC
       InternetGatewayId: !Ref InternetGateway
@@ -809,12 +800,21 @@ Resources:
 
   SgCleanup:
     Type: AWS::CloudFormation::CustomResource
+    # DependsOn VPCGatewayAttachment so that, on delete, SgCleanup runs BEFORE it (a DependsOn
+    # reverses on delete: the dependent resource deletes first, so "X DependsOn Y" means X
+    # deletes, then Y). Combined with NodeGroup's own "DependsOn: SgCleanup" above, this gives
+    # the full chain needed on delete: NodeGroup, then SgCleanup, then VPCGatewayAttachment.
+    # Confirmed live: an earlier version of this had the dependency backwards (on
+    # VPCGatewayAttachment instead of here), which actually forced VPCGatewayAttachment to
+    # delete BEFORE SgCleanup -- the exact opposite of the intent -- and it failed again, this
+    # time before NodeGroup had even finished deleting.
+    DependsOn: VPCGatewayAttachment
     Properties:
       ServiceToken: !GetAtt SgCleanupFunction.Arn
-      # The ClusterName *parameter*, not !Ref EKSCluster -- VPCGatewayAttachment now DependsOn
-      # this resource (see its comment), and referencing the EKSCluster resource here would
-      # transitively force that early networking resource to wait on the ~10 minute cluster
-      # creation too. Both resolve to the same cluster name at runtime.
+      # The ClusterName *parameter*, not !Ref EKSCluster -- referencing the EKSCluster resource
+      # here would transitively force VPCGatewayAttachment (an early networking resource, via
+      # the DependsOn above) to wait on the ~10 minute cluster creation too. Both resolve to the
+      # same cluster name at runtime.
       ClusterName: !Ref ClusterName
       Region: !Ref "AWS::Region"
       VpcId: !Ref VPC
