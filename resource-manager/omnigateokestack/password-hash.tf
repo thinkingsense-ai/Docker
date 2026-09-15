@@ -20,8 +20,28 @@ data "external" "app_password_hash" {
   program = ["bash", "-c", <<-EOT
     set -e
     PASSWORD=$(python3 -c "import json,sys; print(json.load(sys.stdin)['password'], end='')")
-    curl -fsSL -o /tmp/omnigate-hash-tool.jar \
-      "https://github.com/thinkingsense-ai/Docker/releases/download/${var.image_tag}/omnigate.jar" 1>&2
+    # var.image_tag is the OCIR *docker* tag (default "latest"), which is not itself a GitHub
+    # release tag -- there is no release literally named "latest". Confirmed live: with the
+    # default, the plain releases/download/latest/omnigate.jar URL 404s, breaking every fresh
+    # deploy at Apply. When it's an actual version (e.g. "v0.6.0") matching a real release, use
+    # it directly; otherwise resolve the GitHub API's own "latest release" so the jar always
+    # matches whatever OCIR's :latest currently points at.
+    if [ "${var.image_tag}" = "latest" ]; then
+      JAR_URL=$(python3 -c "
+import json, urllib.request
+with urllib.request.urlopen('https://api.github.com/repos/thinkingsense-ai/Docker/releases/latest', timeout=15) as r:
+    release = json.load(r)
+for asset in release.get('assets', []):
+    if asset['name'] == 'omnigate.jar':
+        print(asset['browser_download_url'])
+        break
+else:
+    raise SystemExit('omnigate.jar asset not found on latest GitHub release')
+")
+    else
+      JAR_URL="https://github.com/thinkingsense-ai/Docker/releases/download/${var.image_tag}/omnigate.jar"
+    fi
+    curl -fsSL -o /tmp/omnigate-hash-tool.jar "$JAR_URL" 1>&2
     HASH=$(java -cp /tmp/omnigate-hash-tool.jar com.omnigate.http.auth.PasswordHash "$PASSWORD")
     rm -f /tmp/omnigate-hash-tool.jar
     python3 -c "import json,sys; print(json.dumps({'hash': sys.argv[1]}))" "$HASH"
