@@ -220,6 +220,12 @@ simultaneous footprint.
 
 ## Picking up a newer release
 
-`docker build --build-arg OMNIGATE_RELEASE_TAG=v0.2.0 .` (or edit the `ARG` default in
-`Dockerfile`) points the build at a different published release without touching anything else in
-this repo.
+`docker build --build-arg OMNIGATE_RELEASE_TAG=v0.6.0 .` (or edit the `ARG` default in
+`Dockerfile`, which already points at the latest release) points the build at a different
+published release without touching anything else in this repo. See
+[Releases](https://github.com/thinkingsense-ai/Docker/releases) for what changed in each one —
+`v0.6.0` adds a Question Planner, cited document answers, semantic table retrieval, a
+trust-focused Ask answer card, a consolidated Business Catalog admin section, a per-source
+"Ready for Ask" score, and a unified Answer Quality Loop view, plus several real NL2SQL
+correctness fixes found via live testing (hallucinated-column/duplicate-join/undefined-alias
+guards with a real retry, and a backend-routing fix for unqualified queries).
