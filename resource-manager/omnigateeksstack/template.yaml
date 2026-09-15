@@ -177,6 +177,14 @@ Resources:
 
   NodeGroup:
     Type: AWS::EKS::Nodegroup
+    # DependsOn SgCleanup so that, on delete, NodeGroup is torn down BEFORE SgCleanup runs (a
+    # DependsOn reverses on delete: the dependent resource -- NodeGroup here -- deletes first).
+    # SgCleanup needs the worker nodes already gone: the Load Balancer Controller's shared
+    # "backend" security group is attached directly to node ENIs (not just the LB's), so
+    # deleting it any earlier in the teardown -- e.g. from within OmnigateHelmRelease's own
+    # Delete, while nodes are still very much alive by construction of this same dependency
+    # graph -- always fails with DependencyViolation. Confirmed live.
+    DependsOn: SgCleanup
     Properties:
       ClusterName: !Ref EKSCluster
       NodeRole: !GetAtt NodeRole.Arn
@@ -675,6 +683,128 @@ Resources:
       AppUsername: !Ref OmnigateAppUsername
       AppPassword: !Ref OmnigateAppPassword
       LlmApiKey: !Ref OmnigateLlmApiKey
+
+  # ============================== Final security-group sweep ==============================
+  # Runs after NodeGroup is deleted (see NodeGroup's DependsOn above) as a last line of defense:
+  # deletes any load balancers/security groups the Load Balancer Controller left behind for this
+  # cluster, tagged elbv2.k8s.aws/cluster=<name>, before CloudFormation attempts to delete the
+  # VPC/IGW -- otherwise a leftover one permanently blocks that deletion. A separate tiny Lambda
+  # (not the helm-deployer image) since it only needs boto3, already in the runtime, and keeping
+  # it out of NodeGroup's dependency chain avoids forcing every deploy's node group to wait on
+  # the full CodeBuild image-build pipeline first.
+  SgCleanupRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: sg-cleanup
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - elasticloadbalancing:DescribeLoadBalancers
+                  - elasticloadbalancing:DescribeTags
+                  - elasticloadbalancing:DeleteLoadBalancer
+                  - ec2:DescribeSecurityGroups
+                  - ec2:DeleteSecurityGroup
+                Resource: "*"
+
+  SgCleanupFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt SgCleanupRole.Arn
+      Timeout: 300
+      MemorySize: 256
+      Code:
+        ZipFile: |
+          import json
+          import time
+          import urllib.request
+          import boto3
+
+
+          def handler(event, context):
+              try:
+                  if event["RequestType"] == "Delete":
+                      cleanup(event["ResourceProperties"])
+                  send(event, context, "SUCCESS")
+              except Exception as e:
+                  print("ERROR:", repr(e))
+                  send(event, context, "FAILED", str(e)[:1000])
+
+
+          def cleanup(props):
+              region = props["Region"]
+              cluster_name = props["ClusterName"]
+              vpc_id = props["VpcId"]
+              elbv2 = boto3.client("elbv2", region_name=region)
+              ec2 = boto3.client("ec2", region_name=region)
+
+              lbs = elbv2.describe_load_balancers().get("LoadBalancers", [])
+              if lbs:
+                  arns = [lb["LoadBalancerArn"] for lb in lbs]
+                  for td in elbv2.describe_tags(ResourceArns=arns)["TagDescriptions"]:
+                      tags = {t["Key"]: t["Value"] for t in td["Tags"]}
+                      if tags.get("elbv2.k8s.aws/cluster") == cluster_name:
+                          try:
+                              elbv2.delete_load_balancer(LoadBalancerArn=td["ResourceArn"])
+                          except Exception as e:
+                              print(f"delete_load_balancer failed for {td['ResourceArn']}: {e}")
+                  time.sleep(20)
+
+              sgs = ec2.describe_security_groups(Filters=[
+                  {"Name": "vpc-id", "Values": [vpc_id]},
+                  {"Name": "tag:elbv2.k8s.aws/cluster", "Values": [cluster_name]},
+              ])["SecurityGroups"]
+              remaining = {sg["GroupId"] for sg in sgs}
+              deadline = time.time() + 120
+              while remaining and time.time() < deadline:
+                  for sg_id in list(remaining):
+                      try:
+                          ec2.delete_security_group(GroupId=sg_id)
+                          remaining.discard(sg_id)
+                      except Exception:
+                          pass
+                  if remaining:
+                      time.sleep(10)
+              for sg_id in remaining:
+                  print(f"WARNING: could not delete security group {sg_id} (still has dependencies)")
+
+
+          def send(event, context, status, reason=""):
+              body = json.dumps({
+                  "Status": status,
+                  "Reason": reason or f"See CloudWatch Logs: {context.log_stream_name}",
+                  "PhysicalResourceId": event.get("PhysicalResourceId") or context.log_stream_name,
+                  "StackId": event["StackId"],
+                  "RequestId": event["RequestId"],
+                  "LogicalResourceId": event["LogicalResourceId"],
+                  "Data": {},
+              }).encode("utf-8")
+              req = urllib.request.Request(
+                  event["ResponseURL"], data=body, method="PUT",
+                  headers={"Content-Type": "", "Content-Length": str(len(body))},
+              )
+              urllib.request.urlopen(req)
+
+  SgCleanup:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt SgCleanupFunction.Arn
+      ClusterName: !Ref EKSCluster
+      Region: !Ref "AWS::Region"
+      VpcId: !Ref VPC
 
 Outputs:
   ClusterName:
