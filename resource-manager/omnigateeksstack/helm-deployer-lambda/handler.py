@@ -184,6 +184,33 @@ def ensure_storageclass():
     run_cmd("kubectl", ["apply", "-f", STORAGECLASS_PATH], timeout=60)
 
 
+def wait_for_lb_cleanup(cluster_name, region, timeout=240):
+    # `helm uninstall --wait` waits for the Service object's finalizer to clear, which is
+    # supposed to mean the Load Balancer Controller already deleted the underlying NLB -- but
+    # confirmed live: if the stack's NodeGroup (where the LBC pod itself runs) gets torn down
+    # concurrently, the controller can be killed mid-cleanup, silently orphaning a real, billable
+    # NLB and its ENIs, which then blocks the VPC/IGW deletion later in the same stack teardown
+    # indefinitely. This is a defensive extra check, independent of the Service finalizer, so an
+    # orphan gets caught (and at least logged) instead of the stack just hanging.
+    elbv2 = boto3.client("elbv2", region_name=region)
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        lbs = elbv2.describe_load_balancers().get("LoadBalancers", [])
+        if not lbs:
+            return
+        arns = [lb["LoadBalancerArn"] for lb in lbs]
+        owned = []
+        for td in elbv2.describe_tags(ResourceArns=arns)["TagDescriptions"]:
+            tags = {t["Key"]: t["Value"] for t in td["Tags"]}
+            if tags.get(f"kubernetes.io/cluster/{cluster_name}") == "owned":
+                owned.append(td["ResourceArn"])
+        if not owned:
+            return
+        time.sleep(10)
+    print(f"WARNING: load balancer(s) for cluster {cluster_name} still present after {timeout}s -- "
+          f"may need manual cleanup before VPC deletion can proceed: {owned}")
+
+
 def lambda_handler(event, context):
     REDACT = {"AppPassword", "LlmApiKey", "HelmSetSensitiveValues"}
     safe_event = {k: v for k, v in event.items() if k != "ResourceProperties"}
@@ -235,6 +262,10 @@ def lambda_handler(event, context):
                 run_helm(["uninstall", release_name, "--namespace", namespace, "--wait", "--timeout", "5m"])
             except Exception as e:
                 print("uninstall error (continuing so stack deletion isn't blocked):", e)
+            try:
+                wait_for_lb_cleanup(cluster_name, region)
+            except Exception as e:
+                print("lb cleanup check error (continuing so stack deletion isn't blocked):", e)
             send_response(event, context, "SUCCESS", physical_resource_id=event.get("PhysicalResourceId", physical_id))
 
     except Exception as e:

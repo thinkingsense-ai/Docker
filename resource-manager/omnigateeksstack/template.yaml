@@ -610,6 +610,14 @@ Resources:
                 Action:
                   - eks:DescribeCluster
                 Resource: "*"
+              - Effect: Allow
+                # Used to confirm the AWS Load Balancer Controller actually finished deleting the
+                # NLB it created before this custom resource's Delete reports SUCCESS -- see
+                # wait_for_lb_cleanup in handler.py.
+                Action:
+                  - elasticloadbalancing:DescribeLoadBalancers
+                  - elasticloadbalancing:DescribeTags
+                Resource: "*"
 
   HelmDeployerAccessEntry:
     Type: AWS::EKS::AccessEntry
