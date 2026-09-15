@@ -184,31 +184,70 @@ def ensure_storageclass():
     run_cmd("kubectl", ["apply", "-f", STORAGECLASS_PATH], timeout=60)
 
 
+def _find_cluster_load_balancers(elbv2, cluster_name):
+    # The Load Balancer Controller tags every LB it creates with elbv2.k8s.aws/cluster=<name>
+    # (confirmed live against an actual created NLB) -- NOT the kubernetes.io/cluster/<name>=owned
+    # convention that EC2 subnets/security groups outside the LBC's own resources use.
+    lbs = elbv2.describe_load_balancers().get("LoadBalancers", [])
+    if not lbs:
+        return []
+    arns = [lb["LoadBalancerArn"] for lb in lbs]
+    owned = []
+    for td in elbv2.describe_tags(ResourceArns=arns)["TagDescriptions"]:
+        tags = {t["Key"]: t["Value"] for t in td["Tags"]}
+        if tags.get("elbv2.k8s.aws/cluster") == cluster_name:
+            owned.append(td["ResourceArn"])
+    return owned
+
+
 def wait_for_lb_cleanup(cluster_name, region, timeout=240):
     # `helm uninstall --wait` waits for the Service object's finalizer to clear, which is
     # supposed to mean the Load Balancer Controller already deleted the underlying NLB -- but
-    # confirmed live: if the stack's NodeGroup (where the LBC pod itself runs) gets torn down
-    # concurrently, the controller can be killed mid-cleanup, silently orphaning a real, billable
-    # NLB and its ENIs, which then blocks the VPC/IGW deletion later in the same stack teardown
-    # indefinitely. This is a defensive extra check, independent of the Service finalizer, so an
-    # orphan gets caught (and at least logged) instead of the stack just hanging.
+    # confirmed live: even with the controller alive and healthy the whole time, an NLB can be
+    # left fully orphaned (never even started deleting) after a normal `helm uninstall`. Rather
+    # than trust the finalizer, poll for the LB to actually disappear, and if it's still there
+    # after a reasonable wait, delete it (and its security groups) directly -- otherwise it
+    # permanently blocks this same stack's later VPC/IGW deletion.
     elbv2 = boto3.client("elbv2", region_name=region)
     deadline = time.time() + timeout
+    owned = []
     while time.time() < deadline:
-        lbs = elbv2.describe_load_balancers().get("LoadBalancers", [])
-        if not lbs:
-            return
-        arns = [lb["LoadBalancerArn"] for lb in lbs]
-        owned = []
-        for td in elbv2.describe_tags(ResourceArns=arns)["TagDescriptions"]:
-            tags = {t["Key"]: t["Value"] for t in td["Tags"]}
-            if tags.get(f"kubernetes.io/cluster/{cluster_name}") == "owned":
-                owned.append(td["ResourceArn"])
+        owned = _find_cluster_load_balancers(elbv2, cluster_name)
         if not owned:
             return
         time.sleep(10)
-    print(f"WARNING: load balancer(s) for cluster {cluster_name} still present after {timeout}s -- "
-          f"may need manual cleanup before VPC deletion can proceed: {owned}")
+
+    print(f"WARNING: {len(owned)} load balancer(s) for cluster {cluster_name} still present "
+          f"after {timeout}s -- deleting directly so VPC teardown isn't blocked: {owned}")
+    sg_ids = set()
+    for arn in owned:
+        try:
+            lb = elbv2.describe_load_balancers(LoadBalancerArns=[arn])["LoadBalancers"][0]
+            sg_ids.update(lb.get("SecurityGroups", []))
+        except Exception as e:
+            print(f"describe_load_balancers failed for {arn}: {e}")
+        try:
+            elbv2.delete_load_balancer(LoadBalancerArn=arn)
+        except Exception as e:
+            print(f"delete_load_balancer failed for {arn}: {e}")
+
+    if sg_ids:
+        # ENIs take a little while to detach after delete_load_balancer returns; security group
+        # deletion fails with DependencyViolation until they do.
+        ec2 = boto3.client("ec2", region_name=region)
+        sg_deadline = time.time() + 60
+        remaining = set(sg_ids)
+        while remaining and time.time() < sg_deadline:
+            for sg_id in list(remaining):
+                try:
+                    ec2.delete_security_group(GroupId=sg_id)
+                    remaining.discard(sg_id)
+                except Exception:
+                    pass
+            if remaining:
+                time.sleep(10)
+        for sg_id in remaining:
+            print(f"WARNING: could not delete security group {sg_id} (still has dependencies)")
 
 
 def lambda_handler(event, context):
