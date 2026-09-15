@@ -733,7 +733,7 @@ Resources:
       Runtime: python3.12
       Handler: index.handler
       Role: !GetAtt SgCleanupRole.Arn
-      Timeout: 300
+      Timeout: 600
       MemorySize: 256
       Code:
         ZipFile: |
@@ -777,7 +777,7 @@ Resources:
                   {"Name": "tag:elbv2.k8s.aws/cluster", "Values": [cluster_name]},
               ])["SecurityGroups"]
               remaining = {sg["GroupId"] for sg in sgs}
-              deadline = time.time() + 120
+              deadline = time.time() + 400
               while remaining and time.time() < deadline:
                   for sg_id in list(remaining):
                       try:
