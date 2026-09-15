@@ -28,7 +28,7 @@ is actually behind it.
 ## Real quirk found while building this (already handled in `omnigate.env.example`)
 
 The inline Calcite model's own `"name"` field for a `GENERIC_REST`/CSV backend must match the
-OmniGate backend name exactly (e.g. `"suppliers"`, not a short label like `"s"`) — NL2SQL's schema
+ThinkingSense backend name exactly (e.g. `"suppliers"`, not a short label like `"s"`) — NL2SQL's schema
 catalog picks up that inline name as the real queryable schema prefix, so a mismatched short name
 leaks into generated SQL and breaks the join. Found live; `omnigate.env.example` already uses the
 correct matching names.

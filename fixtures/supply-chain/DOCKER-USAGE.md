@@ -7,7 +7,7 @@ cd fixtures/supply-chain/single-postgres
 docker compose up --build
 ```
 
-This stands up a real Postgres (auto-seeded with all four supply-chain schemas) and an OmniGate
+This stands up a real Postgres (auto-seeded with all four supply-chain schemas) and an ThinkingSense
 container built from this repo's own root `Dockerfile` — which bundles a real local reasoning
 model, so this works with **zero external API key**. Then open **http://localhost:8080/**, log in
 `demo`/`demo`, and ask the canonical question (see below). Live-verified: the bundled local model
@@ -43,7 +43,7 @@ docker compose exec -T postgres psql -U postgres -d postgres < fixtures/supply-c
 
 (Run this from the root of this repo, with `docker compose up` already running.)
 
-### Step 2 — point OmniGate at the new schemas
+### Step 2 — point ThinkingSense at the new schemas
 
 Open `docker-compose.yml`, find the `OMNIGATE_BACKENDS` line under the `omnigate` service, and
 replace it with this (adds the supply-chain schemas alongside the existing seeded `demo` backend

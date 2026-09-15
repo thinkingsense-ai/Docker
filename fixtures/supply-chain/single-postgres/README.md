@@ -2,7 +2,7 @@
 
 Same story/schema/data as `../README.md` — for a user who only has Postgres available. All four
 "backends" (`suppliers`, `inventory`, `procurement`, `logistics`) are real schemas in ONE Postgres
-database; OmniGate still genuinely federates across all four (real `FederationStage`/`RouterStage`
+database; ThinkingSense still genuinely federates across all four (real `FederationStage`/`RouterStage`
 code path, same as the multi-database Tier A) — it just needs zero extra infrastructure.
 
 ## Quick start
