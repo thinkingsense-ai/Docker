@@ -100,8 +100,8 @@ Parameters:
   OmnigateLlmApiKey:
     Type: String
     NoEcho: true
-    Default: ""
-    Description: "Anthropic API key (console.anthropic.com) for NL2SQL. The gateway still deploys without one, but the Ask app can't answer questions until this is set."
+    MinLength: 1
+    Description: "Anthropic API key (console.anthropic.com) for NL2SQL -- required, since a stack created without one deploys fine but can't answer any question."
   ImageTag:
     Type: String
     Default: latest
