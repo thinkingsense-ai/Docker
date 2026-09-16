@@ -251,11 +251,16 @@ def wait_for_lb_cleanup(cluster_name, region, timeout=240):
 
 
 def lambda_handler(event, context):
+    # Confirmed live: this redacted ResourceProperties but NOT OldResourceProperties (present on
+    # Update events), which meant the *previous* AppPassword value was logged to CloudWatch in
+    # plaintext on every password change. Both must be scrubbed the same way.
     REDACT = {"AppPassword", "LlmApiKey", "HelmSetSensitiveValues"}
-    safe_event = {k: v for k, v in event.items() if k != "ResourceProperties"}
-    safe_event["ResourceProperties"] = {
-        k: v for k, v in event.get("ResourceProperties", {}).items() if k not in REDACT
+    safe_event = {
+        k: v for k, v in event.items() if k not in ("ResourceProperties", "OldResourceProperties")
     }
+    for key in ("ResourceProperties", "OldResourceProperties"):
+        if key in event:
+            safe_event[key] = {k: v for k, v in event[key].items() if k not in REDACT}
     print("event:", json.dumps(safe_event))
 
     props = event.get("ResourceProperties", {})
