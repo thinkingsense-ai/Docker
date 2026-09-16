@@ -9,6 +9,61 @@ Description: >-
   pushed into your own account's ECR automatically by CodeBuild as part of
   this same stack -- nothing to build or push by hand.
 
+Metadata:
+  # Groups and labels the Console's Create Stack wizard fields -- without this, CloudFormation
+  # just dumps every parameter as a flat, identically-styled list in declaration order, with the
+  # raw parameter name as the only label. Confirmed live: a deployer couldn't tell
+  # OmnigateAppPassword apart from NodeInstanceType at a glance and nearly missed setting the
+  # Ask-app login entirely.
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Ask-app login"
+        Parameters:
+          - OmnigateAppUsername
+          - OmnigateAppPassword
+      - Label:
+          default: "NL2SQL (optional)"
+        Parameters:
+          - OmnigateLlmApiKey
+      - Label:
+          default: "Cluster sizing"
+        Parameters:
+          - ClusterName
+          - KubernetesVersion
+          - NodeInstanceType
+          - NodeGroupDesiredSize
+          - NodeGroupMinSize
+          - NodeGroupMaxSize
+      - Label:
+          default: "Advanced"
+        Parameters:
+          - ImageTag
+          - SourceVersion
+    ParameterLabels:
+      OmnigateAppUsername:
+        default: "Ask-app username"
+      OmnigateAppPassword:
+        default: "Ask-app password"
+      OmnigateLlmApiKey:
+        default: "Anthropic API key"
+      ClusterName:
+        default: "Cluster name"
+      KubernetesVersion:
+        default: "Kubernetes version"
+      NodeInstanceType:
+        default: "Node instance type"
+      NodeGroupDesiredSize:
+        default: "Node count"
+      NodeGroupMinSize:
+        default: "Minimum nodes"
+      NodeGroupMaxSize:
+        default: "Maximum nodes"
+      ImageTag:
+        default: "OmniGate image tag"
+      SourceVersion:
+        default: "Stack source version"
+
 Parameters:
   ClusterName:
     Type: String
