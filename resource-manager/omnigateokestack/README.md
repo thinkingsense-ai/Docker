@@ -42,6 +42,25 @@ oci resource-manager stack create \
 
 Then `oci resource-manager job create-apply-job --stack-id <id> --execution-plan-strategy AUTO_APPROVED`.
 
+## Publishing a release (maintainers)
+
+Cut a GitHub release zip of this directory (tag `oke-stack-vX.Y.Z`), then update the
+`oke-stack-vX.Y.Z` / `omnigateokestack-vX.Y.Z.zip` references in `deploy-oci.html` (the
+`zipUrl=` Launch link, the "Download the zip" link, and the CLI snippet's `--config-source`) on
+the docs site to match.
+
+**Always pass `--latest=false` to `gh release create`/`gh release edit` for infra-stack tags**
+(`eks-stack-v*`, `oke-stack-v*`) -- confirmed live: this repo's app releases (`vX.Y.Z`, e.g.
+`v0.6.0`) and infra-stack releases share one GitHub Releases list, and `password-hash.tf`
+resolves the app's `omnigate.jar` asset (used to hash `omnigate_app_password` during Apply) via
+the GitHub API's `/releases/latest`, which is just whichever release was published most recently
+(unless overridden). Publishing an infra-stack release without `--latest=false` silently makes
+it "latest" instead of the real app release, breaking `/releases/latest` for every deploy until
+fixed -- this broke a companion EKS-stack clean-room validation with "omnigate.jar asset not
+found on latest GitHub release". If this happens again, the fix is `gh release edit vX.Y.Z
+--repo thinkingsense-ai/Docker --latest` on the real app release to re-point `/releases/latest`
+at it.
+
 ## Prerequisites in your tenancy
 
 Confirmed live while building this stack — worth checking before you apply:

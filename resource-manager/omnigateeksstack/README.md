@@ -65,6 +65,18 @@ aws s3 cp template.yaml \
 Then update the `eks-stack-vX.Y.Z` references in `deploy-aws.html` (both the Launch Stack link
 and the CLI snippet's `--template-url`) on the docs site to match.
 
+**Always pass `--latest=false` to `gh release create`/`gh release edit` for infra-stack tags**
+(`eks-stack-v*`, `oke-stack-v*`) -- confirmed live: this repo's app releases (`vX.Y.Z`, e.g.
+`v0.6.0`) and infra-stack releases share one GitHub Releases list, and
+`helm-deployer-lambda/handler.py` resolves the app's `omnigate.jar` asset via the GitHub API's
+`/releases/latest`, which is just whichever release was published most recently (unless
+overridden). Publishing an infra-stack release without `--latest=false` silently makes it
+"latest" instead of the real app release, breaking `/releases/latest` for every deploy until
+fixed -- this broke a v1.0.4 clean-room validation stack with "omnigate.jar asset not found on
+latest GitHub release" (`OmnigateHelmRelease CREATE_FAILED`). If this happens again, the fix is
+`gh release edit vX.Y.Z --repo thinkingsense-ai/Docker --latest` on the real app release to
+re-point `/releases/latest` at it.
+
 ## Prerequisites in your account
 
 Confirmed live while building this stack — worth checking before you deploy:
