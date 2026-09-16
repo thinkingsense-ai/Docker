@@ -36,7 +36,7 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
-            - name: init-scott
+            - name: seed-supply-chain
               mountPath: /docker-entrypoint-initdb.d
               readOnly: true
           readinessProbe:
@@ -47,9 +47,9 @@ spec:
           resources:
             {{- toYaml .Values.resources.postgres | nindent 12 }}
       volumes:
-        - name: init-scott
+        - name: seed-supply-chain
           configMap:
-            name: {{ include "omnigate.fullname" . }}-init-scott
+            name: {{ include "omnigate.fullname" . }}-seed-supply-chain
   volumeClaimTemplates:
     - metadata:
         name: data

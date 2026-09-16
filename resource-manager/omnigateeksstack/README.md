@@ -3,6 +3,15 @@
 Deploys OmniGate (NL2SQL gateway) with a seeded Postgres demo backend onto a new Amazon EKS
 cluster (Graviton/arm64 worker nodes, matching the published image).
 
+The seeded demo is a real, small supply-chain scenario across four Postgres schemas
+(`suppliers`, `inventory`, `procurement`, `logistics`, registered as three federated backends --
+see `helm-deployer-lambda/omnigate-chart/templates/secrets.yaml`), not a single flat table --
+this genuinely exercises cross-backend federation, not just NL2SQL against one table. Try asking:
+*"List each purchase order whose shipment status is IN_TRANSIT and whose supplier country is
+Vietnam, including po_id, sku, quantity ordered, carrier, eta_date, and current warehouse
+qty_on_hand for that sku"* (see `fixtures/supply-chain/README.md` in this repo's root for the
+expected answer).
+
 Deployers don't need to build or push the OmniGate app image itself — `ImageTag` defaults to
 this project's own public OCIR `:latest` image, pulled the same way `docker compose up` pulls
 from a registry. The one thing AWS *does* need built locally to your account is the small
