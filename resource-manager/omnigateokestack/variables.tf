@@ -14,10 +14,9 @@ variable "region" {
 # --- Application config -------------------------------------------------------------------
 
 variable "omnigate_llm_api_key" {
-  description = "Anthropic API key (console.anthropic.com) for NL2SQL. Without it the gateway still deploys but can't translate English to SQL."
+  description = "Anthropic API key (console.anthropic.com) for NL2SQL -- required, since a stack applied without one deploys fine but can't answer any question."
   type        = string
   sensitive   = true
-  default     = ""
 }
 
 variable "omnigate_llm_model" {

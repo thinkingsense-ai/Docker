@@ -23,9 +23,9 @@ pulls from a registry.
    URL with the `?zipUrl=` "Deploy to Oracle Cloud" pattern.
 3. Follow the wizard (driven by `schema.yaml`): compartment, region, an Ask-app login (see
    `omnigate_app_password` -- plain text, hashed automatically during Apply), and an Anthropic
-   API key. The key is technically optional -- the stack deploys fine without one -- but the Ask
-   app can't answer any question until it's set, so get a free key from
-   [console.anthropic.com](https://console.anthropic.com) before you start.
+   API key -- required, since a stack applied without one deploys fine but can't answer any
+   question. Get a free key from [console.anthropic.com](https://console.anthropic.com) before
+   you start.
 4. **Terraform Actions → Apply**. Takes ~12-15 minutes (cluster ~8 min, node pool ~3 min, Helm
    release the rest).
 5. Once it succeeds, the stack's **Outputs** tab has `ask_app_url` and `kubeconfig_command`.
@@ -37,7 +37,7 @@ oci resource-manager stack create \
   --compartment-id <tenancy-or-compartment-ocid> \
   --config-source resource-manager/omnigateokestack \
   --display-name omnigateokestack \
-  --variables '{"compartment_ocid":"<ocid>","region":"<region>","omnigate_app_password":"<plain-text-password>"}'
+  --variables '{"compartment_ocid":"<ocid>","region":"<region>","omnigate_app_password":"<plain-text-password>","omnigate_llm_api_key":"<anthropic-api-key>"}'
 ```
 
 Then `oci resource-manager job create-apply-job --stack-id <id> --execution-plan-strategy AUTO_APPROVED`.

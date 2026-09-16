@@ -70,8 +70,8 @@ variables:
   omnigate_llm_api_key:
     type: password
     title: "Anthropic API key"
-    description: "From console.anthropic.com. Powers NL2SQL (English -> SQL translation). The gateway still deploys without one, but the Ask app can't answer questions until this is set."
-    required: false
+    description: "From console.anthropic.com. Powers NL2SQL (English -> SQL translation) -- required because the Ask app can't answer any question without it, so an unset key just means a stack that deploys successfully but is useless."
+    required: true
     sensitive: true
 
   omnigate_llm_model:
