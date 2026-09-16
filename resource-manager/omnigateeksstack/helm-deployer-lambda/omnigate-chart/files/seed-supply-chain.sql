@@ -50,16 +50,21 @@ INSERT INTO procurement.purchase_orders VALUES
  (5003, 'SKU-RES-1100', 200, 2, 300, 'DELIVERED'),
  (5004, 'SKU-CTRL-9001', 200, 1, 150, 'IN_TRANSIT');
 
-CREATE SCHEMA IF NOT EXISTS logistics;
-CREATE TABLE IF NOT EXISTS logistics.shipments (
+-- Lives in the inventory schema, not its own logistics schema: a comma-separated
+-- ?currentSchema=inventory,logistics JDBC parameter only exposes the FIRST schema to
+-- DatabaseMetaData-based introspection (connection.getSchema() returns just one schema even
+-- when the search_path GUC has several) -- confirmed live that a separate logistics schema
+-- made shipments invisible to the NL2SQL planner ("references table(s) not present in this
+-- database's schema: shipment"). Colocating it here sidesteps that gap entirely.
+CREATE TABLE IF NOT EXISTS inventory.shipments (
   shipment_id INT PRIMARY KEY,
   po_id INT,
   carrier VARCHAR(40),
   eta_date DATE,
   status VARCHAR(20)
 );
-DELETE FROM logistics.shipments;
-INSERT INTO logistics.shipments VALUES
+DELETE FROM inventory.shipments;
+INSERT INTO inventory.shipments VALUES
  (9001, 5001, 'Pacific Direct Freight', '2026-09-15', 'IN_TRANSIT'),
  (9002, 5002, 'Pacific Direct Freight', '2026-09-18', 'IN_TRANSIT'),
  (9003, 5003, 'EuroCargo Line', '2026-08-30', 'DELIVERED'),
