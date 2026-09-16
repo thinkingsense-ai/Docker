@@ -31,6 +31,15 @@ spec:
       labels:
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: omnigate
+      annotations:
+        # A Secret/ConfigMap change alone does not roll this Deployment's pod on its own -- env
+        # vars from envFrom are read once at container start, so the existing pod keeps running
+        # with its stale environment after a `terraform apply` that only changes e.g.
+        # omnigate_llm_api_key, unless the pod template itself also changes. These checksums do
+        # that: they change whenever the rendered Secret/ConfigMap content changes, which is what
+        # actually triggers the rollout (this Deployment's own `strategy: Recreate` then applies).
+        checksum/secret: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
+        checksum/configmap: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
       initContainers:
         - name: wait-for-postgres
