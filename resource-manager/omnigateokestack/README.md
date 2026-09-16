@@ -14,8 +14,10 @@ pulls from a registry.
 2. Upload this directory as a zip (working directory: `omnigateokestack`), or use a hosted zip
    URL with the `?zipUrl=` "Deploy to Oracle Cloud" pattern.
 3. Follow the wizard (driven by `schema.yaml`): compartment, region, an Ask-app login (see
-   `omnigate_app_password` -- plain text, hashed automatically during Apply), optionally an Anthropic API
-   key for NL2SQL.
+   `omnigate_app_password` -- plain text, hashed automatically during Apply), and an Anthropic
+   API key. The key is technically optional -- the stack deploys fine without one -- but the Ask
+   app can't answer any question until it's set, so get a free key from
+   [console.anthropic.com](https://console.anthropic.com) before you start.
 4. **Terraform Actions → Apply**. Takes ~12-15 minutes (cluster ~8 min, node pool ~3 min, Helm
    release the rest).
 5. Once it succeeds, the stack's **Outputs** tab has `ask_app_url` and `kubeconfig_command`.

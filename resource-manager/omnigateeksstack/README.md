@@ -17,7 +17,9 @@ Nothing to build or push by hand.
    `template.yaml` directly, or use the "Deploy to AWS" button on the docs site for a
    pre-filled link (see note below on why that link points at S3, not GitHub).
 2. Fill in the Ask-app login (`OmnigateAppUsername` / `OmnigateAppPassword` — plain text, hashed
-   automatically during deploy), optionally an Anthropic API key for NL2SQL.
+   automatically during deploy) and an Anthropic API key. The key is technically optional -- the
+   stack deploys fine without one -- but the Ask app can't answer any question until it's set, so
+   get a free key from [console.anthropic.com](https://console.anthropic.com) before you start.
 3. Acknowledge the IAM capability checkbox (the stack creates IAM roles) and create the stack.
    Takes ~15-20 minutes (cluster ~10 min, node group ~3 min, the CodeBuild image build ~2-3 min,
    the Helm release the rest).

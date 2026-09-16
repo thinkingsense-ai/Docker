@@ -23,7 +23,7 @@ Metadata:
           - OmnigateAppUsername
           - OmnigateAppPassword
       - Label:
-          default: "NL2SQL (optional)"
+          default: "NL2SQL (needed to use the Ask app)"
         Parameters:
           - OmnigateLlmApiKey
       - Label:
