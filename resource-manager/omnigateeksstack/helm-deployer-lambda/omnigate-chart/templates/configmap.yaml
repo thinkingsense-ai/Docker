@@ -18,9 +18,9 @@ data:
   OMNIGATE_PG_USER: {{ .Values.postgres.user | quote }}
   # The OMNIGATE_PG_* vars above are only used for schema introspection/wire-proxying -- they do
   # NOT by themselves register a queryable backend for the Ask app (see docker-compose.yml's own
-  # identical comment). Without this, the Ask app has zero backends and every question fails.
-  # Confirmed live on OKE (missing here originally).
-  OMNIGATE_BACKENDS: {{ printf "demo=jdbc:postgresql://%s:5432/%s|%s|%s" (include "omnigate.postgresHost" .) .Values.postgres.database .Values.postgres.user .Values.postgres.password | quote }}
+  # identical comment); OMNIGATE_BACKENDS does that, and lives in secrets.yaml instead of here --
+  # it embeds the Postgres password, which has no business sitting in a plaintext ConfigMap
+  # alongside a real Secret already carrying the same value.
 ---
 apiVersion: v1
 kind: ConfigMap
