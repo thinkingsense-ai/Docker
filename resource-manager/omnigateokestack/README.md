@@ -4,6 +4,14 @@ Deploys OmniGate (NL2SQL gateway) with a seeded Postgres demo backend onto a new
 Kubernetes Engine cluster, sized to fit inside the Always Free tier (1 node, VM.Standard.A1.Flex,
 2 OCPU / 12GB).
 
+The seeded demo is a real, small supply-chain scenario across four Postgres schemas
+(`suppliers`, `inventory`, `procurement`, `logistics`, registered as three federated backends --
+see `helm/omnigate/templates/secrets.yaml`), not a single flat table -- this genuinely exercises
+cross-backend federation, not just NL2SQL against one table. Try asking: *"List each purchase
+order whose shipment status is IN_TRANSIT and whose supplier country is Vietnam, including
+po_id, sku, quantity ordered, carrier, eta_date, and current warehouse qty_on_hand for that
+sku"* (see `fixtures/supply-chain/README.md` in this repo's root for the expected answer).
+
 Deployers don't need to build or push anything — `image_repository` defaults to this project's
 own public OCIR repo, so the stack pulls a pre-built image the same way `docker compose up`
 pulls from a registry.

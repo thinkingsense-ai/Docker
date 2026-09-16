@@ -12,22 +12,36 @@ data:
   # app's own internal default model, which works correctly. Re-wire
   # `OMNIGATE_LLM_MODEL: {{ "{{" }} .Values.omnigate.llmModel | quote {{ "}}" }}` here once that
   # issue is fixed upstream.
+  #
+  # Routes each schema-qualified table reference to the backend name that owns it (see
+  # OMNIGATE_BACKENDS in secrets.yaml) -- inventory and logistics share one backend (a native
+  # Postgres search_path, not app-level emulation) since the free edition caps at 3 named
+  # backends, but this still lets a query reference either schema unqualified.
+  OMNIGATE_ROUTER_SCHEMA_RULES: "suppliers:suppliers,inventory:inventory,logistics:inventory,procurement:procurement"
+{{- if .Values.omnigate.exposeWireProtocols }}
+  # The wire-proxy surface's own single connection target -- distinct from OMNIGATE_BACKENDS,
+  # which populates the backend registry the Ask app/NL2SQL actually query against. Deliberately
+  # NOT set unless wire protocols are actually exposed: confirmed live (thinkingsense-ai/
+  # Server#5) that SchemaIntrospector.sourcesFor() adds a synthetic extra catalog source from
+  # these vars whenever they're set, which duplicates whichever real OMNIGATE_BACKENDS entry
+  # already covers the same schema and can misattribute table ownership, breaking NL2SQL
+  # entirely. Since these are only needed for raw wire-protocol clients (opt-in, off by
+  # default), omitting them when unused sidesteps that bug rather than relying on an upstream fix.
   OMNIGATE_PG_HOST: {{ include "omnigate.postgresHost" . | quote }}
   OMNIGATE_PG_PORT: "5432"
-  OMNIGATE_PG_DATABASE: {{ .Values.postgres.database | quote }}
+  OMNIGATE_PG_DATABASE: {{ printf "%s?currentSchema=suppliers" .Values.postgres.database | quote }}
   OMNIGATE_PG_USER: {{ .Values.postgres.user | quote }}
-  # The OMNIGATE_PG_* vars above are only used for schema introspection/wire-proxying -- they do
-  # NOT by themselves register a queryable backend for the Ask app (see docker-compose.yml's own
-  # identical comment); OMNIGATE_BACKENDS does that, and lives in secrets.yaml instead of here --
-  # it embeds the Postgres password, which has no business sitting in a plaintext ConfigMap
-  # alongside a real Secret already carrying the same value.
+{{- end }}
+  # OMNIGATE_BACKENDS lives in secrets.yaml, not here -- it embeds the Postgres password, which
+  # has no business sitting in a plaintext ConfigMap alongside a real Secret already carrying the
+  # same value.
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "omnigate.fullname" . }}-init-scott
+  name: {{ include "omnigate.fullname" . }}-seed-supply-chain
   labels:
     {{- include "omnigate.labels" . | nindent 4 }}
 data:
-  init-scott.sql: |
-{{ .Files.Get "files/init-scott.sql" | indent 4 }}
+  seed-supply-chain.sql: |
+{{ .Files.Get "files/seed-supply-chain.sql" | indent 4 }}
