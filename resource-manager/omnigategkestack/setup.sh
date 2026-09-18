@@ -54,13 +54,17 @@ fi
 gcloud config set project "$project_id" >/dev/null
 
 echo "Checking billing is linked to $project_id..."
-# Confirmed live: swallowing stderr here (an earlier version used 2>/dev/null) hides the real
-# cause of any gcloud failure -- a permissions hiccup, an API not enabled yet, a transient auth
-# issue -- and reports the generic "billing is not linked" message even when billing genuinely
-# IS linked. Capture stderr and only hard-fail on a confirmed "False", not on a command error;
-# terraform apply will fail with a clear, real error if billing truly isn't linked.
+# Confirmed live, twice: an earlier version swallowed stderr (2>/dev/null), hiding the real cause
+# of any gcloud failure and reporting the generic "billing is not linked" even when billing
+# genuinely was linked. The fix-after-that still silently killed the whole script on that same
+# failure -- `set -e` (top of this file) triggers on a failing command substitution assignment
+# (billing_output="$(cmd)") the instant it fails, before the next line ever runs, so the
+# error-surfacing code below never got a chance to execute. `set +e`/`set -e` around just this
+# one command is what actually lets us capture the failure and report it instead of dying silently.
+set +e
 billing_output="$(gcloud billing projects describe "$project_id" --format="value(billingEnabled)" 2>&1)"
 billing_rc=$?
+set -e
 if [ $billing_rc -ne 0 ]; then
   echo "Warning: couldn't verify billing status -- 'gcloud billing projects describe' failed:" >&2
   echo "  $billing_output" >&2
