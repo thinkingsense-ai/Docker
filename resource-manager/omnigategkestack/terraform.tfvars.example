@@ -1,0 +1,14 @@
+# Copy to terraform.tfvars and fill in. Anything not set here keeps the default from variables.tf.
+
+gcp_project_id = "your-gcp-project-id" # must already exist and be linked to a billing account
+gcp_region      = "us-central1"
+
+# --- Required application config ---
+omnigate_app_username  = "demo"
+omnigate_app_password  = "CHANGE_ME" # hashed automatically during apply, see password-hash.tf
+omnigate_llm_api_key   = "CHANGE_ME" # from console.anthropic.com -- required, NL2SQL won't work without it
+
+# --- Optional ---
+# expose_wire_protocols = false
+# node_pool_size         = 1
+# node_machine_type      = "t2a-standard-2" # arm64 -- must match the published image's architecture

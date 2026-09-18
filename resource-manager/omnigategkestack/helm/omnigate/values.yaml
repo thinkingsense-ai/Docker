@@ -1,0 +1,65 @@
+# Defaults here are overridden by ../../helm-release.tf when deployed via `terraform apply` -- see
+# variables.tf for which of these become end-user-facing inputs.
+
+image:
+  # Set by Terraform to the Artifact Registry repo the stack just pushed to
+  # (<region>-docker.pkg.dev/<project-id>/omnigate/omnigate).
+  repository: ""
+  tag: latest
+  pullPolicy: IfNotPresent
+
+omnigate:
+  llmModel: claude-sonnet-5
+  # Anthropic API key -- required, no default on purpose (NL2SQL simply won't work without it,
+  # same as the local compose setup and both other cloud stacks). Injected into a Secret, never a
+  # ConfigMap.
+  llmApiKey: ""
+  # "username:saltB64:hashB64::" -- generated server-side during `terraform apply` by
+  # ../../password-hash.tf, same as the OCI stack. No default: shipping the repo's well-known
+  # demo/demo credential on an internet-reachable LoadBalancer would be a real exposure, so the
+  # chart intentionally requires this to be set.
+  appUsers: ""
+  # Storage for /var/lib/omnigate/data (the embedded ConfigStore -- admin-set config like an API
+  # key entered live in the UI). A real PVC here means it survives pod rescheduling.
+  dataVolumeSize: 2Gi
+  # Wire-protocol ports (Oracle/Postgres/MySQL/gRPC) are ClusterIP-only by default -- opt in
+  # explicitly before exposing raw DB wire protocols to the internet.
+  exposeWireProtocols: false
+
+postgres:
+  # Fully-qualified -- matches the OCI chart's own fix for short-name-mode-enforcing node
+  # runtimes; keeping it fully-qualified here too rather than assuming GKE's runtime is more
+  # permissive.
+  image: docker.io/library/postgres:16-alpine
+  user: postgres
+  password: postgres
+  database: postgres
+  storageSize: 5Gi
+
+# GKE's current CSI-backed default StorageClass (zonal Persistent Disk, ext4, WaitForFirstConsumer
+# binding) -- the direct analog of the OCI chart's "oci-bv". Present on every GKE cluster running a
+# reasonably current version without needing this stack to create a StorageClass of its own.
+storageClassName: standard-rwo
+
+service:
+  type: LoadBalancer
+  httpPort: 8080
+
+resources:
+  omnigate:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      # Deliberately no CPU limit -- see the OCI chart's identical comment: a CPU *limit* is
+      # enforced via a hard per-scheduling-period CFS quota, which caused reproducible stalls on
+      # complex NL2SQL questions needing the embedding-based schema-retrieval step. Requests alone
+      # still give the scheduler what it needs for bin-packing.
+      memory: 3Gi
+  postgres:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
