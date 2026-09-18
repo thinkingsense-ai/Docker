@@ -161,7 +161,17 @@ echo "Wrote terraform.tfvars (gitignored, never sent anywhere else)."
 # "oauth2/google: invalid token JSON from metadata: EOF". Doesn't affect gcloud at all, only
 # Terraform (and anything else using ADC directly), which is why every gcloud step above this
 # point can succeed while this one still needs its own separate login.
-if ! gcloud auth application-default print-access-token >/dev/null 2>&1; then
+# Confirmed live: `gcloud auth application-default print-access-token` is NOT a reliable check
+# here -- it reported success (so this whole block got silently skipped) even when the actual ADC
+# file Terraform's provider needs was never created, apparently by falling back to the regular
+# `gcloud auth login` session as a substitute internally. Check deterministically instead: either
+# GOOGLE_APPLICATION_CREDENTIALS already points at a real file (set by this same block in an
+# earlier run of this script, in this same shell session), or the standard ADC file already
+# exists at its well-known path (true on a real GCE VM, or after a normal non-Cloud-Shell
+# `gcloud auth application-default login`). If neither is true, do the login for real.
+adc_default_path="$HOME/.config/gcloud/application_default_credentials.json"
+if { [ -z "${GOOGLE_APPLICATION_CREDENTIALS:-}" ] || [ ! -f "$GOOGLE_APPLICATION_CREDENTIALS" ]; } \
+   && [ ! -f "$adc_default_path" ]; then
   echo
   echo "Terraform needs its own separate credentials (Application Default Credentials) --"
   echo "Cloud Shell doesn't set these up automatically the way it does for gcloud itself."
