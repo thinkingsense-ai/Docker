@@ -16,13 +16,39 @@ echo
 
 # ---- 1. Tools --------------------------------------------------------------------------------
 missing=()
-for tool in gcloud terraform curl python3; do
+for tool in gcloud curl python3; do
   command -v "$tool" >/dev/null 2>&1 || missing+=("$tool")
 done
 if [ ${#missing[@]} -gt 0 ]; then
   echo "Missing required tool(s): ${missing[*]}" >&2
   echo "Cloud Shell has all of these preinstalled -- if you're running this locally instead, install them first." >&2
   exit 1
+fi
+
+# terraform gets its own check, not the command -v loop above: confirmed live, Cloud Shell can
+# have a `terraform` on PATH that isn't actually installed -- running it just prints Debian's
+# "here's how to apt install this" advisory and (confirmed live) exits 0, so `command -v` finds
+# it, `set -e` never trips, and every terraform command downstream silently no-ops while this
+# script sails on to a misleading "== Done ==". Check the real output of `terraform version`
+# instead of just PATH presence, and if it's the advisory stub, install it ourselves in Cloud
+# Shell using the exact commands Cloud Shell's own advisory prints -- CLOUD_SHELL=true is how
+# Cloud Shell identifies itself in its own environment.
+if ! terraform version 2>&1 | grep -q '^Terraform v'; then
+  if [ "${CLOUD_SHELL:-}" = "true" ]; then
+    echo "terraform isn't actually installed yet -- installing it now (Cloud Shell doesn't ship it by default)..."
+    wget -q -O - https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" \
+      | sudo tee /etc/apt/sources.list.d/hashicorp.list >/dev/null
+    sudo apt-get update -qq && sudo apt-get install -y terraform -qq
+    if ! terraform version 2>&1 | grep -q '^Terraform v'; then
+      echo "terraform install didn't take -- install it manually (see https://developer.hashicorp.com/terraform/install) and re-run this script." >&2
+      exit 1
+    fi
+  else
+    echo "terraform isn't installed (or isn't real -- check 'terraform version' output above)." >&2
+    echo "Install it: https://developer.hashicorp.com/terraform/install" >&2
+    exit 1
+  fi
 fi
 
 # Same keg-only-Homebrew-JDK gotcha as password-hash.tf -- checked here too so it's caught before

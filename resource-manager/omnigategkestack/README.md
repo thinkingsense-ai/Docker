@@ -94,7 +94,11 @@ First apply takes 10-15 minutes (GKE cluster creation dominates that).
 - `setup.sh` — guided setup: prompts for project/region/login/API key, enables APIs, writes
   `terraform.tfvars`, runs `terraform init && apply`. Collapses what used to be five separate
   manual tutorial steps into one script — see "Why no schema.yaml" above for why GCP needed this
-  in a way AWS/OCI's Console-form-driven wizards didn't.
+  in a way AWS/OCI's Console-form-driven wizards didn't. Also installs `terraform` itself if
+  needed: confirmed live, Cloud Shell can have a `terraform` on PATH that's actually just Debian's
+  "here's how to apt install this" advisory stub (exits 0, so a naive `command -v` check misses
+  it entirely) — `setup.sh` checks the real output of `terraform version`, not just PATH
+  presence, and installs the real thing via apt when running in Cloud Shell (`CLOUD_SHELL=true`).
 - `tutorial.md` — the Cloud Shell walkthrough that runs `setup.sh`; this stack's stand-in for the
   OCI stack's `schema.yaml`-driven Console form (see above).
 
