@@ -54,7 +54,18 @@ fi
 gcloud config set project "$project_id" >/dev/null
 
 echo "Checking billing is linked to $project_id..."
-if ! gcloud billing projects describe "$project_id" --format="value(billingEnabled)" 2>/dev/null | grep -q True; then
+# Confirmed live: swallowing stderr here (an earlier version used 2>/dev/null) hides the real
+# cause of any gcloud failure -- a permissions hiccup, an API not enabled yet, a transient auth
+# issue -- and reports the generic "billing is not linked" message even when billing genuinely
+# IS linked. Capture stderr and only hard-fail on a confirmed "False", not on a command error;
+# terraform apply will fail with a clear, real error if billing truly isn't linked.
+billing_output="$(gcloud billing projects describe "$project_id" --format="value(billingEnabled)" 2>&1)"
+billing_rc=$?
+if [ $billing_rc -ne 0 ]; then
+  echo "Warning: couldn't verify billing status -- 'gcloud billing projects describe' failed:" >&2
+  echo "  $billing_output" >&2
+  echo "Continuing anyway; terraform apply will fail clearly if billing genuinely isn't linked." >&2
+elif [ "$billing_output" != "True" ]; then
   echo "Billing is not linked to $project_id -- link a billing account before continuing (Console: Billing > Link a billing account)." >&2
   exit 1
 fi
