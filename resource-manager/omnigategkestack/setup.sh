@@ -165,7 +165,21 @@ if ! gcloud auth application-default print-access-token >/dev/null 2>&1; then
   echo
   echo "Terraform needs its own separate credentials (Application Default Credentials) --"
   echo "Cloud Shell doesn't set these up automatically the way it does for gcloud itself."
-  gcloud auth application-default login
+  # Confirmed live: on Cloud Shell specifically, gcloud detects it's running on a GCE-like VM and
+  # (after the "are you sure" prompt below) saves the personal ADC login to a randomly-named
+  # /tmp/tmp.XXXXXX/application_default_credentials.json instead of the normal persistent
+  # ~/.config/gcloud/ location -- a deliberate gcloud safety choice for a shared-VM-shaped
+  # environment, not a bug in gcloud. Since that path only appears in this command's own output,
+  # not anywhere terraform would look by default, tee it to a temp file so the interactive
+  # prompts/browser-URL/verification-code flow still displays normally, then parse the real save
+  # path back out and export it as GOOGLE_APPLICATION_CREDENTIALS so terraform actually finds it.
+  adc_login_log="$(mktemp)"
+  gcloud auth application-default login 2>&1 | tee "$adc_login_log"
+  adc_path="$(sed -n 's/^Credentials saved to file: \[\(.*\)\]$/\1/p' "$adc_login_log")"
+  rm -f "$adc_login_log"
+  if [ -n "$adc_path" ] && [ -f "$adc_path" ]; then
+    export GOOGLE_APPLICATION_CREDENTIALS="$adc_path"
+  fi
 fi
 
 # ---- 5. Deploy -----------------------------------------------------------------------------
