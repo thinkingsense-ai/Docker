@@ -43,6 +43,16 @@ if ! java -version >/dev/null 2>&1; then
   fi
 fi
 
+# Confirmed live: even inside Cloud Shell, which auto-authenticates the signed-in Google user,
+# gcloud can end up with no active account selected (seen after cloning into a second/third
+# Docker-N workspace in the same session) -- every gcloud call below then fails with "You do not
+# currently have an active account selected", which is a confusing place to first discover that.
+# Catch it here with a direct fix instead.
+if [ -z "$(gcloud auth list --filter=status:ACTIVE --format='value(account)' 2>/dev/null)" ]; then
+  echo "No active gcloud account. Run 'gcloud auth login', then re-run this script." >&2
+  exit 1
+fi
+
 # ---- 2. Project -------------------------------------------------------------------------------
 default_project="$(gcloud config get-value project 2>/dev/null || true)"
 read -rp "GCP project ID${default_project:+ [$default_project]}: " project_id
