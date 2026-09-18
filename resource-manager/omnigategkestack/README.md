@@ -111,9 +111,10 @@ the node-sizing note below for why that's not incidental.
 
 ## Clean-room validated on a real GCP project
 
-Deployed successfully end to end against the `thinkingsense` project — VPC, firewall rules, zonal
-GKE cluster, node pool, and the `helm_release` all came up clean. Two real, live-confirmed findings
-along the way, both already fixed in this stack (not hypothetical caveats — actually hit):
+Deployed successfully end to end, both from a local macOS terminal and from Cloud Shell, against
+the `thinkingsense` project — VPC, firewall rules, zonal GKE cluster, node pool, and the
+`helm_release` all came up clean. Several real, live-confirmed findings along the way, all already
+fixed in this stack (not hypothetical caveats — actually hit):
 
 - **Node architecture must match the image's.** The first apply used an `e2-standard-2` (amd64)
   node pool against the arm64-only published image and every pod failed
@@ -127,6 +128,18 @@ along the way, both already fixed in this stack (not hypothetical caveats — ac
   `kubectl` fails with "executable gke-gcloud-auth-plugin not found" until that directory is
   added. Worth calling out here since it isn't a `terraform apply` failure — it only bites you
   once you go to actually use the cluster afterward.
+- **Cloud Shell can have a `terraform` on `PATH` that isn't actually installed** — running it just
+  prints Debian's "here's how to apt install this" advisory and exits `0`, so a naive
+  `command -v terraform` check misses it entirely and every terraform command downstream silently
+  no-ops while `setup.sh` sails on to a misleading "== Done ==" with nothing actually deployed.
+  `setup.sh` now checks the real output of `terraform version` and auto-installs the real thing
+  via apt when running in Cloud Shell.
+- **Terraform needs its own separate credentials in Cloud Shell.** `gcloud` commands (billing
+  check, enabling APIs) all work off the regular `gcloud auth login` session, but Terraform's
+  `google` provider needs Application Default Credentials (ADC) — a different credential store
+  that Cloud Shell, unlike a real Compute Engine VM, does not provision automatically. Without it,
+  the very first resource fails with `oauth2/google: invalid token JSON from metadata: EOF`.
+  `setup.sh` now checks for this and runs `gcloud auth application-default login` itself if needed.
 
 The zonal-cluster-fee-waiver claim and the `standard-rwo` StorageClass both worked as expected
 (PVCs for both the `omnigate` data volume and Postgres bound and mounted with no issues).

@@ -153,6 +153,21 @@ EOF
 echo
 echo "Wrote terraform.tfvars (gitignored, never sent anywhere else)."
 
+# Confirmed live: Terraform's google provider needs Application Default Credentials (ADC) --
+# a separate credential store from the regular `gcloud auth login` session that gcloud itself
+# uses (and which every gcloud call above this point already relied on successfully). Unlike a
+# real Compute Engine VM, Cloud Shell does NOT provision ADC automatically via its metadata
+# server -- without this, the very first resource terraform tries to create fails with
+# "oauth2/google: invalid token JSON from metadata: EOF". Doesn't affect gcloud at all, only
+# Terraform (and anything else using ADC directly), which is why every gcloud step above this
+# point can succeed while this one still needs its own separate login.
+if ! gcloud auth application-default print-access-token >/dev/null 2>&1; then
+  echo
+  echo "Terraform needs its own separate credentials (Application Default Credentials) --"
+  echo "Cloud Shell doesn't set these up automatically the way it does for gcloud itself."
+  gcloud auth application-default login
+fi
+
 # ---- 5. Deploy -----------------------------------------------------------------------------
 echo
 echo "Running terraform init && terraform apply..."
