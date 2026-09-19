@@ -155,6 +155,34 @@ Releases list, and `password-hash.tf` resolves the app's `omnigate.jar` asset vi
 `gke-stack-vX.Y.Z` reference and the "Open in Cloud Shell" button on the docs site's (planned)
 `deploy-gcp.html` to match.
 
+## Reconnecting to an existing deployment (Cloud Shell)
+
+If you come back later to check on or change a deployment you made via Cloud Shell, **don't click
+the "Open in Google Cloud Shell" button again** — it clones fresh every time
+(`cloudshell_open --force_new_clone`), landing you in a brand new `~/cloudshell_open/Docker-N`
+directory with no `terraform.tfvars` and no `terraform.tfstate` (both are gitignored, never part
+of the repo), even though your actual deployment and its state are sitting untouched in the
+earlier clone you ran `setup.sh` from.
+
+This isn't state actually being lost — Cloud Shell's home directory persists across sessions (only
+the underlying VM is ephemeral; `$HOME` is on a small persistent disk tied to your account). Find
+your way back to it instead:
+
+```bash
+# From a fresh Cloud Shell session (console.cloud.google.com, click the >_ icon):
+ls ~/cloudshell_open/
+```
+
+Each `Docker-N` there is a separate clone from a separate deploy attempt. Open each one's
+`resource-manager/omnigategkestack/terraform.tfstate` (or just try `terraform show` in each) until
+you find the one with real resources in it — that's the clone with your actual deployment's state.
+`cd` into it and `terraform plan`/`apply`/`destroy`/`output` all work again immediately from there,
+same as if you'd never left.
+
+If you can't find it at all (deleted the clone, reset your Cloud Shell disk, moved machines), state
+is genuinely gone — fall back to the manual `gcloud` cleanup commands in "Cleanup" below, which
+don't need Terraform state at all.
+
 ## Verifying the deployment
 
 Unlike a CloudFormation stack (which has an Outputs tab) or an OCI Resource Manager stack (which
