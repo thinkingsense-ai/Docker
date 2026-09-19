@@ -155,8 +155,60 @@ Releases list, and `password-hash.tf` resolves the app's `omnigate.jar` asset vi
 `gke-stack-vX.Y.Z` reference and the "Open in Cloud Shell" button on the docs site's (planned)
 `deploy-gcp.html` to match.
 
+## Verifying the deployment
+
+Unlike a CloudFormation stack (which has an Outputs tab) or an OCI Resource Manager stack (which
+has an Outputs group), there's no single GCP object representing "this deployment" you can check
+in one place — verification means checking the actual cluster/pods/LoadBalancer directly. Works
+from any authenticated `gcloud`/`kubectl` session, Cloud Shell or your own terminal alike:
+
+```bash
+# Does the cluster exist and is it healthy?
+gcloud container clusters list --project=<your-project-id>
+
+# Point kubectl at it
+gcloud container clusters get-credentials omnigate-gke --zone us-central1-a --project=<your-project-id>
+
+# Are the pods actually running, and does the LoadBalancer have a public IP yet?
+kubectl get pods -n default
+kubectl get svc omnigate-omnigate-http -n default
+```
+
+If `kubectl get svc`'s `EXTERNAL-IP` column isn't `<pending>`, that IP on port 8080 is the Ask app
+— `curl -o /dev/null -w '%{http_code}\n' http://<that-ip>:8080/` should print `200`.
+
 ## Cleanup
+
+**There's no "delete stack" button or single delete command here, unlike the AWS/OCI stacks.**
+CloudFormation and OCI Resource Manager each track their stack as one resource, so deleting it
+tears down everything the stack created in one action. This stack is plain Terraform: the closest
+equivalent is `terraform destroy`, but it only works if you run it from the exact same working
+directory/clone that still has the matching `terraform.tfstate` — Terraform's local state file is
+what actually tells it what exists to destroy.
 
 ```bash
 terraform destroy
+```
+
+**If you've lost that state** (a Cloud Shell session ended and you started a fresh clone, a laptop
+died, etc.) — a real risk with local state in an ephemeral environment like Cloud Shell, and
+exactly what happened during this stack's own live testing — `terraform destroy` in a fresh clone
+has no state to act on and won't find anything to delete, even though the real cluster is still
+running and billing you. Delete the resources directly instead, in this order (cluster before
+network — its nodes live inside the subnet; firewall rules and subnet before the network itself,
+since a VPC can't be deleted while anything still references it):
+
+```bash
+gcloud container clusters delete omnigate-gke --zone us-central1-a --project=<your-project-id> --quiet
+gcloud compute firewall-rules delete omnigate-gke-allow-internal omnigate-gke-allow-health-check omnigate-gke-allow-client-ingress --project=<your-project-id> --quiet
+gcloud compute networks subnets delete omnigate-gke-nodes --region=us-central1 --project=<your-project-id> --quiet
+gcloud compute networks delete omnigate-gke --project=<your-project-id> --quiet
+```
+
+Either path leaves the Artifact Registry repo and image alone — those aren't part of this
+Terraform config (see "Image" above), so neither `terraform destroy` nor the manual commands above
+touch them. Delete that separately if you actually want it gone:
+
+```bash
+gcloud artifacts repositories delete omnigate --location=us --project=<your-project-id> --quiet
 ```
