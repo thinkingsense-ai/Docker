@@ -40,5 +40,9 @@ the username/password you set in step 1.
 ## 3. Clean up
 
 ```sh
-terraform destroy
+./destroy.sh
 ```
+
+Same idea as `setup.sh`, in reverse — run it from this same Cloud Shell directory (not a fresh
+"Open in Cloud Shell" click, which clones fresh and won't have this deployment's state; see the
+README's "Reconnecting to an existing deployment" section if you're coming back later to do this).

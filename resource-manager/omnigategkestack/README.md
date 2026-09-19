@@ -99,6 +99,9 @@ First apply takes 10-15 minutes (GKE cluster creation dominates that).
   "here's how to apt install this" advisory stub (exits 0, so a naive `command -v` check misses
   it entirely) — `setup.sh` checks the real output of `terraform version`, not just PATH
   presence, and installs the real thing via apt when running in Cloud Shell (`CLOUD_SHELL=true`).
+- `destroy.sh` — guided teardown, the reverse of `setup.sh`: `terraform destroy` when this
+  directory has real state, a confirm-gated fallback to deleting the known resources directly by
+  name (see "Cleanup" below) when it doesn't.
 - `tutorial.md` — the Cloud Shell walkthrough that runs `setup.sh`; this stack's stand-in for the
   OCI stack's `schema.yaml`-driven Console form (see above).
 
@@ -210,31 +213,33 @@ If `kubectl get svc`'s `EXTERNAL-IP` column isn't `<pending>`, that IP on port 8
 **There's no "delete stack" button or single delete command here, unlike the AWS/OCI stacks.**
 CloudFormation and OCI Resource Manager each track their stack as one resource, so deleting it
 tears down everything the stack created in one action. This stack is plain Terraform: the closest
-equivalent is `terraform destroy`, but it only works if you run it from the exact same working
+equivalent is `terraform destroy`, and it only works if you run it from the exact same working
 directory/clone that still has the matching `terraform.tfstate` — Terraform's local state file is
 what actually tells it what exists to destroy.
 
 ```bash
-terraform destroy
+./destroy.sh
 ```
 
-**If you've lost that state** (a Cloud Shell session ended and you started a fresh clone, a laptop
-died, etc.) — a real risk with local state in an ephemeral environment like Cloud Shell, and
-exactly what happened during this stack's own live testing — `terraform destroy` in a fresh clone
-has no state to act on and won't find anything to delete, even though the real cluster is still
-running and billing you. Delete the resources directly instead, in this order (cluster before
-network — its nodes live inside the subnet; firewall rules and subnet before the network itself,
-since a VPC can't be deleted while anything still references it):
+Mirrors `setup.sh`: if this directory has real Terraform state, it runs `terraform destroy`
+directly (same terraform-install and Application Default Credentials handling as `setup.sh`, so
+it works standalone even if you're tearing down from a different Cloud Shell session than the one
+that deployed). If there's no usable state here — see "Reconnecting to an existing deployment"
+above before assuming it's really gone — it offers to fall back to deleting the known resources
+directly by name instead, with an explicit `destroy` confirmation prompt before touching anything.
+That fallback deletes, in this order (cluster before network — its nodes live inside the subnet;
+firewall rules and subnet before the network itself, since a VPC can't be deleted while anything
+still references it):
 
 ```bash
-gcloud container clusters delete omnigate-gke --zone us-central1-a --project=<your-project-id> --quiet
+gcloud container clusters delete omnigate-gke --zone <region>-a --project=<your-project-id> --quiet
 gcloud compute firewall-rules delete omnigate-gke-allow-internal omnigate-gke-allow-health-check omnigate-gke-allow-client-ingress --project=<your-project-id> --quiet
-gcloud compute networks subnets delete omnigate-gke-nodes --region=us-central1 --project=<your-project-id> --quiet
+gcloud compute networks subnets delete omnigate-gke-nodes --region=<region> --project=<your-project-id> --quiet
 gcloud compute networks delete omnigate-gke --project=<your-project-id> --quiet
 ```
 
 Either path leaves the Artifact Registry repo and image alone — those aren't part of this
-Terraform config (see "Image" above), so neither `terraform destroy` nor the manual commands above
+Terraform config (see "Image" above), so neither `terraform destroy` nor `destroy.sh`'s fallback
 touch them. Delete that separately if you actually want it gone:
 
 ```bash
