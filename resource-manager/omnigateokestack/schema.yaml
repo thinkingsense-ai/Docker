@@ -34,6 +34,14 @@ variableGroups:
       - postgres_storage_gb
       - omnigate_data_storage_gb
 
+  - title: "High Availability (optional)"
+    visible: true
+    variables:
+      - omnigate_replica_count
+      - omnigate_config_db_url
+      - omnigate_config_db_user
+      - omnigate_config_db_password
+
   - title: "Advanced"
     visible: true
     variables:
@@ -141,6 +149,35 @@ variables:
     maximum: 20
     default: 2
     required: true
+
+  omnigate_replica_count:
+    type: integer
+    title: "OmniGate replicas"
+    description: "Number of OmniGate pods behind the load balancer, for high availability / horizontal scale. Leave at 1 unless you also fill in the config-database fields below -- more than one replica needs a shared, separately-provisioned Postgres for admin-set config, not the default per-pod volume."
+    minimum: 1
+    maximum: 4
+    default: 1
+    required: true
+
+  omnigate_config_db_url:
+    type: string
+    title: "Shared config database URL (for >1 replica)"
+    description: "A real, separately-provisioned Postgres JDBC URL, e.g. jdbc:postgresql://your-managed-db-host:5432/omnigate_config. Leave blank for a single-replica deployment."
+    default: ""
+    required: false
+
+  omnigate_config_db_user:
+    type: string
+    title: "Shared config database username"
+    default: ""
+    required: false
+
+  omnigate_config_db_password:
+    type: password
+    title: "Shared config database password"
+    default: ""
+    required: false
+    sensitive: true
 
   image_repository:
     type: string

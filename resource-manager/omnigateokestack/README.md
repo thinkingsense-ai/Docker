@@ -61,6 +61,47 @@ found on latest GitHub release". If this happens again, the fix is `gh release e
 --repo thinkingsense-ai/Docker --latest` on the real app release to re-point `/releases/latest`
 at it.
 
+## Going multi-node (high availability / horizontal scale)
+
+By default this stack deploys exactly ONE OmniGate pod (behind a real OCI Network Load Balancer
+already, so the LB side of "multi-node" is already there — see `helm/omnigate/templates/
+omnigate.yaml`'s own comment on why an NLB, not the classic L7 LB, is required for the Ask app's
+streaming responses). Running more than one OmniGate replica for real HA/throughput needs ONE
+more thing: OmniGate's own admin-editable config (data sources, groups, LLM settings — anything
+an admin changes live from the console) has to move out of each pod's own local, single-attach
+disk and into a real, shared Postgres database every replica reads from — otherwise a second
+replica can't even start (it can't mount the first pod's own volume).
+
+**Via the OCI Console wizard**: fill in the new **"High Availability (optional)"** group —
+**OmniGate replicas** (2–4, matching the node-count cap this stack's Always-Free sizing allows),
+and a real, separately-provisioned Postgres for **Shared config database URL/username/password**
+(e.g. an OCI Autonomous Database or Base Database instance you've already created — NOT the
+seeded demo Postgres this stack also creates, which stays a single, non-HA pod either way and is
+only ever used for the supply-chain demo data, never for OmniGate's own config). Leave these
+blank for the default single-replica behavior.
+
+**Via the CLI**, add to the `--variables` JSON:
+
+```json
+{
+  "omnigate_replica_count": 3,
+  "omnigate_config_db_url": "jdbc:postgresql://<your-managed-postgres-host>:5432/omnigate_config",
+  "omnigate_config_db_user": "<user>",
+  "omnigate_config_db_password": "<password>"
+}
+```
+
+Also raise `node_pool_size` (up to this stack's own cap of 4) so replicas actually spread across
+real, separate worker nodes rather than all landing on the one default node — a single node's own
+failure would otherwise still take every replica down with it.
+
+**Real, honest limitation, not glossed over**: this makes the OmniGate APPLICATION layer
+horizontally scalable and tolerant of a single pod (or node) failing. It does NOT, by itself,
+make your own connected data sources (`OMNIGATE_BACKENDS`) or the shared config Postgres highly
+available — that's a property of whatever real database you point those at, same as any other
+application. For genuine end-to-end HA, use a real managed/HA Postgres for the shared config
+database (and for any production data source), not a single self-hosted instance.
+
 ## Prerequisites in your tenancy
 
 Confirmed live while building this stack — worth checking before you apply:
