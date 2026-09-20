@@ -1,3 +1,7 @@
+{{- if not .Values.omnigate.configDb.external }}
+# Only created/mounted for the default, single-replica setup -- see values.yaml's own
+# omnigate.configDb comment for why this PVC (ReadWriteOnce, single-attach) is exactly what makes
+# more than one replica unsafe until configDb.external moves this state into shared Postgres.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -11,6 +15,7 @@ spec:
     requests:
       storage: {{ .Values.omnigate.dataVolumeSize }}
 ---
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -19,9 +24,13 @@ metadata:
     {{- include "omnigate.labels" . | nindent 4 }}
     app.kubernetes.io/component: omnigate
 spec:
-  replicas: 1
+  replicas: {{ .Values.omnigate.replicaCount }}
   strategy:
-    type: Recreate
+    # Recreate is required for the default single-pod-owns-the-PVC setup (a rolling update would
+    # try to start a second pod against the same ReadWriteOnce volume before the first exits).
+    # Once configDb.external moves that state to shared Postgres, there is no such conflict, so a
+    # real RollingUpdate (zero-downtime deploys/scaling) becomes safe.
+    type: {{ if .Values.omnigate.configDb.external }}RollingUpdate{{ else }}Recreate{{ end }}
   selector:
     matchLabels:
       app.kubernetes.io/instance: {{ .Release.Name }}
@@ -68,9 +77,11 @@ spec:
               containerPort: 3306
             - name: grpc
               containerPort: 7070
+{{- if not .Values.omnigate.configDb.external }}
           volumeMounts:
             - name: data
               mountPath: /var/lib/omnigate/data
+{{- end }}
           readinessProbe:
             httpGet:
               path: /
@@ -79,10 +90,12 @@ spec:
             periodSeconds: 10
           resources:
             {{- toYaml .Values.resources.omnigate | nindent 12 }}
+{{- if not .Values.omnigate.configDb.external }}
       volumes:
         - name: data
           persistentVolumeClaim:
             claimName: {{ include "omnigate.fullname" . }}-omnigate-data
+{{- end }}
 ---
 # HTTP only (Ask app + admin console) -- the LoadBalancer default. Deliberately not exposing the
 # DB wire ports here; see the wire-protocols Service below, which is opt-in.

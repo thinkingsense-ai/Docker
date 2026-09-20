@@ -64,6 +64,30 @@ resource "helm_release" "omnigate" {
     value = var.expose_wire_protocols
   }
   set {
+    name  = "omnigate.replicaCount"
+    value = var.omnigate_replica_count
+  }
+  # configDb.external is derived, not a separate variable: true the moment a real config-DB URL
+  # is supplied, so a deployer setting omnigate_replica_count > 1 without also filling in the
+  # config-DB variables gets the chart's own real `required` validation error (see
+  # helm/omnigate/templates/secrets.yaml) instead of a silently-ignored setting.
+  set {
+    name  = "omnigate.configDb.external"
+    value = var.omnigate_config_db_url != ""
+  }
+  set {
+    name  = "omnigate.configDb.configDbUrl"
+    value = var.omnigate_config_db_url
+  }
+  set {
+    name  = "omnigate.configDb.configDbUser"
+    value = var.omnigate_config_db_user
+  }
+  set_sensitive {
+    name  = "omnigate.configDb.configDbPassword"
+    value = var.omnigate_config_db_password
+  }
+  set {
     name  = "omnigate.dataVolumeSize"
     value = "${var.omnigate_data_storage_gb}Gi"
   }

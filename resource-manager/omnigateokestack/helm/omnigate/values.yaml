@@ -9,6 +9,13 @@ image:
   pullPolicy: IfNotPresent
 
 omnigate:
+  # Multi-node / HA: >1 replica behind the NLB Service below is real and supported, but ONLY
+  # once configDb.external is also turned on (see that block's own comment) -- the default,
+  # single-replica setup below uses a per-pod ReadWriteOnce PVC for /var/lib/omnigate/data,
+  # which a second replica cannot also mount (block storage is single-attach). Raising
+  # replicaCount alone, with configDb.external left off, leaves every extra pod crash-looping on
+  # a PVC only the first pod can bind.
+  replicaCount: 1
   llmModel: claude-sonnet-5
   # Anthropic API key -- required, no default on purpose (NL2SQL simply won't work without it,
   # same as the local compose setup). Injected into a Secret, never a ConfigMap.
@@ -21,11 +28,32 @@ omnigate:
   # Storage for /var/lib/omnigate/data (the embedded ConfigStore -- admin-set config like an
   # API key entered live in the UI). This is exactly what bit us running locally under plain
   # `docker compose`: an anonymous volume that didn't survive a container recreate. A real PVC
-  # here means it survives pod rescheduling.
+  # here means it survives pod rescheduling. Ignored entirely when configDb.external is true
+  # (see below) -- there is then no per-pod state left to persist this way.
   dataVolumeSize: 2Gi
   # Wire-protocol ports (Oracle/Postgres/MySQL/gRPC) are ClusterIP-only by default -- opt in
   # explicitly before exposing raw DB wire protocols to the internet.
   exposeWireProtocols: false
+  configDb:
+    # OMNIGATE_CONFIG_DB (real, existing app-level setting -- see com.omnigate.core.ConfigStore)
+    # moves the admin-editable config store (backends, groups, LLM settings, everything an admin
+    # can change live from the console) out of each pod's own local, single-attach PVC and into a
+    # real, shared Postgres database every replica reads/writes -- the one change that makes
+    # >1 replicas of THIS Deployment actually safe: with it off, every replica has its own,
+    # unsynchronized local config store, and a second replica can't even mount the first's PVC.
+    # False by default -- the free/single-node quick-start path is unaffected either way.
+    external: false
+    # Required (the chart refuses to render without these) once external=true -- deliberately NOT
+    # defaulted to this chart's own bundled postgres.* demo instance, matching appUsers'/llmApiKey's
+    # own "no silent fallback for anything architecture-sensitive" convention above. Real, honest
+    # reasoning, not an arbitrary restriction: the bundled Postgres (postgres.* below) is a single,
+    # non-HA pod with no separate schema/database provisioned for this purpose -- for genuine
+    # end-to-end HA, point this at a real, separately-provisioned Postgres (OCI's own Database
+    # service, or any reachable Postgres you already run) instead. configDbUrl is a plain JDBC URL,
+    # e.g. "jdbc:postgresql://my-managed-db-host:5432/omnigate_config".
+    configDbUrl: ""
+    configDbUser: ""
+    configDbPassword: ""
 
 postgres:
   # Fully-qualified -- OKE's node runtime enforces short-name mode, so a bare "postgres:16-alpine"

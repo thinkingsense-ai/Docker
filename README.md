@@ -101,6 +101,84 @@ the admin console private, in which case see
 [`docs/advanced-ports.md`](docs/advanced-ports.md) for the split-port setup and the full port
 reference table.
 
+## Features
+
+ThinkingSense is a federated NL2SQL gateway — ask a plain-English question, it figures out which
+of your connected data sources answer it, generates and governs the SQL, and explains itself. The
+free edition here is scale-capped, not feature-limited — everything below is real and included:
+
+- **Cross-database federation** — one question can join across Postgres, MySQL, Oracle, SQL
+  Server, and more real database engines in a single query, plus non-JDBC sources (S3/Parquet,
+  Iceberg, Delta Lake, MongoDB, Cassandra, DynamoDB, Kafka, and 19+ SaaS REST connectors like
+  Salesforce/HubSpot/Jira/GitHub via OAuth).
+- **Automatic ontology discovery** — foreign keys, naming conventions, sampled data, and even
+  documents are mined to learn what your tables mean and how they relate, with every suggestion
+  reviewed by an admin before it's trusted (see **Admin → Ontology review**).
+- **Governed, explainable answers** — every question goes through a visible pipeline (schema
+  fidelity checks, access-policy enforcement, execution) shown step-by-step, with the generated
+  SQL, a real execution plan, and a confidence score you can inspect.
+- **Question Bank & Rollups** — approve a question once and it's answered instantly from then on
+  with zero LLM cost; frequently-asked aggregate questions can be auto-detected and pre-computed.
+- **Proactive Insights** — approved questions are re-run on a schedule to catch material changes
+  or broken queries automatically, with alerts pushed to Slack.
+- **Dashboards, Skills, and a group-scoped MCP server** — save question collections as live
+  dashboards, create named shortcuts to common questions, and expose your data to Claude or any
+  MCP-compatible agent, scoped to exactly the groups/backends that caller is a member of.
+- **A tiered model architecture** — a small fast local model answers simple questions instantly, a
+  larger local model handles multi-step reasoning, a real tabular ML model (TabPFN) handles
+  predictive questions, and a frontier cloud model is the fallback for anything the others can't
+  handle — configurable independently, including a fully private, no-external-API mode.
+- **Real execution engine improvements** — SEMI/ANTI joins, window functions, set operations,
+  and LIMIT/OFFSET all execute natively (not just pushed down), verified against the full 22-query
+  TPC-H benchmark suite.
+- **Admin console** — data source management, live schema/ontology browsing, access-control
+  groups, cost & usage tracking, audit log, and a full review queue for every auto-suggested
+  change (never auto-applied without a human).
+
+## Multi-node deployment (high availability)
+
+The single-container quick-start above is for evaluation and small deployments. For production
+high-availability/horizontal-scale deployment behind a load balancer, three real, working
+Infrastructure-as-Code stacks are provided under [`resource-manager/`](resource-manager/):
+
+### Start with OCI (Oracle Cloud) — the most complete, sized for the Always-Free tier
+
+**[`resource-manager/omnigateokestack/`](resource-manager/omnigateokestack/)** deploys ThinkingSense
+onto a real Oracle Kubernetes Engine (OKE) cluster via Terraform + Helm, one-click deployable
+through the OCI Console's Resource Manager. It already includes:
+
+- A real **Network Load Balancer (NLB)** in front of ThinkingSense — chosen deliberately over a
+  classic Layer-7 load balancer, which was confirmed live to buffer/break the Ask app's streaming
+  (SSE) responses. The NLB is pure L4 TCP passthrough and doesn't.
+- **Multi-node / high-availability support**: set `omnigate_replica_count` (2–4) plus a real,
+  separately-provisioned shared Postgres for `omnigate_config_db_url`/`user`/`password`, and the
+  chart automatically switches from a single-pod local-disk config store to a shared one every
+  replica can safely read from, with the NLB load-balancing across however many replicas are
+  running — no additional networking configuration needed. See
+  [`resource-manager/omnigateokestack/README.md`](resource-manager/omnigateokestack/README.md#going-multi-node-high-availability--horizontal-scale)
+  for the exact console/CLI steps.
+
+```bash
+oci resource-manager stack create \
+  --compartment-id <ocid> --region <region> \
+  --config-source resource-manager/omnigateokestack \
+  --display-name thinkingsense-oke \
+  --variables '{"compartment_ocid":"<ocid>","region":"<region>","omnigate_app_password":"<password>","omnigate_llm_api_key":"<anthropic-key>","omnigate_replica_count":3,"omnigate_config_db_url":"jdbc:postgresql://<managed-db-host>:5432/omnigate_config","omnigate_config_db_user":"<user>","omnigate_config_db_password":"<password>"}'
+```
+
+### AWS and GCP — real stacks, not yet given the same multi-node treatment
+
+- **[`resource-manager/omnigateeksstack/`](resource-manager/omnigateeksstack/)** — AWS EKS,
+  Helm + CloudFormation.
+- **[`resource-manager/omnigategkestack/`](resource-manager/omnigategkestack/)** — GCP GKE,
+  Helm + Terraform.
+
+Both are real, working single-node deployments today. They have not yet received the
+`replicaCount`/external-shared-config-database enhancement the OKE stack above just got — that
+work is a natural next step (the underlying Helm chart mechanism is the same one to port), but is
+not yet done. If multi-node HA on AWS or GCP is a near-term need, start from the OKE stack's own
+`helm/omnigate/` chart as the reference implementation.
+
 ## A bigger demo: real multi-database federation
 
 To see a genuine cross-database join (not the single-table demo above), see

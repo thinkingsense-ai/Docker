@@ -43,6 +43,36 @@ variable "expose_wire_protocols" {
   default     = false
 }
 
+# --- High availability / multi-node ---------------------------------------------------------
+# See helm/omnigate/values.yaml's own omnigate.configDb comment for the real reasoning: raising
+# omnigate_replica_count alone (with the config-DB variables left empty) leaves every replica
+# beyond the first crash-looping on a PVC only one pod can mount -- both must be set together.
+
+variable "omnigate_replica_count" {
+  description = "Number of OmniGate pods behind the NLB Service, for high availability / horizontal scale. Leave at 1 unless omnigate_config_db_url is also set (see that variable) -- more than one replica needs a shared, externally-provisioned config database, not the default per-pod local volume."
+  type        = number
+  default     = 1
+}
+
+variable "omnigate_config_db_url" {
+  description = "A real, separately-provisioned Postgres JDBC URL (e.g. jdbc:postgresql://your-managed-db-host:5432/omnigate_config) that every OmniGate replica shares for its admin-editable config store. Required when omnigate_replica_count > 1; leave blank for a single-replica deployment (the default free-tier setup, which uses a local per-pod volume instead)."
+  type        = string
+  default     = ""
+}
+
+variable "omnigate_config_db_user" {
+  description = "Username for omnigate_config_db_url. Required when omnigate_replica_count > 1."
+  type        = string
+  default     = ""
+}
+
+variable "omnigate_config_db_password" {
+  description = "Password for omnigate_config_db_url. Required when omnigate_replica_count > 1."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
 # --- Image ----------------------------------------------------------------------------------
 
 variable "image_repository" {
