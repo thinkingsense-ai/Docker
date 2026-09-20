@@ -1,0 +1,186 @@
+# The real supply-chain demo stack: a real Postgres auto-seeded with all four supply-chain
+# schemas (suppliers/inventory/logistics/procurement, via docker/seed.sql -- same seed
+# fixtures/supply-chain/single-postgres/seed.sql uses), three real local-model sidecar containers
+# (Qwen for the agentic tier, SmolLM3 for Semantic Router's fast tier, TabPFN for predictive
+# intelligence), and an OmniGate container -- kept deliberately small itself -- connecting to all
+# of them over the Compose network. Zero external API key needed at all: every model this stack
+# uses is a real, local sidecar container (see GatewayComponents#remoteLlamaOrNull's own "absent
+# means the feature doesn't exist" convention).
+#
+# Usage:
+#   docker compose up --build
+# First run downloads real model weights into each sidecar image (Qwen ~2GB, SmolLM3 ~2GB, plus
+# TabPFN's own ~29MB checkpoint on its first real prediction) -- expect several minutes. Then open
+# http://localhost:8080/, log in demo/demo, and ask a real supply-chain question, e.g. "List each
+# purchase order whose shipment status is exactly IN_TRANSIT and its supplier's country."
+#
+# Real, live-confirmed memory limitation, not a guess: running Postgres + OmniGate + THREE real
+# local-model sidecars (two llama-server instances, one with real torch/TabPFN) at once needs
+# meaningfully more memory than a plain single-container setup. If your host is memory-constrained,
+# comment out the smollm3-model and/or tabpfn-predictor services and their matching
+# OMNIGATE_*_REMOTE_HOST lines below -- each sidecar is independently optional, Semantic Router's
+# FAST/PREDICTIVE tiers just fall back to the agentic model/an honest refusal respectively when
+# their own sidecar isn't configured.
+#
+# See fixtures/supply-chain/single-postgres/ for this same setup with its own README/walkthrough.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - ./docker/seed.sql:/docker-entrypoint-initdb.d/seed.sql:ro
+    ports:
+      - "5442:5432" # external 5442 to avoid clashing with a host-local Postgres on 5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Agentic-tier reasoning model -- Qwen2.5-3B-Instruct, real, non-commercial-only license (see
+  # sidecars/llama/Dockerfile's own comment) -- the free/dev-only default this stack itself
+  # already is. Exposes the OpenAI-/v1/chat/completions-compatible API llama-server speaks.
+  qwen-model:
+    build:
+      context: sidecars/llama
+      dockerfile: Dockerfile
+      args:
+        MODEL_URL: https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf
+    # Real, optional LoRA adapter serving -- see sidecars/llama/entrypoint.sh's own comment for the
+    # full precedence order. Mount a real GGUF adapter (converted from a trained
+    # com.omnigate.training adapter via the Server repo's training/convert_lora_to_gguf.sh) here,
+    # read-only, to try it without rebuilding this image at all:
+    # volumes:
+    #   - ./my-trained-adapter.gguf:/opt/adapters/lora.gguf:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8090/health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 90s
+      retries: 20
+
+  # Semantic Router's fast tier (com.omnigate.nl2sql.SemanticTier.FAST) -- SmolLM3-3B, real
+  # Apache-2.0, genuinely commercially usable (see sidecars/llama/Dockerfile's own comment). Same
+  # image as qwen-model, different MODEL_URL build arg -- they're structurally identical containers.
+  smollm3-model:
+    build:
+      context: sidecars/llama
+      dockerfile: Dockerfile
+      args:
+        MODEL_URL: https://huggingface.co/unsloth/SmolLM3-3B-GGUF/resolve/main/SmolLM3-3B-Q4_K_M.gguf
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8090/health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 90s
+      retries: 20
+
+  # Predictive intelligence (com.omnigate.nl2sql.SemanticTier.PREDICTIVE) -- real TabPFN-2, on by
+  # default in this sidecar image (see sidecars/tabpfn/Dockerfile's own comment for why, unlike the
+  # Server repo's own off-by-default OMNIGATE_PROFILING_PREDICTOR_ENABLED).
+  tabpfn-predictor:
+    build:
+      context: sidecars/tabpfn
+      dockerfile: Dockerfile
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8092/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 15
+
+  omnigate:
+    # Self-contained build -- this repo's own Dockerfile downloads the pre-compiled jar/web UI
+    # from this repo's GitHub Release at build time (see Dockerfile's own comment). No other repo
+    # needed, nothing to check out alongside this one.
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qwen-model:
+        condition: service_healthy
+      smollm3-model:
+        condition: service_healthy
+      tabpfn-predictor:
+        condition: service_healthy
+    environment:
+      # Four real schemas in ONE Postgres -- but the FREE edition caps at 3 named backends
+      # (confirmed live: a naive 4-backend config silently drops the 4th, "logistics", and
+      # quietly breaks a question spanning all four). Real fix, not a workaround that loses data:
+      # `inventory` and `logistics` share ONE backend via a comma-separated ?currentSchema= (a
+      # real, native Postgres search_path -- confirmed live: `SET search_path TO
+      # inventory,logistics` genuinely resolves tables from both schemas unqualified), so this
+      # stays at 3 backends while still querying all four real schemas. Commercial edition has no
+      # backend cap -- split them back into 4 separate backends there if you'd rather.
+      OMNIGATE_BACKENDS: "suppliers=jdbc:postgresql://postgres:5432/postgres?currentSchema=suppliers|postgres|postgres;inventory=jdbc:postgresql://postgres:5432/postgres?currentSchema=inventory,logistics|postgres|postgres;procurement=jdbc:postgresql://postgres:5432/postgres?currentSchema=procurement|postgres|postgres"
+      OMNIGATE_ROUTER_SCHEMA_RULES: "suppliers:suppliers,inventory:inventory,logistics:inventory,procurement:procurement"
+      # The wire-proxy/schema-introspection surface (distinct from OMNIGATE_BACKENDS above, which
+      # populates the backend registry the Ask app/NL2SQL actually query against) -- scoped to one
+      # of the four schemas so schema introspection has a sane single default backend to fall back
+      # to; the real catalog used for NL2SQL comes from auto-introspecting every OMNIGATE_BACKENDS
+      # entry, this is just the wire-proxy's own connection target.
+      OMNIGATE_PG_HOST: postgres
+      OMNIGATE_PG_PORT: "5432"
+      OMNIGATE_PG_DATABASE: "postgres?currentSchema=suppliers"
+      OMNIGATE_PG_USER: postgres
+      OMNIGATE_PG_PASSWORD: postgres
+      # local-first: answers with the real sidecar agentic model first (real, private, no API key
+      # needed), escalating to OMNIGATE_LLM_API_KEY below only if it's set AND the local answer
+      # looks structurally unusable. Set OMNIGATE_LLM_MODE=local-only for a hard "nothing ever
+      # leaves this container" guarantee instead -- see the Server repo's LlmMode for all four.
+      OMNIGATE_LLM_MODE: local-first
+      # Optional -- get a key at https://console.anthropic.com/ and put it in a .env file next to
+      # this one (`OMNIGATE_LLM_API_KEY=sk-ant-...`), or export it before running `docker compose
+      # up`, to let the agentic tier escalate to a cloud model when the local sidecar's answer
+      # looks structurally unusable. Leave unset and this stack still answers questions in plain
+      # English end to end using only the local sidecars below -- zero external dependency.
+      OMNIGATE_LLM_API_KEY: ${OMNIGATE_LLM_API_KEY:-}
+      # Real Docker Compose sidecar mode (see GatewayComponents#remoteLlamaOrNull's own javadoc) --
+      # OmniGate connects to the three model containers above over the Compose network by their
+      # real service name, instead of spawning any local subprocess/needing any model file bundled
+      # into this container at all. Each is independently optional: comment out a sidecar service
+      # above AND its matching *_REMOTE_HOST line here to run without it (Semantic Router degrades
+      # cleanly per-tier, see this file's own header comment on memory-constrained hosts).
+      OMNIGATE_ASSISTANT_REMOTE_HOST: qwen-model
+      OMNIGATE_ASSISTANT_REMOTE_PORT: "8090"
+      OMNIGATE_FAST_ASSISTANT_REMOTE_HOST: smollm3-model
+      OMNIGATE_FAST_ASSISTANT_REMOTE_PORT: "8090"
+      OMNIGATE_PROFILING_SERVER_REMOTE_HOST: tabpfn-predictor
+      OMNIGATE_PROFILING_SERVER_REMOTE_PORT: "8092"
+      # Real, live-confirmed limitation: a SEPARATE embedding-mode llama-server instance (used for
+      # ontology vector search/question-bank semantic search, not NL2SQL itself) is real extra
+      # memory on top of the three sidecars above. Left disabled by default here -- set
+      # OMNIGATE_EMBEDDING_REMOTE_HOST to a fourth llama-server sidecar (started in --embeddings
+      # mode; see sidecars/llama/Dockerfile) on a host with the memory headroom for it.
+      OMNIGATE_EMBEDDING_MODEL_PATH: /opt/omnigate/no-embedding-model-here.gguf
+      # The Ask app (http://localhost:8080/) ALWAYS requires a real login -- unlike the admin
+      # console, there is no "auth disabled" mode, since every question runs through a real
+      # AccessContext. This is a real, working demo account -- username "demo", password "demo" --
+      # generated via:
+      #   docker run --rm --entrypoint java <this image> -cp omnigate.jar com.omnigate.http.auth.PasswordHash demo
+      # CHANGE OR REMOVE this before running anywhere reachable beyond your own machine.
+      OMNIGATE_APP_USERS: "demo:lJX+xXgLcPmnjyXStA9VQQ==:HdoV/jHar1OSBbnTk8Iu8fbLcoBGFJ/Qe83zERd4Mac=::"
+      # Admin console/API (see OmniGateHttpServer) is UNAUTHENTICATED unless one of these is set —
+      # uncomment and change before exposing this compose stack beyond localhost:
+      # OMNIGATE_AUTH_USERS: "admin:<saltB64>:<hashB64>:admin"  # generate via PasswordHash, see ARCHITECTURE.md
+      # OMNIGATE_AUTH_API_TOKENS: "changeme-token:admin"
+      # Uncomment to try dual execution against a real Oracle instance too:
+      # OMNIGATE_DUAL_EXEC_ENABLED: "true"
+      # OMNIGATE_ORACLE_HOST: oracle
+      # OMNIGATE_ORACLE_PORT: "1521"
+      # OMNIGATE_ORACLE_SERVICE: FREEPDB1
+      # HTTPS admin console/API needs a mounted keystore — uncomment along with the volumes/ports below:
+      # OMNIGATE_TLS_KEYSTORE: /certs/omnigate.p12
+      # OMNIGATE_TLS_KEYSTORE_PASSWORD: changeit
+    # volumes:
+    #   - ./certs:/certs:ro
+    ports:
+      - "1521:1521"   # Oracle wire
+      - "5433:5433"   # Postgres wire
+      - "3306:3306"   # MySQL wire
+      - "7070:7070"   # native gRPC JDBC driver
+      - "8080:8080"   # HTTP admin console/API (/admin, /api/*) and the Ask app UI (/)
+      # - "8443:8443" # HTTPS admin console/API — only listens if OMNIGATE_TLS_KEYSTORE is set above
