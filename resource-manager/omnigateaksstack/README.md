@@ -185,14 +185,18 @@ az deployment group create \
 
 ## Image
 
-`us-docker.pkg.dev/thinkingsense/omnigate/omnigate:latest` — the GCP stack's own Artifact
-Registry mirror, **not** OCIR directly. Confirmed live: a fresh AKS pod hit
-`ImagePullBackOff` / `403 Forbidden: "unknown: Free tier account is not supported."` pulling
-`ocir.us-phoenix-1.oci.oraclecloud.com/ax8tpjdxhykk/omnigate:latest` (the path both the AWS
-stack's README and this stack's own first draft assumed was directly cross-cloud-pullable) — OCI
-now appears to reject external/anonymous pulls against a Free Tier tenancy's registry. Switching
-to the GCP mirror fixed it. It's **arm64-only** (no amd64 manifest), same as the AWS and GCP
-stacks' own image dependency.
+The default `imageRepository` is the GCP stack's own Artifact Registry mirror — it's
+**arm64-only** (no amd64 manifest), same as the AWS and GCP stacks' own image dependency.
+
+> **Leave the "Container image repository (advanced)" field at its default unless you have a
+> specific reason to change it.** OCI's own OCIR registry rejects external/anonymous pulls
+> against a Free Tier tenancy (confirmed live: `ImagePullBackOff` / `403 Forbidden: "unknown:
+> Free tier account is not supported"`) — the AWS stack's README documents pulling from it
+> directly, and an earlier draft of this stack assumed the same, but that path does not actually
+> work cross-cloud. If a deploy hits `ImagePullBackOff` on the `omnigate` pod, check
+> `kubectl describe pod -l app.kubernetes.io/component=omnigate` for exactly this error, and fix
+> it live without a full redeploy: `helm upgrade omnigate ./helm/omnigate --reuse-values --set
+> image.repository=us-docker.pkg.dev/thinkingsense/omnigate/omnigate`.
 
 ## Known unknowns (read before your first real deploy)
 
