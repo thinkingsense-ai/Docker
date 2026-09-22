@@ -202,7 +202,16 @@ else:
       else
         ASK_APP_URL="pending -- run: kubectl get svc omnigate-omnigate-http"
       fi
-      echo "{\\"askAppUrl\\": \\"$ASK_APP_URL\\"}" > "$AZ_SCRIPTS_OUTPUT_PATH"
+      # Confirmed live: hand-escaped quotes inside a Bicep triple-quoted string
+      # (`\\"..\\"`) do not round-trip the way a plain bash script would expect -- the resulting
+      # scriptoutputs.json was malformed and ARM rejected the whole deployment with
+      # "DeploymentScriptInvalidOutputs", even though the Helm install itself had already
+      # succeeded. Building the JSON with python3's json.dumps (already a dependency via the
+      # jar-resolution step above) sidesteps shell/Bicep escaping entirely.
+      ASK_APP_URL="$ASK_APP_URL" python3 -c "
+import json, os
+json.dump({'askAppUrl': os.environ['ASK_APP_URL']}, open(os.environ['AZ_SCRIPTS_OUTPUT_PATH'], 'w'))
+"
     '''
   }
 }
