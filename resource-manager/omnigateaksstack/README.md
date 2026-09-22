@@ -16,7 +16,7 @@ defaults to the publisher's GCP Artifact Registry mirror (`us-docker.pkg.dev/thi
 Deployed successfully end to end against a real subscription (`westus2`) — VNet, AKS cluster,
 managed identity, role assignment, deployment script, Postgres, and the OmniGate app itself all
 came up clean and the Ask app served real HTTP traffic through its public LoadBalancer IP.
-Getting there took eight iterations and surfaced seven real, live-confirmed bugs — all already
+Getting there took eight iterations and surfaced eight real, live-confirmed bugs — all already
 fixed in this stack, not hypothetical caveats:
 
 - **AKS's Azure CNI defaults its Service CIDR to `10.0.0.0/16`**, which fully overlapped this
@@ -60,6 +60,17 @@ fixed in this stack, not hypothetical caveats:
   `eastus`, `eastus2`, and `westeurope`; present but subscription-restricted on some zones in
   `centralus`/`southcentralus`; cleanly available (all 3 zones, no restrictions) in **`westus2`**.
   Not a bug to fix — a real regional constraint to document (see "Known unknowns" below).
+- **The Portal's "Deploy to Azure" button failed with a CORS error on the very first real
+  click.** `v1.0.0` pointed both the template and `createUIDefinitionUri` at GitHub
+  release-asset URLs (`.../releases/download/...`), which redirect through
+  `release-assets.githubusercontent.com` and send no `Access-Control-Allow-Origin` header at all —
+  the Portal's client-side `fetch()` failed with "There was an error downloading the template ...
+  enabled CORS policy on the endpoint" for both files. `raw.githubusercontent.com` does send
+  `Access-Control-Allow-Origin: *`, but only for files actually committed to the repo at a given
+  ref. Fixed in `v1.0.1` by committing `azuredeploy.json` (previously release-asset-only, see
+  "What's here") and repointing the docs site's Deploy button and `createUIDefinitionUri` at
+  `raw.githubusercontent.com` pinned to the release tag. The CLI path was never affected — CORS is
+  enforced by browsers, not `az` — so it still works fine against either release's assets.
 
 Also confirmed working as designed, no fixes needed: `managed-csi` is AKS's real default
 StorageClass (PVCs for both Postgres and OmniGate's data volume bound with no issues); the
