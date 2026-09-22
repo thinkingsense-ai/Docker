@@ -12,6 +12,13 @@ order whose shipment status is IN_TRANSIT and whose supplier country is Vietnam,
 po_id, sku, quantity ordered, carrier, eta_date, and current warehouse qty_on_hand for that
 sku"* (see `fixtures/supply-chain/README.md` in this repo's root for the expected answer).
 
+![OmniGate on OKE — network architecture](architecture.svg)
+
+OKE is the only stack today with a real, working path to more than one `omnigate` replica: set
+`omnigate_replica_count` above 1 and fill in the config-database fields (moves admin-set config
+off the per-pod volume and into a shared Postgres every replica reads/writes — see
+`helm/omnigate/values.yaml`'s `configDb` block). The AWS/GCP/Azure stacks all hardcode 1 replica.
+
 Deployers don't need to build or push anything — `image_repository` defaults to this project's
 own public OCIR repo, so the stack pulls a pre-built image the same way `docker compose up`
 pulls from a registry.

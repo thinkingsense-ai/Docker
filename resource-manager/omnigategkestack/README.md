@@ -8,6 +8,8 @@ status is IN_TRANSIT and whose supplier country is Vietnam, including po_id, sku
 ordered, carrier, eta_date, and current warehouse qty_on_hand for that sku"* (see
 `fixtures/supply-chain/README.md` in this repo's root for the expected answer).
 
+![OmniGate on GKE — network architecture](architecture.svg)
+
 Deployers don't need to build or push the OmniGate app image itself — `image_tag` defaults to this
 project's own public image, pulled the same way `docker compose up` pulls from a registry.
 

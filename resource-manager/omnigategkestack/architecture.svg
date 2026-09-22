@@ -1,0 +1,88 @@
+<svg viewBox="0 0 860 660" xmlns="http://www.w3.org/2000/svg" role="img"
+     aria-label="An Ask App user sends an HTTPS request to a GCP external passthrough Network Load Balancer, which routes into the GKE cluster to the omnigate Deployment pod. The omnigate pod queries the postgres StatefulSet pod over JDBC on port 5432 across the suppliers, inventory, and procurement schemas. Both pods have their own persistent volume claim on the standard-rwo StorageClass.">
+  <style>
+    :root {
+      --bg:#ffffff; --panel:#fbfbf9; --panel-2:#f5f6f4; --ink:#191d24; --ink-dim:#565f6e; --ink-faint:#8992a1;
+      --rule:#c9cbc6; --rule-strong:#8992a1;
+      --accent:#3457d5; --accent-soft:#e7ecfc;
+      --navy:#1c2b4a; --navy-soft:#e8ecf4;
+      --teal:#2f6f63; --teal-soft:#e2f0ec;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:#12141a; --panel:#1b1e26; --panel-2:#1f222b; --ink:#ecedf1; --ink-dim:#a7adba; --ink-faint:#757c8a;
+        --rule:#3a3e4a; --rule-strong:#4c515e;
+        --accent:#7f9cd6; --accent-soft:#1c2740;
+        --navy:#7f9cd6; --navy-soft:#212b40;
+        --teal:#7cbfae; --teal-soft:#182b26;
+      }
+    }
+    text { font-family: 'Inter', -apple-system, Helvetica, Arial, sans-serif; fill: var(--ink); }
+    .title { font-size: 16px; font-weight: 700; }
+    .h { font-size: 13.5px; font-weight: 700; }
+    .sub { font-size: 11px; fill: var(--ink-dim); }
+    .tiny { font-size: 10.5px; fill: var(--ink-faint); }
+    .region-label { font-size: 10.5px; font-weight: 700; letter-spacing: .04em; fill: var(--ink-faint); text-transform: uppercase; }
+  </style>
+
+  <rect width="860" height="660" fill="var(--bg)"/>
+
+  <text x="430" y="28" text-anchor="middle" class="title">OmniGate on GKE — request flow</text>
+
+  <!-- Ask App user -->
+  <rect x="330" y="52" width="200" height="56" rx="10" fill="var(--panel-2)" stroke="var(--rule)"/>
+  <text x="430" y="77" text-anchor="middle" class="h">Ask App user</text>
+  <text x="430" y="94" text-anchor="middle" class="sub">browser</text>
+
+  <path d="M430,108 L430,146" stroke="var(--rule-strong)" stroke-width="1.6" fill="none" marker-end="url(#arrow)"/>
+  <text x="446" y="132" class="tiny">HTTPS :8080</text>
+
+  <!-- Load Balancer -->
+  <rect x="280" y="146" width="300" height="64" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/>
+  <text x="430" y="172" text-anchor="middle" class="h">GCP Network Load Balancer</text>
+  <text x="430" y="189" text-anchor="middle" class="sub">external passthrough · port 8080</text>
+
+  <path d="M430,210 L430,246" stroke="var(--rule-strong)" stroke-width="1.6" fill="none" marker-end="url(#arrow)"/>
+
+  <!-- VPC boundary -->
+  <rect x="40" y="246" width="780" height="374" rx="14" fill="none" stroke="var(--rule-strong)" stroke-dasharray="5 4"/>
+  <text x="58" y="268" class="region-label">GCP VPC · node subnet</text>
+
+  <!-- GKE cluster boundary -->
+  <rect x="64" y="284" width="732" height="316" rx="12" fill="var(--panel)" stroke="var(--rule-strong)"/>
+  <text x="82" y="306" class="region-label">GKE cluster · omnigate-gke</text>
+
+  <!-- omnigate pod -->
+  <rect x="100" y="330" width="310" height="176" rx="10" fill="var(--navy-soft)" stroke="var(--navy)"/>
+  <text x="255" y="354" text-anchor="middle" class="h">omnigate</text>
+  <text x="255" y="371" text-anchor="middle" class="sub">Deployment · 1 replica</text>
+  <text x="255" y="391" text-anchor="middle" class="tiny">HTTP :8080 — Ask App + admin console</text>
+  <text x="255" y="406" text-anchor="middle" class="tiny">wire: 1521 / 5433 / 3306 / 7070 (opt-in)</text>
+  <rect x="120" y="436" width="270" height="46" rx="8" fill="var(--panel-2)" stroke="var(--rule)"/>
+  <text x="255" y="455" text-anchor="middle" class="sub">PVC omnigate-data</text>
+  <text x="255" y="470" text-anchor="middle" class="tiny">standard-rwo (Persistent Disk) · 2Gi</text>
+
+  <!-- postgres pod -->
+  <rect x="450" y="330" width="310" height="176" rx="10" fill="var(--teal-soft)" stroke="var(--teal)"/>
+  <text x="605" y="354" text-anchor="middle" class="h">postgres</text>
+  <text x="605" y="371" text-anchor="middle" class="sub">StatefulSet · postgres:16-alpine</text>
+  <text x="605" y="391" text-anchor="middle" class="tiny">suppliers · inventory · procurement</text>
+  <text x="605" y="406" text-anchor="middle" class="tiny">(three schemas, one Postgres instance)</text>
+  <rect x="470" y="436" width="270" height="46" rx="8" fill="var(--panel-2)" stroke="var(--rule)"/>
+  <text x="605" y="455" text-anchor="middle" class="sub">PVC data</text>
+  <text x="605" y="470" text-anchor="middle" class="tiny">standard-rwo (Persistent Disk) · 5Gi</text>
+
+  <!-- omnigate -> postgres -->
+  <path d="M410,418 L450,418" stroke="var(--rule-strong)" stroke-width="1.6" fill="none" marker-end="url(#arrow)"/>
+  <text x="430" y="412" text-anchor="middle" class="tiny">JDBC</text>
+  <text x="430" y="435" text-anchor="middle" class="tiny">:5432</text>
+
+  <!-- node pool footer -->
+  <text x="82" y="580" class="sub">Node pool: t2a-standard-2 (Ampere / arm64) × node_pool_size — default 1</text>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--rule-strong)"/>
+    </marker>
+  </defs>
+</svg>

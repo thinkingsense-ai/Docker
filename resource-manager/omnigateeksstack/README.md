@@ -12,6 +12,8 @@ Vietnam, including po_id, sku, quantity ordered, carrier, eta_date, and current 
 qty_on_hand for that sku"* (see `fixtures/supply-chain/README.md` in this repo's root for the
 expected answer).
 
+![OmniGate on EKS — network architecture](architecture.svg)
+
 Deployers don't need to build or push the OmniGate app image itself — `ImageTag` defaults to
 this project's own public OCIR `:latest` image, pulled the same way `docker compose up` pulls
 from a registry. The one thing AWS *does* need built locally to your account is the small
