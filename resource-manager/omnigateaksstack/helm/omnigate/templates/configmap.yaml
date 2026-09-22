@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "omnigate.fullname" . }}-omnigate-config
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+data:
+  # OMNIGATE_LLM_MODEL intentionally NOT set here. Setting it explicitly to "claude-sonnet-5"
+  # (this chart's own values.yaml default) causes every Ask-app question to fail with a
+  # NullPointerException in AnthropicLlmProvider.planSteps -- confirmed live on OKE and EKS, filed
+  # as https://github.com/thinkingsense-ai/Server/issues/3. Leaving it unset falls back to the
+  # app's own internal default model, which works correctly. Re-wire
+  # `OMNIGATE_LLM_MODEL: {{ "{{" }} .Values.omnigate.llmModel | quote {{ "}}" }}` here once that
+  # issue is fixed upstream.
+  #
+  # Routes each schema-qualified table reference to the backend name that owns it (see
+  # OMNIGATE_BACKENDS in secrets.yaml) -- three schemas, three natural-named backends, no
+  # merging needed (stays within the free edition's 3-backend cap).
+  OMNIGATE_ROUTER_SCHEMA_RULES: "suppliers:suppliers,inventory:inventory,procurement:procurement"
+  # OMNIGATE_PG_HOST/PORT/DATABASE/USER are the wire-proxy surface's own single connection
+  # target, distinct from OMNIGATE_BACKENDS (which populates the backend registry the Ask
+  # app/NL2SQL actually queries against) -- but confirmed live on OCI/AWS these must ALWAYS be
+  # set, not just when wire protocols are exposed: without them, agentic multi-step query
+  # execution falls back to a hardcoded localhost:5432 default that doesn't exist, and every
+  # question fails with "Connection to localhost:5432 refused". Deliberately pointed at the plain
+  # `postgres` database with NO `?currentSchema=` override (i.e. Postgres's own empty `public`
+  # schema) rather than any of the three real schemas: confirmed live on OCI/AWS
+  # (thinkingsense-ai/Server#5) that SchemaIntrospector.sourcesFor() adds a synthetic extra
+  # catalog source from these vars, and pointing it at `public` gives that synthetic source zero
+  # tables to collide over, instead of duplicating (and confusing table ownership for) one of the
+  # real backends.
+  OMNIGATE_PG_HOST: {{ include "omnigate.postgresHost" . | quote }}
+  OMNIGATE_PG_PORT: "5432"
+  OMNIGATE_PG_DATABASE: {{ .Values.postgres.database | quote }}
+  OMNIGATE_PG_USER: {{ .Values.postgres.user | quote }}
+  # OMNIGATE_BACKENDS lives in secrets.yaml, not here -- it embeds the Postgres password, which
+  # has no business sitting in a plaintext ConfigMap alongside a real Secret already carrying the
+  # same value.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "omnigate.fullname" . }}-seed-supply-chain
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+data:
+  seed-supply-chain.sql: |
+{{ .Files.Get "files/seed-supply-chain.sql" | indent 4 }}

@@ -1,0 +1,146 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "omnigate.fullname" . }}-omnigate-data
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: {{ .Values.storageClassName }}
+  resources:
+    requests:
+      storage: {{ .Values.omnigate.dataVolumeSize }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "omnigate.fullname" . }}-omnigate
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: omnigate
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: omnigate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: omnigate
+      annotations:
+        # A Secret/ConfigMap change alone does not roll this Deployment's pod on its own -- env
+        # vars from envFrom are read once at container start, so the existing pod keeps running
+        # with its stale environment after a redeploy that only changes e.g. the LLM API key,
+        # unless the pod template itself also changes. These checksums do that: they change
+        # whenever the rendered Secret/ConfigMap content changes, which is what actually triggers
+        # the rollout (this Deployment's own `strategy: Recreate` then applies).
+        checksum/secret: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
+        checksum/configmap: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: docker.io/library/postgres:16-alpine
+          command:
+            - sh
+            - -c
+            - until pg_isready -h {{ include "omnigate.postgresHost" . }} -U {{ .Values.postgres.user }}; do sleep 2; done
+      containers:
+        - name: omnigate
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "omnigate.fullname" . }}-omnigate-config
+            - secretRef:
+                name: {{ include "omnigate.fullname" . }}-omnigate-secret
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: oracle-wire
+              containerPort: 1521
+            - name: pg-wire
+              containerPort: 5433
+            - name: mysql-wire
+              containerPort: 3306
+            - name: grpc
+              containerPort: 7070
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/omnigate/data
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources.omnigate | nindent 12 }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "omnigate.fullname" . }}-omnigate-data
+---
+# HTTP only (Ask app + admin console) -- the LoadBalancer default. Deliberately not exposing the
+# DB wire ports here; see the wire-protocols Service below, which is opt-in.
+#
+# AKS's Standard-SKU LoadBalancer (the default since Kubernetes 1.19 on AKS) is already an L4 TCP
+# passthrough load balancer, unlike the deprecated in-tree provisioner both the AWS and OCI stacks
+# had to work around with their own annotations/controllers -- this matters because the OCI/AWS
+# stacks confirmed live that an L7/classic LB buffers the Ask app's SSE (Server-Sent Events)
+# streaming responses (a request would return 200 with only the first event and then hang
+# indefinitely). `azure-load-balancer-internal: "false"` is the explicit opt-in for a public,
+# internet-facing frontend IP (AKS's own default for `type: LoadBalancer`, made explicit here
+# rather than relying on the cluster-wide default in case that default is ever changed).
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "omnigate.fullname" . }}-omnigate-http
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: omnigate
+  annotations:
+    service.beta.kubernetes.io/azure-load-balancer-internal: "false"
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: omnigate
+  ports:
+    - name: http
+      port: {{ .Values.service.httpPort }}
+      targetPort: 8080
+{{- if .Values.omnigate.exposeWireProtocols }}
+---
+# Wire protocols (Oracle/Postgres/MySQL/gRPC), only created when exposeWireProtocols=true.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "omnigate.fullname" . }}-omnigate-wire
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: omnigate
+  annotations:
+    service.beta.kubernetes.io/azure-load-balancer-internal: "false"
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: omnigate
+  ports:
+    - name: oracle-wire
+      port: 1521
+      targetPort: 1521
+    - name: pg-wire
+      port: 5433
+      targetPort: 5433
+    - name: mysql-wire
+      port: 3306
+      targetPort: 3306
+    - name: grpc
+      port: 7070
+      targetPort: 7070
+{{- end }}
