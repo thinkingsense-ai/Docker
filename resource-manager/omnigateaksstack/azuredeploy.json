@@ -1,0 +1,511 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.47.16.16243",
+      "templateHash": "7165818683056192868"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region to deploy into. Must have Ampere Altra (Dps/Eps v5-family) VM availability -- see README."
+      }
+    },
+    "appUsername": {
+      "type": "string",
+      "defaultValue": "demo",
+      "metadata": {
+        "description": "Ask-app login username (not an Azure/AAD account)."
+      }
+    },
+    "appPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Ask-app login password, plain text -- hashed automatically during deployment using the deployed image's own PasswordHash utility. Required so this deployment does not ship the repo's well-known demo/demo login on a public LoadBalancer."
+      }
+    },
+    "llmApiKey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Anthropic API key from console.anthropic.com. Required -- the Ask app cannot answer any question without it."
+      }
+    },
+    "llmModel": {
+      "type": "string",
+      "defaultValue": "claude-sonnet-5",
+      "allowedValues": [
+        "claude-sonnet-5",
+        "claude-opus-5",
+        "claude-haiku-4-5-20251001"
+      ],
+      "metadata": {
+        "description": "Anthropic model used for NL2SQL."
+      }
+    },
+    "exposeWireProtocols": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Also expose the Oracle/Postgres/MySQL/gRPC wire-protocol ports via a second public LoadBalancer. Off by default."
+      }
+    },
+    "nodeCount": {
+      "type": "int",
+      "defaultValue": 1,
+      "minValue": 1,
+      "maxValue": 4,
+      "metadata": {
+        "description": "AKS node count."
+      }
+    },
+    "nodeVmSize": {
+      "type": "string",
+      "defaultValue": "Standard_D2ps_v5",
+      "metadata": {
+        "description": "AKS node VM size. Must be an arm64 (Ampere Altra) SKU to match the arm64-only omnigate image -- see README's node-architecture note."
+      }
+    },
+    "postgresStorageGb": {
+      "type": "int",
+      "defaultValue": 5,
+      "minValue": 1,
+      "maxValue": 100,
+      "metadata": {
+        "description": "Postgres PVC size (GB)."
+      }
+    },
+    "omnigateDataStorageGb": {
+      "type": "int",
+      "defaultValue": 2,
+      "minValue": 1,
+      "maxValue": 20,
+      "metadata": {
+        "description": "OmniGate ConfigStore PVC size (GB) -- holds admin-set config (e.g. an API key entered live in the UI) so it survives pod restarts."
+      }
+    },
+    "imageRepository": {
+      "type": "string",
+      "defaultValue": "us-docker.pkg.dev/thinkingsense/omnigate/omnigate",
+      "metadata": {
+        "description": "Container image repository (advanced). Defaults to the publisher's GCP Artifact Registry mirror -- confirmed live that OCI's own OCIR registry rejects external pulls from a Free Tier tenancy (403 \"Free tier account is not supported\"), so pulling the AWS stack's documented OCIR path directly does not actually work cross-cloud; the GCP mirror does. Deployers should not need to build or push anything themselves."
+      }
+    },
+    "imageTag": {
+      "type": "string",
+      "defaultValue": "latest",
+      "metadata": {
+        "description": "Image tag (advanced)."
+      }
+    },
+    "chartSourceUrl": {
+      "type": "string",
+      "defaultValue": "https://github.com/thinkingsense-ai/Docker/archive/refs/tags/aks-stack-v1.0.0.tar.gz",
+      "metadata": {
+        "description": "Tarball URL containing this stack's Helm chart (advanced). Pinned to this release's own tag so a deploy from this exact \"Deploy to Azure\" button/azuredeploy.json can never drift from a newer chart on main -- bump this alongside the version tag on every release, see README's \"Publishing a release\"."
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "omnigate-network",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.47.16.16243",
+              "templateHash": "2639278574754947685"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "vnetAddressPrefix": {
+              "type": "string",
+              "defaultValue": "10.0.0.0/16"
+            },
+            "nodeSubnetPrefix": {
+              "type": "string",
+              "defaultValue": "10.0.0.0/20"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/virtualNetworks",
+              "apiVersion": "2023-09-01",
+              "name": "omnigate-aks-vnet",
+              "location": "[parameters('location')]",
+              "properties": {
+                "addressSpace": {
+                  "addressPrefixes": [
+                    "[parameters('vnetAddressPrefix')]"
+                  ]
+                },
+                "subnets": [
+                  {
+                    "name": "omnigate-aks-nodes",
+                    "properties": {
+                      "addressPrefix": "[parameters('nodeSubnetPrefix')]"
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "outputs": {
+            "vnetId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Network/virtualNetworks', 'omnigate-aks-vnet')]"
+            },
+            "nodeSubnetId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Network/virtualNetworks', 'omnigate-aks-vnet'), '2023-09-01').subnets[0].id]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "omnigate-aks-cluster",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "nodeSubnetId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'omnigate-network'), '2025-04-01').outputs.nodeSubnetId.value]"
+          },
+          "nodeVmSize": {
+            "value": "[parameters('nodeVmSize')]"
+          },
+          "nodeCount": {
+            "value": "[parameters('nodeCount')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.47.16.16243",
+              "templateHash": "12005493470206115845"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "nodeSubnetId": {
+              "type": "string"
+            },
+            "nodeVmSize": {
+              "type": "string",
+              "defaultValue": "Standard_D2ps_v5"
+            },
+            "nodeCount": {
+              "type": "int",
+              "defaultValue": 1
+            },
+            "kubernetesVersion": {
+              "type": "string",
+              "defaultValue": ""
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ContainerService/managedClusters",
+              "apiVersion": "2024-05-01",
+              "name": "omnigate-aks",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "dnsPrefix": "omnigate-aks",
+                "kubernetesVersion": "[if(empty(parameters('kubernetesVersion')), null(), parameters('kubernetesVersion'))]",
+                "agentPoolProfiles": [
+                  {
+                    "name": "nodepool1",
+                    "count": "[parameters('nodeCount')]",
+                    "vmSize": "[parameters('nodeVmSize')]",
+                    "osType": "Linux",
+                    "mode": "System",
+                    "vnetSubnetID": "[parameters('nodeSubnetId')]",
+                    "type": "VirtualMachineScaleSets"
+                  }
+                ],
+                "networkProfile": {
+                  "networkPlugin": "azure",
+                  "loadBalancerSku": "standard",
+                  "serviceCidr": "10.1.0.0/16",
+                  "dnsServiceIP": "10.1.0.10"
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "clusterName": {
+              "type": "string",
+              "value": "omnigate-aks"
+            },
+            "clusterId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.ContainerService/managedClusters', 'omnigate-aks')]"
+            },
+            "principalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ContainerService/managedClusters', 'omnigate-aks'), '2024-05-01', 'full').identity.principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'omnigate-network')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "omnigate-helm-install",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "clusterName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'omnigate-aks-cluster'), '2025-04-01').outputs.clusterName.value]"
+          },
+          "imageRepository": {
+            "value": "[parameters('imageRepository')]"
+          },
+          "imageTag": {
+            "value": "[parameters('imageTag')]"
+          },
+          "llmModel": {
+            "value": "[parameters('llmModel')]"
+          },
+          "exposeWireProtocols": {
+            "value": "[parameters('exposeWireProtocols')]"
+          },
+          "dataVolumeGb": {
+            "value": "[parameters('omnigateDataStorageGb')]"
+          },
+          "postgresStorageGb": {
+            "value": "[parameters('postgresStorageGb')]"
+          },
+          "appUsername": {
+            "value": "[parameters('appUsername')]"
+          },
+          "appPassword": {
+            "value": "[parameters('appPassword')]"
+          },
+          "llmApiKey": {
+            "value": "[parameters('llmApiKey')]"
+          },
+          "chartSourceUrl": {
+            "value": "[parameters('chartSourceUrl')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.47.16.16243",
+              "templateHash": "16418875343903998159"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string"
+            },
+            "clusterName": {
+              "type": "string"
+            },
+            "imageRepository": {
+              "type": "string"
+            },
+            "imageTag": {
+              "type": "string"
+            },
+            "llmModel": {
+              "type": "string"
+            },
+            "exposeWireProtocols": {
+              "type": "bool"
+            },
+            "dataVolumeGb": {
+              "type": "int"
+            },
+            "postgresStorageGb": {
+              "type": "int"
+            },
+            "appUsername": {
+              "type": "string"
+            },
+            "appPassword": {
+              "type": "securestring"
+            },
+            "llmApiKey": {
+              "type": "securestring"
+            },
+            "chartSourceUrl": {
+              "type": "string",
+              "defaultValue": "https://github.com/thinkingsense-ai/Docker/archive/refs/heads/main.tar.gz"
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
+              "name": "omnigate-aks-deploy-identity",
+              "location": "[parameters('location')]"
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName'))]",
+              "name": "[guid(resourceGroup().id, parameters('clusterName'), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'omnigate-aks-deploy-identity'), 'aks-cluster-admin')]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '0ab0b1a8-8aac-4efd-b8c2-3ee1fb270be8')]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'omnigate-aks-deploy-identity'), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'omnigate-aks-deploy-identity')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Resources/deploymentScripts",
+              "apiVersion": "2023-08-01",
+              "name": "omnigate-helm-install",
+              "location": "[parameters('location')]",
+              "kind": "AzureCLI",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'omnigate-aks-deploy-identity'))]": {}
+                }
+              },
+              "properties": {
+                "azCliVersion": "2.63.0",
+                "retentionInterval": "P1D",
+                "timeout": "PT20M",
+                "cleanupPreference": "OnSuccess",
+                "environmentVariables": [
+                  {
+                    "name": "RESOURCE_GROUP",
+                    "value": "[resourceGroup().name]"
+                  },
+                  {
+                    "name": "CLUSTER_NAME",
+                    "value": "[parameters('clusterName')]"
+                  },
+                  {
+                    "name": "IMAGE_REPOSITORY",
+                    "value": "[parameters('imageRepository')]"
+                  },
+                  {
+                    "name": "IMAGE_TAG",
+                    "value": "[parameters('imageTag')]"
+                  },
+                  {
+                    "name": "LLM_MODEL",
+                    "value": "[parameters('llmModel')]"
+                  },
+                  {
+                    "name": "EXPOSE_WIRE_PROTOCOLS",
+                    "value": "[string(parameters('exposeWireProtocols'))]"
+                  },
+                  {
+                    "name": "DATA_VOLUME_GB",
+                    "value": "[string(parameters('dataVolumeGb'))]"
+                  },
+                  {
+                    "name": "POSTGRES_STORAGE_GB",
+                    "value": "[string(parameters('postgresStorageGb'))]"
+                  },
+                  {
+                    "name": "APP_USERNAME",
+                    "value": "[parameters('appUsername')]"
+                  },
+                  {
+                    "name": "CHART_SOURCE_URL",
+                    "value": "[parameters('chartSourceUrl')]"
+                  },
+                  {
+                    "name": "APP_PASSWORD",
+                    "secureValue": "[parameters('appPassword')]"
+                  },
+                  {
+                    "name": "LLM_API_KEY",
+                    "secureValue": "[parameters('llmApiKey')]"
+                  }
+                ],
+                "scriptContent": "      set -euo pipefail\n\n      # Confirmed live: the AzureCLI deploymentScripts container is Alpine-based (apk), not the\n      # Azure Linux (tdnf) image assumed here originally -- ships with neither curl nor a JRE nor\n      # openssl by default. The very first `curl` call in an earlier version of this script failed\n      # outright with \"curl: command not found\"; after adding curl+JRE, Helm's own install script\n      # then failed with \"In order to verify checksum, openssl must first be installed.\" Install\n      # all three together, before anything else needs them. Falling back through tdnf/apt\n      # defensively in case this base image ever changes, same spirit as the GCP stack's\n      # Homebrew-keg-only fallback in password-hash.tf's build.\n      echo \"== Installing curl, openssl, and a JRE ==\"\n      if command -v apk >/dev/null 2>&1; then\n        apk add --no-cache curl openssl ca-certificates openjdk17-jre-headless\n      elif command -v tdnf >/dev/null 2>&1; then\n        tdnf install -y curl openssl ca-certificates || true\n        tdnf install -y msopenjdk-17 || tdnf install -y java-17-openjdk-headless\n      elif command -v apt-get >/dev/null 2>&1; then\n        apt-get update -qq\n        apt-get install -y -qq curl openssl ca-certificates\n        apt-get install -y -qq default-jre-headless\n      else\n        echo \"No supported package manager found for installing curl/openssl/a JRE\" >&2\n        exit 1\n      fi\n      command -v curl >/dev/null 2>&1 || { echo \"curl still not available after install attempt\" >&2; exit 1; }\n      command -v openssl >/dev/null 2>&1 || { echo \"openssl still not available after install attempt\" >&2; exit 1; }\n      command -v java >/dev/null 2>&1 || { echo \"java still not available after install attempt\" >&2; exit 1; }\n\n      echo \"== Installing Helm ==\"\n      curl -fsSL -o /tmp/get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3\n      chmod +x /tmp/get_helm.sh\n      /tmp/get_helm.sh\n\n      echo \"== Fetching AKS credentials ==\"\n      az aks get-credentials --resource-group \"$RESOURCE_GROUP\" --name \"$CLUSTER_NAME\" --overwrite-existing --admin\n\n      # Confirmed live: `az aks get-credentials` only writes a kubeconfig file -- it does NOT\n      # install the kubectl binary itself, so the later `kubectl get svc` LB-IP-poll loop silently\n      # failed \"kubectl: not found\" every single iteration (masked by that loop's own `2>/dev/null\n      # || true`, which is there to tolerate \"no IP yet\", not \"no kubectl\") for the full 300s,\n      # always falling through to the \"pending\" fallback even when the LB already had a real IP.\n      # `az aks install-cli` is the Azure-blessed way to fetch a matching kubectl (+ kubelogin).\n      command -v kubectl >/dev/null 2>&1 || az aks install-cli --only-show-errors\n      command -v kubectl >/dev/null 2>&1 || { echo \"kubectl still not available after az aks install-cli\" >&2; exit 1; }\n\n      echo \"== Fetching the Helm chart ==\"\n      curl -fsSL -o /tmp/chart.tar.gz \"$CHART_SOURCE_URL\"\n      mkdir -p /tmp/chart\n      tar -xzf /tmp/chart.tar.gz -C /tmp/chart --strip-components=1\n      CHART_DIR=$(find /tmp/chart -type d -path '*omnigateaksstack/helm/omnigate' | head -1)\n      if [ -z \"$CHART_DIR\" ]; then\n        echo \"Could not locate helm/omnigate inside $CHART_SOURCE_URL\" >&2\n        exit 1\n      fi\n\n      # Computes OMNIGATE_APP_USERS server-side, the same algorithm as the AWS Lambda's\n      # resolve_jar_url()/compute_password_hash() and OCI's password-hash.tf `data \"external\"`:\n      # resolve the exact release jar matching $IMAGE_TAG (a literal version tag, or GitHub\n      # /releases/latest if the tag is the literal string \"latest\" -- the default OCI/ACR-style\n      # docker tag, not itself a GitHub release name), download it, and run its own bundled\n      # PasswordHash utility so the hash format always matches whatever image is actually\n      # deployed, rather than a separately-maintained reimplementation of the hash algorithm.\n      echo \"== Computing app login hash ==\"\n      if [ \"$IMAGE_TAG\" = \"latest\" ]; then\n        JAR_URL=$(python3 -c \"\nimport json, urllib.request\nwith urllib.request.urlopen('https://api.github.com/repos/thinkingsense-ai/Docker/releases/latest', timeout=15) as r:\n    release = json.load(r)\nfor asset in release.get('assets', []):\n    if asset['name'] == 'omnigate.jar':\n        print(asset['browser_download_url'])\n        break\nelse:\n    raise SystemExit('omnigate.jar asset not found on latest GitHub release')\n\")\n      else\n        JAR_URL=\"https://github.com/thinkingsense-ai/Docker/releases/download/${IMAGE_TAG}/omnigate.jar\"\n      fi\n      curl -fsSL -o /tmp/omnigate-hash-tool.jar \"$JAR_URL\"\n      APP_HASH=$(java -cp /tmp/omnigate-hash-tool.jar com.omnigate.http.auth.PasswordHash \"$APP_PASSWORD\")\n      rm -f /tmp/omnigate-hash-tool.jar\n      # Confirmed live: AppAuthConfig.parse (com.omnigate.http.ask.auth.AppAuthConfig) requires\n      # exactly 5 colon-separated fields (username:salt:hash:roles:attrs) and silently SKIPS any\n      # entry that doesn't split into 5 -- omitting the trailing \"::\" for the empty roles/\n      # attributes fields left the user list empty and login silently disabled (\"web UI\n      # business-user login disabled -- set OMNIGATE_APP_USERS\"), no error, no crash, just an\n      # unusable login. The trailing \"::\" is not optional cosmetic formatting.\n      APP_USERS=\"${APP_USERNAME}:${APP_HASH}::\"\n\n      echo \"== Installing the omnigate Helm release ==\"\n      helm upgrade --install omnigate \"$CHART_DIR\" \\\n        --set image.repository=\"$IMAGE_REPOSITORY\" \\\n        --set image.tag=\"$IMAGE_TAG\" \\\n        --set omnigate.llmModel=\"$LLM_MODEL\" \\\n        --set omnigate.exposeWireProtocols=\"$EXPOSE_WIRE_PROTOCOLS\" \\\n        --set omnigate.dataVolumeSize=\"${DATA_VOLUME_GB}Gi\" \\\n        --set postgres.storageSize=\"${POSTGRES_STORAGE_GB}Gi\" \\\n        --set-string omnigate.appUsers=\"$APP_USERS\" \\\n        --set-string omnigate.llmApiKey=\"$LLM_API_KEY\" \\\n        --timeout 10m0s \\\n        --wait\n\n      # Redact secrets from this script's own process environment before it exits -- deploymentScripts\n      # persists stdout/stderr into the resource's execution logs, so anything echoed (deliberately\n      # or by a stray `set -x`) would otherwise leak. Mirrors the redaction discipline AWS's\n      # handler.py added after a real bug there leaked the *previous* password on every Update\n      # event (it originally redacted only the current ResourceProperties, not the old ones).\n      unset APP_PASSWORD LLM_API_KEY APP_USERS APP_HASH\n\n      echo \"== Waiting for the LoadBalancer IP ==\"\n      HTTP_IP=\"\"\n      for i in $(seq 1 30); do\n        HTTP_IP=$(kubectl get svc omnigate-omnigate-http -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)\n        [ -n \"$HTTP_IP\" ] && break\n        sleep 10\n      done\n\n      if [ -n \"$HTTP_IP\" ]; then\n        ASK_APP_URL=\"http://${HTTP_IP}:8080/\"\n      else\n        ASK_APP_URL=\"pending -- run: kubectl get svc omnigate-omnigate-http\"\n      fi\n      # Confirmed live: hand-escaped quotes inside a Bicep triple-quoted string\n      # (`\\\\\"..\\\\\"`) do not round-trip the way a plain bash script would expect -- the resulting\n      # scriptoutputs.json was malformed and ARM rejected the whole deployment with\n      # \"DeploymentScriptInvalidOutputs\", even though the Helm install itself had already\n      # succeeded. Building the JSON with python3's json.dumps (already a dependency via the\n      # jar-resolution step above) sidesteps shell/Bicep escaping entirely.\n      ASK_APP_URL=\"$ASK_APP_URL\" python3 -c \"\nimport json, os\njson.dump({'askAppUrl': os.environ['ASK_APP_URL']}, open(os.environ['AZ_SCRIPTS_OUTPUT_PATH'], 'w'))\n\"\n    "
+              },
+              "dependsOn": [
+                "[extensionResourceId(resourceId('Microsoft.ContainerService/managedClusters', parameters('clusterName')), 'Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, parameters('clusterName'), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'omnigate-aks-deploy-identity'), 'aks-cluster-admin'))]",
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', 'omnigate-aks-deploy-identity')]"
+              ]
+            }
+          ],
+          "outputs": {
+            "askAppUrl": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Resources/deploymentScripts', 'omnigate-helm-install'), '2023-08-01').outputs.askAppUrl]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'omnigate-aks-cluster')]"
+      ]
+    }
+  ],
+  "outputs": {
+    "clusterName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'omnigate-aks-cluster'), '2025-04-01').outputs.clusterName.value]"
+    },
+    "kubeconfigCommand": {
+      "type": "string",
+      "value": "[format('az aks get-credentials --resource-group {0} --name {1}', resourceGroup().name, reference(resourceId('Microsoft.Resources/deployments', 'omnigate-aks-cluster'), '2025-04-01').outputs.clusterName.value)]"
+    },
+    "askAppUrl": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'omnigate-helm-install'), '2025-04-01').outputs.askAppUrl.value]"
+    }
+  }
+}

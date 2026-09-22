@@ -91,7 +91,8 @@ container image requires.
 
 Use the "Deploy to Azure" button on the docs site, or manually:
 
-1. Go to `https://portal.azure.com/#create/Microsoft.Template/uri/<raw-URL-of-azuredeploy.json-for-this-release>`
+1. Use the "Deploy to Azure" button (points at `raw.githubusercontent.com` for this release's
+   tag — see "What's here" for why it must be that host, not a GitHub release-asset URL).
 2. Pick a **resource group** and a **region with Ampere Altra (arm64) VM availability** — see
    "Known unknowns" below, this is the one hard regional constraint.
 3. Follow the wizard (driven by `createUiDefinition.json`): an Ask-app login (plain text, hashed
@@ -145,12 +146,22 @@ az deployment group create \
   default `managed-csi` StorageClass instead of `oci-bv`, `service.beta.kubernetes.io/azure-load-balancer-internal:
   "false"` instead of OCI's NLB annotation, same seeded three-schema demo, same required
   app-login/API-key pattern.
-- `azuredeploy.json` — **not committed to this repo.** It's the compiled output of `main.bicep`
-  (`az bicep build --file main.bicep --outfile azuredeploy.json`), regenerated and attached fresh
-  to each tagged release (see "Publishing a release") — same reasoning as why the AWS stack
-  publishes `template.yaml` to S3 per-release rather than pointing the Launch-Stack link at a
-  GitHub raw URL on `main`: a committed compiled artifact would drift from `main.bicep` and go
-  stale between releases.
+- `azuredeploy.json` — the compiled output of `main.bicep` (`az bicep build --file main.bicep
+  --outfile azuredeploy.json`). **Committed at each release tag**, despite that being exactly the
+  kind of generated-artifact drift this repo normally avoids (see `.gitignore`-style reasoning on
+  the AWS/OCI stacks) — confirmed live this is not optional for Azure specifically: the Portal's
+  "Deploy to Azure" wizard fetches this file (and `createUiDefinition.json`) via a client-side
+  browser `fetch()`, which needs a CORS-enabled response. GitHub's release-asset download URLs
+  (`.../releases/download/...`, which redirect through `release-assets.githubusercontent.com`)
+  send **no** `Access-Control-Allow-Origin` header and fail in the Portal with "There was an error
+  downloading the template from URI ... Ensure that ... the publisher has enabled CORS policy on
+  the endpoint" — confirmed live, this is exactly the error hit on the first real user's first
+  click. `raw.githubusercontent.com` **does** send `Access-Control-Allow-Origin: *`, but only
+  serves files that actually exist in the repo tree at a given ref — hence committing this file
+  and referencing it via `raw.githubusercontent.com/thinkingsense-ai/Docker/<tag>/resource-manager/omnigateaksstack/azuredeploy.json`
+  instead of a release asset. The CLI path (`az deployment group create --template-uri`) has no
+  such constraint — CORS is a browser thing, not a CLI thing — so the release-asset URL is still
+  fine there, and is what `azuredeploy.json` is also still attached to each release for.
 - `verify.sh` — guided post-deploy check: fetches cluster credentials, checks pods/Services, waits
   for the LoadBalancer's public IP, and actually `curl`s the Ask app to confirm it's serving (not
   just that Kubernetes reports the pod as `Running`) — see "Verifying the deployment" below.
@@ -197,15 +208,21 @@ fixed via `gh release edit <app-tag> --repo thinkingsense-ai/Docker --latest`.
 
 Before tagging:
 
-1. `az bicep build --file main.bicep --outfile azuredeploy.json` (do not commit the output to
-   `main` — it's a release-time build artifact, see "What's here" above).
-2. Cut a GitHub release (tag `aks-stack-vX.Y.Z`, `--latest=false`) with `azuredeploy.json`
-   attached as a release asset, and a zip of this whole `omnigateaksstack/` directory (the
-   `deploymentScripts` resource's `chartSourceUrl` defaults to a GitHub tarball, so `main.bicep`'s
-   `chartSourceUrl` default should be updated to point at this tag's tarball, not `main`, once a
-   release exists).
-3. Update the `aks-stack-vX.Y.Z` reference and the "Deploy to Azure" button's `templateUri` on the
-   docs site's `deploy-azure.html` to match.
+1. Update `main.bicep`'s `chartSourceUrl` default to point at the tag about to be cut (e.g.
+   `.../archive/refs/tags/aks-stack-vX.Y.Z.tar.gz`), not `main` — see "What's here" above.
+2. `az bicep build --file main.bicep --outfile azuredeploy.json` and **commit the output** (see
+   "What's here" above for why this file is committed here, unlike the AWS/OCI stacks' equivalent
+   build artifacts — it's a hard CORS requirement for the Portal's "Deploy to Azure" button, not a
+   style choice).
+3. Tag (`aks-stack-vX.Y.Z`) and push the tag.
+4. Cut a GitHub release from that tag, **`--latest=false`**, with `azuredeploy.json` also attached
+   as a release asset (used by the CLI path, which has no CORS constraint) and a zip of this whole
+   `omnigateaksstack/` directory.
+5. Update `deploy-azure.html` on the docs site: the "Deploy to Azure" button and
+   `createUIDefinitionUri` must both point at
+   `raw.githubusercontent.com/thinkingsense-ai/Docker/<tag>/resource-manager/omnigateaksstack/{azuredeploy.json,createUiDefinition.json}`
+   — **not** a `releases/download/...` URL, which fails in the Portal with a CORS error (confirmed
+   live — see "What's here"). The CLI snippet can keep using the release-asset URL.
 
 ## Verifying the deployment
 
