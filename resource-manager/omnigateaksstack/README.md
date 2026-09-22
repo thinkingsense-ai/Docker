@@ -1,12 +1,16 @@
 # omnigateaksstack — Azure Bicep/ARM stack
 
-Deploys OmniGate (NL2SQL gateway) with a seeded Postgres demo backend onto a new AKS cluster.
-Same seeded demo as the AWS, OCI, and GCP stacks: a real supply-chain scenario across
-`suppliers`, `inventory`, `procurement` Postgres schemas, registered as three federated
-backends — see `helm/omnigate/templates/secrets.yaml`. Try asking: *"List each purchase order
-whose shipment status is IN_TRANSIT and whose supplier country is Vietnam, including po_id, sku,
-quantity ordered, carrier, eta_date, and current warehouse qty_on_hand for that sku"* (see
-`fixtures/supply-chain/README.md` in this repo's root for the expected answer).
+ThinkingSense is a governed ontology platform for the enterprise. This stack deploys OmniGate —
+ThinkingSense's federated query engine — along with the Ask App and a seeded three-schema
+supply-chain demo, onto a new AKS cluster. Same seeded demo as the AWS, OCI, and GCP stacks: a
+real supply-chain scenario across `suppliers`, `inventory`, `procurement` Postgres schemas,
+registered as three federated backends — see `helm/omnigate/templates/secrets.yaml`. Try asking:
+*"List each purchase order whose shipment status is IN_TRANSIT and whose supplier country is
+Vietnam, including po_id, sku, quantity ordered, carrier, eta_date, and current warehouse
+qty_on_hand for that sku"* (see `fixtures/supply-chain/README.md` in this repo's root for the
+expected answer).
+
+![OmniGate on AKS — network architecture](architecture.svg)
 
 Deployers don't need to build or push the OmniGate app image themselves — `imageRepository`
 defaults to the publisher's GCP Artifact Registry mirror (`us-docker.pkg.dev/thinkingsense/omnigate/omnigate`).

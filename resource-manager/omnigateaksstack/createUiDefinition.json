@@ -6,7 +6,7 @@
     "config": {
       "isWizard": false,
       "basics": {
-        "description": "Deploy OmniGate (NL2SQL gateway) with a seeded Postgres demo backend onto a new AKS cluster. Same seeded three-schema supply-chain demo as the AWS/OCI/GCP stacks. This is the Azure analog of the OCI stack's schema.yaml wizard.",
+        "description": "ThinkingSense: the governed ontology platform. This deploys OmniGate, ThinkingSense's federated query engine, along with the Ask App and a seeded three-schema supply-chain demo, onto a new AKS cluster.",
         "location": {
           "label": "Region",
           "toolTip": "Must have Ampere Altra (Dps/Eps v5-family) arm64 VM availability -- the published omnigate image is arm64-only. Confirmed live: westus2 has clean, unrestricted Standard_D2ps_v5 availability; eastus, eastus2, and westeurope currently have none. Check `az vm list-skus --size Standard_D2ps_v5 --location <region> -o table` before picking a different region."
