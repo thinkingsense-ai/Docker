@@ -151,6 +151,11 @@ az deployment group create \
   publishes `template.yaml` to S3 per-release rather than pointing the Launch-Stack link at a
   GitHub raw URL on `main`: a committed compiled artifact would drift from `main.bicep` and go
   stale between releases.
+- `verify.sh` — guided post-deploy check: fetches cluster credentials, checks pods/Services, waits
+  for the LoadBalancer's public IP, and actually `curl`s the Ask app to confirm it's serving (not
+  just that Kubernetes reports the pod as `Running`) — see "Verifying the deployment" below.
+- `destroy.sh` — guided teardown: confirms, then deletes the resource group. Much simpler than the
+  GCP stack's `destroy.sh` — see "Cleanup" below for why.
 
 ## Image
 
@@ -205,6 +210,21 @@ Before tagging:
 ## Verifying the deployment
 
 ```bash
+./verify.sh <your-rg>
+```
+
+Guided, mirrors the exact steps run by hand during this stack's own clean-room validation: fetches
+cluster credentials (installing `kubectl` via `az aks install-cli` first if it's missing —
+confirmed live that `az aks get-credentials` alone does **not** install it), checks `kubectl get
+pods`/`get svc`, waits up to 5 minutes for the LoadBalancer's public IP, then actually `curl`s the
+Ask app and checks for a `200` — not just that Kubernetes reports the pod as `Running`, which
+doesn't by itself prove the app is answering requests (this distinction mattered for real: a
+deployment-script bug once reported a "successful" deploy with the Ask app's login silently
+broken — see "Clean-room validated" above).
+
+Or by hand:
+
+```bash
 az aks get-credentials --resource-group <your-rg> --name omnigate-aks
 kubectl get pods -n default
 kubectl get svc omnigate-omnigate-http -n default
@@ -215,13 +235,18 @@ app — `curl -o /dev/null -w '%{http_code}\n' http://<that-ip>:8080/` should pr
 
 ## Cleanup
 
-Unlike the GCP stack (plain Terraform, no single deletable unit), an ARM deployment — like a
+```bash
+./destroy.sh <your-rg>
+```
+
+Lists what's in the resource group, asks you to type `destroy` to confirm, then deletes it.
+
+Unlike the GCP stack (plain Terraform, no single deletable unit — its `destroy.sh` needs a
+local-state-reconnect story and a manual per-resource fallback), an ARM deployment — like a
 CloudFormation stack or an OCI Resource Manager stack — tracks everything it created as one
-resource group, so deleting the resource group tears down everything in one action:
+resource group, so deleting the resource group tears down everything in one action. That's the
+entire teardown story here; `destroy.sh` is a thin confirmation wrapper around:
 
 ```bash
 az group delete --name <your-rg> --yes --no-wait
 ```
-
-This is a genuine advantage over the GCP stack's manual-fallback Cleanup section — no separate
-by-name deletion list to keep in sync with what the template actually creates.
