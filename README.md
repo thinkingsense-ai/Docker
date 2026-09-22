@@ -26,6 +26,12 @@ This starts ThinkingSense **and** a disposable, pre-seeded Postgres database —
 data with zero setup, so you can see it work before connecting anything of your own. The first
 run takes a minute or two (downloading the jar/web UI, pulling the Postgres image).
 
+**Just want the image, no clone?** The same image is also published pre-built to GitHub Container
+Registry — `docker pull ghcr.io/thinkingsense-ai/server:0.80` (or `:latest`) — built from source
+by the `thinkingsense-ai/Server` repo's own Dockerfile rather than downloaded from a release.
+Point it at your own Postgres via `OMNIGATE_BACKENDS` (see the Server repo's README) instead of
+using this repo's `docker-compose.yml`.
+
 ### Where to go once it's running
 
 | | URL | Sign in with |
@@ -206,6 +212,6 @@ for the bundled model — commercial alternatives are listed there) and memory r
 
 ## Upgrading
 
-`docker build --build-arg OMNIGATE_RELEASE_TAG=v0.6.0 .` (or edit the `ARG` default in
+`docker build --build-arg OMNIGATE_RELEASE_TAG=v0.8.0 .` (or edit the `ARG` default in
 `Dockerfile`, which already points at the latest) picks a different published release. See
 [Releases](https://github.com/thinkingsense-ai/Docker/releases) for what's new in each one.
