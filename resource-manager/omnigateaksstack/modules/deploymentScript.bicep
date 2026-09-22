@@ -161,7 +161,13 @@ else:
       curl -fsSL -o /tmp/omnigate-hash-tool.jar "$JAR_URL"
       APP_HASH=$(java -cp /tmp/omnigate-hash-tool.jar com.omnigate.http.auth.PasswordHash "$APP_PASSWORD")
       rm -f /tmp/omnigate-hash-tool.jar
-      APP_USERS="${APP_USERNAME}:${APP_HASH}"
+      # Confirmed live: AppAuthConfig.parse (com.omnigate.http.ask.auth.AppAuthConfig) requires
+      # exactly 5 colon-separated fields (username:salt:hash:roles:attrs) and silently SKIPS any
+      # entry that doesn't split into 5 -- omitting the trailing "::" for the empty roles/
+      # attributes fields left the user list empty and login silently disabled ("web UI
+      # business-user login disabled -- set OMNIGATE_APP_USERS"), no error, no crash, just an
+      # unusable login. The trailing "::" is not optional cosmetic formatting.
+      APP_USERS="${APP_USERNAME}:${APP_HASH}::"
 
       echo "== Installing the omnigate Helm release =="
       helm upgrade --install omnigate "$CHART_DIR" \
