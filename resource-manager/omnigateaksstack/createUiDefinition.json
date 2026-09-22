@@ -140,7 +140,7 @@
             "name": "imageRepository",
             "type": "Microsoft.Common.TextBox",
             "label": "Container image repository",
-            "defaultValue": "ocir.us-phoenix-1.oci.oraclecloud.com/ax8tpjdxhykk/omnigate",
+            "defaultValue": "us-docker.pkg.dev/thinkingsense/omnigate/omnigate",
             "toolTip": "Fully-qualified path for the omnigate image. Leave as the default unless you've mirrored the image into your own registry.",
             "constraints": {
               "required": false
@@ -159,8 +159,8 @@
             "name": "chartSourceUrl",
             "type": "Microsoft.Common.TextBox",
             "label": "Helm chart source tarball URL",
-            "defaultValue": "https://github.com/thinkingsense-ai/Docker/archive/refs/heads/main.tar.gz",
-            "toolTip": "Advanced -- override only if pointing at a fork or a specific aks-stack-vX.Y.Z release tarball.",
+            "defaultValue": "https://github.com/thinkingsense-ai/Docker/archive/refs/tags/aks-stack-v1.0.3.tar.gz",
+            "toolTip": "Advanced -- override only if pointing at a fork or a different aks-stack-vX.Y.Z release tarball.",
             "constraints": {
               "required": false
             }

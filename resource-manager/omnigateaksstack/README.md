@@ -20,7 +20,7 @@ defaults to the publisher's GCP Artifact Registry mirror (`us-docker.pkg.dev/thi
 Deployed successfully end to end against a real subscription (`westus2`) — VNet, AKS cluster,
 managed identity, role assignment, deployment script, Postgres, and the OmniGate app itself all
 came up clean and the Ask app served real HTTP traffic through its public LoadBalancer IP.
-Getting there took eight iterations and surfaced eight real, live-confirmed bugs — all already
+Getting there took eight iterations and surfaced nine real, live-confirmed bugs — all already
 fixed in this stack, not hypothetical caveats:
 
 - **AKS's Azure CNI defaults its Service CIDR to `10.0.0.0/16`**, which fully overlapped this
@@ -75,6 +75,17 @@ fixed in this stack, not hypothetical caveats:
   "What's here") and repointing the docs site's Deploy button and `createUIDefinitionUri` at
   `raw.githubusercontent.com` pinned to the release tag. The CLI path was never affected — CORS is
   enforced by browsers, not `az` — so it still works fine against either release's assets.
+- **`createUiDefinition.json`'s own field defaults silently drifted from `main.bicep`'s parameter
+  defaults.** When `imageRepository`'s default was fixed from the broken OCIR path to the GCP
+  mirror (see above), only `main.bicep` got updated — `createUiDefinition.json`'s `imageRepository`
+  TextBox kept its own separate `defaultValue`, still the broken OCIR path. **The Portal wizard
+  populates every field from `createUiDefinition.json`'s own defaults, not from the ARM template's
+  parameter defaults** — so a real deploy left every field untouched (including
+  "Container image repository (advanced)") and still got the broken value, `ImagePullBackOff`
+  and all, on the very first real user's first deploy after the CORS fix. `chartSourceUrl` had the
+  identical drift (still defaulted to the `main` branch tarball instead of a pinned release tag).
+  Fixed in `v1.0.3` by syncing both fields and adding a value-diff check (not just a name-diff
+  check, which was already being done and didn't catch this) to "Publishing a release" below.
 
 Also confirmed working as designed, no fixes needed: `managed-csi` is AKS's real default
 StorageClass (PVCs for both Postgres and OmniGate's data volume bound with no issues); the
@@ -229,6 +240,33 @@ Before tagging:
 
 1. Update `main.bicep`'s `chartSourceUrl` default to point at the tag about to be cut (e.g.
    `.../archive/refs/tags/aks-stack-vX.Y.Z.tar.gz`), not `main` — see "What's here" above.
+1a. **Check that every `createUiDefinition.json` field `defaultValue` still matches its
+   corresponding `main.bicep` parameter default, not just that the parameter names line up**
+   (confirmed live in `v1.0.2`→`v1.0.3`: the names always matched, but `imageRepository`'s and
+   `chartSourceUrl`'s *values* had silently drifted — the Portal wizard populates every field from
+   `createUiDefinition.json`'s own default, not the ARM template's, so a value-only drift there is
+   invisible to a name-diff check and ships a broken deploy to the very next real user). A quick
+   script for this:
+   ```bash
+   python3 -c "
+   import json, re
+   uidef = json.load(open('createUiDefinition.json'))
+   bicep = open('main.bicep').read()
+   def find(obj):
+       e = {}
+       if isinstance(obj, dict):
+           if 'name' in obj and 'defaultValue' in obj: e[obj['name']] = obj['defaultValue']
+           for v in obj.values(): e.update(find(v))
+       elif isinstance(obj, list):
+           for i in obj: e.update(find(i))
+       return e
+   defaults = find(uidef['parameters']['config']); defaults.update(find(uidef['parameters']['steps']))
+   for name, uival in defaults.items():
+       m = re.search(rf\"param {re.escape(name)} \w+(?:\s*=\s*'([^']*)')?\", bicep)
+       if m and m.group(1) is not None and str(uival) != str(m.group(1)):
+           print(f'MISMATCH {name}: createUiDefinition={uival!r} main.bicep={m.group(1)!r}')
+   "
+   ```
 2. `az bicep build --file main.bicep --outfile azuredeploy.json` and **commit the output** (see
    "What's here" above for why this file is committed here, unlike the AWS/OCI stacks' equivalent
    build artifacts — it's a hard CORS requirement for the Portal's "Deploy to Azure" button, not a
