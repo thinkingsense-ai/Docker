@@ -1,0 +1,187 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/0.1.2-preview/CreateUIDefinition.MultiVm.json#",
+  "handler": "Microsoft.Azure.CreateUIDef",
+  "version": "0.1.2-preview",
+  "parameters": {
+    "config": {
+      "isWizard": false,
+      "basics": {
+        "description": "Deploy OmniGate (NL2SQL gateway) with a seeded Postgres demo backend onto a new AKS cluster. Same seeded three-schema supply-chain demo as the AWS/OCI/GCP stacks. This is the Azure analog of the OCI stack's schema.yaml wizard.",
+        "location": {
+          "label": "Region",
+          "toolTip": "Must have Ampere Altra (Dps/Eps v5-family) arm64 VM availability -- the published omnigate image is arm64-only. Confirmed live: westus2 has clean, unrestricted Standard_D2ps_v5 availability; eastus, eastus2, and westeurope currently have none. Check `az vm list-skus --size Standard_D2ps_v5 --location <region> -o table` before picking a different region."
+        }
+      }
+    },
+    "basics": [],
+    "steps": [
+      {
+        "name": "application",
+        "label": "Application",
+        "elements": [
+          {
+            "name": "appUsername",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Ask-app login username",
+            "defaultValue": "demo",
+            "toolTip": "Business-user login for the Ask app (not an Azure/AAD account).",
+            "constraints": {
+              "required": true,
+              "regex": "^[a-zA-Z0-9_-]{1,64}$",
+              "validationMessage": "1-64 characters, letters/numbers/underscore/hyphen only."
+            }
+          },
+          {
+            "name": "appPassword",
+            "type": "Microsoft.Common.PasswordBox",
+            "label": {
+              "password": "Ask-app login password",
+              "confirmPassword": "Confirm password"
+            },
+            "toolTip": "Plain text -- hashed automatically during deployment using the deployed image's own PasswordHash utility, so nothing to generate yourself. Required so this deployment doesn't ship the repo's well-known demo/demo login on a public LoadBalancer.",
+            "constraints": {
+              "required": true
+            },
+            "options": {
+              "hideConfirmation": false
+            }
+          },
+          {
+            "name": "llmApiKey",
+            "type": "Microsoft.Common.PasswordBox",
+            "label": {
+              "password": "Anthropic API key"
+            },
+            "toolTip": "From console.anthropic.com. Powers NL2SQL (English -> SQL translation) -- required because the Ask app can't answer any question without it, so an unset key just means a stack that deploys successfully but is useless.",
+            "constraints": {
+              "required": true
+            },
+            "options": {
+              "hideConfirmation": true
+            }
+          },
+          {
+            "name": "llmModel",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Anthropic model",
+            "defaultValue": "claude-sonnet-5",
+            "toolTip": "Model used for NL2SQL.",
+            "constraints": {
+              "required": true,
+              "allowedValues": [
+                { "label": "claude-sonnet-5", "value": "claude-sonnet-5" },
+                { "label": "claude-opus-5", "value": "claude-opus-5" },
+                { "label": "claude-haiku-4-5-20251001", "value": "claude-haiku-4-5-20251001" }
+              ]
+            }
+          },
+          {
+            "name": "exposeWireProtocols",
+            "type": "Microsoft.Common.CheckBox",
+            "label": "Expose DB wire protocols publicly",
+            "toolTip": "Also publish the Oracle/Postgres/MySQL/gRPC wire-protocol ports on a second public LoadBalancer. Off by default -- turn on only if you plan to connect a wire-protocol client (e.g. psql, a BI tool) from outside the cluster."
+          }
+        ]
+      },
+      {
+        "name": "computeSizing",
+        "label": "Compute Sizing",
+        "elements": [
+          {
+            "name": "nodeVmSize",
+            "type": "Microsoft.Common.TextBox",
+            "label": "AKS node VM size",
+            "defaultValue": "Standard_D2ps_v5",
+            "toolTip": "Must be an arm64 (Ampere Altra) SKU to match the arm64-only omnigate image -- an amd64 node pool will fail every pod with ErrImagePull: no match for platform in manifest. Ampere Altra availability is region-dependent; verify with `az vm list-skus` before deploying.",
+            "constraints": {
+              "required": true
+            }
+          },
+          {
+            "name": "nodeCount",
+            "type": "Microsoft.Common.Slider",
+            "label": "Node count",
+            "defaultValue": 1,
+            "min": 1,
+            "max": 4,
+            "toolTip": "Number of AKS worker nodes."
+          }
+        ]
+      },
+      {
+        "name": "storage",
+        "label": "Storage",
+        "elements": [
+          {
+            "name": "postgresStorageGb",
+            "type": "Microsoft.Common.Slider",
+            "label": "Postgres storage (GB)",
+            "defaultValue": 5,
+            "min": 1,
+            "max": 100,
+            "toolTip": "Azure Disk size for the seeded Postgres backend."
+          },
+          {
+            "name": "omnigateDataStorageGb",
+            "type": "Microsoft.Common.Slider",
+            "label": "OmniGate config storage (GB)",
+            "defaultValue": 2,
+            "min": 1,
+            "max": 20,
+            "toolTip": "Holds OmniGate's own admin-set configuration (e.g. an API key entered live in the admin console) so it survives pod restarts."
+          }
+        ]
+      },
+      {
+        "name": "advanced",
+        "label": "Advanced",
+        "elements": [
+          {
+            "name": "imageRepository",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Container image repository",
+            "defaultValue": "ocir.us-phoenix-1.oci.oraclecloud.com/ax8tpjdxhykk/omnigate",
+            "toolTip": "Fully-qualified path for the omnigate image. Leave as the default unless you've mirrored the image into your own registry.",
+            "constraints": {
+              "required": false
+            }
+          },
+          {
+            "name": "imageTag",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Image tag",
+            "defaultValue": "latest",
+            "constraints": {
+              "required": false
+            }
+          },
+          {
+            "name": "chartSourceUrl",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Helm chart source tarball URL",
+            "defaultValue": "https://github.com/thinkingsense-ai/Docker/archive/refs/heads/main.tar.gz",
+            "toolTip": "Advanced -- override only if pointing at a fork or a specific aks-stack-vX.Y.Z release tarball.",
+            "constraints": {
+              "required": false
+            }
+          }
+        ]
+      }
+    ],
+    "outputs": {
+      "location": "[location()]",
+      "appUsername": "[steps('application').appUsername]",
+      "appPassword": "[steps('application').appPassword]",
+      "llmApiKey": "[steps('application').llmApiKey]",
+      "llmModel": "[steps('application').llmModel]",
+      "exposeWireProtocols": "[steps('application').exposeWireProtocols]",
+      "nodeVmSize": "[steps('computeSizing').nodeVmSize]",
+      "nodeCount": "[steps('computeSizing').nodeCount]",
+      "postgresStorageGb": "[steps('storage').postgresStorageGb]",
+      "omnigateDataStorageGb": "[steps('storage').omnigateDataStorageGb]",
+      "imageRepository": "[steps('advanced').imageRepository]",
+      "imageTag": "[steps('advanced').imageTag]",
+      "chartSourceUrl": "[steps('advanced').chartSourceUrl]"
+    }
+  }
+}

@@ -1,0 +1,74 @@
+# Defaults here are overridden by modules/deploymentScript.bicep's `helm upgrade --install
+# --set ...` invocation when deployed as an ARM template -- see createUiDefinition.json for which
+# of these become end-user form fields.
+
+image:
+  # Set by the deployment script -- defaults to the publisher's own public OCIR image (same
+  # cross-cloud-reachable registry the AWS stack pulls directly, no ACR mirror needed).
+  repository: ""
+  tag: latest
+  pullPolicy: IfNotPresent
+
+omnigate:
+  llmModel: claude-sonnet-5
+  # Anthropic API key -- required, no default on purpose (NL2SQL simply won't work without it,
+  # same as the local compose setup and the AWS/OCI/GCP stacks). Injected into a Secret, never a
+  # ConfigMap.
+  llmApiKey: ""
+  # "username:saltB64:hashB64::" -- generate with:
+  #   docker run --rm --entrypoint java <image> -cp omnigate.jar com.omnigate.http.auth.PasswordHash <password>
+  # No default: shipping the repo's well-known demo/demo credential on an internet-reachable
+  # LoadBalancer would be a real exposure, so the chart intentionally requires this to be set.
+  appUsers: ""
+  # Storage for /var/lib/omnigate/data (the embedded ConfigStore -- admin-set config like an
+  # API key entered live in the UI). This is exactly what bit us running locally under plain
+  # `docker compose`: an anonymous volume that didn't survive a container recreate. A real PVC
+  # here means it survives pod rescheduling.
+  dataVolumeSize: 2Gi
+  # Wire-protocol ports (Oracle/Postgres/MySQL/gRPC) are ClusterIP-only by default -- opt in
+  # explicitly before exposing raw DB wire protocols to the internet.
+  exposeWireProtocols: false
+
+postgres:
+  # Fully-qualified, not a bare "postgres:16-alpine" -- OKE's node runtime enforces short-name
+  # mode and rejects a bare tag (confirmed live there). AKS/containerd hasn't been confirmed to
+  # share that enforcement, but there's no cost to staying fully-qualified defensively here too.
+  image: docker.io/library/postgres:16-alpine
+  user: postgres
+  password: postgres
+  database: postgres
+  storageSize: 5Gi
+
+# AKS ships the Azure Disk CSI driver and this StorageClass by default -- no extra CSI install
+# needed, unlike the AWS stack (which must install aws-ebs-csi-driver + a custom gp3
+# StorageClass). Not live-confirmed on AKS specifically (no Azure account available while writing
+# this stack) -- if a fresh cluster's default storage classes differ, check
+# `kubectl get storageclass` and adjust this default.
+storageClassName: managed-csi
+
+service:
+  type: LoadBalancer
+  httpPort: 8080
+
+resources:
+  omnigate:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      # Deliberately no CPU limit -- the JVM and its embedding llama-server subprocess both run
+      # in this one container, and a CPU *limit* (unlike a request) is enforced via a hard
+      # per-scheduling-period CFS quota, which caused real, reproducible stalls on the OCI/AWS
+      # stacks: complex NL2SQL questions needing the embedding-based schema-retrieval step would
+      # hang indefinitely, while questions that skip that step worked instantly. Requests alone
+      # still give the scheduler what it needs for bin-packing; only the throttling behavior was
+      # the problem. Carrying this forward defensively for AKS even though not yet live-confirmed
+      # here specifically.
+      memory: 3Gi
+  postgres:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
