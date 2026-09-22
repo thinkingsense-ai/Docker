@@ -55,8 +55,8 @@ param imageRepository string = 'us-docker.pkg.dev/thinkingsense/omnigate/omnigat
 @description('Image tag (advanced).')
 param imageTag string = 'latest'
 
-@description('Tarball URL containing this stack\'s Helm chart (advanced). Defaults to this repo\'s main branch; a tagged aks-stack-vX.Y.Z release should override this to that tag\'s tarball -- see README\'s "Publishing a release".')
-param chartSourceUrl string = 'https://github.com/thinkingsense-ai/Docker/archive/refs/heads/main.tar.gz'
+@description('Tarball URL containing this stack\'s Helm chart (advanced). Pinned to this release\'s own tag so a deploy from this exact "Deploy to Azure" button/azuredeploy.json can never drift from a newer chart on main -- bump this alongside the version tag on every release, see README\'s "Publishing a release".')
+param chartSourceUrl string = 'https://github.com/thinkingsense-ai/Docker/archive/refs/tags/aks-stack-v1.0.0.tar.gz'
 
 module network 'modules/network.bicep' = {
   name: 'omnigate-network'

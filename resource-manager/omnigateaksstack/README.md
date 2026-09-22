@@ -9,41 +9,65 @@ quantity ordered, carrier, eta_date, and current warehouse qty_on_hand for that 
 `fixtures/supply-chain/README.md` in this repo's root for the expected answer).
 
 Deployers don't need to build or push the OmniGate app image themselves — `imageRepository`
-defaults to the publisher's GCP Artifact Registry mirror (`us-docker.pkg.dev/thinkingsense/omnigate/omnigate`),
-**not** OCI's own OCIR registry the AWS stack's README documents pulling directly: confirmed live
-that OCIR now rejects external pulls from a Free Tier tenancy (`403 Forbidden: "Free tier account
-is not supported"`), so that path does not actually work cross-cloud from Azure. This is likely
-the real reason the GCP stack mirrors the image into its own Artifact Registry rather than pulling
-OCIR directly too (previously assumed to be a performance choice) — see "Known unknowns" below.
+defaults to the publisher's GCP Artifact Registry mirror (`us-docker.pkg.dev/thinkingsense/omnigate/omnigate`).
 
-> **This stack has not had a full end-to-end deploy on a real Azure subscription yet** (an AKS
-> cluster is billable and takes ~15-20 minutes, so this was deferred pending the maintainer's
-> go-ahead — see below for what running it would look like). What *has* been confirmed live
-> against a real subscription so far:
-> - `az bicep build` compiles `main.bicep` cleanly — this caught and fixed one real bug: a
->   `roleAssignments` `scope` needs an actual resource symbol, not a `resourceId()` string, which
->   the Bicep compiler rejects with `BCP036`.
-> - `createUiDefinition.json`'s output parameter names match `main.bicep`'s parameters 1:1
->   (scripted diff, zero mismatches either direction).
-> - `az deployment group validate` and `az deployment group what-if` both succeed against a real
->   resource group in `westus2` — ARM accepts the template and the planned 5-resource create list
->   (VNet, AKS cluster, managed identity, role assignment, deployment script) matches what's
->   expected, with secrets properly redacted in the `what-if` output.
-> - Bicep's `string(bool)` produces capitalized `"True"`/`"False"`, which flows through to
->   `helm --set omnigate.exposeWireProtocols=...` — confirmed via `helm template` that both values
->   parse correctly as YAML booleans (1 Service rendered for `False`, 2 for `True`), not the
->   literal string `"False"`.
-> - **Ampere Altra (`Standard_D2ps_v5`) regional availability, confirmed live via `az vm
->   list-skus`**: unavailable in `eastus`, `eastus2`, and `westeurope`; present but
->   subscription-restricted on some zones in `centralus`/`southcentralus`; cleanly available (all
->   zones, no restrictions) in **`westus2`** — this is a real, sharper version of the "narrower
->   than Graviton/A1" caveat than could be said before actually checking.
->
-> What's still unconfirmed: whether the deploymentScript's `tdnf`/`apt-get`/`apk` JRE-install
-> branch actually picks the right one on Azure's current AzureCLI container image, whether AKS's
-> default StorageClass really is `managed-csi`, and the containerd short-name/PGDATA `lost+found`
-> assumptions — all of which only a real `az deployment group create` will surface. See "Known
-> unknowns" below.
+## Clean-room validated on a real Azure subscription
+
+Deployed successfully end to end against a real subscription (`westus2`) — VNet, AKS cluster,
+managed identity, role assignment, deployment script, Postgres, and the OmniGate app itself all
+came up clean and the Ask app served real HTTP traffic through its public LoadBalancer IP.
+Getting there took eight iterations and surfaced seven real, live-confirmed bugs — all already
+fixed in this stack, not hypothetical caveats:
+
+- **AKS's Azure CNI defaults its Service CIDR to `10.0.0.0/16`**, which fully overlapped this
+  stack's own VNet (also `10.0.0.0/16`) — cluster creation failed outright with
+  `ServiceCidrOverlapExistingSubnetsCidr`. Fixed by pinning `serviceCidr`/`dnsServiceIP` to
+  `10.1.0.0/16` in `modules/aks.bicep`, outside the VNet's address space.
+- **The `deploymentScripts` AzureCLI container is Alpine-based (`apk`), not Azure Linux
+  (`tdnf`)** as first assumed — and ships with neither `curl`, `openssl`, nor a JRE by default.
+  The very first `curl` call failed with `curl: command not found`; after adding curl+JRE, Helm's
+  own install script then failed needing `openssl` for checksum verification. Fixed by installing
+  all three together (`apk` first, `tdnf`/`apt-get` as defensive fallbacks) before anything else
+  needs them.
+- **OCI's OCIR registry rejects external pulls from a Free Tier tenancy.** A pod hit
+  `ImagePullBackOff` / `403 Forbidden: "unknown: Free tier account is not supported."` pulling
+  `ocir.us-phoenix-1.oci.oraclecloud.com/ax8tpjdxhykk/omnigate:latest` — the path the AWS stack's
+  README documents pulling directly. This is likely the real reason the GCP stack mirrors the
+  image into its own Artifact Registry rather than pulling OCIR directly too (previously assumed
+  to be a performance choice, not a workaround for this). Fixed by switching `imageRepository`'s
+  default to that GCP mirror.
+- **`OMNIGATE_APP_USERS` silently failed to enable login.** The app's own
+  `AppAuthConfig.parse` requires exactly 5 colon-separated fields
+  (`username:salt:hash:roles:attrs`) and silently *skips* any entry that doesn't split into 5 — no
+  error, no crash, just `web UI business-user login disabled` and an unusable login page. The
+  script built `username:hash` (3 fields), missing the trailing `::` for the empty roles/
+  attributes fields that OCI's `password-hash.tf` and AWS's `handler.py` both already append.
+  Fixed in `modules/deploymentScript.bicep`.
+- **Hand-escaped JSON in a Bicep triple-quoted string doesn't round-trip.** The script's final
+  `askAppUrl` output write used shell-escaped quotes (`\\"..\\"`) inside `'''...'''`, producing
+  malformed JSON — ARM rejected the *entire* deployment with `DeploymentScriptInvalidOutputs` even
+  though the Helm install had already succeeded. Fixed by building the output with Python's
+  `json.dumps` instead of shell escaping.
+- **`az aks get-credentials` does not install `kubectl`** — it only writes a kubeconfig file. The
+  script's own LB-IP-polling loop called `kubectl get svc`, which silently failed `kubectl: not
+  found` every iteration for the full 300s (masked by that loop's `2>/dev/null || true`, which was
+  meant to tolerate "no IP yet," not "no kubectl"), always falling through to a "pending" output
+  even once the LoadBalancer had a real IP. Fixed by running `az aks install-cli` right after
+  fetching credentials.
+- **Ampere Altra (`Standard_D2ps_v5`) regional availability is genuinely narrow.** Unlike AWS
+  Graviton (broadly available) or OCI's Always Free A1 (available in every Always Free region),
+  `az vm list-skus --size Standard_D2ps_v5 --location <region>` returned: **unavailable** in
+  `eastus`, `eastus2`, and `westeurope`; present but subscription-restricted on some zones in
+  `centralus`/`southcentralus`; cleanly available (all 3 zones, no restrictions) in **`westus2`**.
+  Not a bug to fix — a real regional constraint to document (see "Known unknowns" below).
+
+Also confirmed working as designed, no fixes needed: `managed-csi` is AKS's real default
+StorageClass (PVCs for both Postgres and OmniGate's data volume bound with no issues); the
+fully-qualified `docker.io/library/postgres:16-alpine` image pulled fine; the
+`PGDATA=/var/lib/postgresql/data/pgdata` workaround wasn't strictly needed on Azure Disk but was
+harmless to keep; Bicep's `string(bool)` (`"True"`/`"False"`) parses correctly as YAML booleans
+through `helm --set`; and `az bicep build`/`az deployment group validate`/`what-if` all still pass
+cleanly on the final version.
 
 ## Why Azure *can* mirror AWS/OCI's one-click pattern (unlike the GCP stack)
 
@@ -82,7 +106,7 @@ Use the "Deploy to Azure" button on the docs site, or manually:
 
 ```bash
 az login
-az group create --name omnigate-aks-rg --location <region-with-ampere-altra>
+az group create --name omnigate-aks-rg --location westus2  # confirmed live Ampere Altra availability, see below
 
 az deployment group create \
   --resource-group omnigate-aks-rg \
@@ -141,41 +165,19 @@ stacks' own image dependency.
 
 ## Known unknowns (read before your first real deploy)
 
-Most of the items below are a reasoned port of a pattern already confirmed live on the AWS/OCI/GCP
-stacks, not (yet) hit live on Azure — flagging explicitly rather than claiming confidence that
-isn't real. The Ampere Altra item below, unlike the others, **is** now confirmed live.
+Everything that was genuinely unconfirmed before the clean-room pass above is now either fixed or
+confirmed working (see that section). One real, unfixable-by-this-stack constraint remains:
 
-- **Ampere Altra regional availability — confirmed live.** Unlike AWS Graviton (broadly available
-  in nearly every region) or OCI's Always Free A1 (available in every Always Free region), Azure's
-  Ampere Altra `Dps`/`Eps` v5-family VMs are genuinely narrower in regional availability.
-  `az vm list-skus --size Standard_D2ps_v5 --location <region>` returned, against a real
-  subscription: **unavailable** in `eastus`, `eastus2`, and `westeurope`; present but
-  subscription-restricted on some zones in `centralus` and `southcentralus`; **cleanly available
-  (all 3 zones, no restrictions) in `westus2`**. `nodeVmSize` defaults to `Standard_D2ps_v5` and
-  `location` has no hardcoded default (falls back to the resource group's own location) — pick
-  `westus2`, or re-run that `az vm list-skus` check for whichever region you actually want, before
-  deploying. The bigger-lift alternative (out of scope for this stack) is getting a multi-arch
-  amd64+arm64 manifest published for the omnigate image and switching to a universally-available
-  `Dsv5`/`Dsv4` SKU instead.
-- **The `deploymentScripts` JRE-install step.** `modules/deploymentScript.bicep`'s script
-  installs a JRE via `tdnf`/`apt-get`/`apk` (whichever the AzureCLI container's base image
-  actually has) to run the password-hash utility — this exact package-manager/package-name
-  combination has not been confirmed against a real `deploymentScripts` execution. If it fails,
-  check the deployment script's execution logs (`az deployment-scripts show` /
-  the Portal's deployment script resource) for which package manager is actually present and fix
-  the script accordingly.
-- **AKS's default StorageClass name.** `values.yaml` assumes `managed-csi` exists by default on a
-  fresh AKS cluster (true as of recent AKS versions, per Azure's own docs, but not independently
-  reverified here) — if PVCs don't bind, `kubectl get storageclass` and adjust.
-- **containerd short-name image resolution.** The OCI stack had to fully-qualify
-  `docker.io/library/postgres:16-alpine` because OKE enforces Docker's "short-name mode." This
-  chart keeps that fully-qualified reference defensively for AKS too, but whether AKS's
-  containerd actually enforces the same policy hasn't been checked.
-- **Azure Disk `lost+found` at the PVC mount root.** The OCI/AWS stacks both had to set
-  `PGDATA=/var/lib/postgresql/data/pgdata` because their block-storage provisioners auto-create a
-  `lost+found` directory that fails initdb's "directory must be empty" check. Kept defensively
-  here on the assumption Azure Disk (ext4-formatted) behaves the same way — not independently
-  confirmed.
+- **Ampere Altra regional availability.** Unlike AWS Graviton (broadly available in nearly every
+  region) or OCI's Always Free A1 (available in every Always Free region), Azure's Ampere Altra
+  `Dps`/`Eps` v5-family VMs are genuinely narrower in regional availability — confirmed
+  unavailable in `eastus`, `eastus2`, and `westeurope`; cleanly available in `westus2` (see above).
+  `nodeVmSize` defaults to `Standard_D2ps_v5` and `location` has no hardcoded default (falls back
+  to the resource group's own location) — pick `westus2`, or run `az vm list-skus --size
+  Standard_D2ps_v5 --location <region>` for whichever region you actually want, before deploying.
+  The bigger-lift alternative (out of scope for this stack) is getting a multi-arch amd64+arm64
+  manifest published for the omnigate image and switching to a universally-available `Dsv5`/`Dsv4`
+  SKU instead.
 
 ## Publishing a release (maintainers)
 
