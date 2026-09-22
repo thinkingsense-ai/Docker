@@ -49,8 +49,8 @@ param postgresStorageGb int = 5
 @maxValue(20)
 param omnigateDataStorageGb int = 2
 
-@description('Container image repository (advanced). Defaults to the publisher\'s own pre-built public OCIR image -- same public, cross-cloud-reachable registry the AWS stack pulls from directly (no need to mirror it into ACR); deployers should not need to build or push anything themselves.')
-param imageRepository string = 'ocir.us-phoenix-1.oci.oraclecloud.com/ax8tpjdxhykk/omnigate'
+@description('Container image repository (advanced). Defaults to the publisher\'s GCP Artifact Registry mirror -- confirmed live that OCI\'s own OCIR registry rejects external pulls from a Free Tier tenancy (403 "Free tier account is not supported"), so pulling the AWS stack\'s documented OCIR path directly does not actually work cross-cloud; the GCP mirror does. Deployers should not need to build or push anything themselves.')
+param imageRepository string = 'us-docker.pkg.dev/thinkingsense/omnigate/omnigate'
 
 @description('Image tag (advanced).')
 param imageTag string = 'latest'

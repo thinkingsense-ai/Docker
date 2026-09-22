@@ -9,8 +9,12 @@ quantity ordered, carrier, eta_date, and current warehouse qty_on_hand for that 
 `fixtures/supply-chain/README.md` in this repo's root for the expected answer).
 
 Deployers don't need to build or push the OmniGate app image themselves — `imageRepository`
-defaults to this project's own public OCIR image, the same one the AWS stack pulls directly
-cross-cloud (OCIR is a plain, publicly-reachable registry — no need to mirror it into ACR).
+defaults to the publisher's GCP Artifact Registry mirror (`us-docker.pkg.dev/thinkingsense/omnigate/omnigate`),
+**not** OCI's own OCIR registry the AWS stack's README documents pulling directly: confirmed live
+that OCIR now rejects external pulls from a Free Tier tenancy (`403 Forbidden: "Free tier account
+is not supported"`), so that path does not actually work cross-cloud from Azure. This is likely
+the real reason the GCP stack mirrors the image into its own Artifact Registry rather than pulling
+OCIR directly too (previously assumed to be a performance choice) — see "Known unknowns" below.
 
 > **This stack has not had a full end-to-end deploy on a real Azure subscription yet** (an AKS
 > cluster is billable and takes ~15-20 minutes, so this was deferred pending the maintainer's
@@ -126,10 +130,14 @@ az deployment group create \
 
 ## Image
 
-`ocir.us-phoenix-1.oci.oraclecloud.com/ax8tpjdxhykk/omnigate:latest` — the same public OCIR image
-the AWS stack pulls directly (confirmed live there that a plain container registry is reachable
-cross-cloud with no special auth). It's **arm64-only** (no amd64 manifest), same as the AWS and
-GCP stacks' own image dependency.
+`us-docker.pkg.dev/thinkingsense/omnigate/omnigate:latest` — the GCP stack's own Artifact
+Registry mirror, **not** OCIR directly. Confirmed live: a fresh AKS pod hit
+`ImagePullBackOff` / `403 Forbidden: "unknown: Free tier account is not supported."` pulling
+`ocir.us-phoenix-1.oci.oraclecloud.com/ax8tpjdxhykk/omnigate:latest` (the path both the AWS
+stack's README and this stack's own first draft assumed was directly cross-cloud-pullable) — OCI
+now appears to reject external/anonymous pulls against a Free Tier tenancy's registry. Switching
+to the GCP mirror fixed it. It's **arm64-only** (no amd64 manifest), same as the AWS and GCP
+stacks' own image dependency.
 
 ## Known unknowns (read before your first real deploy)
 
