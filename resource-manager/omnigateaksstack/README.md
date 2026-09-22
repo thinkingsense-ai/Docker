@@ -119,8 +119,9 @@ Use the "Deploy to Azure" button on the docs site, or manually:
 
 1. Use the "Deploy to Azure" button (points at `raw.githubusercontent.com` for this release's
    tag — see "What's here" for why it must be that host, not a GitHub release-asset URL).
-2. Pick a **resource group** and a **region with Ampere Altra (arm64) VM availability** — see
-   "Known unknowns" below, this is the one hard regional constraint.
+2. Name a **new resource group** (the wizard requires "Create new" — it won't let you target an
+   existing one, deliberately, see the note below) and pick a **region with Ampere Altra (arm64)
+   VM availability** — see "Known unknowns" below, this is the one hard regional constraint.
 3. Follow the wizard (driven by `createUiDefinition.json`): an Ask-app login (plain text, hashed
    automatically during deployment) and an Anthropic API key — required, since a deployment
    without one comes up fine but can't answer any question. Get a free key from
@@ -167,7 +168,9 @@ az deployment group create \
   the release jar matching the image tag, run its own bundled `PasswordHash` utility) and then
   runs `helm upgrade --install` against the cluster this same deployment created.
 - `createUiDefinition.json` — the Portal form definition, direct analog of the OCI stack's
-  `schema.yaml`.
+  `schema.yaml`. Forces "Create new" resource group (`resourceGroup.allowExisting: false`) —
+  see "Cleanup" for why: `destroy.sh`/`az group delete` deletes the *entire* resource group, so
+  this stack must never share one with anything else.
 - `helm/omnigate/` — this stack's own copy of the Helm chart, adapted from the OCI chart: AKS's
   default `managed-csi` StorageClass instead of `oci-bv`, `service.beta.kubernetes.io/azure-load-balancer-internal:
   "false"` instead of OCI's NLB annotation, same seeded three-schema demo, same required
@@ -324,3 +327,15 @@ entire teardown story here; `destroy.sh` is a thin confirmation wrapper around:
 ```bash
 az group delete --name <your-rg> --yes --no-wait
 ```
+
+**This only stays simple and safe if the resource group is dedicated to this stack** — nothing
+else in it. `createUiDefinition.json` enforces that for the Portal path (`resourceGroup.
+allowExisting: false` — the wizard requires "Create new", confirmed live this actually blocks
+picking an existing resource group in the Portal UI). The CLI path has no such guardrail: `az
+deployment group create` can target any resource group you already have, including one you didn't
+create for this stack. **Always `az group create` a fresh one first** (see "Deploy via the CLI"
+above) — `destroy.sh`/`az group delete` will otherwise happily delete anything else living in
+whatever resource group you point it at, which is exactly what would happen if you ran it against,
+say, `NetworkWatcherRG` (an Azure-managed resource group some subscriptions have automatically —
+deletable, Azure recreates it on demand, but not something this stack should be nuking as a side
+effect of tearing itself down).

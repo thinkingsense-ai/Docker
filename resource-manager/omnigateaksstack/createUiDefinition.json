@@ -10,6 +10,9 @@
         "location": {
           "label": "Region",
           "toolTip": "Must have Ampere Altra (Dps/Eps v5-family) arm64 VM availability -- the published omnigate image is arm64-only. Confirmed live: westus2 has clean, unrestricted Standard_D2ps_v5 availability; eastus, eastus2, and westeurope currently have none. Check `az vm list-skus --size Standard_D2ps_v5 --location <region> -o table` before picking a different region."
+        },
+        "resourceGroup": {
+          "allowExisting": false
         }
       }
     },
@@ -159,7 +162,7 @@
             "name": "chartSourceUrl",
             "type": "Microsoft.Common.TextBox",
             "label": "Helm chart source tarball URL",
-            "defaultValue": "https://github.com/thinkingsense-ai/Docker/archive/refs/tags/aks-stack-v1.0.3.tar.gz",
+            "defaultValue": "https://github.com/thinkingsense-ai/Docker/archive/refs/tags/aks-stack-v1.0.4.tar.gz",
             "toolTip": "Advanced -- override only if pointing at a fork or a different aks-stack-vX.Y.Z release tarball.",
             "constraints": {
               "required": false
