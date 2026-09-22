@@ -125,6 +125,15 @@ resource helmInstall 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
       echo "== Fetching AKS credentials =="
       az aks get-credentials --resource-group "$RESOURCE_GROUP" --name "$CLUSTER_NAME" --overwrite-existing --admin
 
+      # Confirmed live: `az aks get-credentials` only writes a kubeconfig file -- it does NOT
+      # install the kubectl binary itself, so the later `kubectl get svc` LB-IP-poll loop silently
+      # failed "kubectl: not found" every single iteration (masked by that loop's own `2>/dev/null
+      # || true`, which is there to tolerate "no IP yet", not "no kubectl") for the full 300s,
+      # always falling through to the "pending" fallback even when the LB already had a real IP.
+      # `az aks install-cli` is the Azure-blessed way to fetch a matching kubectl (+ kubelogin).
+      command -v kubectl >/dev/null 2>&1 || az aks install-cli --only-show-errors
+      command -v kubectl >/dev/null 2>&1 || { echo "kubectl still not available after az aks install-cli" >&2; exit 1; }
+
       echo "== Fetching the Helm chart =="
       curl -fsSL -o /tmp/chart.tar.gz "$CHART_SOURCE_URL"
       mkdir -p /tmp/chart
