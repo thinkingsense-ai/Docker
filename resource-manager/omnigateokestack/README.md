@@ -120,6 +120,26 @@ Confirmed live while building this stack — worth checking before you apply:
   one for the DB wire ports, since this stack's default HTTP-only service already needs one
 - **Always Free Ampere A1 (VM.Standard.A1.Flex)** allocation for the node pool's default sizing
   (2 OCPU / 12GB)
+- **Block storage headroom** (Always Free caps at 200GB total per AD). A leftover 50GB Postgres
+  volume from a past deploy that wasn't cleaned up (see below) eats into this same cap.
+
+## If a stack destroy leaves orphaned block volumes behind
+
+`terraform destroy` uninstalls the Helm release first, but `helm uninstall` deliberately leaves
+the Postgres StatefulSet's PVC behind (standard Kubernetes data-safety behavior) — and once the
+cluster/node pool are destroyed next, the CSI driver that would reclaim the backing block volume
+is gone too. `helm-release.tf`'s `null_resource.cleanup_pvcs` handles this automatically (deletes
+stray PVCs via `kubectl` while the cluster is still alive, right before node-pool teardown), but
+if `kubectl` isn't available in whatever's running `terraform destroy`, or an older release
+without this fix was used, the cleanup silently no-ops and the block volume is orphaned for good
+— confirmed live: seven abandoned 50GB volumes (350GB) accumulated this way across past test
+destroys, exceeding the 200GB Always Free cap and blocking every subsequent deploy's own volume
+provisioning ("`vcn-count`"/storage-adjacent `LimitExceeded` errors, or a new Postgres pod stuck
+`Pending` on an unschedulable PVC).
+
+To check and clean up: `oci bv volume list --compartment-id <ocid> --availability-domain <ad>
+--lifecycle-state AVAILABLE` — anything `AVAILABLE` (not `ATTACHED`) with no corresponding live
+cluster is orphaned and safe to `oci bv volume delete --volume-id <id> --force`.
 
 ## What's here
 

@@ -307,6 +307,20 @@ def lambda_handler(event, context):
             except Exception as e:
                 print("uninstall error (continuing so stack deletion isn't blocked):", e)
             try:
+                # `helm uninstall` deletes the StatefulSet but deliberately leaves its
+                # volumeClaimTemplates-created PVCs behind -- standard Kubernetes data-safety
+                # behavior. Left alone, that's permanent: once this same Delete tears down the
+                # node group/cluster next, the EBS CSI driver is gone too, so nothing ever
+                # processes the PVC's deletion and its backing EBS volume is orphaned for good.
+                # Confirmed on the OCI sibling stack (omnigateokestack) -- seven abandoned
+                # 50GB block volumes from past test deploys, never reclaimed the same way. Delete
+                # the PVCs now, while the cluster/CSI driver are still alive, so the volume
+                # actually gets reclaimed instead of orphaned.
+                run_cmd("kubectl", ["delete", "pvc", "--all", "--namespace", namespace,
+                                     "--wait=true", "--timeout=120s"])
+            except Exception as e:
+                print("pvc cleanup error (continuing so stack deletion isn't blocked):", e)
+            try:
                 wait_for_lb_cleanup(cluster_name, region)
             except Exception as e:
                 print("lb cleanup check error (continuing so stack deletion isn't blocked):", e)
