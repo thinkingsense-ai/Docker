@@ -89,6 +89,19 @@ Confirmed live while building this stack — worth checking before you deploy:
 - **IAM permissions** to create roles/policies, an EKS cluster, an ECR repo, and a CodeBuild
   project — the deploying principal needs broad-ish IAM, not just EKS access.
 
+## If a stack delete leaves an orphaned EBS volume behind
+
+The Lambda's Delete handler uninstalls the Helm release first, but `helm uninstall` deliberately
+leaves the Postgres StatefulSet's PVC behind (standard Kubernetes data-safety behavior) — and
+once the node group/cluster are destroyed next, the EBS CSI driver that would reclaim the backing
+volume is gone too. `handler.py`'s Delete path now runs `kubectl delete pvc --all` right after
+the uninstall (while the cluster is still alive) specifically to avoid this, mirroring a fix made
+after the OCI sibling stack (`omnigateokestack`) accumulated seven orphaned 50GB block volumes
+this same way across past test deploys, eventually exceeding its tenancy's storage quota. If an
+older release without this fix orphaned an EBS volume anyway, find it via `aws ec2
+describe-volumes --filters Name=status,Values=available` (an `available`, unattached volume with
+no corresponding live cluster) and delete it with `aws ec2 delete-volume --volume-id <id>`.
+
 ## What's here
 
 - `template.yaml` — the whole stack: VPC/subnets, EKS cluster + Graviton node group, OIDC
