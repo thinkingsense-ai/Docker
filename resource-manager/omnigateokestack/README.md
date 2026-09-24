@@ -36,6 +36,20 @@ pulls from a registry.
 4. **Terraform Actions → Apply**. Takes ~12-15 minutes (cluster ~8 min, node pool ~3 min, Helm
    release the rest).
 5. Once it succeeds, the stack's **Outputs** tab has `ask_app_url` and `kubeconfig_command`.
+   `ask_app_url` polls for the LoadBalancer's public IP for up to 3 minutes during Apply, so it's
+   usually already correct -- but OCI's LB IP assignment is asynchronous, so on a slow provision
+   it can still come back as `<pending-lb-ip>`. If so, run this in **Cloud Shell** (which already
+   has `oci`, `kubectl`, and `jq`) using the `cluster_id` and `region` from the same Outputs tab:
+   ```bash
+   oci ce cluster create-kubeconfig --cluster-id <cluster_id> --region <region> --file $HOME/.kube/config --token-version 2.0.0 && \
+   for i in $(seq 1 30); do
+     IP=$(kubectl get svc omnigate-omnigate-http -n default -o json 2>/dev/null | jq -r '.status.loadBalancer.ingress[]?.ip' | grep -Ev '^(10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.)' | head -1)
+     [ -n "$IP" ] && echo "Ask app URL: http://$IP:8080/" && break
+     sleep 10
+   done
+   ```
+   The `grep -Ev` matters: the Service's `status.loadBalancer.ingress` list can carry both a
+   private and a public IP, and picking the wrong one silently gives an unreachable URL.
 
 ## Deploy via the CLI
 

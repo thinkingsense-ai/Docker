@@ -70,6 +70,69 @@ resource "null_resource" "cleanup_pvcs" {
   }
 }
 
+# Polls the Ask app Service's own LoadBalancer status until OCI assigns it a public IP, so the
+# ask_app_url output is usually correct on the first `apply` instead of a placeholder. Confirmed
+# live: this was previously a hardcoded "<pending-lb-ip>" string that never even tried to read
+# the real status -- OCI's LB IP assignment is asynchronous and routinely still pending the
+# instant `helm_release.omnigate` (whose own `wait` only covers the Service object existing, not
+# its cloud-side LB) finishes, so a one-shot Terraform read races the same gap.
+#
+# Talks to the Kubernetes API directly via curl + a freshly generated OCI token, rather than
+# `kubectl` -- confirmed live elsewhere in this stack that Resource Manager's job runner has
+# python3, curl, and the OCI CLI (see password-hash.tf's own comment), but kubectl's presence was
+# never actually verified, and provisioning is the wrong place to find out the hard way. Always
+# exits 0 with a JSON result (never fails the apply): an empty `ip` just falls back to the
+# `kubectl get svc` instruction below, same as before this fix.
+data "external" "ask_app_lb_ip" {
+  depends_on = [helm_release.omnigate]
+
+  program = ["bash", "-c", <<-EOT
+    set -e
+    QUERY=$(cat)
+    CLUSTER_ID=$(python3 -c "import json,sys; print(json.load(sys.stdin)['cluster_id'])" <<< "$QUERY")
+    REGION=$(python3 -c "import json,sys; print(json.load(sys.stdin)['region'])" <<< "$QUERY")
+    SERVER=$(python3 -c "import json,sys; print(json.load(sys.stdin)['server'])" <<< "$QUERY")
+    CA_FILE=$(mktemp)
+    python3 -c "import json,sys,base64; sys.stdout.buffer.write(base64.b64decode(json.load(sys.stdin)['ca_data']))" <<< "$QUERY" > "$CA_FILE"
+
+    IP=""
+    for i in $(seq 1 18); do
+      TOKEN=$(oci ce cluster generate-token --cluster-id "$CLUSTER_ID" --region "$REGION" 2>/dev/null \
+        | python3 -c "import json,sys; print(json.load(sys.stdin)['status']['token'])" 2>/dev/null || true)
+      if [ -n "$TOKEN" ]; then
+        IP=$(curl -fsS --cacert "$CA_FILE" -H "Authorization: Bearer $TOKEN" \
+          "$SERVER/api/v1/namespaces/default/services/omnigate-omnigate-http" 2>/dev/null \
+          | python3 -c "
+import json, sys
+try:
+    ingress = json.load(sys.stdin).get('status', {}).get('loadBalancer', {}).get('ingress', [])
+except Exception:
+    ingress = []
+for entry in ingress:
+    ip = entry.get('ip', '')
+    if ip and not (ip.startswith('10.') or ip.startswith('192.168.') or
+                    any(ip.startswith(f'172.{n}.') for n in range(16, 32))):
+        print(ip)
+        break
+" 2>/dev/null || true)
+      fi
+      [ -n "$IP" ] && break
+      sleep 10
+    done
+
+    rm -f "$CA_FILE"
+    python3 -c "import json,sys; print(json.dumps({'ip': sys.argv[1]}))" "$IP"
+  EOT
+  ]
+
+  query = {
+    cluster_id = oci_containerengine_cluster.this.id
+    region     = var.region
+    server     = local.cluster_server
+    ca_data    = local.cluster_ca
+  }
+}
+
 resource "helm_release" "omnigate" {
   name       = "omnigate"
   chart      = "${path.module}/helm/omnigate"
