@@ -153,7 +153,8 @@
             "name": "imageTag",
             "type": "Microsoft.Common.TextBox",
             "label": "Image tag",
-            "defaultValue": "latest",
+            "defaultValue": "v0.8.0",
+            "toolTip": "Pinned to a specific free-edition release, not \"latest\" -- \"latest\" was deliberately removed from the registry after silently freezing at old content for two releases. Bump only when a newer free-edition image is confirmed published.",
             "constraints": {
               "required": false
             }
@@ -162,7 +163,7 @@
             "name": "chartSourceUrl",
             "type": "Microsoft.Common.TextBox",
             "label": "Helm chart source tarball URL",
-            "defaultValue": "https://github.com/thinkingsense-ai/Docker/archive/refs/tags/aks-stack-v1.0.4.tar.gz",
+            "defaultValue": "https://github.com/thinkingsense-ai/Docker/archive/refs/tags/aks-stack-v1.0.5.tar.gz",
             "toolTip": "Advanced -- override only if pointing at a fork or a different aks-stack-vX.Y.Z release tarball.",
             "constraints": {
               "required": false

@@ -212,6 +212,21 @@ The default `imageRepository` is the GCP stack's own Artifact Registry mirror �
 > it live without a full redeploy: `helm upgrade omnigate ./helm/omnigate --reuse-values --set
 > image.repository=us-docker.pkg.dev/thinkingsense/omnigate/omnigate`.
 
+**No `:latest` tag** — deliberately removed from the registry, same fix applied to the AWS/OCI/GCP
+stacks (see this repo's `c09dd7c`/`cdf6630` commits). Confirmed live: `:latest` had silently
+stopped tracking new app releases — frozen at `v0.6.0`'s content for two releases (`v0.7.0`,
+`v0.8.0`), because those releases were only ever published to a different registry this stack
+never pulled from. Every deploy that trusted `:latest` was actually getting a two-releases-stale
+image without anyone noticing. `imageTag` now defaults to a pinned release (`v0.8.0` as of this
+writing) instead. Before assuming a tag exists, check what's actually published:
+
+```bash
+gcloud artifacts docker tags list us-docker.pkg.dev/thinkingsense/omnigate/omnigate --project=thinkingsense
+```
+
+Bump `imageTag`'s default deliberately (this stack and the others, kept symmetric) whenever a
+newer free-edition image is built and pushed — never point it back at `:latest`.
+
 ## Known unknowns (read before your first real deploy)
 
 Everything that was genuinely unconfirmed before the clean-room pass above is now either fixed or
