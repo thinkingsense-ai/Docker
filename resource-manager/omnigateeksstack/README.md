@@ -15,8 +15,10 @@ expected answer).
 ![OmniGate on EKS — network architecture](architecture.svg)
 
 Deployers don't need to build or push the OmniGate app image itself — `ImageTag` defaults to
-this project's own public OCIR `:latest` image, pulled the same way `docker compose up` pulls
-from a registry. The one thing AWS *does* need built locally to your account is the small
+a specific pinned free-edition release (`v0.8.0`, not `:latest` -- see the parameter's own
+description for why) hosted in this project's own public OCIR repo, pulled the same way
+`docker compose up` pulls from a registry. The one thing AWS *does* need built locally to your
+account is the small
 Lambda that runs `helm install` against the new cluster — Lambda container images must live in
 an ECR repo in the same account and Region as the function, so this stack includes a CodeBuild
 project that builds and pushes that image automatically as part of the same one-click deploy.
