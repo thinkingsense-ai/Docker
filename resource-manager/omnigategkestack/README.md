@@ -251,6 +251,21 @@ gcloud compute networks subnets delete omnigate-gke-nodes --region=<region> --pr
 gcloud compute networks delete omnigate-gke --project=<your-project-id> --quiet
 ```
 
+**Both paths also sweep for orphaned Persistent Disks** — confirmed live, 7 unattached disks
+(26GB, still billing) were found sitting in the project well after both a real `terraform destroy`
+and this script's own manual fallback had already run, accumulated across this stack's own
+deploy/teardown testing cycles. Root cause: the Postgres and OmniGate data volumes are Kubernetes
+PVCs the Helm chart creates *inside* the cluster — `helm_release` only installs the chart,
+Terraform has no visibility into what the chart's own templates provision at runtime, so nothing
+above this point ever deletes the GCE disks backing them. `destroy.sh` deletes any disk GKE's CSI
+driver labeled with this cluster's name (`goog-k8s-cluster-name=omnigate-gke`) as a final step in
+both paths — that label survives independently of whether the cluster itself still exists. To
+check by hand:
+
+```bash
+gcloud compute disks list --project=<your-project-id> --filter="labels.goog-k8s-cluster-name=omnigate-gke"
+```
+
 Either path leaves the Artifact Registry repo and image alone — those aren't part of this
 Terraform config (see "Image" above), so neither `terraform destroy` nor `destroy.sh`'s fallback
 touch them. Delete that separately if you actually want it gone:
