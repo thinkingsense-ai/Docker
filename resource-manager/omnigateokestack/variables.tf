@@ -82,9 +82,9 @@ variable "image_repository" {
 }
 
 variable "image_tag" {
-  description = "Image tag to deploy."
+  description = "Image tag to deploy. Pinned to a specific free-edition release rather than \"latest\" -- confirmed live that \"latest\" had silently stopped tracking new app releases (frozen at v0.6.0's content for two releases), so a moving-target default wasn't actually keeping deployers current anyway, just non-reproducible. Bump this deliberately when a newer free-edition image is built and pushed to OCIR."
   type        = string
-  default     = "latest"
+  default     = "v0.8.0"
 }
 
 # --- Compute sizing (Always Free: VM.Standard.A1.Flex, Ampere) ------------------------------
