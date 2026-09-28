@@ -109,10 +109,21 @@ First apply takes 10-15 minutes (GKE cluster creation dominates that).
 
 ## Image
 
-`us-docker.pkg.dev/thinkingsense/omnigate/omnigate:latest` is live and public
+`us-docker.pkg.dev/thinkingsense/omnigate/omnigate` is live and public
 (`roles/artifactregistry.reader` granted to `allUsers`). It's **arm64-only** (no amd64 manifest —
 confirmed with `docker manifest inspect`), same as the AWS stack's own Graviton/arm64 image — see
 the node-sizing note below for why that's not incidental.
+
+**No `:latest` tag** — deliberately removed. `image_tag` defaults to a pinned release (`v0.8.0` as
+of this writing; check `variables.tf` for the current default), built straight from that GitHub
+release's own published `omnigate.jar`/`web-dist.tar.gz` assets via
+`Docker/free-edition/Dockerfile` (`docker build --build-arg OMNIGATE_RELEASE_TAG=vX.Y.Z`), not
+from a local Maven build of whatever the `Server` checkout happens to have at build time. List
+what's actually published before assuming a tag exists:
+
+```bash
+gcloud artifacts docker tags list us-docker.pkg.dev/thinkingsense/omnigate/omnigate --project=thinkingsense
+```
 
 ## Clean-room validated on a real GCP project
 

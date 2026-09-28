@@ -61,9 +61,9 @@ variable "image_repository" {
 }
 
 variable "image_tag" {
-  description = "Image tag to deploy."
+  description = "Image tag to deploy. Pinned to a specific release rather than \"latest\" -- the \"latest\" tag was deliberately removed from the Artifact Registry repo, so this must always name a real, currently-published tag (see the \"Image\" section in README.md for how to check what's actually there)."
   type        = string
-  default     = "latest"
+  default     = "v0.8.0"
 }
 
 # --- Compute sizing ---------------------------------------------------------------------------
