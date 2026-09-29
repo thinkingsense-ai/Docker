@@ -104,6 +104,19 @@ resource "helm_release" "omnigate" {
     name  = "omnigate.replicaCount"
     value = var.omnigate_replica_count
   }
+  # clusterEnabled is derived, not a separate variable, same convention configDb.external
+  # establishes right below: real Ignite cluster mode turns on automatically the moment more than
+  # one replica is requested, rather than needing a second setting kept in sync with the first.
+  # Safe regardless of which image is deployed -- a FREE-edition image logs a warning and runs
+  # single-node anyway (see com.omnigate.cluster.OmniGateCluster#isAllowed), so this only takes
+  # real effect once image_repository/image_tag point at a commercial build. That's deliberate:
+  # this stack's own public wizard never exposes an edition choice (see schema.yaml), so which
+  # image gets deployed -- and therefore whether this flag does anything -- is entirely an
+  # operator-controlled `image_repository`/`image_tag` override, not a stack-level "edition" field.
+  set {
+    name  = "omnigate.clusterEnabled"
+    value = var.omnigate_replica_count > 1
+  }
   # configDb.external is derived, not a separate variable: true the moment a real config-DB URL
   # is supplied, so a deployer setting omnigate_replica_count > 1 without also filling in the
   # config-DB variables gets the chart's own real `required` validation error (see
