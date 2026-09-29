@@ -107,19 +107,29 @@ variables:
     required: true
 
   node_pool_size:
-    type: integer
+    # enum, not integer+minimum/maximum -- see omnigate_replica_count's own comment on why
+    # (Resource Manager's slider widget zero-pads tick labels regardless of actual range).
+    type: enum
     title: "Node count"
-    minimum: 1
-    maximum: 4
+    enum:
+      - 1
+      - 2
+      - 3
+      - 4
     default: 1
     required: true
 
   node_ocpus:
-    type: integer
+    # enum, not integer+minimum/maximum -- see omnigate_replica_count's own comment on why
+    # (Resource Manager's slider widget zero-pads tick labels regardless of actual range).
+    type: enum
     title: "OCPUs per node"
     description: "Always Free tenancies share a limited Ampere A1 (VM.Standard.A1.Flex) allocation across the whole account -- check Governance & Administration > Limits, Quotas and Usage in the Console before raising node count x OCPUs beyond your tenancy's free allocation."
-    minimum: 1
-    maximum: 4
+    enum:
+      - 1
+      - 2
+      - 3
+      - 4
     default: 2
     required: true
 
@@ -157,11 +167,17 @@ variables:
     required: true
 
   omnigate_replica_count:
-    type: integer
+    # enum, not integer+minimum/maximum: confirmed live that Resource Manager's slider widget for
+    # a min/max integer zero-pads its tick labels ("02", "03") regardless of how few digits the
+    # actual range needs -- an enum dropdown just shows the literal values given here instead.
+    type: enum
     title: "OmniGate replicas"
-    description: "Number of OmniGate pods behind the load balancer, for high availability / horizontal scale. Leave at 1 unless you also fill in the config-database fields below -- more than one replica needs a shared, separately-provisioned Postgres for admin-set config, not the default per-pod volume."
-    minimum: 1
-    maximum: 4
+    description: "Number of OmniGate pods behind the load balancer, for high availability / horizontal scale. Leave at 1 unless you also fill in the config-database fields below -- more than one replica needs a shared, separately-provisioned Postgres for admin-set config, not the default per-pod volume. More than one replica also turns on real Ignite cluster mode automatically (commercial-edition images only; a free-edition image logs a warning and stays single-node)."
+    enum:
+      - 1
+      - 2
+      - 3
+      - 4
     default: 1
     required: true
 
