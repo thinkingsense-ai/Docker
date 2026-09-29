@@ -345,11 +345,9 @@ az group delete --name <your-rg> --yes --no-wait
 
 **This only stays simple and safe if the resource group is dedicated to this stack** — nothing
 else in it. `createUiDefinition.json` sets `resourceGroup.allowExisting: false` for the Portal
-path, which per Azure's documented `createUiDefinition` schema should prevent the wizard from
-letting you pick an existing resource group at all — **not yet independently confirmed by actually
-clicking through the Portal UI** (that needs an interactive Azure login this environment doesn't
-have); if you try the Portal flow and it still lets you pick an existing resource group, that's a
-real gap in this fix, please report it. The CLI path has no such guardrail either way: `az
+path — **confirmed live**: a real user tried to target the pre-existing `NetworkWatcherRG` through
+the Portal wizard and it refused, forcing "Create new" instead. The CLI path has no such
+guardrail either way: `az
 deployment group create` can target any resource group you already have, including one you didn't
 create for this stack. **Always `az group create` a fresh one first** (see "Deploy via the CLI"
 above) — `destroy.sh`/`az group delete` will otherwise happily delete anything else living in
