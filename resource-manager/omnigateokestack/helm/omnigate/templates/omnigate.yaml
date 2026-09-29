@@ -1,3 +1,8 @@
+{{- if .Values.omnigate.clusterEnabled }}
+{{- if not .Values.omnigate.configDb.external }}
+{{ fail "omnigate.configDb.external must be true when omnigate.clusterEnabled is true -- Ignite cluster mode (distributed cache/QoS) doesn't take over ConfigStore's own storage, so the admin-editable config still needs a real shared Postgres across replicas (see values.yaml's own configDb comment)." }}
+{{- end }}
+{{- end }}
 {{- if not .Values.omnigate.configDb.external }}
 # Only created/mounted for the default, single-replica setup -- see values.yaml's own
 # omnigate.configDb comment for why this PVC (ReadWriteOnce, single-attach) is exactly what makes
@@ -16,6 +21,56 @@ spec:
       storage: {{ .Values.omnigate.dataVolumeSize }}
 ---
 {{- end }}
+{{- if .Values.omnigate.clusterEnabled }}
+# Headless (clusterIP: None) purely for stable per-pod DNS -- Ignite's TcpDiscoveryVmIpFinder only
+# supports a static host:port list (see OMNIGATE_CLUSTER_SEED_NODES in configmap.yaml), not
+# Kubernetes-native pod discovery, so each StatefulSet pod needs a resolvable name of its own.
+# Not used for routing traffic (the LoadBalancer Services below still do that), so no port
+# requirement for correctness -- listed anyway for observability/Endpoints correctness.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "omnigate.fullname" . }}-omnigate-headless
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: omnigate
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: omnigate
+  ports:
+    - name: ignite-disco
+      port: 47500
+    - name: ignite-comm
+      port: 47100
+---
+# Real, distributed Ignite cluster mode -- StatefulSet instead of the default Deployment so each
+# replica gets the stable, predictable pod name (omnigate-omnigate-0, -1, ...) the headless
+# Service above and OMNIGATE_CLUSTER_SEED_NODES both depend on. configDb.external is required (see
+# the `fail` guard above), so there's no per-pod PVC to make ordered rollout semantics matter for
+# data safety the way the default Deployment's `Recreate` strategy addresses -- RollingUpdate here
+# is safe and gives zero-downtime scaling/deploys.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "omnigate.fullname" . }}-omnigate
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: omnigate
+spec:
+  serviceName: {{ include "omnigate.fullname" . }}-omnigate-headless
+  replicas: {{ .Values.omnigate.replicaCount }}
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: omnigate
+  template:
+    {{- include "omnigate.podTemplate" . | nindent 4 }}
+---
+{{- else }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -36,67 +91,9 @@ spec:
       app.kubernetes.io/instance: {{ .Release.Name }}
       app.kubernetes.io/component: omnigate
   template:
-    metadata:
-      labels:
-        app.kubernetes.io/instance: {{ .Release.Name }}
-        app.kubernetes.io/component: omnigate
-      annotations:
-        # A Secret/ConfigMap change alone does not roll this Deployment's pod on its own -- env
-        # vars from envFrom are read once at container start, so the existing pod keeps running
-        # with its stale environment after a `terraform apply` that only changes e.g.
-        # omnigate_llm_api_key, unless the pod template itself also changes. These checksums do
-        # that: they change whenever the rendered Secret/ConfigMap content changes, which is what
-        # actually triggers the rollout (this Deployment's own `strategy: Recreate` then applies).
-        checksum/secret: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
-        checksum/configmap: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
-    spec:
-      initContainers:
-        - name: wait-for-postgres
-          image: docker.io/library/postgres:16-alpine
-          command:
-            - sh
-            - -c
-            - until pg_isready -h {{ include "omnigate.postgresHost" . }} -U {{ .Values.postgres.user }}; do sleep 2; done
-      containers:
-        - name: omnigate
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          envFrom:
-            - configMapRef:
-                name: {{ include "omnigate.fullname" . }}-omnigate-config
-            - secretRef:
-                name: {{ include "omnigate.fullname" . }}-omnigate-secret
-          ports:
-            - name: http
-              containerPort: 8080
-            - name: oracle-wire
-              containerPort: 1521
-            - name: pg-wire
-              containerPort: 5433
-            - name: mysql-wire
-              containerPort: 3306
-            - name: grpc
-              containerPort: 7070
-{{- if not .Values.omnigate.configDb.external }}
-          volumeMounts:
-            - name: data
-              mountPath: /var/lib/omnigate/data
-{{- end }}
-          readinessProbe:
-            httpGet:
-              path: /
-              port: 8080
-            initialDelaySeconds: 15
-            periodSeconds: 10
-          resources:
-            {{- toYaml .Values.resources.omnigate | nindent 12 }}
-{{- if not .Values.omnigate.configDb.external }}
-      volumes:
-        - name: data
-          persistentVolumeClaim:
-            claimName: {{ include "omnigate.fullname" . }}-omnigate-data
-{{- end }}
+    {{- include "omnigate.podTemplate" . | nindent 4 }}
 ---
+{{- end }}
 # HTTP only (Ask app + admin console) -- the LoadBalancer default. Deliberately not exposing the
 # DB wire ports here; see the wire-protocols Service below, which is opt-in.
 #

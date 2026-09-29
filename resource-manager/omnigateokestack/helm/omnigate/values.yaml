@@ -16,6 +16,19 @@ omnigate:
   # replicaCount alone, with configDb.external left off, leaves every extra pod crash-looping on
   # a PVC only the first pod can bind.
   replicaCount: 1
+  # Real, distributed Ignite cluster mode (OMNIGATE_CLUSTER_ENABLED) -- commercial-edition only,
+  # see com.omnigate.cluster.OmniGateCluster#isAllowed. A FREE-edition image logs a warning and
+  # runs single-node anyway rather than failing, so leaving this true against a free image is
+  # harmless, just a no-op. Distinct from (and independent of) configDb.external above:
+  # clustering gives distributed cache/QoS coordination between replicas (Apache Ignite), while
+  # configDb.external is what makes the admin-editable config itself consistent across replicas
+  # -- cluster mode still requires configDb.external, since Ignite doesn't take over ConfigStore's
+  # own storage. When true, this chart deploys a StatefulSet + headless Service instead of the
+  # default Deployment, so each replica gets the stable per-pod DNS name Ignite's static
+  # TcpDiscoveryVmIpFinder needs (see OMNIGATE_CLUSTER_SEED_NODES in configmap.yaml) -- the app
+  # only supports a static host:port seed list, not Kubernetes-native pod discovery, so this
+  # chart is what computes that list from replicaCount.
+  clusterEnabled: false
   llmModel: claude-sonnet-5
   # Anthropic API key -- required, no default on purpose (NL2SQL simply won't work without it,
   # same as the local compose setup). Injected into a Secret, never a ConfigMap.

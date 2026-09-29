@@ -32,6 +32,16 @@ data:
   OMNIGATE_PG_PORT: "5432"
   OMNIGATE_PG_DATABASE: {{ .Values.postgres.database | quote }}
   OMNIGATE_PG_USER: {{ .Values.postgres.user | quote }}
+{{- if .Values.omnigate.clusterEnabled }}
+  # Real Ignite cluster mode (commercial-edition only -- see values.yaml's own clusterEnabled
+  # comment). The app only supports a static host:port seed list via TcpDiscoveryVmIpFinder, not
+  # Kubernetes-native pod discovery, so this chart computes it from replicaCount: each entry is
+  # one StatefulSet pod's stable DNS name against the headless Service defined in omnigate.yaml
+  # (only rendered when clusterEnabled is true). 47500 is Ignite's TcpDiscoverySpi default port --
+  # OmniGateCluster.java doesn't override it, so the default applies.
+  OMNIGATE_CLUSTER_ENABLED: "true"
+  OMNIGATE_CLUSTER_SEED_NODES: {{ $fullname := include "omnigate.fullname" . }}{{ $names := list }}{{ range $i := until (int .Values.omnigate.replicaCount) }}{{ $names = append $names (printf "%s-omnigate-%d.%s-omnigate-headless:47500" $fullname $i $fullname) }}{{ end }}{{ join "," $names | quote }}
+{{- end }}
   # OMNIGATE_BACKENDS lives in secrets.yaml, not here -- it embeds the Postgres password, which
   # has no business sitting in a plaintext ConfigMap alongside a real Secret already carrying the
   # same value.
