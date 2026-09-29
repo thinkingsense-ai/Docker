@@ -30,6 +30,10 @@ metadata:
     checksum/secret: {{ include (print .Template.BasePath "/secrets.yaml") . | sha256sum }}
     checksum/configmap: {{ include (print .Template.BasePath "/configmap.yaml") . | sha256sum }}
 spec:
+{{- if and .Values.image.pullUsername .Values.image.pullAuthToken }}
+  imagePullSecrets:
+    - name: {{ include "omnigate.fullname" . }}-omnigate-imagepull
+{{- end }}
   initContainers:
     - name: wait-for-postgres
       image: docker.io/library/postgres:16-alpine

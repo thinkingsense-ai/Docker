@@ -84,6 +84,14 @@ resource "helm_release" "omnigate" {
     name  = "image.tag"
     value = var.image_tag
   }
+  set {
+    name  = "image.pullUsername"
+    value = var.image_pull_username
+  }
+  set_sensitive {
+    name  = "image.pullAuthToken"
+    value = var.image_pull_auth_token
+  }
   set_sensitive {
     name  = "omnigate.llmApiKey"
     value = var.omnigate_llm_api_key
