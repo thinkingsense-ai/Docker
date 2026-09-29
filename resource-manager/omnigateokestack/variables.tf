@@ -87,6 +87,19 @@ variable "image_tag" {
   default     = "v0.8.0"
 }
 
+variable "image_pull_username" {
+  description = "Only needed when image_repository points at a private repository (e.g. a commercial-edition build kept out of the free image's public repo) -- OCIR's own \"<tenancy-namespace>/<oci-username>\" format. Leave blank for the default public free-image path, which needs no credentials at all."
+  type        = string
+  default     = ""
+}
+
+variable "image_pull_auth_token" {
+  description = "Password half of image_pull_username: an OCI Auth Token (Identity -> Users -> your user -> Auth Tokens -> Generate Token), NOT your console password or API signing key. Required alongside image_pull_username for a private image_repository; ignored for the default public path."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # --- Compute sizing (Always Free: VM.Standard.A1.Flex, Ampere) ------------------------------
 
 variable "node_pool_size" {

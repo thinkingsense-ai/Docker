@@ -7,6 +7,18 @@ image:
   repository: ""
   tag: latest
   pullPolicy: IfNotPresent
+  # Only needed for a private image repository (e.g. a commercial-edition build, kept out of the
+  # public, anonymously-pullable OCIR repo the free image uses -- confirmed live that pushing a
+  # commercial image to that same public repo would make it just as freely pullable as the free
+  # one). Blank for the default public free-image path. pullUsername is OCIR's own
+  # "<tenancy-namespace>/<oci-username>" format; pullAuthToken is an OCI Auth Token (`oci iam
+  # auth-token create`), NOT your API signing key or console password -- generate one for
+  # whichever principal should have pull rights. When set, this chart creates a
+  # kubernetes.io/dockerconfigjson Secret and wires it into the pod's imagePullSecrets; the
+  # registry hostname is taken from image.repository itself (everything before the first "/"),
+  # not a separate setting.
+  pullUsername: ""
+  pullAuthToken: ""
 
 omnigate:
   # Multi-node / HA: >1 replica behind the NLB Service below is real and supported, but ONLY

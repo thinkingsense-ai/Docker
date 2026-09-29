@@ -48,6 +48,12 @@ variableGroups:
       - image_repository
       - image_tag
 
+  - title: "Private Image Registry (internal / commercial testing only)"
+    visible: true
+    variables:
+      - image_pull_username
+      - image_pull_auth_token
+
 variables:
   compartment_ocid:
     type: oci:identity:compartment:id
@@ -195,6 +201,25 @@ variables:
       current anyway, just non-reproducible."
     default: "v0.8.0"
     required: false
+
+  image_pull_username:
+    type: string
+    title: "Private registry username"
+    description: "Only needed when Image repository (above) points at a private repository --
+      OCIR's own \"<tenancy-namespace>/<oci-username>\" format. Leave blank for the default
+      public free-image path, which needs no credentials at all."
+    default: ""
+    required: false
+
+  image_pull_auth_token:
+    type: password
+    title: "Private registry auth token"
+    description: "Password half of Private registry username: a real OCI Auth Token (Identity ->
+      Users -> your user -> Auth Tokens -> Generate Token) -- NOT your console password or API
+      signing key. Required alongside the username above for a private image repository."
+    default: ""
+    required: false
+    sensitive: true
 
 outputGroups:
   - title: "Access"
