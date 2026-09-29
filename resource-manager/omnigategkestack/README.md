@@ -69,7 +69,14 @@ First apply takes 10-15 minutes (GKE cluster creation dominates that).
 
 - `container.googleapis.com` and `compute.googleapis.com` enabled (`tutorial.md` step 1 does this
   for you; the CLI path needs it done manually — see the `gcloud services enable` command there).
-- A billing account linked to the project.
+- A billing account linked to the project. Confirmed live: a project created fresh via Cloud
+  Shell's own "pick a project" picker (the `<walkthrough-project-setup>` widget `tutorial.md`
+  uses) has no billing account linked by default — `setup.sh`'s billing check catches this and
+  stops you, but it's easy to hit on a first attempt. Link one before starting: Console →
+  Billing → Link a billing account.
+- The project's **Project ID**, not its Project Name — GCP allows these to differ (e.g. name
+  "My Project", ID "my-project-42781"), and every `gcloud project=<...>`/Terraform
+  `gcp_project_id` value in this stack needs the ID.
 - IAM permissions to create a VPC, GKE cluster, node pool, and firewall rules — the deploying
   principal needs broad-ish project access, not just GKE access.
 - curl, a JRE, and python3 on whatever machine runs `terraform apply` (for `password-hash.tf`) —

@@ -4,6 +4,17 @@ This deploys OmniGate (NL2SQL gateway) with a seeded Postgres demo backend onto 
 Kubernetes Engine cluster. Everything below runs in this Cloud Shell session — nothing to install
 locally.
 
+**Before you continue:** you need a GCP project with billing already linked to it. The picker
+below can create a brand new project for you, but a newly-created project has **no billing
+account linked yet** — `setup.sh`'s billing check will stop you if you pick one of those. Easiest
+path: use an existing project you know has billing enabled, or create one now at
+[console.cloud.google.com/projectcreate](https://console.cloud.google.com/projectcreate) and link
+a billing account to it (Console → Billing → Link a billing account) before coming back here.
+
+Also note: what you need below is the project's **Project ID**, not its Project Name — GCP lets
+these be different strings (e.g. name "My Project", ID "my-project-42781"), and the ID is what
+`gcloud`/Terraform actually need. The picker shows both; double-check you're copying the ID.
+
 <walkthrough-project-setup></walkthrough-project-setup>
 
 ## 1. Run the guided setup
