@@ -27,6 +27,16 @@ spec:
 # Kubernetes-native pod discovery, so each StatefulSet pod needs a resolvable name of its own.
 # Not used for routing traffic (the LoadBalancer Services below still do that), so no port
 # requirement for correctness -- listed anyway for observability/Endpoints correctness.
+#
+# publishNotReadyAddresses: true is load-bearing, not optional -- confirmed live a genuine
+# deadlock without it: Kubernetes only adds a pod to a Service's Endpoints (and therefore its DNS
+# record, for a headless Service) once the pod is Ready, but these pods can't become Ready until
+# Ignite discovers its peers by that same DNS name. Every pod stuck at 0/1 Ready indefinitely,
+# reproduced live (readiness probe never passing, Endpoints list permanently empty even though
+# the Service's selector correctly matched the pods' labels). This flag is exactly what a headless
+# Service backing a StatefulSet needs whenever peers must find each other during startup, before
+# any of them are individually healthy yet -- the same reason Cassandra/Elasticsearch-style
+# Kubernetes deployments need it.
 apiVersion: v1
 kind: Service
 metadata:
@@ -36,6 +46,7 @@ metadata:
     app.kubernetes.io/component: omnigate
 spec:
   clusterIP: None
+  publishNotReadyAddresses: true
   selector:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: omnigate
