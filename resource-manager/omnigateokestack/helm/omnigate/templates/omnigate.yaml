@@ -61,6 +61,15 @@ metadata:
 spec:
   serviceName: {{ include "omnigate.fullname" . }}-omnigate-headless
   replicas: {{ .Values.omnigate.replicaCount }}
+  # Parallel, not the default OrderedReady -- confirmed live this is a hard requirement, not an
+  # optimization: Ignite's embedded node blocks at startup trying to discover its
+  # OMNIGATE_CLUSTER_SEED_NODES peers, so with OrderedReady (pod N+1 only created once pod N is
+  # Ready) pod 0 can never become Ready waiting to discover pods 1/2, which can never be created
+  # to be discovered -- a real deadlock, reproduced live (pod 0 stuck at Ignite startup
+  # indefinitely, replicas 1/2 never even created). Same reasoning every other
+  # gossip/cluster-forming StatefulSet workload on Kubernetes (Cassandra, Elasticsearch) needs
+  # this for.
+  podManagementPolicy: Parallel
   updateStrategy:
     type: RollingUpdate
   selector:
