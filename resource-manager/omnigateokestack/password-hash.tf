@@ -20,14 +20,8 @@ data "external" "app_password_hash" {
   program = ["bash", "-c", <<-EOT
     set -e
     PASSWORD=$(python3 -c "import json,sys; print(json.load(sys.stdin)['password'], end='')")
-    # var.image_tag is the OCIR *docker* tag (default "latest"), which is not itself a GitHub
-    # release tag -- there is no release literally named "latest". Confirmed live: with the
-    # default, the plain releases/download/latest/omnigate.jar URL 404s, breaking every fresh
-    # deploy at Apply. When it's an actual version (e.g. "v0.6.0") matching a real release, use
-    # it directly; otherwise resolve the GitHub API's own "latest release" so the jar always
-    # matches whatever OCIR's :latest currently points at.
-    if [ "${var.image_tag}" = "latest" ]; then
-      JAR_URL=$(python3 -c "
+    fetch_latest_release_jar_url() {
+      python3 -c "
 import json, urllib.request
 with urllib.request.urlopen('https://api.github.com/repos/thinkingsense-ai/Docker/releases/latest', timeout=15) as r:
     release = json.load(r)
@@ -37,11 +31,24 @@ for asset in release.get('assets', []):
         break
 else:
     raise SystemExit('omnigate.jar asset not found on latest GitHub release')
-")
+"
+    }
+    # var.image_tag is the OCIR *docker* tag, which isn't necessarily a real thinkingsense-ai/
+    # Docker GitHub release tag -- true for the literal "latest" (no release is ever named that),
+    # and confirmed live also true for any custom/private image tag (e.g. an internal commercial
+    # test build pushed straight to OCIR under its own tag, never published as a GitHub release at
+    # all -- "External Program Execution Failed" from a 404, breaking the whole apply before any
+    # real infrastructure is touched). Try the direct release-tag download first (the fast path
+    # for a real versioned release); silently fall back to whatever GitHub currently calls
+    # "latest" if that fails for any reason, rather than hard-failing -- PasswordHash's algorithm
+    # is stable across editions/builds, so any reasonably current jar produces the same hash
+    # format the app expects.
+    if [ "${var.image_tag}" != "latest" ] && curl -fsSL -o /tmp/omnigate-hash-tool.jar "https://github.com/thinkingsense-ai/Docker/releases/download/${var.image_tag}/omnigate.jar" 2>/dev/null; then
+      : # direct release-tag download succeeded
     else
-      JAR_URL="https://github.com/thinkingsense-ai/Docker/releases/download/${var.image_tag}/omnigate.jar"
+      JAR_URL=$(fetch_latest_release_jar_url)
+      curl -fsSL -o /tmp/omnigate-hash-tool.jar "$JAR_URL" 1>&2
     fi
-    curl -fsSL -o /tmp/omnigate-hash-tool.jar "$JAR_URL" 1>&2
     HASH=$(java -cp /tmp/omnigate-hash-tool.jar com.omnigate.http.auth.PasswordHash "$PASSWORD")
     rm -f /tmp/omnigate-hash-tool.jar
     python3 -c "import json,sys; print(json.dumps({'hash': sys.argv[1]}))" "$HASH"
