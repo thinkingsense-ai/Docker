@@ -103,7 +103,7 @@ variable "image_pull_auth_token" {
 # --- Compute sizing (Always Free: VM.Standard.A1.Flex, Ampere) ------------------------------
 
 variable "node_pool_size" {
-  description = "Number of worker nodes."
+  description = "Number of worker nodes -- a floor, not the final word: automatically raised to at least omnigate_replica_count if you set this lower (see oke.tf's local.effective_node_pool_size), since one OmniGate replica per node is what this stack's default node sizing actually fits. Confirmed live: leaving this below the replica count schedules the first couple of pods fine, then the rest sit Pending forever with no node to place them on."
   type        = number
   default     = 1
 }
