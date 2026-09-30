@@ -111,6 +111,9 @@ variables:
     # (Resource Manager's slider widget zero-pads tick labels regardless of actual range).
     type: enum
     title: "Node count"
+    description: "A floor, not the final word: automatically raised to at least OmniGate
+      replicas (above) if you leave this lower -- one replica per node is what this stack's
+      default node sizing actually fits."
     enum:
       - 1
       - 2

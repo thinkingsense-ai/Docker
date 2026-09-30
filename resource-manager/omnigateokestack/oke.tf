@@ -2,6 +2,18 @@ data "oci_containerengine_cluster_option" "this" {
   cluster_option_id = "all"
 }
 
+locals {
+  # Auto-raised, not just documented: confirmed live that leaving node_pool_size at its default
+  # while raising omnigate_replica_count schedules fine for the first couple of replicas, then
+  # the next pod sits Pending forever ("Insufficient cpu") since there's nowhere left to place it
+  # -- a real, reproducible footgun a deployer would only discover after Apply already reports
+  # success (helm_release itself times out waiting for a pod that can never schedule). One
+  # replica reasonably fits on one node given this stack's default node_ocpus/node_memory_gb
+  # sizing, so the minimum sensible node count is exactly the replica count -- never lower it
+  # below whatever the deployer explicitly asked for, only raise it when it's short.
+  effective_node_pool_size = max(var.node_pool_size, var.omnigate_replica_count)
+}
+
 resource "oci_containerengine_cluster" "this" {
   compartment_id = var.compartment_ocid
   name           = "omnigate-oke"
@@ -45,7 +57,7 @@ resource "oci_containerengine_node_pool" "this" {
   }
 
   node_config_details {
-    size = var.node_pool_size
+    size = local.effective_node_pool_size
     placement_configs {
       availability_domain = data.oci_identity_availability_domains.this.availability_domains[0].name
       subnet_id           = oci_core_subnet.nodes.id
