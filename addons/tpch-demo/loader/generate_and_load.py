@@ -26,7 +26,9 @@ import time
 import duckdb
 import psycopg2
 
-DIMENSION_TABLES = ["nation", "region", "part", "supplier", "partsupp", "customer", "orders"]
+# Real FK dependency order (region before nation, nation before supplier/customer, etc.) -- loading
+# out of order trips a real foreign-key violation on the target Postgres (found live).
+DIMENSION_TABLES = ["region", "nation", "part", "supplier", "partsupp", "customer", "orders"]
 
 
 def env(name, default=None, required=False):
