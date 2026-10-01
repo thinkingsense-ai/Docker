@@ -186,6 +186,25 @@ To see a genuine cross-database join (not the single-table demo above), see
 separate database engines (or a lighter single-Postgres/CSV variant if you don't want to run all
 four). See [`fixtures/supply-chain/DOCKER-USAGE.md`](fixtures/supply-chain/DOCKER-USAGE.md).
 
+## A real TPC-H dataset (~1GB), your own cloud storage or ours
+
+To try this against a real, substantial analytical dataset instead of the small demo above, see
+[`addons/tpch-demo/`](addons/tpch-demo/) — a separate, opt-in stack (never layered onto the main
+`docker-compose.yml` above) that generates a real ~1GB TPC-H dataset (the standard 8-table
+analytical benchmark: customer, orders, part, partsupp, supplier, nation, region, and the large
+LINEITEM fact table) and loads it either into its own bundled MinIO + Postgres containers, or into
+your own AWS S3 / OCI Object Storage / Azure Blob Storage / GCS bucket and your own Postgres
+database:
+
+```bash
+./scripts/enable-tpch-demo.sh bundled   # ships its own MinIO + Postgres, pre-loaded
+./scripts/enable-tpch-demo.sh byo       # bring your own object storage + database
+```
+
+See [`addons/tpch-demo/README.md`](addons/tpch-demo/README.md) for the full bundled-vs-bring-your-own
+comparison, per-provider `.env` templates, and disclosed scope limits (dimension tables load into
+Postgres only in this version; Azure Blob uses a different code path than the other three clouds).
+
 ## A fully private option: no external API key needed
 
 This image also bundles a real local model — no data ever leaves the container, no API key, no
@@ -202,6 +221,8 @@ for the bundled model — commercial alternatives are listed there) and memory r
 - `docker-compose.yml` — the local stack: seeded Postgres + local-model sidecars + ThinkingSense.
 - `docker/seed.sql` — the demo seed data.
 - `fixtures/` — the bigger multi-database demo (see above).
+- `addons/tpch-demo/` — the ~1GB TPC-H dataset add-on (see above).
+- `scripts/enable-tpch-demo.sh` — one-command entry point for the TPC-H add-on.
 - `NOTICE-qwen.txt` — license attribution for the bundled local model.
 
 ## Upgrading
