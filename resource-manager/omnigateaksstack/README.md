@@ -217,7 +217,7 @@ stacks (see this repo's `c09dd7c`/`cdf6630` commits). Confirmed live: `:latest` 
 stopped tracking new app releases — frozen at `v0.6.0`'s content for two releases (`v0.7.0`,
 `v0.8.0`), because those releases were only ever published to a different registry this stack
 never pulled from. Every deploy that trusted `:latest` was actually getting a two-releases-stale
-image without anyone noticing. `imageTag` now defaults to a pinned release (`v0.8.0` as of this
+image without anyone noticing. `imageTag` now defaults to a pinned release (`v0.10.0` as of this
 writing) instead. Before assuming a tag exists, check what's actually published:
 
 ```bash

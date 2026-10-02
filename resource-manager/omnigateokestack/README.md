@@ -20,7 +20,7 @@ off the per-pod volume and into a shared Postgres every replica reads/writes —
 `helm/omnigate/values.yaml`'s `configDb` block). The AWS/GCP/Azure stacks all hardcode 1 replica.
 
 Deployers don't need to build or push anything — `image_repository` defaults to this project's
-own public OCIR repo, and `image_tag` to a specific pinned free-edition release (`v0.8.0`, not
+own public OCIR repo, and `image_tag` to a specific pinned free-edition release (`v0.10.0`, not
 `latest` -- see that variable's own description for why), so the stack pulls a pre-built image
 the same way `docker compose up` pulls from a registry.
 

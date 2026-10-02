@@ -15,7 +15,7 @@ expected answer).
 ![OmniGate on EKS — network architecture](architecture.svg)
 
 Deployers don't need to build or push the OmniGate app image itself — `ImageTag` defaults to
-a specific pinned free-edition release (`v0.8.0`, not `:latest` -- see the parameter's own
+a specific pinned free-edition release (`v0.10.0`, not `:latest` -- see the parameter's own
 description for why) hosted in this project's own public OCIR repo, pulled the same way
 `docker compose up` pulls from a registry. The one thing AWS *does* need built locally to your
 account is the small

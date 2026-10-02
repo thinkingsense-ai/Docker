@@ -97,7 +97,7 @@
     },
     "imageTag": {
       "type": "string",
-      "defaultValue": "v0.8.0",
+      "defaultValue": "v0.10.0",
       "metadata": {
         "description": "Image tag (advanced). Pinned to a specific free-edition release rather than \"latest\" -- confirmed live that \"latest\" had silently stopped tracking new app releases (frozen at v0.6.0's content for two releases, since v0.7.0/v0.8.0 were only ever published to a different registry this stack never pulled from), so a moving-target default was not actually keeping deployers current, just non-reproducible. The AWS/OCI/GCP stacks made the identical fix the same way -- bump this deliberately when a newer free-edition image is built and pushed, do not go back to \"latest\"."
       }

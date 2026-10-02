@@ -153,7 +153,7 @@
             "name": "imageTag",
             "type": "Microsoft.Common.TextBox",
             "label": "Image tag",
-            "defaultValue": "v0.8.0",
+            "defaultValue": "v0.10.0",
             "toolTip": "Pinned to a specific free-edition release, not \"latest\" -- \"latest\" was deliberately removed from the registry after silently freezing at old content for two releases. Bump only when a newer free-edition image is confirmed published.",
             "constraints": {
               "required": false

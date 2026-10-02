@@ -121,7 +121,7 @@ First apply takes 10-15 minutes (GKE cluster creation dominates that).
 confirmed with `docker manifest inspect`), same as the AWS stack's own Graviton/arm64 image — see
 the node-sizing note below for why that's not incidental.
 
-**No `:latest` tag** — deliberately removed. `image_tag` defaults to a pinned release (`v0.8.0` as
+**No `:latest` tag** — deliberately removed. `image_tag` defaults to a pinned release (`v0.10.0` as
 of this writing; check `variables.tf` for the current default), built straight from that GitHub
 release's own published `omnigate.jar`/`web-dist.tar.gz` assets via
 `Docker/free-edition/Dockerfile` (`docker build --build-arg OMNIGATE_RELEASE_TAG=vX.Y.Z`), not
