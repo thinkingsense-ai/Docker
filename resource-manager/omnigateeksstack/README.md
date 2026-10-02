@@ -32,7 +32,7 @@ Nothing to build or push by hand.
 2. Fill in the Ask-app login (`OmnigateAppUsername` / `OmnigateAppPassword` — plain text, hashed
    automatically during deploy) and an Anthropic API key -- required, since a stack created
    without one deploys fine but can't answer any question. Get a free key from
-   [console.anthropic.com](https://console.anthropic.com) before you start.
+   [console.anthropic.com](https://console.anthropic.com) before you start. You can also change it later, live, in the app's Admin console under **Models** (`/admin/llm-settings`).
 3. Acknowledge the IAM capability checkbox (the stack creates IAM roles) and create the stack.
    Takes ~15-20 minutes (cluster ~10 min, node group ~3 min, the CodeBuild image build ~2-3 min,
    the Helm release the rest).

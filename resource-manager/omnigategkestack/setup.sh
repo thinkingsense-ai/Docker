@@ -163,7 +163,7 @@ while true; do
       # Only a definite rejection blocks; a network/API hiccup below must not stop someone with
       # a good key.
       echo "Anthropic rejected this key (HTTP $key_status) -- it's invalid, expired, or revoked." >&2
-      read -rp "Continue anyway? (You can change it later in the Admin console under LLM Settings.) [y/N] " cont
+      read -rp "Continue anyway? (You can change it later in the Admin console under Models.) [y/N] " cont
       case "$cont" in y|Y) break ;; esac
       ;;
     *)

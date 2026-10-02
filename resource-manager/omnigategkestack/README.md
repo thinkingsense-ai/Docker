@@ -112,7 +112,7 @@ First apply takes 10-15 minutes (GKE cluster creation dominates that).
   spent): an invalid/expired/revoked key (HTTP 401/403) is rejected up front with a re-enter
   prompt instead of surfacing 15 minutes later as an Ask app that can't answer. A network or API
   hiccup only warns and continues, so it never blocks a good key. The key can also be changed
-  later, live, in the Admin console under **LLM Settings**.
+  later, live, in the Admin console under **Models** (`/admin/llm-settings`).
 - `destroy.sh` — guided teardown, the reverse of `setup.sh`: `terraform destroy` when this
   directory has real state, a confirm-gated fallback to deleting the known resources directly by
   name (see "Cleanup" below) when it doesn't.

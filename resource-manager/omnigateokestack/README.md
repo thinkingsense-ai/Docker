@@ -33,7 +33,7 @@ the same way `docker compose up` pulls from a registry.
    `omnigate_app_password` -- plain text, hashed automatically during Apply), and an Anthropic
    API key -- required, since a stack applied without one deploys fine but can't answer any
    question. Get a free key from [console.anthropic.com](https://console.anthropic.com) before
-   you start.
+   you start. You can also change it later, live, in the app's Admin console under **Models** (`/admin/llm-settings`).
 4. **Terraform Actions → Apply**. Takes ~12-15 minutes (cluster ~8 min, node pool ~3 min, Helm
    release the rest).
 5. Once it succeeds, the stack's **Outputs** tab has `ask_app_url` and `kubeconfig_command`.

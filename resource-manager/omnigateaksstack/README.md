@@ -125,7 +125,7 @@ Use the "Deploy to Azure" button on the docs site, or manually:
 3. Follow the wizard (driven by `createUiDefinition.json`): an Ask-app login (plain text, hashed
    automatically during deployment) and an Anthropic API key — required, since a deployment
    without one comes up fine but can't answer any question. Get a free key from
-   [console.anthropic.com](https://console.anthropic.com) before you start.
+   [console.anthropic.com](https://console.anthropic.com) before you start. You can also change it later, live, in the app's Admin console under **Models** (`/admin/llm-settings`).
 4. Review + create. Takes roughly 15-20 minutes (AKS cluster creation dominates, plus the
    deployment script's Helm install).
 5. Once it succeeds, the deployment's **Outputs** tab has `askAppUrl` and `kubeconfigCommand`.
