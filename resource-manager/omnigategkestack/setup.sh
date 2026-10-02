@@ -132,13 +132,45 @@ while true; do
   echo "Password can't be empty -- refusing to deploy the well-known demo/demo login on a public LoadBalancer." >&2
 done
 
+# Confirmed live (a user entered an expired key and nothing complained until the Ask app failed):
+# check the key against Anthropic before spending 10+ minutes provisioning. GET /v1/models costs
+# no tokens and answers 200 for a valid key, 401 for an invalid/expired/revoked one. Prints the
+# HTTP status ("000" if curl couldn't connect). The key goes to curl via a config on stdin (-K -)
+# rather than a -H argument, so it never shows up in `ps` output.
+anthropic_key_status() {
+  local escaped
+  escaped="$(printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g')"
+  printf 'header = "x-api-key: %s"\n' "$escaped" \
+    | curl -s -o /dev/null -w '%{http_code}' --max-time 15 -K - \
+        -H "anthropic-version: 2023-06-01" https://api.anthropic.com/v1/models 2>/dev/null || true
+}
+
 while true; do
   read -rsp "Anthropic API key (from console.anthropic.com): " llm_api_key
   echo
-  if [ -n "$llm_api_key" ]; then
-    break
+  if [ -z "$llm_api_key" ]; then
+    echo "Required -- the gateway deploys fine without one but can't answer any question." >&2
+    continue
   fi
-  echo "Required -- the gateway deploys fine without one but can't answer any question." >&2
+  echo "Checking the key with Anthropic..."
+  key_status="$(anthropic_key_status "$llm_api_key")"
+  case "$key_status" in
+    200)
+      echo "Key accepted."
+      break
+      ;;
+    401|403)
+      # Only a definite rejection blocks; a network/API hiccup below must not stop someone with
+      # a good key.
+      echo "Anthropic rejected this key (HTTP $key_status) -- it's invalid, expired, or revoked." >&2
+      read -rp "Continue anyway? (You can change it later in the Admin console under LLM Settings.) [y/N] " cont
+      case "$cont" in y|Y) break ;; esac
+      ;;
+    *)
+      echo "Couldn't verify the key (HTTP $key_status -- network or API issue); continuing."
+      break
+      ;;
+  esac
 done
 
 # ---- 4. Write terraform.tfvars -------------------------------------------------------------

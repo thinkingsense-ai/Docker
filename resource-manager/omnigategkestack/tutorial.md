@@ -27,7 +27,8 @@ cd omnigategkestack
 It'll prompt you for your GCP project (defaulting to the one you just picked above), region,
 Ask-app login, and an Anthropic API key from
 [console.anthropic.com](https://console.anthropic.com) (required — the gateway deploys fine
-without one but can't answer any question). Then it enables the required APIs, writes
+without one but can't answer any question; the script checks it with Anthropic before
+provisioning anything, and you can change it later in the Admin console under LLM Settings). Then it enables the required APIs, writes
 `terraform.tfvars` for you, and runs `terraform init && terraform apply`.
 
 Type `yes` when `terraform apply` prompts for confirmation. Takes about 10-15 minutes — cluster

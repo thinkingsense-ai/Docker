@@ -108,6 +108,11 @@ First apply takes 10-15 minutes (GKE cluster creation dominates that).
   "here's how to apt install this" advisory stub (exits 0, so a naive `command -v` check misses
   it entirely) — `setup.sh` checks the real output of `terraform version`, not just PATH
   presence, and installs the real thing via apt when running in Cloud Shell (`CLOUD_SHELL=true`).
+  It also checks the Anthropic API key before provisioning anything (`GET /v1/models`, no tokens
+  spent): an invalid/expired/revoked key (HTTP 401/403) is rejected up front with a re-enter
+  prompt instead of surfacing 15 minutes later as an Ask app that can't answer. A network or API
+  hiccup only warns and continues, so it never blocks a good key. The key can also be changed
+  later, live, in the Admin console under **LLM Settings**.
 - `destroy.sh` — guided teardown, the reverse of `setup.sh`: `terraform destroy` when this
   directory has real state, a confirm-gated fallback to deleting the known resources directly by
   name (see "Cleanup" below) when it doesn't.
