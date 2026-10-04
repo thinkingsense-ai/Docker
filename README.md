@@ -110,8 +110,11 @@ Admins and business users can both sign in with Microsoft Entra ID, Okta, Auth0,
 | `OMNIGATE_AUTH_OIDC_ADMIN_GROUPS` | Groups whose members become admins. |
 | `OMNIGATE_AUTH_OIDC_ALLOWED_GROUPS` | If set, only members of these groups can sign in at all. |
 | `OMNIGATE_APP_OIDC_ISSUER`, `_CLIENT_ID`, `_CLIENT_SECRET`, `_SCOPES` | Optional separate registration for the Ask app; defaults to the admin one above. |
+| `OMNIGATE_APP_OIDC_GROUPS_CLAIM` | Claim that carries the provider's group names (default `groups`, e.g. `cognito:groups`). |
 
 The admin sign-in page then shows "Continue with <provider>" next to the local form — keep one local admin (`OMNIGATE_AUTH_USERS`) as a break-glass login. For business users, open **Settings → Users & access → Business users**, add the person, and choose *Single sign-on*; their provider email must match the username. See the [admin and Ask guide](https://thinkingsense-ai.github.io/guide.html#sso) for screenshots.
+
+**Workspaces from provider groups:** the groups in that claim become the user's roles at sign-in, so a workspace with `access: { roles: ["Sales-Analysts"] }` (Settings → Groups) admits everyone in that provider group. Member lists still work too.
 
 ## Ports
 
