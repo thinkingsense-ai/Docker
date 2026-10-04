@@ -99,6 +99,20 @@ OMNIGATE_BACKENDS: "demo=jdbc:postgresql://postgres:5432/postgres|postgres|postg
 Once connected, you can ask questions that span your database and the seeded demo data together —
 that's the point: one question, multiple real sources, one answer.
 
+## Sign in with your identity provider (SSO)
+
+Admins and business users can both sign in with Microsoft Entra ID, Okta, Auth0, Google Workspace, Keycloak or any standard OIDC provider, alongside local accounts. Add these to the container's environment (compose `environment:` block):
+
+| Variable | Meaning |
+|---|---|
+| `OMNIGATE_AUTH_OIDC_ISSUER`, `_CLIENT_ID`, `_CLIENT_SECRET` | Your provider's app registration. Register `https://<host>/auth/oidc/callback` and `https://<host>/app/oidc/callback` as redirect URIs. |
+| `OMNIGATE_AUTH_OIDC_ADMIN_USERS` | Comma-separated emails that become admins when they sign in through SSO. Everyone else is read-only. |
+| `OMNIGATE_AUTH_OIDC_ADMIN_GROUPS` | Groups whose members become admins. |
+| `OMNIGATE_AUTH_OIDC_ALLOWED_GROUPS` | If set, only members of these groups can sign in at all. |
+| `OMNIGATE_APP_OIDC_ISSUER`, `_CLIENT_ID`, `_CLIENT_SECRET`, `_SCOPES` | Optional separate registration for the Ask app; defaults to the admin one above. |
+
+The admin sign-in page then shows "Continue with <provider>" next to the local form — keep one local admin (`OMNIGATE_AUTH_USERS`) as a break-glass login. For business users, open **Settings → Users & access → Business users**, add the person, and choose *Single sign-on*; their provider email must match the username. See the [admin and Ask guide](https://thinkingsense-ai.github.io/guide.html#sso) for screenshots.
+
 ## Ports
 
 **By default there is exactly one port: `8080`** — the admin console at `/admin`, Ask at `/`. You
