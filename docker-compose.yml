@@ -96,7 +96,12 @@ services:
     # Self-contained build -- this repo's own Dockerfile downloads the pre-compiled jar/web UI
     # from this repo's GitHub Release at build time (see Dockerfile's own comment). No other repo
     # needed, nothing to check out alongside this one.
-    build: .
+    build:
+      context: .
+      args:
+        # The release this stack runs. Keep in step with the ARG default in ./Dockerfile (both are
+        # bumped together on each release), or override: OMNIGATE_RELEASE_TAG=v0.10.3 docker compose up --build
+        OMNIGATE_RELEASE_TAG: ${OMNIGATE_RELEASE_TAG:-v0.10.3}
     depends_on:
       postgres:
         condition: service_healthy
@@ -167,6 +172,17 @@ services:
       # uncomment and change before exposing this compose stack beyond localhost:
       # OMNIGATE_AUTH_USERS: "admin:<saltB64>:<hashB64>:admin"  # generate via PasswordHash, see ARCHITECTURE.md
       # OMNIGATE_AUTH_API_TOKENS: "changeme-token:admin"
+      # Single sign-on (Okta, Microsoft Entra ID, Auth0, Google Workspace, Keycloak, any OIDC provider).
+      # Register https://<host>/auth/oidc/callback and https://<host>/app/oidc/callback with the provider.
+      # Admin console: SSO users are read-only unless listed/grouped as admins; business users are added
+      # under Settings -> Users & access with the "Single sign-on" method. See README "Sign in with your
+      # identity provider" for every option.
+      # OMNIGATE_AUTH_OIDC_ISSUER: "https://your-org.okta.com/oauth2/default"
+      # OMNIGATE_AUTH_OIDC_CLIENT_ID: "<client id>"
+      # OMNIGATE_AUTH_OIDC_CLIENT_SECRET: "<client secret>"
+      # OMNIGATE_AUTH_OIDC_ADMIN_USERS: "alice@example.com"
+      # OMNIGATE_AUTH_OIDC_ADMIN_GROUPS: "ThinkingSense-Admins"
+      # OMNIGATE_APP_OIDC_GROUPS_CLAIM: "groups"   # provider groups become roles; a workspace can admit by role
       # Uncomment to try dual execution against a real Oracle instance too:
       # OMNIGATE_DUAL_EXEC_ENABLED: "true"
       # OMNIGATE_ORACLE_HOST: oracle
