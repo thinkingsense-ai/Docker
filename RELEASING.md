@@ -57,18 +57,25 @@ Clean-room deploy from the stack zip on a real tenancy, then:
 
 ## Bumping the pinned version
 
-**[today]** The image tag is set in several places that must agree: `variables.tf` default,
-`schema.yaml` default, the stack README, and `helm/omnigate/values.yaml`. A bulk bump once missed
-`schema.yaml`, leaving the Console wizard on v0.8.0 while Terraform defaulted to v0.10.0, and the
-Terraform default pointed at a tag that did not exist in the default registry.
+**[today]** The image tag is pinned in several places that must agree. `scripts/version-pins.py`
+knows all of them and groups them by the registry each one pulls from:
 
-When bumping:
+```bash
+scripts/version-pins.py check [--verify-ocir]   # fails if the core pins disagree
+scripts/version-pins.py bump v0.10.4            # bumps the core group
+scripts/version-pins.py bump v0.10.4 --group gke --group aks   # only once their registry has it
+```
 
-1. Confirm the tag exists in the registry the stack pulls from, free and commercial.
-2. Change every reference in one PR. Search the whole repo for the old tag, not just one stack.
-3. Cut the stack release (below).
+`core` is the Dockerfiles, the compose file and the OKE stack (variables.tf and schema.yaml);
+`check --verify-ocir` also confirms the tag exists in both OCIR repos. `gke` and `aks` are
+separate groups because each cloud pulls from its own registry, and a tag that exists in OCIR
+may not exist there. A bulk bump once missed `schema.yaml` and pointed a Terraform default at a
+tag that did not exist in the default registry; that is what this prevents.
 
-**[proposed]** A CI check that fails the PR when those references disagree.
+To bump: build and promote the image (above), run `bump`, run `check --verify-ocir`, update
+prose mentions in the READMEs, open one PR, then cut the stack release (below).
+
+**[proposed]** Run `check` in CI so a PR that desyncs the core pins cannot merge.
 
 ### Minor and patch (v0.10.3 to v0.10.4)
 
