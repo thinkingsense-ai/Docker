@@ -9,15 +9,19 @@ locals {
   manage_adb_acl = var.omnigate_config_db_adb_ocid != ""
 }
 
-# Runs on create and again whenever the set of nodes changes (scale-up, node replacement).
+# Runs on every apply, so scale-ups and node replacements are always covered.
 # Deliberately has no destroy provisioner: a replacement would otherwise remove the still-valid
 # IPs just before re-adding them, opening a window where running pods can't open connections.
 resource "null_resource" "adb_acl_add" {
   count      = local.manage_adb_acl ? 1 : 0
   depends_on = [oci_containerengine_node_pool.this]
 
+  # timestamp(), not a node-ID list: the node pool's `nodes` attribute still shows the OLD nodes at
+  # plan time and only changes mid-apply on a scale-up, which Terraform rejects as an inconsistent
+  # plan (confirmed live). Re-running every apply is cheap -- the script reads the live node IPs
+  # and does nothing when the ACL is already right.
   triggers = {
-    nodes = join(",", [for n in oci_containerengine_node_pool.this.nodes : n.id])
+    always = timestamp()
   }
 
   provisioner "local-exec" {
