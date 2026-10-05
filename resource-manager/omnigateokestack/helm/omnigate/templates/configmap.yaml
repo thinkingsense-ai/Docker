@@ -41,6 +41,11 @@ data:
   # OmniGateCluster.java doesn't override it, so the default applies.
   OMNIGATE_CLUSTER_ENABLED: "true"
   OMNIGATE_CLUSTER_SEED_NODES: {{ $fullname := include "omnigate.fullname" . }}{{ $names := list }}{{ range $i := until (int .Values.omnigate.replicaCount) }}{{ $names = append $names (printf "%s-omnigate-%d.%s-omnigate-headless:47500" $fullname $i $fullname) }}{{ end }}{{ join "," $names | quote }}
+  # Cross-node join dispatch is OFF in the app by default (OMNIGATE_PARALLEL_JOIN_REMOTE_ENABLED=false):
+  # without this a cluster only shares cache/QoS/catalog, while every federated join still runs on
+  # whichever single pod took the request. Turned on here whenever the cluster is, so the replicas
+  # actually share query work; set omnigate.remoteJoinEnabled=false to opt out.
+  OMNIGATE_PARALLEL_JOIN_REMOTE_ENABLED: {{ .Values.omnigate.remoteJoinEnabled | quote }}
 {{- end }}
   # OMNIGATE_BACKENDS lives in secrets.yaml, not here -- it embeds the Postgres password, which
   # has no business sitting in a plaintext ConfigMap alongside a real Secret already carrying the

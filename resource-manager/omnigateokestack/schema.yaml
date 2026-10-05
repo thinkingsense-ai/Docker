@@ -222,11 +222,10 @@ variables:
   image_tag:
     type: string
     title: "Image tag (advanced)"
-    description: "Pinned to a specific free-edition release rather than \"latest\" -- confirmed
-      live that \"latest\" had silently stopped tracking new app releases (frozen at v0.6.0's
-      content for two releases), so a moving-target default wasn't actually keeping deployers
-      current anyway, just non-reproducible."
-    default: "v0.8.0"
+    description: "Pinned to a specific release rather than \"latest\" (a moving target isn't
+      reproducible). Keep this in step with the version in the stack's variables.tf; RELEASING.md
+      in the repo root describes how it is bumped."
+    default: "v0.10.3"
     required: false
 
   image_pull_username:

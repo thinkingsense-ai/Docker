@@ -41,6 +41,7 @@ omnigate:
   # only supports a static host:port seed list, not Kubernetes-native pod discovery, so this
   # chart is what computes that list from replicaCount.
   clusterEnabled: false
+  remoteJoinEnabled: true
   llmModel: claude-sonnet-5
   # Anthropic API key -- required, no default on purpose (NL2SQL simply won't work without it,
   # same as the local compose setup). Injected into a Secret, never a ConfigMap.
