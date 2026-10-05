@@ -66,6 +66,12 @@ variable "omnigate_config_db_user" {
   default     = ""
 }
 
+variable "omnigate_config_db_adb_ocid" {
+  description = "Optional. OCID of the Autonomous Database behind omnigate_config_db_url. When set, this stack adds its worker nodes' public IPs to that database's IP access list before the pods start (and on every scale-up), and removes them again on destroy. Leave blank to manage the ACL yourself; blank is also right if the database is open to all IPs or on a private endpoint (this stack won't touch an ADB that has no IP ACL)."
+  type        = string
+  default     = ""
+}
+
 variable "omnigate_config_db_password" {
   description = "Password for omnigate_config_db_url. Required when omnigate_replica_count > 1."
   type        = string

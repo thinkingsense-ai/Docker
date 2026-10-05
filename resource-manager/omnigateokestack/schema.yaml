@@ -41,6 +41,7 @@ variableGroups:
       - omnigate_config_db_url
       - omnigate_config_db_user
       - omnigate_config_db_password
+      - omnigate_config_db_adb_ocid
 
   - title: "Advanced"
     visible: true
@@ -203,6 +204,13 @@ variables:
     default: ""
     required: false
     sensitive: true
+
+  omnigate_config_db_adb_ocid:
+    type: string
+    title: "Autonomous Database OCID (optional)"
+    description: "Only if the config database above is an OCI Autonomous Database with an IP access list. When set, this stack adds its worker nodes' public IPs to that list automatically, before the pods start and again on every scale-up (and removes them on destroy). Leave blank to whitelist the nodes yourself."
+    default: ""
+    required: false
 
   image_repository:
     type: string

@@ -74,7 +74,7 @@ resource "helm_release" "omnigate" {
   name       = "omnigate"
   chart      = "${path.module}/helm/omnigate"
   timeout    = 600
-  depends_on = [null_resource.cleanup_pvcs]
+  depends_on = [null_resource.cleanup_pvcs, null_resource.adb_acl_add, null_resource.adb_acl_cleanup]
 
   set {
     name  = "image.repository"
