@@ -42,6 +42,9 @@ omnigate:
   # chart is what computes that list from replicaCount.
   clusterEnabled: false
   remoteJoinEnabled: true
+  # Shared by every replica so an SSO login started on one pod can finish on another (needs app
+  # v0.10.4+). The Terraform stack generates it; leave empty for a single replica with no SSO.
+  oidcStateSecret: ""
   llmModel: claude-sonnet-5
   # Anthropic API key -- required, no default on purpose (NL2SQL simply won't work without it,
   # same as the local compose setup). Injected into a Secret, never a ConfigMap.

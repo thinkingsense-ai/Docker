@@ -70,6 +70,14 @@ resource "null_resource" "cleanup_pvcs" {
   }
 }
 
+# Signs the OIDC login state/nonce cookie. Every replica must share the same value or a login that
+# starts on one pod cannot finish on another (thinkingsense-ai/Server#12, fixed in v0.10.4).
+# Generated once and kept in state, so it stays stable across applies and scale changes.
+resource "random_password" "oidc_state_secret" {
+  length  = 48
+  special = false
+}
+
 resource "helm_release" "omnigate" {
   name       = "omnigate"
   chart      = "${path.module}/helm/omnigate"
@@ -91,6 +99,10 @@ resource "helm_release" "omnigate" {
   set_sensitive {
     name  = "image.pullAuthToken"
     value = var.image_pull_auth_token
+  }
+  set_sensitive {
+    name  = "omnigate.oidcStateSecret"
+    value = random_password.oidc_state_secret.result
   }
   set_sensitive {
     name  = "omnigate.llmApiKey"

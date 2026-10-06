@@ -101,7 +101,7 @@ services:
       args:
         # The release this stack runs. Keep in step with the ARG default in ./Dockerfile (both are
         # bumped together on each release), or override: OMNIGATE_RELEASE_TAG=v0.10.3 docker compose up --build
-        OMNIGATE_RELEASE_TAG: ${OMNIGATE_RELEASE_TAG:-v0.10.3}
+        OMNIGATE_RELEASE_TAG: ${OMNIGATE_RELEASE_TAG:-v0.10.4}
     depends_on:
       postgres:
         condition: service_healthy
