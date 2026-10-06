@@ -128,6 +128,6 @@ for the bundled model — commercial alternatives are listed there) and memory r
 
 ## Upgrading
 
-`docker build --build-arg OMNIGATE_RELEASE_TAG=v0.10.3 .` (or edit the `ARG` default in
+`docker build --build-arg OMNIGATE_RELEASE_TAG=v0.10.4 .` (or edit the `ARG` default in
 `Dockerfile`, which already points at the latest) picks a different published release. See
 [Releases](https://github.com/thinkingsense-ai/Docker/releases) for what's new in each one.

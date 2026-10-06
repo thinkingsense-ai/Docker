@@ -100,8 +100,8 @@ services:
       context: .
       args:
         # The release this stack runs. Keep in step with the ARG default in ./Dockerfile (both are
-        # bumped together on each release), or override: OMNIGATE_RELEASE_TAG=v0.10.3 docker compose up --build
-        OMNIGATE_RELEASE_TAG: ${OMNIGATE_RELEASE_TAG:-v0.10.3}
+        # bumped together on each release), or override: OMNIGATE_RELEASE_TAG=v0.10.4 docker compose up --build
+        OMNIGATE_RELEASE_TAG: ${OMNIGATE_RELEASE_TAG:-v0.10.4}
     depends_on:
       postgres:
         condition: service_healthy
@@ -182,6 +182,7 @@ services:
       # OMNIGATE_AUTH_OIDC_CLIENT_SECRET: "<client secret>"
       # OMNIGATE_AUTH_OIDC_ADMIN_USERS: "alice@example.com"
       # OMNIGATE_AUTH_OIDC_ADMIN_GROUPS: "ThinkingSense-Admins"
+      # OMNIGATE_OIDC_STATE_SECRET: "<long random string>"  # same value on every replica if you run more than one
       # OMNIGATE_APP_OIDC_GROUPS_CLAIM: "groups"   # provider groups become roles; a workspace can admit by role
       # Uncomment to try dual execution against a real Oracle instance too:
       # OMNIGATE_DUAL_EXEC_ENABLED: "true"
