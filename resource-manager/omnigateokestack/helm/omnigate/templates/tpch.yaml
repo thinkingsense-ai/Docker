@@ -1,0 +1,186 @@
+{{- if .Values.tpch.enabled }}
+{{- $fullname := include "omnigate.fullname" . }}
+{{- $pgHost := include "omnigate.postgresHost" . }}
+# Opt-in TPC-H demo dataset (see addons/tpch-demo/README.md for the dataset itself). LINEITEM goes to
+# an S3-compatible store as Parquet and the other seven tables to a `tpch` database in the existing
+# Postgres, which is the same two-backend split the add-on uses and makes every join between them a
+# real cross-backend federated join. A separate database (not the `public` schema of the demo's own)
+# so the introspector can't pick up a second catalog source by accident (thinkingsense-ai/Server#5).
+#
+# SeaweedFS rather than MinIO: MinIO stopped publishing free container images (the Docker Hub repo is
+# gone and quay.io now requires authentication). It runs with no identities configured, so it accepts
+# any credentials -- fine for a ClusterIP-only demo store holding generated data, not for real data.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $fullname }}-tpch-s3
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: {{ .Values.storageClassName }}
+  resources:
+    requests:
+      storage: {{ .Values.tpch.storageSize }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-tpch-s3
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: tpch-s3
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: tpch-s3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: tpch-s3
+    spec:
+      containers:
+        - name: s3
+          image: {{ .Values.tpch.s3Image }}
+          # Small volumes so a modest PVC works: the default 30GB volume size limit is far more than
+          # this dataset needs and would make the master refuse to grow volumes on a small disk.
+          args: ["server", "-dir=/data", "-s3", "-s3.port=9000", "-master.volumeSizeLimitMB=1024", "-volume.max=0"]
+          ports:
+            - containerPort: 9000
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 9000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ $fullname }}-tpch-s3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}-tpch-s3
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+spec:
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: tpch-s3
+  ports:
+    - name: s3
+      port: 9000
+      targetPort: 9000
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fullname }}-tpch-loader
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+data:
+  generate_and_load.py: |
+{{ .Files.Get "files/tpch/generate_and_load.py" | indent 4 }}
+---
+# Generates and loads the dataset once, then exits. Idempotent: a re-run (or a Helm upgrade) checks real
+# row counts and the Parquet object first and does nothing if the data is already there. The omnigate
+# pods wait for this to finish (see the wait-for-tpch init container), so they never start against a
+# backend that doesn't exist yet.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $fullname }}-tpch-loader
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: tpch-loader
+spec:
+  backoffLimit: 8
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: tpch-loader
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        - name: create-database
+          image: docker.io/library/postgres:16-alpine
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $fullname }}-postgres-secret
+                  key: POSTGRES_PASSWORD
+          command:
+            - sh
+            - -c
+            - >-
+              until pg_isready -h {{ $pgHost }} -U {{ .Values.postgres.user }}; do sleep 2; done;
+              psql -h {{ $pgHost }} -U {{ .Values.postgres.user }} -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='{{ .Values.tpch.database }}'" | grep -q 1
+              || psql -h {{ $pgHost }} -U {{ .Values.postgres.user }} -d postgres -c "CREATE DATABASE {{ .Values.tpch.database }}"
+        - name: wait-for-s3
+          image: docker.io/library/postgres:16-alpine
+          command:
+            - sh
+            - -c
+            - until wget -q -O /dev/null http://{{ $fullname }}-tpch-s3:9000/; do sleep 2; done
+      containers:
+        - name: loader
+          image: {{ .Values.tpch.loaderImage }}
+          command:
+            - sh
+            - -c
+            - pip install -q --no-cache-dir duckdb==1.1.3 psycopg2-binary==2.9.10 boto3==1.35.68 && python /loader/generate_and_load.py
+          env:
+            - name: TPCH_SCALE_FACTOR
+              value: {{ .Values.tpch.scaleFactor | quote }}
+            - name: TPCH_DIM_JDBC_URL
+              value: "jdbc:postgresql://{{ $pgHost }}:5432/{{ .Values.tpch.database }}"
+            - name: TPCH_DIM_USER
+              value: {{ .Values.postgres.user | quote }}
+            - name: TPCH_DIM_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $fullname }}-postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: TPCH_LINEITEM_PROVIDER
+              value: s3
+            - name: TPCH_LINEITEM_BUCKET
+              value: {{ .Values.tpch.bucket | quote }}
+            - name: TPCH_LINEITEM_ENDPOINT
+              value: "http://{{ $fullname }}-tpch-s3:9000"
+            - name: TPCH_LINEITEM_REGION
+              value: us-east-1
+            - name: TPCH_LINEITEM_PATH_STYLE
+              value: "true"
+            - name: TPCH_LINEITEM_ACCESS_KEY_ID
+              value: tpch
+            - name: TPCH_LINEITEM_SECRET_ACCESS_KEY
+              value: tpch
+            - name: TPCH_DUCKDB_MEMORY_LIMIT
+              value: {{ .Values.tpch.loaderDuckdbMemory | quote }}
+            - name: TPCH_DUCKDB_THREADS
+              value: "2"
+          resources:
+            requests:
+              cpu: 500m
+              memory: 2Gi
+            limits:
+              memory: {{ .Values.tpch.loaderMemoryLimit }}
+          volumeMounts:
+            - name: loader
+              mountPath: /loader
+      volumes:
+        - name: loader
+          configMap:
+            name: {{ $fullname }}-tpch-loader
+{{- end }}

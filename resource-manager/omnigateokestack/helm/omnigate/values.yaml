@@ -45,6 +45,7 @@ omnigate:
   # Shared by every replica so an SSO login started on one pod can finish on another (needs app
   # v0.10.4+). The Terraform stack generates it; leave empty for a single replica with no SSO.
   oidcStateSecret: ""
+
   llmModel: claude-sonnet-5
   # Anthropic API key -- required, no default on purpose (NL2SQL simply won't work without it,
   # same as the local compose setup). Injected into a Secret, never a ConfigMap.
@@ -120,3 +121,19 @@ resources:
     limits:
       cpu: "1"
       memory: 1Gi
+
+# Opt-in TPC-H demo dataset: LINEITEM as Parquet in an in-cluster S3-compatible store, the other seven
+# tables in a `tpch` database in the existing Postgres. Adds two OMNIGATE_BACKENDS entries (postgres1,
+# lineitem), so on top of the three supply-chain demo backends this is five -- over the free edition's
+# cap of three. Meant for commercial-edition images; see templates/tpch.yaml.
+tpch:
+  enabled: false
+  scaleFactor: 1            # 1 == ~1GB of source data; keep postgres.storage large enough for the dims
+  database: tpch
+  bucket: tpch
+  storageSize: 10Gi
+  # SeaweedFS, pinned by digest (MinIO no longer publishes free images).
+  s3Image: docker.io/chrislusf/seaweedfs@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
+  loaderImage: docker.io/library/python:3.12-slim
+  loaderDuckdbMemory: 2GB
+  loaderMemoryLimit: 4Gi

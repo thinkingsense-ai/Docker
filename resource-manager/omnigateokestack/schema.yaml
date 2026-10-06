@@ -43,6 +43,12 @@ variableGroups:
       - omnigate_config_db_password
       - omnigate_config_db_adb_ocid
 
+  - title: "Demo dataset (optional)"
+    visible: true
+    variables:
+      - enable_tpch_demo
+      - tpch_scale_factor
+
   - title: "Advanced"
     visible: true
     variables:
@@ -211,6 +217,24 @@ variables:
     description: "Only if the config database above is an OCI Autonomous Database with an IP access list. When set, this stack adds its worker nodes' public IPs to that list automatically, before the pods start and again on every scale-up (and removes them on destroy). Leave blank to whitelist the nodes yourself."
     default: ""
     required: false
+
+  enable_tpch_demo:
+    type: boolean
+    title: "Load the TPC-H demo dataset"
+    description: "Adds a TPC-H dataset (LINEITEM as Parquet in an in-cluster S3-compatible store, the other seven tables in Postgres) on top of the supply-chain demo, so questions can join across backends at a realistic size. Needs a commercial-edition image: it adds two backends, and the free edition allows three. The first deploy takes several minutes longer while the data loads."
+    default: false
+    required: false
+
+  tpch_scale_factor:
+    type: enum
+    title: "TPC-H scale factor"
+    description: "1 is about 1GB of source data (6M lineitem rows, 1.5M orders). 0.1 is a smaller smoke-test size."
+    enum:
+      - 0.1
+      - 1
+    default: 1
+    required: false
+    visible: ${enable_tpch_demo}
 
   image_repository:
     type: string

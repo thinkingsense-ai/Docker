@@ -50,6 +50,23 @@ oci resource-manager stack create \
 
 Then `oci resource-manager job create-apply-job --stack-id <id> --execution-plan-strategy AUTO_APPROVED`.
 
+## Optional TPC-H demo dataset
+
+Set **Load the TPC-H demo dataset** (`enable_tpch_demo`) to add a realistic-size dataset on top of the
+supply-chain demo: LINEITEM as Parquet in an in-cluster S3-compatible store (SeaweedFS), and the other
+seven TPC-H tables in a `tpch` database in the existing Postgres. Any question that joins them is a real
+cross-backend federated join, and above `OMNIGATE_PARALLEL_JOIN_MIN_ROWS` (10,000 rows) it is eligible for
+the parallel join, which on a clustered deployment can be shared across replicas.
+
+- **Needs a commercial-edition image.** It adds two backends (five in total) and the free edition allows three.
+- **First deploy is slower.** A one-shot Job generates the data (DuckDB's real `tpch` generator) and loads it;
+  the OmniGate pods wait for it to finish. Scale factor 1 is about 1GB (6M lineitem rows, 1.5M orders) and takes
+  several minutes; 0.1 is a quick smoke-test size. Re-running or upgrading is a no-op once the data is present.
+- **Sizing.** The dimension tables are well under 1GB, so the default 5GB Postgres volume is enough at scale factor 1.
+- **The S3 store has no authentication.** It is ClusterIP-only and holds generated data; do not reuse the pattern for real data.
+- The store is SeaweedFS because MinIO no longer publishes free container images. The loader is the same one as
+  `addons/tpch-demo/loader`, copied into `helm/omnigate/files/tpch/` (keep the two in sync).
+
 ## Publishing a release (maintainers)
 
 Cut a GitHub release zip of this directory (tag `oke-stack-vX.Y.Z`), then update the

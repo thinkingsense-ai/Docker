@@ -79,6 +79,20 @@ variable "omnigate_config_db_password" {
   sensitive   = true
 }
 
+# --- Optional demo dataset ------------------------------------------------------------------
+
+variable "enable_tpch_demo" {
+  description = "Also load a TPC-H demo dataset: LINEITEM as Parquet in an in-cluster S3-compatible store, the other seven tables in a `tpch` database in the existing Postgres. Adds two data backends on top of the three supply-chain ones, so it needs a commercial-edition image (the free edition caps at three). The loader runs on first deploy and takes several minutes at scale factor 1; the OmniGate pods wait for it."
+  type        = bool
+  default     = false
+}
+
+variable "tpch_scale_factor" {
+  description = "TPC-H scale factor when enable_tpch_demo is on. 1 is about 1GB of source data (6M lineitem rows, 1.5M orders); 0.1 is a ten-times smaller smoke-test size."
+  type        = number
+  default     = 1
+}
+
 # --- Image ----------------------------------------------------------------------------------
 
 variable "image_repository" {

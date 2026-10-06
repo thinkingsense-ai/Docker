@@ -81,7 +81,8 @@ resource "random_password" "oidc_state_secret" {
 resource "helm_release" "omnigate" {
   name       = "omnigate"
   chart      = "${path.module}/helm/omnigate"
-  timeout    = 600
+  # The omnigate pods wait for the optional TPC-H loader, which takes several minutes at scale factor 1.
+  timeout    = var.enable_tpch_demo ? 2400 : 600
   depends_on = [null_resource.cleanup_pvcs, null_resource.adb_acl_add, null_resource.adb_acl_cleanup]
 
   set {
@@ -99,6 +100,14 @@ resource "helm_release" "omnigate" {
   set_sensitive {
     name  = "image.pullAuthToken"
     value = var.image_pull_auth_token
+  }
+  set {
+    name  = "tpch.enabled"
+    value = var.enable_tpch_demo
+  }
+  set {
+    name  = "tpch.scaleFactor"
+    value = var.tpch_scale_factor
   }
   set_sensitive {
     name  = "omnigate.oidcStateSecret"
