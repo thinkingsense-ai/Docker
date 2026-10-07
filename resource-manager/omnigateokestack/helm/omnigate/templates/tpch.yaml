@@ -168,6 +168,8 @@ spec:
               value: tpch
             - name: TPCH_DUCKDB_MEMORY_LIMIT
               value: {{ .Values.tpch.loaderDuckdbMemory | quote }}
+            - name: TPCH_FOREIGN_KEYS
+              value: {{ .Values.tpch.foreignKeys | quote }}
             - name: TPCH_DUCKDB_THREADS
               value: "2"
           resources:

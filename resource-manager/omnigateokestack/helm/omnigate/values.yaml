@@ -42,9 +42,32 @@ omnigate:
   # chart is what computes that list from replicaCount.
   clusterEnabled: false
   remoteJoinEnabled: true
+  # JVM heap as a share of the container's memory limit. The JVM default is 25%, which leaves the
+  # 3Gi pods with a 768MB heap; the S3/Parquet connector reads a whole file onto the heap as objects,
+  # and even COUNT(*) on a 600,000-row table ran out of memory at that size (confirmed live). 65% gives
+  # about 2GB. It is a floor for modest tables, not a fix: very large Parquet tables need a bigger
+  # container or a database backend instead.
+  maxRamPercentage: 65
+  # Row count below which the parallel hash join is skipped (the app's default is 10000). Leave empty
+  # to keep the app default; lower it only to exercise the parallel path on small demo tables.
+  parallelJoinMinRows: ""
+  # Turns on debug logging for the federation package, which is where the planner explains why it did
+  # or did not use the parallel join engine (nothing is logged at info level when it declines).
+  debugFederation: false
   # Shared by every replica so an SSO login started on one pod can finish on another (needs app
   # v0.10.4+). The Terraform stack generates it; leave empty for a single replica with no SSO.
   oidcStateSecret: ""
+  # Single sign-on (any OIDC provider). Everything is off until issuer is set. One registration serves
+  # both the admin console and the Ask app (the Ask app falls back to these when OMNIGATE_APP_OIDC_* is
+  # unset). Register the redirect URIs /auth/oidc/callback and /app/oidc/callback with the provider.
+  oidc:
+    issuer: ""
+    clientId: ""
+    clientSecret: ""
+    scopes: "openid profile email"
+    adminUsers: ""       # comma-separated emails who get the admin role
+    adminGroups: ""      # comma-separated group claim values who get the admin role
+    groupsClaim: ""      # defaults to "groups" in the app
 
   llmModel: claude-sonnet-5
   # Anthropic API key -- required, no default on purpose (NL2SQL simply won't work without it,
@@ -128,6 +151,9 @@ resources:
 # cap of three. Meant for commercial-edition images; see templates/tpch.yaml.
 tpch:
   enabled: false
+  # Keep false while thinkingsense-ai/Server#13 is open: the foreign keys become ontology relationships
+  # that cluster mode cannot serialize, which aborts startup on a clustered deployment.
+  foreignKeys: false
   scaleFactor: 1            # 1 == ~1GB of source data; keep postgres.storage large enough for the dims
   database: tpch
   bucket: tpch

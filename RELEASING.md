@@ -45,6 +45,9 @@ An image reaches deployers by being promoted, not by being the newest build.
 
 ### Commercial suite
 
+The steps below are automated where possible by `scripts/commercial-harness/` (see its README):
+`verify-correctness.py` for answers, `oidc-test.sh` for cross-replica sign-in.
+
 Clean-room deploy from the stack zip on a real tenancy, then:
 
 - Pods reach Ready and log `cluster joined, current size=N` on every pod.

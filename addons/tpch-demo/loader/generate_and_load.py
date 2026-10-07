@@ -20,6 +20,7 @@ without a real, separate loader path for that database's own bulk-load mechanism
 scoped-out follow-on work, not a silent limitation to discover only when it fails.
 """
 import os
+import re
 import sys
 import io
 import time
@@ -139,7 +140,7 @@ def upload_lineitem_azure(con, bucket_container, account_name, account_key, sf):
 
 def load_dimension_tables(con, dim_conn):
     with dim_conn.cursor() as cur:
-        cur.execute("""
+        ddl = """
             CREATE TABLE IF NOT EXISTS region (r_regionkey INTEGER PRIMARY KEY, r_name CHAR(25), r_comment VARCHAR(152));
             CREATE TABLE IF NOT EXISTS nation (n_nationkey INTEGER PRIMARY KEY, n_name CHAR(25), n_regionkey INTEGER REFERENCES region, n_comment VARCHAR(152));
             CREATE TABLE IF NOT EXISTS supplier (s_suppkey INTEGER PRIMARY KEY, s_name CHAR(25), s_address VARCHAR(40), s_nationkey INTEGER REFERENCES nation, s_phone CHAR(15), s_acctbal DECIMAL(15,2), s_comment VARCHAR(101));
@@ -147,7 +148,13 @@ def load_dimension_tables(con, dim_conn):
             CREATE TABLE IF NOT EXISTS partsupp (ps_partkey INTEGER REFERENCES part, ps_suppkey INTEGER REFERENCES supplier, ps_availqty INTEGER, ps_supplycost DECIMAL(15,2), ps_comment VARCHAR(199), PRIMARY KEY (ps_partkey, ps_suppkey));
             CREATE TABLE IF NOT EXISTS customer (c_custkey INTEGER PRIMARY KEY, c_name VARCHAR(25), c_address VARCHAR(40), c_nationkey INTEGER REFERENCES nation, c_phone CHAR(15), c_acctbal DECIMAL(15,2), c_mktsegment CHAR(10), c_comment VARCHAR(117));
             CREATE TABLE IF NOT EXISTS orders (o_orderkey BIGINT PRIMARY KEY, o_custkey INTEGER REFERENCES customer, o_orderstatus CHAR(1), o_totalprice DECIMAL(15,2), o_orderdate DATE, o_orderpriority CHAR(15), o_clerk CHAR(15), o_shippriority INTEGER, o_comment VARCHAR(79));
-        """)
+        """
+        # TPCH_FOREIGN_KEYS=false drops the REFERENCES clauses. Needed on a clustered deployment until
+        # thinkingsense-ai/Server#13 is fixed: the foreign keys become ontology relationships that cluster
+        # mode cannot serialize, which aborts startup. Joins work the same without them.
+        if str(env("TPCH_FOREIGN_KEYS", "true")).lower() not in ("1", "true", "yes"):
+            ddl = re.sub(r"\s+REFERENCES\s+\w+", "", ddl)
+        cur.execute(ddl)
         dim_conn.commit()
     for table in DIMENSION_TABLES:
         log(f"loading dimension table '{table}' into Postgres...")

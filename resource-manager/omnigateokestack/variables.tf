@@ -79,6 +79,68 @@ variable "omnigate_config_db_password" {
   sensitive   = true
 }
 
+# --- Single sign-on (optional) --------------------------------------------------------------
+# Leave oidc_issuer blank to keep the default login. One registration with the identity provider serves
+# both the admin console and the Ask app; register the redirect URIs /auth/oidc/callback and
+# /app/oidc/callback.
+
+variable "oidc_issuer" {
+  description = "OpenID Connect issuer URL, e.g. https://your-org.okta.com/oauth2/default. Setting it turns on single sign-on."
+  type        = string
+  default     = ""
+}
+
+variable "oidc_client_id" {
+  description = "Client ID of the OIDC web application registered with the provider. Required when oidc_issuer is set."
+  type        = string
+  default     = ""
+}
+
+variable "oidc_client_secret" {
+  description = "Client secret of that application. Required when oidc_issuer is set."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "oidc_scopes" {
+  description = "Scopes to request. Add \"groups\" only if the provider is set up to return a groups claim."
+  type        = string
+  default     = "openid profile email"
+}
+
+variable "oidc_admin_users" {
+  description = "Comma-separated email addresses that get the admin role when they sign in with single sign-on. Everyone else who signs in is read-only in the admin console."
+  type        = string
+  default     = ""
+}
+
+variable "oidc_admin_groups" {
+  description = "Comma-separated values of the groups claim that grant the admin role. Optional."
+  type        = string
+  default     = ""
+}
+
+# --- Tuning and diagnostics ------------------------------------------------------------------
+
+variable "omnigate_max_ram_percentage" {
+  description = "JVM heap as a percentage of each pod's memory limit. The JVM default of 25 leaves a 3Gi pod with a 768MB heap, which the S3/Parquet connector exhausts even on a 600,000-row table; 65 gives about 2GB."
+  type        = number
+  default     = 65
+}
+
+variable "omnigate_parallel_join_min_rows" {
+  description = "Row count below which the parallel hash join is skipped. Blank keeps the app default (10000). Lower it (for example to 1) only to exercise the parallel join on small demo tables."
+  type        = string
+  default     = ""
+}
+
+variable "omnigate_debug_federation" {
+  description = "Turn on debug logging for the federation package. The planner logs why it did or did not use the parallel join engine only at debug level."
+  type        = bool
+  default     = false
+}
+
 # --- Optional demo dataset ------------------------------------------------------------------
 
 variable "enable_tpch_demo" {

@@ -102,6 +102,42 @@ resource "helm_release" "omnigate" {
     value = var.image_pull_auth_token
   }
   set {
+    name  = "omnigate.oidc.issuer"
+    value = var.oidc_issuer
+  }
+  set {
+    name  = "omnigate.oidc.clientId"
+    value = var.oidc_client_id
+  }
+  set_sensitive {
+    name  = "omnigate.oidc.clientSecret"
+    value = var.oidc_client_secret
+  }
+  set {
+    name  = "omnigate.oidc.scopes"
+    value = var.oidc_scopes
+  }
+  set {
+    name  = "omnigate.oidc.adminUsers"
+    value = var.oidc_admin_users
+  }
+  set {
+    name  = "omnigate.oidc.adminGroups"
+    value = var.oidc_admin_groups
+  }
+  set {
+    name  = "omnigate.maxRamPercentage"
+    value = var.omnigate_max_ram_percentage
+  }
+  set {
+    name  = "omnigate.parallelJoinMinRows"
+    value = var.omnigate_parallel_join_min_rows
+  }
+  set {
+    name  = "omnigate.debugFederation"
+    value = var.omnigate_debug_federation
+  }
+  set {
     name  = "tpch.enabled"
     value = var.enable_tpch_demo
   }

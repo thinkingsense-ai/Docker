@@ -32,6 +32,25 @@ data:
   OMNIGATE_PG_PORT: "5432"
   OMNIGATE_PG_DATABASE: {{ .Values.postgres.database | quote }}
   OMNIGATE_PG_USER: {{ .Values.postgres.user | quote }}
+{{- if .Values.omnigate.oidc.issuer }}
+  # Single sign-on. The client secret is in secrets.yaml, not here.
+  OMNIGATE_AUTH_OIDC_ISSUER: {{ .Values.omnigate.oidc.issuer | quote }}
+  OMNIGATE_AUTH_OIDC_CLIENT_ID: {{ required "omnigate.oidc.clientId is required when omnigate.oidc.issuer is set" .Values.omnigate.oidc.clientId | quote }}
+  OMNIGATE_AUTH_OIDC_SCOPES: {{ .Values.omnigate.oidc.scopes | quote }}
+{{- if .Values.omnigate.oidc.adminUsers }}
+  OMNIGATE_AUTH_OIDC_ADMIN_USERS: {{ .Values.omnigate.oidc.adminUsers | quote }}
+{{- end }}
+{{- if .Values.omnigate.oidc.adminGroups }}
+  OMNIGATE_AUTH_OIDC_ADMIN_GROUPS: {{ .Values.omnigate.oidc.adminGroups | quote }}
+{{- end }}
+{{- if .Values.omnigate.oidc.groupsClaim }}
+  OMNIGATE_AUTH_OIDC_GROUPS_CLAIM: {{ .Values.omnigate.oidc.groupsClaim | quote }}
+{{- end }}
+{{- end }}
+  JAVA_TOOL_OPTIONS: {{ printf "-XX:MaxRAMPercentage=%v%s" .Values.omnigate.maxRamPercentage (ternary " -Dorg.slf4j.simpleLogger.log.com.omnigate.federationcore=debug" "" .Values.omnigate.debugFederation) | quote }}
+{{- if .Values.omnigate.parallelJoinMinRows }}
+  OMNIGATE_PARALLEL_JOIN_MIN_ROWS: {{ .Values.omnigate.parallelJoinMinRows | quote }}
+{{- end }}
 {{- if .Values.omnigate.clusterEnabled }}
   # Real Ignite cluster mode (commercial-edition only -- see values.yaml's own clusterEnabled
   # comment). The app only supports a static host:port seed list via TcpDiscoveryVmIpFinder, not
