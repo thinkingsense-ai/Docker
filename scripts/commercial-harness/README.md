@@ -63,6 +63,12 @@ Then redeploy (or re-apply) with **Share join work across replicas** off and run
 evidence: with it on, the other replicas' CPU should rise; with it off, only the coordinator works. Also run
 `verify-correctness.py` both ways, since sharing work must not change the answer.
 
+`planner-shape-matrix.py` runs 22 realistic join shapes on one pod and records, for each, whether the parallel
+engine was used and the planner's reason when it was not (needs **Debug logging for query planning**). On v0.10.4
+only 9 of 22 shapes were planned in parallel; aggregates over an expression, `AVG` over a DECIMAL column, `HAVING`,
+`LEFT JOIN` and three-way joins with two co-located tables were declined. They still return correct answers. The
+findings and the full table are in thinkingsense-ai/Server#15.
+
 Facts established so far (v0.10.4 on OKE):
 
 - Joins that include the S3/Parquet backend are never planned by the parallel engine; the planner logs (debug
