@@ -57,6 +57,9 @@ omnigate:
   # Shared by every replica so an SSO login started on one pod can finish on another (needs app
   # v0.10.4+). The Terraform stack generates it; leave empty for a single replica with no SSO.
   oidcStateSecret: ""
+  # Bearer token with admin rights for the admin API (OMNIGATE_AUTH_API_TOKENS). Setting it switches
+  # admin authentication on.
+  adminApiToken: ""
   # Single sign-on (any OIDC provider). Everything is off until issuer is set. One registration serves
   # both the admin console and the Ask app (the Ask app falls back to these when OMNIGATE_APP_OIDC_* is
   # unset). Register the redirect URIs /auth/oidc/callback and /app/oidc/callback with the provider.

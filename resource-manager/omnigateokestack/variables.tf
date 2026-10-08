@@ -79,6 +79,15 @@ variable "omnigate_config_db_password" {
   sensitive   = true
 }
 
+# --- Admin API access (optional) -----------------------------------------------------------
+
+variable "omnigate_admin_api_token" {
+  description = "Optional bearer token (any long random string) that grants admin-role access to the admin API, so scripts such as the test harness can call /api/query without a browser sign-in. Setting it switches admin authentication on. Blank leaves authentication as configured elsewhere. Note that admin accounts created in the admin console are saved in the config database and carry over to any later stack that uses the same database, which also switches authentication on."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
 # --- Single sign-on (optional) --------------------------------------------------------------
 # Leave oidc_issuer blank to keep the default login. One registration with the identity provider serves
 # both the admin console and the Ask app; register the redirect URIs /auth/oidc/callback and

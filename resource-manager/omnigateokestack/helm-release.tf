@@ -108,6 +108,10 @@ resource "helm_release" "omnigate" {
     name  = "image.pullAuthToken"
     value = var.image_pull_auth_token
   }
+  set_sensitive {
+    name  = "omnigate.adminApiToken"
+    value = var.omnigate_admin_api_token
+  }
   set {
     name  = "omnigate.oidc.issuer"
     value = local.oidc_issuer

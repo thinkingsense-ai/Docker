@@ -17,6 +17,7 @@ reached the other replicas. Compare a run with cross-replica joins on against on
 """
 import argparse
 import json
+import os
 import statistics
 import subprocess
 import sys
@@ -48,10 +49,15 @@ def snapshot(pods):
     return {p: cpu_ms(p) for p in pods}
 
 
+TOKEN = None
+
+
 def run_query(sql, timeout):
+    headers = {"Content-Type": "application/json"}
+    if TOKEN:
+        headers["Authorization"] = f"Bearer {TOKEN}"
     req = urllib.request.Request(f"http://127.0.0.1:{LOCAL_PORT}/api/query",
-                                 data=json.dumps({"sql": sql}).encode(),
-                                 headers={"Content-Type": "application/json"})
+                                 data=json.dumps({"sql": sql}).encode(), headers=headers)
     t0 = time.time()
     with urllib.request.urlopen(req, timeout=timeout) as r:
         body = json.loads(r.read())
@@ -72,7 +78,11 @@ def main():
     ap.add_argument("--runs", type=int, default=3)
     ap.add_argument("--timeout", type=int, default=900)
     ap.add_argument("--idle-seconds", type=int, default=6)
+    ap.add_argument("--token", default=os.environ.get("OMNIGATE_API_TOKEN"),
+                    help="admin API token (or $OMNIGATE_API_TOKEN), needed when admin authentication is on")
     a = ap.parse_args()
+    global TOKEN
+    TOKEN = a.token
 
     n = replicas()
     pods = [f"omnigate-omnigate-{i}" for i in range(n)]

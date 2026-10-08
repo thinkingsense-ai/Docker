@@ -43,6 +43,11 @@ variableGroups:
       - omnigate_config_db_password
       - omnigate_config_db_adb_ocid
 
+  - title: "Admin API access (optional)"
+    visible: true
+    variables:
+      - omnigate_admin_api_token
+
   - title: "Single sign-on (optional)"
     visible: true
     variables:
@@ -236,6 +241,14 @@ variables:
     description: "Only if the config database above is an OCI Autonomous Database with an IP access list. When set, this stack adds its worker nodes' public IPs to that list automatically, before the pods start and again on every scale-up (and removes them on destroy). Leave blank to whitelist the nodes yourself."
     default: ""
     required: false
+
+  omnigate_admin_api_token:
+    type: password
+    title: "Admin API token"
+    description: "Optional bearer token (any long random string) giving scripts admin access to the admin API without a browser sign-in. Setting it switches admin authentication on. Admin accounts created in the admin console are saved in the config database and carry over to any later stack using the same database, which also switches authentication on."
+    default: ""
+    required: false
+    sensitive: true
 
   oidc_issuer:
     type: string
