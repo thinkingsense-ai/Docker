@@ -44,18 +44,32 @@ and ends on another used to fail (Server#12); it needs the same `OMNIGATE_OIDC_S
 replica, which the stack sets. Also add your email as a business user (Settings, Users & access, single
 sign-on) before testing the Ask app.
 
-## 3. Parallel and cross-node queries (not done yet)
+## 3. Parallel and cross-node queries: `measure-distribution.py`
 
-What is known so far, from testing on OKE with v0.10.4:
+Tick **Load the TPC-H demo dataset** with **TPC-H LINEITEM storage = postgres** (the default), and tick
+**Debug logging for query planning**. LINEITEM then lives in a second Postgres database, so the big join is
+database to database, which is the only shape the parallel hash join can plan.
 
-- Joins that include the S3/Parquet backend are never planned by the parallel engine: the planner logs
-  (at debug level only) "one side of the join isn't exactly one backend leaf ... skipping". Database to
-  database joins are, but only above `OMNIGATE_PARALLEL_JOIN_MIN_ROWS` (default 10000).
-- Nothing is logged when work is actually shipped to another node, so sharing cannot be proven from logs.
-  Compare each pod's CPU time (`/proc/1/stat`) before and after a heavy join instead.
-- Set **Debug logging for query planning** (`omnigate_debug_federation`) to see the planner's reasons.
+OmniGate logs nothing when it ships work to another node, so sharing is measured from outside: the tool runs
+a query on one chosen pod and reads every pod's CPU time before and after, minus an idle baseline.
 
-Next: load LINEITEM into a second Postgres database so the join is database to database, then compare CPU.
+```bash
+export KUBECONFIG=...
+SQL="SELECT o.o_orderpriority, COUNT(*), SUM(l.l_extendedprice*(1-l.l_discount)) FROM lineitem.lineitem l JOIN postgres1.orders o ON l.l_orderkey = o.o_orderkey GROUP BY o.o_orderpriority ORDER BY 1"
+./measure-distribution.py --sql "$SQL" --coordinator 0 --runs 3
+```
+
+Then redeploy (or re-apply) with **Share join work across replicas** off and run it again. The comparison is the
+evidence: with it on, the other replicas' CPU should rise; with it off, only the coordinator works. Also run
+`verify-correctness.py` both ways, since sharing work must not change the answer.
+
+Facts established so far (v0.10.4 on OKE):
+
+- Joins that include the S3/Parquet backend are never planned by the parallel engine; the planner logs (debug
+  level only) "one side of the join isn't exactly one backend leaf ... skipping". That is why LINEITEM now defaults to Postgres.
+- The parallel engine is skipped below `OMNIGATE_PARALLEL_JOIN_MIN_ROWS` (default 10000 rows).
+- The tool also reports whether the engine was used at all (from the coordinator's log) and, if it was not,
+  the planner's stated reason.
 
 ## Known issues that affect testing
 

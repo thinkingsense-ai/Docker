@@ -141,10 +141,10 @@ def main():
                          "segments": [(s, n, r) for s, n, r in SF01_SEGMENTS], "priority": None}
             check_query(base, "orders count (Postgres backend)", "SELECT COUNT(*) FROM postgres1.orders",
                         [(truth["orders"],)], a.timeout)
-            check_query(base, "lineitem count (Parquet backend)", "SELECT COUNT(*) FROM lineitem.lineitem",
+            check_query(base, "lineitem count (fact-table backend)", "SELECT COUNT(*) FROM lineitem.lineitem",
                         [(truth["lineitem"],)], a.timeout)
             names = dict(li="lineitem.lineitem", o="postgres1.orders", c="postgres1.customer")
-            check_query(base, "three-way join across both backends",
+            check_query(base, "three-way join across the two backends",
                         SEGMENTS_SQL.format(**names), truth["segments"], a.timeout)
             if truth["priority"] is not None:
                 check_query(base, "two-way join across both backends",

@@ -141,12 +141,20 @@ resource "helm_release" "omnigate" {
     value = var.omnigate_parallel_join_min_rows
   }
   set {
+    name  = "omnigate.remoteJoinEnabled"
+    value = var.omnigate_remote_join_enabled
+  }
+  set {
     name  = "omnigate.debugFederation"
     value = var.omnigate_debug_federation
   }
   set {
     name  = "tpch.enabled"
     value = var.enable_tpch_demo
+  }
+  set {
+    name  = "tpch.lineitemStore"
+    value = var.tpch_lineitem_store
   }
   set {
     name  = "tpch.scaleFactor"

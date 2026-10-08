@@ -57,6 +57,7 @@ variableGroups:
     visible: true
     variables:
       - enable_tpch_demo
+      - tpch_lineitem_store
       - tpch_scale_factor
 
   - title: "Tuning and diagnostics (optional)"
@@ -64,6 +65,7 @@ variableGroups:
     variables:
       - omnigate_max_ram_percentage
       - omnigate_parallel_join_min_rows
+      - omnigate_remote_join_enabled
       - omnigate_debug_federation
 
   - title: "Advanced"
@@ -297,6 +299,13 @@ variables:
     default: ""
     required: false
 
+  omnigate_remote_join_enabled:
+    type: boolean
+    title: "Share join work across replicas"
+    description: "With more than one replica, let the parallel hash join ship work to the other replicas. Turn it off to compare against a run where one replica does everything."
+    default: true
+    required: false
+
   omnigate_debug_federation:
     type: boolean
     title: "Debug logging for query planning"
@@ -310,6 +319,17 @@ variables:
     description: "Adds a TPC-H dataset (LINEITEM as Parquet in an in-cluster S3-compatible store, the other seven tables in Postgres) on top of the supply-chain demo, so questions can join across backends at a realistic size. Needs a commercial-edition image: it adds two backends, and the free edition allows three. The first deploy takes several minutes longer while the data loads."
     default: false
     required: false
+
+  tpch_lineitem_store:
+    type: enum
+    title: "TPC-H LINEITEM storage"
+    description: "postgres puts the big table in a second database, so the join is database to database (the shape the parallel join can plan). s3 keeps Parquet in an in-cluster object store; joins that include it never use the parallel engine."
+    enum:
+      - postgres
+      - s3
+    default: postgres
+    required: false
+    visible: ${enable_tpch_demo}
 
   tpch_scale_factor:
     type: enum

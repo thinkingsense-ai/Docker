@@ -135,6 +135,12 @@ variable "omnigate_parallel_join_min_rows" {
   default     = ""
 }
 
+variable "omnigate_remote_join_enabled" {
+  description = "On a clustered deployment (more than one replica), let the parallel hash join ship work to the other replicas. Turn it off to compare against a run where one replica does everything."
+  type        = bool
+  default     = true
+}
+
 variable "omnigate_debug_federation" {
   description = "Turn on debug logging for the federation package. The planner logs why it did or did not use the parallel join engine only at debug level."
   type        = bool
@@ -147,6 +153,17 @@ variable "enable_tpch_demo" {
   description = "Also load a TPC-H demo dataset: LINEITEM as Parquet in an in-cluster S3-compatible store, the other seven tables in a `tpch` database in the existing Postgres. Adds two data backends on top of the three supply-chain ones, so it needs a commercial-edition image (the free edition caps at three). The loader runs on first deploy and takes several minutes at scale factor 1; the OmniGate pods wait for it."
   type        = bool
   default     = false
+}
+
+variable "tpch_lineitem_store" {
+  description = "Where the TPC-H LINEITEM table lives: \"postgres\" (a second database, so the big join is database to database, which is the only shape the parallel hash join can plan) or \"s3\" (Parquet in an in-cluster object store; joins that include it never use the parallel engine, and the connector reads whole files onto the heap)."
+  type        = string
+  default     = "postgres"
+
+  validation {
+    condition     = contains(["postgres", "s3"], var.tpch_lineitem_store)
+    error_message = "tpch_lineitem_store must be \"postgres\" or \"s3\"."
+  }
 }
 
 variable "tpch_scale_factor" {
