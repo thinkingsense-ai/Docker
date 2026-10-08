@@ -114,7 +114,7 @@ def duckdb_truth(sf):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--url", required=True, help="e.g. http://129.146.77.46:8080")
+    ap.add_argument("--url", required=True, help="e.g. http://<load-balancer-ip>:8080")
     ap.add_argument("--tpch", help="TPC-H scale factor loaded in the stack, e.g. 0.1")
     ap.add_argument("--timeout", type=int, default=300)
     a = ap.parse_args()

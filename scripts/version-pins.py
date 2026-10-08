@@ -47,10 +47,23 @@ def read_pins():
     return out
 
 
+def tenancy_ocid():
+    """The tenancy to look in: $OCI_TENANCY_OCID, else the `tenancy` of the default profile in ~/.oci/config."""
+    import configparser
+    import os
+    if os.environ.get("OCI_TENANCY_OCID"):
+        return os.environ["OCI_TENANCY_OCID"]
+    cfg = configparser.ConfigParser()
+    cfg.read(Path.home() / ".oci" / "config")
+    try:
+        return cfg["DEFAULT"]["tenancy"]
+    except KeyError:
+        sys.exit("--verify-ocir needs OCI_TENANCY_OCID, or a tenancy in ~/.oci/config")
+
+
 def ocir_has(repo, tag):
-    ns = "ocid1.tenancy.oc1..aaaaaaaa7knayo46uzyz6nx7szpwrqvevwr5npvqmjz7kexgqplfxnfta5bq"
     r = subprocess.run(
-        ["oci", "artifacts", "container", "image", "list", "--compartment-id", ns,
+        ["oci", "artifacts", "container", "image", "list", "--compartment-id", tenancy_ocid(),
          "--repository-name", repo, "--query", "data.items[].version"],
         capture_output=True, text=True)
     return f'"{tag}"' in r.stdout
