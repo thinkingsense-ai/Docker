@@ -16,6 +16,8 @@ variableGroups:
     variables:
       - omnigate_app_username
       - omnigate_app_password
+      - omnigate_admin_username
+      - omnigate_admin_password
       - omnigate_llm_api_key
       - omnigate_llm_model
       - expose_wire_protocols
@@ -111,6 +113,21 @@ variables:
     title: "Ask-app login password"
     description: "Plain text -- hashed automatically during Apply using the deployed image's own PasswordHash utility, so nothing to generate yourself. Required so this deployment doesn't ship the repo's well-known demo/demo login on a public LoadBalancer."
     required: true
+    sensitive: true
+
+  omnigate_admin_username:
+    type: string
+    title: "Admin console username"
+    description: "Login name for the admin console. The admin console, the admin API and the /mcp endpoint require a login, so they are not open to the internet."
+    default: "admin"
+    required: true
+
+  omnigate_admin_password:
+    type: password
+    title: "Admin console password (optional)"
+    description: "Leave blank to use the Ask-app password for the admin login as well. Set a different one if you will share the Ask-app login with other people, because that login would otherwise also open the admin console."
+    default: ""
+    required: false
     sensitive: true
 
   omnigate_llm_api_key:

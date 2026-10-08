@@ -31,6 +31,19 @@ variable "omnigate_app_username" {
   default     = "demo"
 }
 
+variable "omnigate_admin_username" {
+  description = "Login name for the admin console. The admin console, the admin API (/api/query and friends) and the /mcp endpoint require this login (or a token, SSO), so they are not open to the internet."
+  type        = string
+  default     = "admin"
+}
+
+variable "omnigate_admin_password" {
+  description = "Admin console password, plain text, hashed during apply like omnigate_app_password. Leave blank to use the Ask-app password for the admin login as well; set a different one if you will share the Ask-app login with other people, because that login would otherwise also open the admin console."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "omnigate_app_password" {
   description = "Ask-app login password, plain text. Hashed automatically during apply (see password-hash.tf) using the same PasswordHash utility bundled in the deployed image -- no local Docker or manual hash generation needed."
   type        = string

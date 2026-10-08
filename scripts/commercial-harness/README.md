@@ -12,6 +12,9 @@ stack whitelists the nodes itself. For the larger dataset tick **Load the TPC-H 
 Checks that need no script: `kubectl get pods` all `1/1`; every omnigate pod logs
 `cluster joined` and Ignite shows `Baseline size=<replicas>`; no `ORA-` errors.
 
+Admin authentication is on by default, so scripts need an admin API token: set **Admin API token** in the stack and pass it
+as `--token` (or `$OMNIGATE_API_TOKEN`) to `verify-correctness.py` and `measure-distribution.py`.
+
 ## 1. Correctness: `verify-correctness.py`
 
 ```bash

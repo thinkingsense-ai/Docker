@@ -50,6 +50,20 @@ oci resource-manager stack create \
 
 Then `oci resource-manager job create-apply-job --stack-id <id> --execution-plan-strategy AUTO_APPROVED`.
 
+## Signing in (admin console and API)
+
+There are two separate logins:
+
+- **Ask app** (the page business users open): the username and password you set in the wizard.
+- **Admin console** (`/admin`, where you add Ask-app users and change settings): the **Admin console username**
+  (default `admin`) and **Admin console password**. If you leave the password blank it is the same as the Ask-app
+  password; set a different one if you will share the Ask-app login with other people, because otherwise it also opens the admin console.
+
+The admin console, the admin API (`/api/query` and the rest) and the `/mcp` endpoint all require a login, so they are not open to
+anyone who can reach the load balancer's address. (Earlier stack versions left them open; re-applying an older stack with this
+version turns the requirement on.) Scripts that call the API need an **Admin API token** (`omnigate_admin_api_token`, any long
+random string) sent as `Authorization: Bearer <token>`. Single sign-on, if you set it up, signs in the same admin console.
+
 ## Optional TPC-H demo dataset
 
 Set **Load the TPC-H demo dataset** (`enable_tpch_demo`) to add a realistic-size dataset on top of the
