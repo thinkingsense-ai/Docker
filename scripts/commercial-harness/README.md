@@ -69,6 +69,17 @@ only 9 of 22 shapes were planned in parallel; aggregates over an expression, `AV
 `LEFT JOIN` and three-way joins with two co-located tables were declined. They still return correct answers. The
 findings and the full table are in thinkingsense-ai/Server#15.
 
+What sharing does at scale (v0.10.4, 2 replicas of 2 vCPU, see thinkingsense-ai/Server#16):
+
+- Scale factor 0.3 (1.8M x 450k rows): with cross-replica sharing ON the same queries were slower, 14-24 s
+  against 11-14 s with it off, while the peer replica did 6-15% of the CPU work. Answers matched DuckDB either way.
+- Scale factor 1 (6M x 1.5M): the engine ran out of heap even at 4 GB (a 6 GB pod), so it cannot be tested here.
+  The chart now sets `-XX:+ExitOnOutOfMemoryError` (otherwise the pod stays Running but never Ready) and
+  `omnigate_memory_limit_gb` sets the pod size.
+- Repeated heavy queries with sharing on made Ignite halt a node (`SEGMENTATION`); the pod restarted.
+- Emptying the TPC-H tables is the way to make the loader reload at a different scale factor (it skips a reload
+  when enough orders already exist), and delete the finished loader Job first because a Job cannot be updated in place.
+
 Facts established so far (v0.10.4 on OKE):
 
 - Joins that include the S3/Parquet backend are never planned by the parallel engine; the planner logs (debug
