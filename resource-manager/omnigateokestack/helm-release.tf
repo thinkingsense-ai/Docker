@@ -137,6 +137,10 @@ resource "helm_release" "omnigate" {
     value = var.oidc_admin_groups
   }
   set {
+    name  = "resources.omnigate.limits.memory"
+    value = "${var.omnigate_memory_limit_gb}Gi"
+  }
+  set {
     name  = "omnigate.maxRamPercentage"
     value = var.omnigate_max_ram_percentage
   }

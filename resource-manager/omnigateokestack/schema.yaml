@@ -68,6 +68,7 @@ variableGroups:
   - title: "Tuning and diagnostics (optional)"
     visible: true
     variables:
+      - omnigate_memory_limit_gb
       - omnigate_max_ram_percentage
       - omnigate_parallel_join_min_rows
       - omnigate_remote_join_enabled
@@ -295,6 +296,15 @@ variables:
     default: ""
     required: false
     visible: ${oidc_issuer}
+
+  omnigate_memory_limit_gb:
+    type: number
+    title: "Memory per OmniGate pod (GB)"
+    description: "The JVM heap is the percentage below of this. 3 is enough for the demo and small TPC-H sizes; a join over TPC-H scale factor 1 ran out of heap at 3, so use 6 or more for it. Keep it within what a node can hold alongside the other pods."
+    default: 3
+    minimum: 2
+    maximum: 8
+    required: false
 
   omnigate_max_ram_percentage:
     type: number

@@ -132,6 +132,12 @@ variable "oidc_admin_groups" {
 
 # --- Tuning and diagnostics ------------------------------------------------------------------
 
+variable "omnigate_memory_limit_gb" {
+  description = "Memory limit (GB) for each OmniGate pod. The JVM heap is omnigate_max_ram_percentage of this. 3 is enough for the demo and the small TPC-H sizes; a join over TPC-H scale factor 1 (1.5M orders hashed in memory) ran out of heap at 3GB (about 2GB of heap), so use 6 or more for it. Keep it within what a node can hold alongside the other pods."
+  type        = number
+  default     = 3
+}
+
 variable "omnigate_max_ram_percentage" {
   description = "JVM heap as a percentage of each pod's memory limit. The JVM default of 25 leaves a 3Gi pod with a 768MB heap, which the S3/Parquet connector exhausts even on a 600,000-row table; 65 gives about 2GB."
   type        = number

@@ -47,7 +47,10 @@ data:
   OMNIGATE_AUTH_OIDC_GROUPS_CLAIM: {{ .Values.omnigate.oidc.groupsClaim | quote }}
 {{- end }}
 {{- end }}
-  JAVA_TOOL_OPTIONS: {{ printf "-XX:MaxRAMPercentage=%v%s" .Values.omnigate.maxRamPercentage (ternary " -Dorg.slf4j.simpleLogger.log.com.omnigate.federationcore=debug" "" .Values.omnigate.debugFederation) | quote }}
+  # ExitOnOutOfMemoryError: a heap failure otherwise leaves the JVM alive but wedged (found live: the pod stayed
+  # Running, never Ready, and was never restarted, because the chart has no liveness probe). Exiting lets
+  # Kubernetes restart it and makes the failure visible.
+  JAVA_TOOL_OPTIONS: {{ printf "-XX:MaxRAMPercentage=%v -XX:+ExitOnOutOfMemoryError%s" .Values.omnigate.maxRamPercentage (ternary " -Dorg.slf4j.simpleLogger.log.com.omnigate.federationcore=debug" "" .Values.omnigate.debugFederation) | quote }}
 {{- if .Values.omnigate.parallelJoinMinRows }}
   OMNIGATE_PARALLEL_JOIN_MIN_ROWS: {{ .Values.omnigate.parallelJoinMinRows | quote }}
 {{- end }}
