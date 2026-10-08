@@ -85,7 +85,7 @@ variable "omnigate_config_db_password" {
 # /app/oidc/callback.
 
 variable "oidc_issuer" {
-  description = "OpenID Connect issuer URL, e.g. https://your-org.okta.com/oauth2/default. Setting it turns on single sign-on."
+  description = "OpenID Connect issuer URL, e.g. https://your-org.okta.com/oauth2/default or https://dev-abc.us.auth0.com. https:// is added if you leave it off. Setting it turns on single sign-on."
   type        = string
   default     = ""
 }

@@ -78,6 +78,13 @@ resource "random_password" "oidc_state_secret" {
   special = false
 }
 
+locals {
+  # The app builds its provider-discovery URL straight from the issuer, so a bare domain such as
+  # "dev-abc.us.auth0.com" (what a provider's dashboard shows as "Domain") makes every sign-in start
+  # return HTTP 500 (confirmed live). Add the scheme when it is missing.
+  oidc_issuer = var.oidc_issuer == "" ? "" : (startswith(var.oidc_issuer, "http") ? var.oidc_issuer : "https://${var.oidc_issuer}")
+}
+
 resource "helm_release" "omnigate" {
   name       = "omnigate"
   chart      = "${path.module}/helm/omnigate"
@@ -103,7 +110,7 @@ resource "helm_release" "omnigate" {
   }
   set {
     name  = "omnigate.oidc.issuer"
-    value = var.oidc_issuer
+    value = local.oidc_issuer
   }
   set {
     name  = "omnigate.oidc.clientId"
