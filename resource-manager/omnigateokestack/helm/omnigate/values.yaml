@@ -57,6 +57,9 @@ omnigate:
   # Shared by every replica so an SSO login started on one pod can finish on another (needs app
   # v0.10.4+). The Terraform stack generates it; leave empty for a single replica with no SSO.
   oidcStateSecret: ""
+  # Bearer token with admin rights for the admin API (OMNIGATE_AUTH_API_TOKENS). Setting it switches
+  # admin authentication on.
+  adminApiToken: ""
   # Single sign-on (any OIDC provider). Everything is off until issuer is set. One registration serves
   # both the admin console and the Ask app (the Ask app falls back to these when OMNIGATE_APP_OIDC_* is
   # unset). Register the redirect URIs /auth/oidc/callback and /app/oidc/callback with the provider.
@@ -154,6 +157,11 @@ tpch:
   # Keep false while thinkingsense-ai/Server#13 is open: the foreign keys become ontology relationships
   # that cluster mode cannot serialize, which aborts startup on a clustered deployment.
   foreignKeys: false
+  # Where LINEITEM lives. "postgres" (a second database) makes the big join database to database, the only
+  # shape OmniGate's parallel hash join can plan, and avoids the Parquet connector's whole-file-on-the-heap
+  # reads. "s3" keeps the Parquet-in-object-storage layout (joins including it never use the parallel engine).
+  lineitemStore: postgres
+  factDatabase: tpch_fact
   scaleFactor: 1            # 1 == ~1GB of source data; keep postgres.storage large enough for the dims
   database: tpch
   bucket: tpch

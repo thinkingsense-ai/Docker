@@ -10,6 +10,7 @@
 # SeaweedFS rather than MinIO: MinIO stopped publishing free container images (the Docker Hub repo is
 # gone and quay.io now requires authentication). It runs with no identities configured, so it accepts
 # any credentials -- fine for a ClusterIP-only demo store holding generated data, not for real data.
+{{- if eq .Values.tpch.lineitemStore "s3" }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -80,6 +81,7 @@ spec:
     - name: s3
       port: 9000
       targetPort: 9000
+{{- end }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -123,16 +125,22 @@ spec:
           command:
             - sh
             - -c
-            - >-
-              until pg_isready -h {{ $pgHost }} -U {{ .Values.postgres.user }}; do sleep 2; done;
-              psql -h {{ $pgHost }} -U {{ .Values.postgres.user }} -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='{{ .Values.tpch.database }}'" | grep -q 1
-              || psql -h {{ $pgHost }} -U {{ .Values.postgres.user }} -d postgres -c "CREATE DATABASE {{ .Values.tpch.database }}"
+            - |
+              set -e
+              until pg_isready -h {{ $pgHost }} -U {{ .Values.postgres.user }}; do sleep 2; done
+              for db in {{ .Values.tpch.database }}{{ if eq .Values.tpch.lineitemStore "postgres" }} {{ .Values.tpch.factDatabase }}{{ end }}; do
+                if ! psql -h {{ $pgHost }} -U {{ .Values.postgres.user }} -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$db'" | grep -q 1; then
+                  psql -h {{ $pgHost }} -U {{ .Values.postgres.user }} -d postgres -c "CREATE DATABASE $db"
+                fi
+              done
+{{- if eq .Values.tpch.lineitemStore "s3" }}
         - name: wait-for-s3
           image: docker.io/library/postgres:16-alpine
           command:
             - sh
             - -c
             - until wget -q -O /dev/null http://{{ $fullname }}-tpch-s3:9000/; do sleep 2; done
+{{- end }}
       containers:
         - name: loader
           image: {{ .Values.tpch.loaderImage }}
@@ -153,7 +161,9 @@ spec:
                   name: {{ $fullname }}-postgres-secret
                   key: POSTGRES_PASSWORD
             - name: TPCH_LINEITEM_PROVIDER
-              value: s3
+              value: {{ .Values.tpch.lineitemStore | quote }}
+            - name: TPCH_LINEITEM_JDBC_URL
+              value: "jdbc:postgresql://{{ $pgHost }}:5432/{{ .Values.tpch.factDatabase }}"
             - name: TPCH_LINEITEM_BUCKET
               value: {{ .Values.tpch.bucket | quote }}
             - name: TPCH_LINEITEM_ENDPOINT
