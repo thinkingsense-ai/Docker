@@ -43,8 +43,11 @@ else:
     # "latest" if that fails for any reason, rather than hard-failing -- PasswordHash's algorithm
     # is stable across editions/builds, so any reasonably current jar produces the same hash
     # format the app expects.
-    if [ "${var.image_tag}" != "latest" ] && curl -fsSL -o /tmp/omnigate-hash-tool.jar "https://github.com/thinkingsense-ai/Docker/releases/download/${var.image_tag}/omnigate.jar" 2>/dev/null; then
-      : # direct release-tag download succeeded
+    # Base version first: strip any build suffix so a custom image tag like v0.10.3-hotfix still
+    # hashes with the matching release jar (v0.10.3) instead of whatever "latest" happens to be.
+    BASE_TAG=$(printf '%s' "${var.image_tag}" | sed -E 's/^(v[0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+    if [ "${var.image_tag}" != "latest" ] && curl -fsSL -o /tmp/omnigate-hash-tool.jar "https://github.com/thinkingsense-ai/Docker/releases/download/$BASE_TAG/omnigate.jar" 2>/dev/null; then
+      : # release-tag download succeeded
     else
       JAR_URL=$(fetch_latest_release_jar_url)
       curl -fsSL -o /tmp/omnigate-hash-tool.jar "$JAR_URL" 1>&2

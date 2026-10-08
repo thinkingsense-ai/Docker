@@ -66,11 +66,93 @@ variable "omnigate_config_db_user" {
   default     = ""
 }
 
+variable "omnigate_config_db_adb_ocid" {
+  description = "Optional. OCID of the Autonomous Database behind omnigate_config_db_url. When set, this stack adds its worker nodes' public IPs to that database's IP access list before the pods start (and on every scale-up), and removes them again on destroy. Leave blank to manage the ACL yourself; blank is also right if the database is open to all IPs or on a private endpoint (this stack won't touch an ADB that has no IP ACL)."
+  type        = string
+  default     = ""
+}
+
 variable "omnigate_config_db_password" {
   description = "Password for omnigate_config_db_url. Required when omnigate_replica_count > 1."
   type        = string
   default     = ""
   sensitive   = true
+}
+
+# --- Single sign-on (optional) --------------------------------------------------------------
+# Leave oidc_issuer blank to keep the default login. One registration with the identity provider serves
+# both the admin console and the Ask app; register the redirect URIs /auth/oidc/callback and
+# /app/oidc/callback.
+
+variable "oidc_issuer" {
+  description = "OpenID Connect issuer URL, e.g. https://your-org.okta.com/oauth2/default or https://dev-abc.us.auth0.com. https:// is added if you leave it off. Setting it turns on single sign-on."
+  type        = string
+  default     = ""
+}
+
+variable "oidc_client_id" {
+  description = "Client ID of the OIDC web application registered with the provider. Required when oidc_issuer is set."
+  type        = string
+  default     = ""
+}
+
+variable "oidc_client_secret" {
+  description = "Client secret of that application. Required when oidc_issuer is set."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "oidc_scopes" {
+  description = "Scopes to request. Add \"groups\" only if the provider is set up to return a groups claim."
+  type        = string
+  default     = "openid profile email"
+}
+
+variable "oidc_admin_users" {
+  description = "Comma-separated email addresses that get the admin role when they sign in with single sign-on. Everyone else who signs in is read-only in the admin console."
+  type        = string
+  default     = ""
+}
+
+variable "oidc_admin_groups" {
+  description = "Comma-separated values of the groups claim that grant the admin role. Optional."
+  type        = string
+  default     = ""
+}
+
+# --- Tuning and diagnostics ------------------------------------------------------------------
+
+variable "omnigate_max_ram_percentage" {
+  description = "JVM heap as a percentage of each pod's memory limit. The JVM default of 25 leaves a 3Gi pod with a 768MB heap, which the S3/Parquet connector exhausts even on a 600,000-row table; 65 gives about 2GB."
+  type        = number
+  default     = 65
+}
+
+variable "omnigate_parallel_join_min_rows" {
+  description = "Row count below which the parallel hash join is skipped. Blank keeps the app default (10000). Lower it (for example to 1) only to exercise the parallel join on small demo tables."
+  type        = string
+  default     = ""
+}
+
+variable "omnigate_debug_federation" {
+  description = "Turn on debug logging for the federation package. The planner logs why it did or did not use the parallel join engine only at debug level."
+  type        = bool
+  default     = false
+}
+
+# --- Optional demo dataset ------------------------------------------------------------------
+
+variable "enable_tpch_demo" {
+  description = "Also load a TPC-H demo dataset: LINEITEM as Parquet in an in-cluster S3-compatible store, the other seven tables in a `tpch` database in the existing Postgres. Adds two data backends on top of the three supply-chain ones, so it needs a commercial-edition image (the free edition caps at three). The loader runs on first deploy and takes several minutes at scale factor 1; the OmniGate pods wait for it."
+  type        = bool
+  default     = false
+}
+
+variable "tpch_scale_factor" {
+  description = "TPC-H scale factor when enable_tpch_demo is on. 1 is about 1GB of source data (6M lineitem rows, 1.5M orders); 0.1 is a ten-times smaller smoke-test size."
+  type        = number
+  default     = 1
 }
 
 # --- Image ----------------------------------------------------------------------------------
@@ -84,7 +166,7 @@ variable "image_repository" {
 variable "image_tag" {
   description = "Image tag to deploy. Pinned to a specific free-edition release rather than \"latest\" -- confirmed live that \"latest\" had silently stopped tracking new app releases (frozen at v0.6.0's content for two releases), so a moving-target default wasn't actually keeping deployers current anyway, just non-reproducible. Bump this deliberately when a newer free-edition image is built and pushed to OCIR."
   type        = string
-  default     = "v0.10.0"
+  default     = "v0.10.4"
 }
 
 variable "image_pull_username" {

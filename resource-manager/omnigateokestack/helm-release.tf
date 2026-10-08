@@ -70,11 +70,27 @@ resource "null_resource" "cleanup_pvcs" {
   }
 }
 
+# Signs the OIDC login state/nonce cookie. Every replica must share the same value or a login that
+# starts on one pod cannot finish on another (thinkingsense-ai/Server#12, fixed in v0.10.4).
+# Generated once and kept in state, so it stays stable across applies and scale changes.
+resource "random_password" "oidc_state_secret" {
+  length  = 48
+  special = false
+}
+
+locals {
+  # The app builds its provider-discovery URL straight from the issuer, so a bare domain such as
+  # "dev-abc.us.auth0.com" (what a provider's dashboard shows as "Domain") makes every sign-in start
+  # return HTTP 500 (confirmed live). Add the scheme when it is missing.
+  oidc_issuer = var.oidc_issuer == "" ? "" : (startswith(var.oidc_issuer, "http") ? var.oidc_issuer : "https://${var.oidc_issuer}")
+}
+
 resource "helm_release" "omnigate" {
   name       = "omnigate"
   chart      = "${path.module}/helm/omnigate"
-  timeout    = 600
-  depends_on = [null_resource.cleanup_pvcs]
+  # The omnigate pods wait for the optional TPC-H loader, which takes several minutes at scale factor 1.
+  timeout    = var.enable_tpch_demo ? 2400 : 600
+  depends_on = [null_resource.cleanup_pvcs, null_resource.adb_acl_add, null_resource.adb_acl_cleanup]
 
   set {
     name  = "image.repository"
@@ -91,6 +107,54 @@ resource "helm_release" "omnigate" {
   set_sensitive {
     name  = "image.pullAuthToken"
     value = var.image_pull_auth_token
+  }
+  set {
+    name  = "omnigate.oidc.issuer"
+    value = local.oidc_issuer
+  }
+  set {
+    name  = "omnigate.oidc.clientId"
+    value = var.oidc_client_id
+  }
+  set_sensitive {
+    name  = "omnigate.oidc.clientSecret"
+    value = var.oidc_client_secret
+  }
+  set {
+    name  = "omnigate.oidc.scopes"
+    value = var.oidc_scopes
+  }
+  set {
+    name  = "omnigate.oidc.adminUsers"
+    value = var.oidc_admin_users
+  }
+  set {
+    name  = "omnigate.oidc.adminGroups"
+    value = var.oidc_admin_groups
+  }
+  set {
+    name  = "omnigate.maxRamPercentage"
+    value = var.omnigate_max_ram_percentage
+  }
+  set {
+    name  = "omnigate.parallelJoinMinRows"
+    value = var.omnigate_parallel_join_min_rows
+  }
+  set {
+    name  = "omnigate.debugFederation"
+    value = var.omnigate_debug_federation
+  }
+  set {
+    name  = "tpch.enabled"
+    value = var.enable_tpch_demo
+  }
+  set {
+    name  = "tpch.scaleFactor"
+    value = var.tpch_scale_factor
+  }
+  set_sensitive {
+    name  = "omnigate.oidcStateSecret"
+    value = random_password.oidc_state_secret.result
   }
   set_sensitive {
     name  = "omnigate.llmApiKey"
