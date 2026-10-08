@@ -110,6 +110,7 @@ Admins and business users can both sign in with Microsoft Entra ID, Okta, Auth0,
 | `OMNIGATE_AUTH_OIDC_ADMIN_GROUPS` | Groups whose members become admins. |
 | `OMNIGATE_AUTH_OIDC_ALLOWED_GROUPS` | If set, only members of these groups can sign in at all. |
 | `OMNIGATE_APP_OIDC_ISSUER`, `_CLIENT_ID`, `_CLIENT_SECRET`, `_SCOPES` | Optional separate registration for the Ask app; defaults to the admin one above. |
+| `OMNIGATE_OIDC_STATE_SECRET` | Any long random string. **Set the same value on every replica** when running more than one, so a sign-in can start on one replica and finish on another. Not needed for a single node. |
 | `OMNIGATE_APP_OIDC_GROUPS_CLAIM` | Claim that carries the provider's group names (default `groups`, e.g. `cognito:groups`). |
 
 The admin sign-in page then shows "Continue with <provider>" next to the local form — keep one local admin (`OMNIGATE_AUTH_USERS`) as a break-glass login. For business users, open **Settings → Users & access → Business users**, add the person, and choose *Single sign-on*; their provider email must match the username. See the [admin and Ask guide](https://thinkingsense-ai.github.io/guide.html#sso) for screenshots.
@@ -250,6 +251,6 @@ for the bundled model — commercial alternatives are listed there) and memory r
 
 ## Upgrading
 
-`docker build --build-arg OMNIGATE_RELEASE_TAG=v0.10.3 .` (or edit the `ARG` default in
+`docker build --build-arg OMNIGATE_RELEASE_TAG=v0.10.4 .` (or edit the `ARG` default in
 `Dockerfile`, which already points at the latest) picks a different published release. See
 [Releases](https://github.com/thinkingsense-ai/Docker/releases) for what's new in each one.
