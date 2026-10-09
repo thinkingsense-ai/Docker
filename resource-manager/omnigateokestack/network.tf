@@ -136,24 +136,31 @@ resource "oci_core_security_list" "lb" {
   # changes to it on subsequent applies -- confirmed live, this rule was added to that list's
   # .tf source and a real `terraform apply` reported success while adding nothing. This
   # dedicated list has no such lifecycle block, so it's actually managed.
-  ingress_security_rules {
-    protocol = "6"
-    source   = "0.0.0.0/0"
-    tcp_options {
-      min = 8080
-      max = 8080
+  # Source addresses allowed to connect: anywhere unless var.allowed_client_cidrs lists them. This is the
+  # one place the restriction takes effect -- the Network Load Balancer passes traffic through, so the
+  # node-level lists never see the client's address (confirmed live), and a network security group on
+  # the load balancer adds to this list rather than narrowing it.
+  dynamic "ingress_security_rules" {
+    for_each = local.client_cidrs
+    content {
+      protocol = "6"
+      source   = ingress_security_rules.value
+      tcp_options {
+        min = 8080
+        max = 8080
+      }
     }
   }
   # Wire-protocol ports (Oracle/Postgres/MySQL/gRPC) -- only opened when the second NLB is
   # actually created (var.expose_wire_protocols), same reasoning as the HTTP rule above.
   dynamic "ingress_security_rules" {
-    for_each = var.expose_wire_protocols ? [1521, 5433, 3306, 7070] : []
+    for_each = var.expose_wire_protocols ? setproduct(local.client_cidrs, [1521, 5433, 3306, 7070]) : []
     content {
       protocol = "6"
-      source   = "0.0.0.0/0"
+      source   = ingress_security_rules.value[0]
       tcp_options {
-        min = ingress_security_rules.value
-        max = ingress_security_rules.value
+        min = ingress_security_rules.value[1]
+        max = ingress_security_rules.value[1]
       }
     }
   }
@@ -203,4 +210,9 @@ resource "oci_core_subnet" "lb" {
   route_table_id             = oci_core_route_table.public.id
   security_list_ids          = [oci_core_security_list.lb.id]
   prohibit_public_ip_on_vnic = false
+}
+
+locals {
+  cidr_list    = compact(split(",", replace(var.allowed_client_cidrs, " ", "")))
+  client_cidrs = length(local.cidr_list) > 0 ? local.cidr_list : ["0.0.0.0/0"]
 }

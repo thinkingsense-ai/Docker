@@ -131,9 +131,6 @@ metadata:
     app.kubernetes.io/component: omnigate
   annotations:
     oci.oraclecloud.com/load-balancer-type: "nlb"
-    {{- if .Values.service.nsgId }}
-    oci.oraclecloud.com/oci-network-security-groups: {{ .Values.service.nsgId | quote }}
-    {{- end }}
 spec:
   type: {{ .Values.service.type }}
   selector:
@@ -157,9 +154,6 @@ metadata:
     app.kubernetes.io/component: omnigate
   annotations:
     oci.oraclecloud.com/load-balancer-type: "nlb"
-    {{- if .Values.service.nsgId }}
-    oci.oraclecloud.com/oci-network-security-groups: {{ .Values.service.nsgId | quote }}
-    {{- end }}
 spec:
   type: LoadBalancer
   selector:
