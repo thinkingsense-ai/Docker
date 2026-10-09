@@ -26,6 +26,9 @@ param adminUsername string
 @secure()
 param adminPassword string
 param allowedClientCidrs string
+// A new value on every deployment, so changing a setting and re-deploying really re-runs the install script
+// (Azure otherwise skips a deploymentScript whose resource looks unchanged).
+param forceUpdateTag string = utcNow()
 @secure()
 param adminApiToken string
 // The Helm chart (helm/omnigate/) ships in this same repo, one directory up from this stack's
@@ -78,6 +81,7 @@ resource helmInstall 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   properties: {
     azCliVersion: '2.63.0'
     retentionInterval: 'P1D'
+    forceUpdateTag: forceUpdateTag
     timeout: 'PT20M'
     cleanupPreference: 'OnSuccess'
     environmentVariables: [

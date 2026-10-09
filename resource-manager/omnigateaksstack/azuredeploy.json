@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.47.16.16243",
-      "templateHash": "736593326897195019"
+      "templateHash": "10297079523049748412"
     }
   },
   "parameters": {
@@ -381,7 +381,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.47.16.16243",
-              "templateHash": "7736123903671042032"
+              "templateHash": "12827986095763440696"
             }
           },
           "parameters": {
@@ -427,6 +427,10 @@
             "allowedClientCidrs": {
               "type": "string"
             },
+            "forceUpdateTag": {
+              "type": "string",
+              "defaultValue": "[utcNow()]"
+            },
             "adminApiToken": {
               "type": "securestring"
             },
@@ -471,6 +475,7 @@
               "properties": {
                 "azCliVersion": "2.63.0",
                 "retentionInterval": "P1D",
+                "forceUpdateTag": "[parameters('forceUpdateTag')]",
                 "timeout": "PT20M",
                 "cleanupPreference": "OnSuccess",
                 "environmentVariables": [
