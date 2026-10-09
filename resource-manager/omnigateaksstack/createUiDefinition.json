@@ -50,6 +50,43 @@
             }
           },
           {
+            "name": "adminUsername",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Admin console username",
+            "defaultValue": "admin",
+            "toolTip": "Login for the admin console. The admin console, admin API and /mcp endpoint require this login, so they are not open to the internet.",
+            "constraints": {
+              "required": true,
+              "regex": "^[a-zA-Z0-9_-]{1,64}$",
+              "validationMessage": "1-64 characters, letters/numbers/underscore/hyphen only."
+            }
+          },
+          {
+            "name": "adminPassword",
+            "type": "Microsoft.Common.PasswordBox",
+            "label": {
+              "password": "Admin console password (optional)",
+              "confirmPassword": "Confirm password"
+            },
+            "toolTip": "Leave blank to use the Ask-app password for the admin login as well. Set a different one if you will share the Ask-app login with other people, because that login would otherwise also open the admin console.",
+            "constraints": {
+              "required": false
+            },
+            "options": {
+              "hideConfirmation": false
+            }
+          },
+          {
+            "name": "allowedClientCidrs",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Restrict access to these addresses (optional)",
+            "defaultValue": "",
+            "toolTip": "Comma-separated CIDR ranges, e.g. 203.0.113.7/32. Blank = open to the internet (fine for a first try-out). Set it once real data is connected: the agent endpoint (/mcp/agent) answers questions without a login using your Anthropic key.",
+            "constraints": {
+              "required": false
+            }
+          },
+          {
             "name": "llmApiKey",
             "type": "Microsoft.Common.PasswordBox",
             "label": {
@@ -72,9 +109,18 @@
             "constraints": {
               "required": true,
               "allowedValues": [
-                { "label": "claude-sonnet-5", "value": "claude-sonnet-5" },
-                { "label": "claude-opus-5", "value": "claude-opus-5" },
-                { "label": "claude-haiku-4-5-20251001", "value": "claude-haiku-4-5-20251001" }
+                {
+                  "label": "claude-sonnet-5",
+                  "value": "claude-sonnet-5"
+                },
+                {
+                  "label": "claude-opus-5",
+                  "value": "claude-opus-5"
+                },
+                {
+                  "label": "claude-haiku-4-5-20251001",
+                  "value": "claude-haiku-4-5-20251001"
+                }
               ]
             }
           },
@@ -153,7 +199,7 @@
             "name": "imageTag",
             "type": "Microsoft.Common.TextBox",
             "label": "Image tag",
-            "defaultValue": "v0.10.0",
+            "defaultValue": "v0.10.4",
             "toolTip": "Pinned to a specific free-edition release, not \"latest\" -- \"latest\" was deliberately removed from the registry after silently freezing at old content for two releases. Bump only when a newer free-edition image is confirmed published.",
             "constraints": {
               "required": false
@@ -185,7 +231,10 @@
       "omnigateDataStorageGb": "[steps('storage').omnigateDataStorageGb]",
       "imageRepository": "[steps('advanced').imageRepository]",
       "imageTag": "[steps('advanced').imageTag]",
-      "chartSourceUrl": "[steps('advanced').chartSourceUrl]"
+      "chartSourceUrl": "[steps('advanced').chartSourceUrl]",
+      "adminUsername": "[steps('application').adminUsername]",
+      "adminPassword": "[steps('application').adminPassword]",
+      "allowedClientCidrs": "[steps('application').allowedClientCidrs]"
     }
   }
 }

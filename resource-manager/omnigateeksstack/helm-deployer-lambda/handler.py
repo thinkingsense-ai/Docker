@@ -121,24 +121,29 @@ def resolve_jar_url(image_tag):
     raise RuntimeError("omnigate.jar asset not found on latest GitHub release")
 
 
-def compute_password_hash(password, image_tag):
+def compute_password_hashes(passwords, image_tag):
     # Same technique used to fix the OCI stack's own password UX (Docker#15/#16): download the
     # exact release jar being deployed and run its own bundled PasswordHash utility, so the hash
     # format always matches whatever's actually deployed rather than a separately-maintained
-    # reimplementation of the hashing algorithm.
+    # reimplementation of the hashing algorithm. One download serves every password.
     jar_path = "/tmp/omnigate-hash-tool.jar"
     subprocess.run(
         ["curl", "-fsSL", "-o", jar_path, resolve_jar_url(image_tag)],
         check=True, timeout=60,
     )
-    result = subprocess.run(
-        ["java", "-cp", jar_path, "com.omnigate.http.auth.PasswordHash", password],
-        capture_output=True, text=True, timeout=30,
-    )
-    os.remove(jar_path)
-    if result.returncode != 0:
-        raise RuntimeError(f"PasswordHash failed: {result.stderr}")
-    return result.stdout.strip()
+    hashes = []
+    try:
+        for password in passwords:
+            result = subprocess.run(
+                ["java", "-cp", jar_path, "com.omnigate.http.auth.PasswordHash", password],
+                capture_output=True, text=True, timeout=30,
+            )
+            if result.returncode != 0:
+                raise RuntimeError(f"PasswordHash failed: {result.stderr}")
+            hashes.append(result.stdout.strip())
+    finally:
+        os.remove(jar_path)
+    return hashes
 
 
 def ensure_lbc(cluster_name, region, vpc_id, role_arn):
@@ -254,7 +259,7 @@ def lambda_handler(event, context):
     # Confirmed live: this redacted ResourceProperties but NOT OldResourceProperties (present on
     # Update events), which meant the *previous* AppPassword value was logged to CloudWatch in
     # plaintext on every password change. Both must be scrubbed the same way.
-    REDACT = {"AppPassword", "LlmApiKey", "HelmSetSensitiveValues"}
+    REDACT = {"AppPassword", "AdminPassword", "AdminApiToken", "LlmApiKey", "HelmSetSensitiveValues"}
     safe_event = {
         k: v for k, v in event.items() if k not in ("ResourceProperties", "OldResourceProperties")
     }
@@ -280,11 +285,26 @@ def lambda_handler(event, context):
             image_tag = props.get("HelmSetValues", {}).get("image.tag", "latest")
             app_username = props.get("AppUsername", "demo")
             app_password = props["AppPassword"]
-            password_hash = compute_password_hash(app_password, image_tag)
+            admin_username = props.get("AdminUsername") or "admin"
+            # Blank admin password = same as the Ask-app password.
+            admin_password = props.get("AdminPassword") or app_password
+            password_hash, admin_hash = compute_password_hashes([app_password, admin_password], image_tag)
 
             set_values = dict(props.get("HelmSetValues", {}))
             set_values.setdefault("storageClassName", "gp3")
-            set_sensitive_values = {"omnigate.appUsers": f"{app_username}:{password_hash}::"}
+            # Local admin login for the admin console, admin API and /mcp: without it those are open
+            # to anyone who can reach the load balancer.
+            set_sensitive_values = {
+                "omnigate.appUsers": f"{app_username}:{password_hash}::",
+                "omnigate.authUsers": f"{admin_username}:{admin_hash}:admin",
+            }
+            if props.get("AdminApiToken"):
+                set_sensitive_values["omnigate.adminApiToken"] = props["AdminApiToken"]
+            # Optional source-address allow-list for the load balancer; blank = open. Passed as a
+            # Helm list literal ({a,b}); the Network Load Balancer controller turns it into
+            # security-group rules.
+            cidrs = [c for c in props.get("AllowedClientCidrs", "").replace(" ", "").split(",") if c]
+            set_values["service.loadBalancerSourceRanges"] = "{" + ",".join(cidrs) + "}"
             if props.get("LlmApiKey"):
                 set_sensitive_values["omnigate.llmApiKey"] = props["LlmApiKey"]
             args = [

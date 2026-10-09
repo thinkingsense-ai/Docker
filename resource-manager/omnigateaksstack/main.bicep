@@ -16,6 +16,16 @@ param appUsername string = 'demo'
 @secure()
 param appPassword string
 
+@description('Login name for the admin console. The admin console, admin API and /mcp endpoint require this login, so they are not open to the internet.')
+param adminUsername string = 'admin'
+
+@description('Admin console password, plain text. Leave blank to use the Ask-app password for the admin login as well; set a different one if you will share the Ask-app login with other people.')
+@secure()
+param adminPassword string = ''
+
+@description('Optional. Comma-separated CIDR ranges (e.g. 203.0.113.7/32) allowed to reach OmniGate. Blank = open to the internet, fine for a first try-out; set it once real data is connected, because the agent endpoint (/mcp/agent) answers questions without a login using your Anthropic key.')
+param allowedClientCidrs string = ''
+
 @description('Anthropic API key from console.anthropic.com. Required -- the Ask app cannot answer any question without it.')
 @secure()
 param llmApiKey string
@@ -53,7 +63,7 @@ param omnigateDataStorageGb int = 2
 param imageRepository string = 'us-docker.pkg.dev/thinkingsense/omnigate/omnigate'
 
 @description('Image tag (advanced). Pinned to a specific free-edition release rather than "latest" -- confirmed live that "latest" had silently stopped tracking new app releases (frozen at v0.6.0\'s content for two releases, since v0.7.0/v0.8.0 were only ever published to a different registry this stack never pulled from), so a moving-target default was not actually keeping deployers current, just non-reproducible. The AWS/OCI/GCP stacks made the identical fix the same way -- bump this deliberately when a newer free-edition image is built and pushed, do not go back to "latest".')
-param imageTag string = 'v0.8.0'
+param imageTag string = 'v0.10.4'
 
 @description('Tarball URL containing this stack\'s Helm chart (advanced). Pinned to this release\'s own tag so a deploy from this exact "Deploy to Azure" button/azuredeploy.json can never drift from a newer chart on main -- bump this alongside the version tag on every release, see README\'s "Publishing a release".')
 param chartSourceUrl string = 'https://github.com/thinkingsense-ai/Docker/archive/refs/tags/aks-stack-v1.0.5.tar.gz'
@@ -88,6 +98,9 @@ module helmInstall 'modules/deploymentScript.bicep' = {
     postgresStorageGb: postgresStorageGb
     appUsername: appUsername
     appPassword: appPassword
+    adminUsername: adminUsername
+    adminPassword: empty(adminPassword) ? appPassword : adminPassword
+    allowedClientCidrs: allowedClientCidrs
     llmApiKey: llmApiKey
     chartSourceUrl: chartSourceUrl
   }
