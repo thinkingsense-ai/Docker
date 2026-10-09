@@ -161,6 +161,10 @@ resource "helm_release" "omnigate" {
     value = var.omnigate_debug_federation
   }
   set {
+    name  = "service.nsgId"
+    value = length(oci_core_network_security_group.nlb_clients) > 0 ? oci_core_network_security_group.nlb_clients[0].id : ""
+  }
+  set {
     name  = "tpch.enabled"
     value = var.enable_tpch_demo
   }

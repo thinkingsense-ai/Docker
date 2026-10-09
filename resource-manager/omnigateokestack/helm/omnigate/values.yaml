@@ -128,6 +128,9 @@ storageClassName: oci-bv
 service:
   type: LoadBalancer
   httpPort: 8080
+  # Optional OCID of a network security group to attach to the load balancers (the stack creates one from
+  # its "allowed client CIDRs" setting). Blank = no group, open.
+  nsgId: ""
 
 resources:
   omnigate:
