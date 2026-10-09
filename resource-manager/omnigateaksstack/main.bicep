@@ -23,6 +23,10 @@ param adminUsername string = 'admin'
 @secure()
 param adminPassword string = ''
 
+@description('Optional bearer token (any long random string) granting admin-role access to the admin API, for scripts. Blank = none.')
+@secure()
+param adminApiToken string = ''
+
 @description('Optional. Comma-separated CIDR ranges (e.g. 203.0.113.7/32) allowed to reach OmniGate. Blank = open to the internet, fine for a first try-out; set it once real data is connected, because the agent endpoint (/mcp/agent) answers questions without a login using your Anthropic key.')
 param allowedClientCidrs string = ''
 
@@ -100,6 +104,7 @@ module helmInstall 'modules/deploymentScript.bicep' = {
     appPassword: appPassword
     adminUsername: adminUsername
     adminPassword: empty(adminPassword) ? appPassword : adminPassword
+    adminApiToken: adminApiToken
     allowedClientCidrs: allowedClientCidrs
     llmApiKey: llmApiKey
     chartSourceUrl: chartSourceUrl

@@ -77,6 +77,21 @@
             }
           },
           {
+            "name": "adminApiToken",
+            "type": "Microsoft.Common.PasswordBox",
+            "label": {
+              "password": "Admin API token (optional)",
+              "confirmPassword": "Confirm token"
+            },
+            "toolTip": "Any long random string. Lets scripts call the admin API with 'Authorization: Bearer <token>'. Leave blank for none.",
+            "constraints": {
+              "required": false
+            },
+            "options": {
+              "hideConfirmation": true
+            }
+          },
+          {
             "name": "allowedClientCidrs",
             "type": "Microsoft.Common.TextBox",
             "label": "Restrict access to these addresses (optional)",
@@ -234,7 +249,8 @@
       "chartSourceUrl": "[steps('advanced').chartSourceUrl]",
       "adminUsername": "[steps('application').adminUsername]",
       "adminPassword": "[steps('application').adminPassword]",
-      "allowedClientCidrs": "[steps('application').allowedClientCidrs]"
+      "allowedClientCidrs": "[steps('application').allowedClientCidrs]",
+      "adminApiToken": "[steps('application').adminApiToken]"
     }
   }
 }

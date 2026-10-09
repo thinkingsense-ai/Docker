@@ -9,7 +9,7 @@ code() { curl -s -o /dev/null -m 15 -w '%{http_code}' "$@"; }
 check() { # name expected actual
   if [ "$2" = "$3" ]; then printf 'PASS  %-46s %s\n' "$1" "$3"; else printf 'FAIL  %-46s want %s got %s\n' "$1" "$2" "$3"; fail=1; fi; }
 check "readiness is public"                 200 "$(code "$BASE/api/deployment-readiness")"
-check "Ask app page is up"                  200 "$(code "$BASE/app/")"
+check "Ask app page is up"                  200 "$(code "$BASE/")"
 for p in /api/config /metrics /mcp/; do check "anonymous $p refused" 401 "$(code "$BASE$p")"; done
 check "anonymous /api/query refused"        401 "$(code -X POST -H 'Content-Type: application/json' -d '{"sql":"select 1"}' "$BASE/api/query")"
 check "wrong token refused"                 401 "$(code -X POST -H 'Authorization: Bearer wrong' -H 'Content-Type: application/json' -d '{"sql":"select 1"}' "$BASE/api/query")"
