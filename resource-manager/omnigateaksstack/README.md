@@ -243,6 +243,18 @@ confirmed working (see that section). One real, unfixable-by-this-stack constrai
   manifest published for the omnigate image and switching to a universally-available `Dsv5`/`Dsv4`
   SKU instead.
 
+## Signing in, and who can reach it
+
+There are two logins. The **Ask app** (business users) uses the username and password you set at deploy time. The **admin
+console** (`/admin`), the admin API (`/api/query` and the rest) and the `/mcp` endpoint need the **admin login** (`adminUsername / adminPassword / adminApiToken`;
+default user `admin`, and a blank password means the Ask-app password). Earlier versions left these open to anyone who
+could reach the load balancer; redeploying an older stack with this version turns the requirement on. Scripts send the admin API
+token as `Authorization: Bearer <token>`.
+
+One endpoint is still open: the Ask app's agent endpoint (`/mcp/agent`) answers questions without a login, using your Anthropic
+key (thinkingsense-ai/Server#17). To limit who can connect, set `allowedClientCidrs` to your address or network, `--parameters allowedClientCidrs=203.0.113.7/32` (re-run the deployment).
+Blank = open to the internet, which suits a first try-out. Check a deployment with `scripts/verify-secure-deploy.sh <url> <token>`.
+
 ## Publishing a release (maintainers)
 
 Follow the same infra-stack release process as the AWS/OCI/GCP stacks (see this repo root's

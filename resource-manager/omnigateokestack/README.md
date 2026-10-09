@@ -186,3 +186,11 @@ cluster is orphaned and safe to `oci bv volume delete --volume-id <id> --force`.
   StatefulSet, ConfigMap, Secret)
 - `variables.tf` / `schema.yaml` — Terraform variables and the Resource Manager wizard schema
 - `outputs.tf` — `ask_app_url`, `kubeconfig_command`
+
+## Restricting who can connect
+
+Set **Restrict access to these addresses** (`allowed_client_cidrs`, e.g. `203.0.113.7/32,198.51.100.0/24`) to limit who can reach the
+load balancers. Blank = open to the internet. It matters because the Ask app's agent endpoint (`/mcp/agent`) answers questions without a
+login, using your Anthropic key (thinkingsense-ai/Server#17). The stack enforces it in the load balancer subnet's security list; limiting the
+node ports or attaching a network security group to the Network Load Balancer does **not** narrow access (both tried, verified live).
+Check a deployment with `scripts/verify-secure-deploy.sh <url> <token>`.

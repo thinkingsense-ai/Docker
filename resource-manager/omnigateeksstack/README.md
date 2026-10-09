@@ -52,6 +52,18 @@ aws cloudformation create-stack \
 Then poll with `aws cloudformation describe-stacks --stack-name omnigate-eks` until
 `StackStatus` is `CREATE_COMPLETE`.
 
+## Signing in, and who can reach it
+
+There are two logins. The **Ask app** (business users) uses the username and password you set at deploy time. The **admin
+console** (`/admin`), the admin API (`/api/query` and the rest) and the `/mcp` endpoint need the **admin login** (`OmnigateAdminUsername / OmnigateAdminPassword / OmnigateAdminApiToken`;
+default user `admin`, and a blank password means the Ask-app password). Earlier versions left these open to anyone who
+could reach the load balancer; redeploying an older stack with this version turns the requirement on. Scripts send the admin API
+token as `Authorization: Bearer <token>`.
+
+One endpoint is still open: the Ask app's agent endpoint (`/mcp/agent`) answers questions without a login, using your Anthropic
+key (thinkingsense-ai/Server#17). To limit who can connect, set `AllowedClientCidrs` to your address or network, `--parameters ... ParameterKey=AllowedClientCidrs,ParameterValue=203.0.113.7/32`.
+Blank = open to the internet, which suits a first try-out. Check a deployment with `scripts/verify-secure-deploy.sh <url> <token>`.
+
 ## Publishing a release (maintainers)
 
 CloudFormation's `TemplateURL` (both the Console's quick-create deep link and the
