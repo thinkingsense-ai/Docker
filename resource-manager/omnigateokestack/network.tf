@@ -83,13 +83,20 @@ resource "oci_core_security_list" "nodes" {
     protocol = "all"
     source   = "10.0.0.0/16"
   }
-  # NodePort range -- the LB talks to node ports over the VCN once traffic reaches a node.
-  ingress_security_rules {
-    protocol = "6"
-    source   = "0.0.0.0/0"
-    tcp_options {
-      min = 30000
-      max = 32767
+  # NodePort range -- the Network Load Balancer passes client traffic to these ports unchanged
+  # (it keeps the client's source address), so this rule is what decides who can reach OmniGate.
+  # Open to the internet unless var.allowed_client_cidrs lists the addresses that may connect.
+  # The load balancer's own health checks come from inside the VCN and are covered by the
+  # intra-VCN rule above.
+  dynamic "ingress_security_rules" {
+    for_each = local.client_cidrs
+    content {
+      protocol = "6"
+      source   = ingress_security_rules.value
+      tcp_options {
+        min = 30000
+        max = 32767
+      }
     }
   }
   # Path MTU discovery -- OKE explicitly documents this as required for node registration.
@@ -203,4 +210,8 @@ resource "oci_core_subnet" "lb" {
   route_table_id             = oci_core_route_table.public.id
   security_list_ids          = [oci_core_security_list.lb.id]
   prohibit_public_ip_on_vnic = false
+}
+
+locals {
+  client_cidrs = length(compact(split(",", replace(var.allowed_client_cidrs, " ", "")))) > 0 ? compact(split(",", replace(var.allowed_client_cidrs, " ", ""))) : ["0.0.0.0/0"]
 }

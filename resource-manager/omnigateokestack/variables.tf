@@ -92,6 +92,19 @@ variable "omnigate_config_db_password" {
   sensitive   = true
 }
 
+# --- Network access (optional) --------------------------------------------------------------
+
+variable "allowed_client_cidrs" {
+  description = "Comma-separated CIDR ranges (for example 203.0.113.7/32,198.51.100.0/24) that may reach OmniGate's web port and the worker nodes' service ports. Blank leaves it open to the internet, which is what a first try-out needs. Set it once you have real data connected: the Ask app's agent endpoint (/mcp/agent) answers questions without a login, using your Anthropic key, so an open deployment lets anyone who finds the address spend it."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = alltrue([for c in compact(split(",", replace(var.allowed_client_cidrs, " ", ""))) : can(cidrhost(c, 0))])
+    error_message = "allowed_client_cidrs must be a comma-separated list of CIDR ranges such as 203.0.113.7/32."
+  }
+}
+
 # --- Admin API access (optional) -----------------------------------------------------------
 
 variable "omnigate_admin_api_token" {
