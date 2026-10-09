@@ -110,7 +110,7 @@ metadata:
     app.kubernetes.io/component: omnigate
 spec:
   type: {{ .Values.service.type }}
-  {{- with .Values.service.loadBalancerSourceRanges }}
+  {{- with compact .Values.service.loadBalancerSourceRanges }}
   loadBalancerSourceRanges:
     {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -135,7 +135,7 @@ metadata:
     app.kubernetes.io/component: omnigate
 spec:
   type: LoadBalancer
-  {{- with .Values.service.loadBalancerSourceRanges }}
+  {{- with compact .Values.service.loadBalancerSourceRanges }}
   loadBalancerSourceRanges:
     {{- toYaml . | nindent 4 }}
   {{- end }}
