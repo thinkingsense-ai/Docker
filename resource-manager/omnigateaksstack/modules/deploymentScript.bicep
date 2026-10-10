@@ -22,6 +22,15 @@ param appUsername string
 param appPassword string
 @secure()
 param llmApiKey string
+param adminUsername string
+@secure()
+param adminPassword string
+param allowedClientCidrs string
+// A new value on every deployment, so changing a setting and re-deploying really re-runs the install script
+// (Azure otherwise skips a deploymentScript whose resource looks unchanged).
+param forceUpdateTag string = utcNow()
+@secure()
+param adminApiToken string
 // The Helm chart (helm/omnigate/) ships in this same repo, one directory up from this stack's
 // Bicep. It has no independent version -- it travels with the aks-stack-vX.Y.Z release tag, same
 // as the OCI stack's chart travels inside its own release zip (see README's "Publishing a
@@ -72,6 +81,7 @@ resource helmInstall 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   properties: {
     azCliVersion: '2.63.0'
     retentionInterval: 'P1D'
+    forceUpdateTag: forceUpdateTag
     timeout: 'PT20M'
     cleanupPreference: 'OnSuccess'
     environmentVariables: [
@@ -85,7 +95,11 @@ resource helmInstall 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
       { name: 'POSTGRES_STORAGE_GB', value: string(postgresStorageGb) }
       { name: 'APP_USERNAME', value: appUsername }
       { name: 'CHART_SOURCE_URL', value: chartSourceUrl }
+      { name: 'ADMIN_USERNAME', value: adminUsername }
+      { name: 'ALLOWED_CLIENT_CIDRS', value: allowedClientCidrs }
       { name: 'APP_PASSWORD', secureValue: appPassword }
+      { name: 'ADMIN_PASSWORD', secureValue: adminPassword }
+      { name: 'ADMIN_API_TOKEN', secureValue: empty(adminApiToken) ? 'none' : adminApiToken }
       { name: 'LLM_API_KEY', secureValue: llmApiKey }
     ]
     scriptContent: '''
@@ -169,7 +183,13 @@ else:
       fi
       curl -fsSL -o /tmp/omnigate-hash-tool.jar "$JAR_URL"
       APP_HASH=$(java -cp /tmp/omnigate-hash-tool.jar com.omnigate.http.auth.PasswordHash "$APP_PASSWORD")
+      ADMIN_HASH=$(java -cp /tmp/omnigate-hash-tool.jar com.omnigate.http.auth.PasswordHash "$ADMIN_PASSWORD")
       rm -f /tmp/omnigate-hash-tool.jar
+      # Local admin login for the admin console, admin API and /mcp ("user:salt:hash:admin"). Without
+      # it those are open to anyone who can reach the load balancer.
+      AUTH_USERS="${ADMIN_USERNAME}:${ADMIN_HASH}:admin"
+      # Optional source-address allow-list for the load balancer; blank = open.
+      CIDR_LIST=$(printf '%s' "$ALLOWED_CLIENT_CIDRS" | tr -d ' ')
       # Confirmed live: AppAuthConfig.parse (com.omnigate.http.ask.auth.AppAuthConfig) requires
       # exactly 5 colon-separated fields (username:salt:hash:roles:attrs) and silently SKIPS any
       # entry that doesn't split into 5 -- omitting the trailing "::" for the empty roles/
@@ -187,6 +207,9 @@ else:
         --set omnigate.dataVolumeSize="${DATA_VOLUME_GB}Gi" \
         --set postgres.storageSize="${POSTGRES_STORAGE_GB}Gi" \
         --set-string omnigate.appUsers="$APP_USERS" \
+        --set-string omnigate.authUsers="$AUTH_USERS" \
+        --set-string omnigate.adminApiToken="$([ "$ADMIN_API_TOKEN" = none ] && echo '' || echo "$ADMIN_API_TOKEN")" \
+        --set "service.loadBalancerSourceRanges={${CIDR_LIST}}" \
         --set-string omnigate.llmApiKey="$LLM_API_KEY" \
         --timeout 10m0s \
         --wait
@@ -196,7 +219,7 @@ else:
       # or by a stray `set -x`) would otherwise leak. Mirrors the redaction discipline AWS's
       # handler.py added after a real bug there leaked the *previous* password on every Update
       # event (it originally redacted only the current ResourceProperties, not the old ones).
-      unset APP_PASSWORD LLM_API_KEY APP_USERS APP_HASH
+      unset APP_PASSWORD ADMIN_PASSWORD ADMIN_API_TOKEN LLM_API_KEY APP_USERS APP_HASH AUTH_USERS ADMIN_HASH
 
       echo "== Waiting for the LoadBalancer IP =="
       HTTP_IP=""

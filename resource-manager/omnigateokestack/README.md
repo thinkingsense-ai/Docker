@@ -20,7 +20,7 @@ off the per-pod volume and into a shared Postgres every replica reads/writes —
 `helm/omnigate/values.yaml`'s `configDb` block). The AWS/GCP/Azure stacks all hardcode 1 replica.
 
 Deployers don't need to build or push anything — `image_repository` defaults to this project's
-own public OCIR repo, and `image_tag` to a specific pinned free-edition release (`v0.10.0`, not
+own public OCIR repo, and `image_tag` to a specific pinned free-edition release (`v0.10.4`, not
 `latest` -- see that variable's own description for why), so the stack pulls a pre-built image
 the same way `docker compose up` pulls from a registry.
 
@@ -49,6 +49,37 @@ oci resource-manager stack create \
 ```
 
 Then `oci resource-manager job create-apply-job --stack-id <id> --execution-plan-strategy AUTO_APPROVED`.
+
+## Signing in (admin console and API)
+
+There are two separate logins:
+
+- **Ask app** (the page business users open): the username and password you set in the wizard.
+- **Admin console** (`/admin`, where you add Ask-app users and change settings): the **Admin console username**
+  (default `admin`) and **Admin console password**. If you leave the password blank it is the same as the Ask-app
+  password; set a different one if you will share the Ask-app login with other people, because otherwise it also opens the admin console.
+
+The admin console, the admin API (`/api/query` and the rest) and the `/mcp` endpoint all require a login, so they are not open to
+anyone who can reach the load balancer's address. (Earlier stack versions left them open; re-applying an older stack with this
+version turns the requirement on.) Scripts that call the API need an **Admin API token** (`omnigate_admin_api_token`, any long
+random string) sent as `Authorization: Bearer <token>`. Single sign-on, if you set it up, signs in the same admin console.
+
+## Optional TPC-H demo dataset
+
+Set **Load the TPC-H demo dataset** (`enable_tpch_demo`) to add a realistic-size dataset on top of the
+supply-chain demo: LINEITEM as Parquet in an in-cluster S3-compatible store (SeaweedFS), and the other
+seven TPC-H tables in a `tpch` database in the existing Postgres. Any question that joins them is a real
+cross-backend federated join, and above `OMNIGATE_PARALLEL_JOIN_MIN_ROWS` (10,000 rows) it is eligible for
+the parallel join, which on a clustered deployment can be shared across replicas.
+
+- **Needs a commercial-edition image.** It adds two backends (five in total) and the free edition allows three.
+- **First deploy is slower.** A one-shot Job generates the data (DuckDB's real `tpch` generator) and loads it;
+  the OmniGate pods wait for it to finish. Scale factor 1 is about 1GB (6M lineitem rows, 1.5M orders) and takes
+  several minutes; 0.1 is a quick smoke-test size. Re-running or upgrading is a no-op once the data is present.
+- **Sizing.** The dimension tables are well under 1GB, so the default 5GB Postgres volume is enough at scale factor 1.
+- **The S3 store has no authentication.** It is ClusterIP-only and holds generated data; do not reuse the pattern for real data.
+- The store is SeaweedFS because MinIO no longer publishes free container images. The loader is the same one as
+  `addons/tpch-demo/loader`, copied into `helm/omnigate/files/tpch/` (keep the two in sync).
 
 ## Publishing a release (maintainers)
 
@@ -155,3 +186,11 @@ cluster is orphaned and safe to `oci bv volume delete --volume-id <id> --force`.
   StatefulSet, ConfigMap, Secret)
 - `variables.tf` / `schema.yaml` — Terraform variables and the Resource Manager wizard schema
 - `outputs.tf` — `ask_app_url`, `kubeconfig_command`
+
+## Restricting who can connect
+
+Set **Restrict access to these addresses** (`allowed_client_cidrs`, e.g. `203.0.113.7/32,198.51.100.0/24`) to limit who can reach the
+load balancers. Blank = open to the internet. It matters because the Ask app's agent endpoint (`/mcp/agent`) answers questions without a
+login, using your Anthropic key (thinkingsense-ai/Server#17). The stack enforces it in the load balancer subnet's security list; limiting the
+node ports or attaching a network security group to the Network Load Balancer does **not** narrow access (both tried, verified live).
+Check a deployment with `scripts/verify-secure-deploy.sh <url> <token>`.

@@ -16,9 +16,12 @@ variableGroups:
     variables:
       - omnigate_app_username
       - omnigate_app_password
+      - omnigate_admin_username
+      - omnigate_admin_password
       - omnigate_llm_api_key
       - omnigate_llm_model
       - expose_wire_protocols
+      - allowed_client_cidrs
 
   - title: "Compute Sizing (Always Free: VM.Standard.A1.Flex)"
     visible: true
@@ -41,6 +44,38 @@ variableGroups:
       - omnigate_config_db_url
       - omnigate_config_db_user
       - omnigate_config_db_password
+      - omnigate_config_db_adb_ocid
+
+  - title: "Admin API access (optional)"
+    visible: true
+    variables:
+      - omnigate_admin_api_token
+
+  - title: "Single sign-on (optional)"
+    visible: true
+    variables:
+      - oidc_issuer
+      - oidc_client_id
+      - oidc_client_secret
+      - oidc_scopes
+      - oidc_admin_users
+      - oidc_admin_groups
+
+  - title: "Demo dataset (optional)"
+    visible: true
+    variables:
+      - enable_tpch_demo
+      - tpch_lineitem_store
+      - tpch_scale_factor
+
+  - title: "Tuning and diagnostics (optional)"
+    visible: true
+    variables:
+      - omnigate_memory_limit_gb
+      - omnigate_max_ram_percentage
+      - omnigate_parallel_join_min_rows
+      - omnigate_remote_join_enabled
+      - omnigate_debug_federation
 
   - title: "Advanced"
     visible: true
@@ -81,6 +116,21 @@ variables:
     required: true
     sensitive: true
 
+  omnigate_admin_username:
+    type: string
+    title: "Admin console username"
+    description: "Login name for the admin console. The admin console, the admin API and the /mcp endpoint require a login, so they are not open to the internet."
+    default: "admin"
+    required: true
+
+  omnigate_admin_password:
+    type: password
+    title: "Admin console password (optional)"
+    description: "Leave blank to use the Ask-app password for the admin login as well. Set a different one if you will share the Ask-app login with other people, because that login would otherwise also open the admin console."
+    default: ""
+    required: false
+    sensitive: true
+
   omnigate_llm_api_key:
     type: password
     title: "Anthropic API key"
@@ -105,6 +155,13 @@ variables:
     description: "Also publish the Oracle/Postgres/MySQL wire-protocol ports (1521/5433/3306) on a second public LoadBalancer. Off by default -- turn on only if you plan to connect a wire-protocol client (e.g. psql, a BI tool) from outside the cluster."
     default: false
     required: true
+
+  allowed_client_cidrs:
+    type: string
+    title: "Restrict access to these addresses"
+    description: "Optional. Comma-separated CIDR ranges allowed to connect, e.g. 203.0.113.7/32,198.51.100.0/24. Blank = open to the internet (fine for a first try-out). Set it once real data is connected: the agent endpoint (/mcp/agent) answers questions without a login using your Anthropic key."
+    default: ""
+    required: false
 
   node_pool_size:
     # enum, not integer+minimum/maximum -- see omnigate_replica_count's own comment on why
@@ -204,6 +261,135 @@ variables:
     required: false
     sensitive: true
 
+  omnigate_config_db_adb_ocid:
+    type: string
+    title: "Autonomous Database OCID (optional)"
+    description: "Only if the config database above is an OCI Autonomous Database with an IP access list. When set, this stack adds its worker nodes' public IPs to that list automatically, before the pods start and again on every scale-up (and removes them on destroy). Leave blank to whitelist the nodes yourself."
+    default: ""
+    required: false
+
+  omnigate_admin_api_token:
+    type: password
+    title: "Admin API token"
+    description: "Optional bearer token (any long random string) giving scripts admin access to the admin API without a browser sign-in. Setting it switches admin authentication on. Admin accounts created in the admin console are saved in the config database and carry over to any later stack using the same database, which also switches authentication on."
+    default: ""
+    required: false
+    sensitive: true
+
+  oidc_issuer:
+    type: string
+    title: "OIDC issuer URL"
+    description: "e.g. https://your-org.okta.com/oauth2/default. Setting this turns on single sign-on for the admin console and the Ask app. Register the redirect URIs <host>/auth/oidc/callback and <host>/app/oidc/callback with the provider."
+    default: ""
+    required: false
+
+  oidc_client_id:
+    type: string
+    title: "OIDC client ID"
+    default: ""
+    required: false
+    visible: ${oidc_issuer}
+
+  oidc_client_secret:
+    type: password
+    title: "OIDC client secret"
+    default: ""
+    required: false
+    sensitive: true
+    visible: ${oidc_issuer}
+
+  oidc_scopes:
+    type: string
+    title: "OIDC scopes"
+    description: "Add \"groups\" only if the provider returns a groups claim."
+    default: "openid profile email"
+    required: false
+    visible: ${oidc_issuer}
+
+  oidc_admin_users:
+    type: string
+    title: "Admin users (emails)"
+    description: "Comma-separated emails that get the admin role on sign-in. Everyone else who signs in is read-only in the admin console. Without at least one, nobody can change settings."
+    default: ""
+    required: false
+    visible: ${oidc_issuer}
+
+  oidc_admin_groups:
+    type: string
+    title: "Admin groups (optional)"
+    description: "Comma-separated groups-claim values that grant the admin role."
+    default: ""
+    required: false
+    visible: ${oidc_issuer}
+
+  omnigate_memory_limit_gb:
+    type: number
+    title: "Memory per OmniGate pod (GB)"
+    description: "The JVM heap is the percentage below of this. 3 is enough for the demo and small TPC-H sizes; a join over TPC-H scale factor 1 ran out of heap at 3, so use 6 or more for it. Keep it within what a node can hold alongside the other pods."
+    default: 3
+    minimum: 2
+    maximum: 8
+    required: false
+
+  omnigate_max_ram_percentage:
+    type: number
+    title: "JVM heap (% of pod memory)"
+    description: "The JVM default of 25 leaves a 3Gi pod with a 768MB heap, which the S3/Parquet connector exhausts even on a 600,000-row table. 65 gives about 2GB."
+    default: 65
+    minimum: 25
+    maximum: 80
+    required: false
+
+  omnigate_parallel_join_min_rows:
+    type: string
+    title: "Parallel join minimum rows"
+    description: "Row count below which the parallel hash join is skipped. Blank keeps the app default (10000). Lower it only to exercise the parallel join on small demo tables."
+    default: ""
+    required: false
+
+  omnigate_remote_join_enabled:
+    type: boolean
+    title: "Share join work across replicas"
+    description: "With more than one replica, let the parallel hash join ship work to the other replicas. Turn it off to compare against a run where one replica does everything."
+    default: true
+    required: false
+
+  omnigate_debug_federation:
+    type: boolean
+    title: "Debug logging for query planning"
+    description: "The planner logs why it did or did not use the parallel join engine only at debug level."
+    default: false
+    required: false
+
+  enable_tpch_demo:
+    type: boolean
+    title: "Load the TPC-H demo dataset"
+    description: "Adds a TPC-H dataset (LINEITEM as Parquet in an in-cluster S3-compatible store, the other seven tables in Postgres) on top of the supply-chain demo, so questions can join across backends at a realistic size. Needs a commercial-edition image: it adds two backends, and the free edition allows three. The first deploy takes several minutes longer while the data loads."
+    default: false
+    required: false
+
+  tpch_lineitem_store:
+    type: enum
+    title: "TPC-H LINEITEM storage"
+    description: "postgres puts the big table in a second database, so the join is database to database (the shape the parallel join can plan). s3 keeps Parquet in an in-cluster object store; joins that include it never use the parallel engine."
+    enum:
+      - postgres
+      - s3
+    default: postgres
+    required: false
+    visible: ${enable_tpch_demo}
+
+  tpch_scale_factor:
+    type: enum
+    title: "TPC-H scale factor"
+    description: "1 is about 1GB of source data (6M lineitem rows, 1.5M orders). 0.1 is a smaller smoke-test size."
+    enum:
+      - 0.1
+      - 1
+    default: 1
+    required: false
+    visible: ${enable_tpch_demo}
+
   image_repository:
     type: string
     title: "Container image (advanced)"
@@ -214,11 +400,10 @@ variables:
   image_tag:
     type: string
     title: "Image tag (advanced)"
-    description: "Pinned to a specific free-edition release rather than \"latest\" -- confirmed
-      live that \"latest\" had silently stopped tracking new app releases (frozen at v0.6.0's
-      content for two releases), so a moving-target default wasn't actually keeping deployers
-      current anyway, just non-reproducible."
-    default: "v0.8.0"
+    description: "Pinned to a specific release rather than \"latest\" (a moving target isn't
+      reproducible). Keep this in step with the version in the stack's variables.tf; RELEASING.md
+      in the repo root describes how it is bumped."
+    default: "v0.10.4"
     required: false
 
   image_pull_username:

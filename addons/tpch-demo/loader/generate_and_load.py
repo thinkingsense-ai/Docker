@@ -20,6 +20,7 @@ without a real, separate loader path for that database's own bulk-load mechanism
 scoped-out follow-on work, not a silent limitation to discover only when it fails.
 """
 import os
+import re
 import sys
 import io
 import time
@@ -139,7 +140,7 @@ def upload_lineitem_azure(con, bucket_container, account_name, account_key, sf):
 
 def load_dimension_tables(con, dim_conn):
     with dim_conn.cursor() as cur:
-        cur.execute("""
+        ddl = """
             CREATE TABLE IF NOT EXISTS region (r_regionkey INTEGER PRIMARY KEY, r_name CHAR(25), r_comment VARCHAR(152));
             CREATE TABLE IF NOT EXISTS nation (n_nationkey INTEGER PRIMARY KEY, n_name CHAR(25), n_regionkey INTEGER REFERENCES region, n_comment VARCHAR(152));
             CREATE TABLE IF NOT EXISTS supplier (s_suppkey INTEGER PRIMARY KEY, s_name CHAR(25), s_address VARCHAR(40), s_nationkey INTEGER REFERENCES nation, s_phone CHAR(15), s_acctbal DECIMAL(15,2), s_comment VARCHAR(101));
@@ -147,7 +148,13 @@ def load_dimension_tables(con, dim_conn):
             CREATE TABLE IF NOT EXISTS partsupp (ps_partkey INTEGER REFERENCES part, ps_suppkey INTEGER REFERENCES supplier, ps_availqty INTEGER, ps_supplycost DECIMAL(15,2), ps_comment VARCHAR(199), PRIMARY KEY (ps_partkey, ps_suppkey));
             CREATE TABLE IF NOT EXISTS customer (c_custkey INTEGER PRIMARY KEY, c_name VARCHAR(25), c_address VARCHAR(40), c_nationkey INTEGER REFERENCES nation, c_phone CHAR(15), c_acctbal DECIMAL(15,2), c_mktsegment CHAR(10), c_comment VARCHAR(117));
             CREATE TABLE IF NOT EXISTS orders (o_orderkey BIGINT PRIMARY KEY, o_custkey INTEGER REFERENCES customer, o_orderstatus CHAR(1), o_totalprice DECIMAL(15,2), o_orderdate DATE, o_orderpriority CHAR(15), o_clerk CHAR(15), o_shippriority INTEGER, o_comment VARCHAR(79));
-        """)
+        """
+        # TPCH_FOREIGN_KEYS=false drops the REFERENCES clauses. Needed on a clustered deployment until
+        # thinkingsense-ai/Server#13 is fixed: the foreign keys become ontology relationships that cluster
+        # mode cannot serialize, which aborts startup. Joins work the same without them.
+        if str(env("TPCH_FOREIGN_KEYS", "true")).lower() not in ("1", "true", "yes"):
+            ddl = re.sub(r"\s+REFERENCES\s+\w+", "", ddl)
+        cur.execute(ddl)
         dim_conn.commit()
     for table in DIMENSION_TABLES:
         log(f"loading dimension table '{table}' into Postgres...")
@@ -157,6 +164,62 @@ def load_dimension_tables(con, dim_conn):
             cur.execute(f"TRUNCATE {table} CASCADE")
             cur.copy_expert(f"COPY {table} FROM STDIN WITH (FORMAT csv)", f)
         dim_conn.commit()
+
+
+def ensure_s3_bucket(endpoint, region, access_key, secret_key, bucket, path_style):
+    """Creates the bucket if it doesn't exist yet (an S3-compatible store has no notion of a
+    pre-existing one), so a bundled in-cluster store needs no separate bucket-init step. Harmless
+    when the bucket already exists, and when it's a bring-your-own bucket the credentials may
+    not be allowed to create -- in which case a plain HEAD succeeding is all that's needed."""
+    import boto3
+    from botocore.config import Config
+    from botocore.exceptions import ClientError
+    client = boto3.client(
+        "s3", endpoint_url=endpoint or None, region_name=region,
+        aws_access_key_id=access_key or None, aws_secret_access_key=secret_key or None,
+        config=Config(s3={"addressing_style": "path" if str(path_style).lower() == "true" else "auto"}))
+    try:
+        client.head_bucket(Bucket=bucket)
+        return
+    except ClientError:
+        pass
+    client.create_bucket(Bucket=bucket)
+    log(f"created bucket '{bucket}'")
+
+
+LINEITEM_DDL = """CREATE TABLE IF NOT EXISTS lineitem (
+    l_orderkey BIGINT, l_partkey INTEGER, l_suppkey INTEGER, l_linenumber INTEGER,
+    l_quantity DECIMAL(15,2), l_extendedprice DECIMAL(15,2), l_discount DECIMAL(15,2), l_tax DECIMAL(15,2),
+    l_returnflag CHAR(1), l_linestatus CHAR(1), l_shipdate DATE, l_commitdate DATE, l_receiptdate DATE,
+    l_shipinstruct CHAR(25), l_shipmode CHAR(10), l_comment VARCHAR(44))"""
+
+
+def lineitem_table_loaded(conn):
+    """True when the Postgres LINEITEM table exists and has rows (it is loaded in one transaction, so
+    any rows at all mean a complete load)."""
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT to_regclass('public.lineitem')")
+            if cur.fetchone()[0] is None:
+                return False
+            cur.execute("SELECT count(*) FROM lineitem")
+            return cur.fetchone()[0] > 0
+    except Exception as e:  # noqa: BLE001 -- any failure here just means "not loaded yet"
+        log(f"lineitem check failed ({e}) -- treating as not loaded")
+        return False
+
+
+def load_lineitem_postgres(con, conn):
+    """LINEITEM as a table in a second Postgres database instead of Parquet in object storage. A join
+    against the dimension tables is then database to database, which is the shape OmniGate's parallel
+    hash join can plan (it never plans a join that includes the S3/Parquet backend)."""
+    log("writing lineitem to Postgres ...")
+    con.execute("COPY lineitem TO '/tmp/lineitem.csv' (FORMAT CSV, HEADER false)")
+    with conn.cursor() as cur, open("/tmp/lineitem.csv") as f:
+        cur.execute(LINEITEM_DDL)
+        cur.execute("TRUNCATE lineitem")
+        cur.copy_expert("COPY lineitem FROM STDIN WITH (FORMAT csv)", f)
+    conn.commit()
 
 
 def main():
@@ -169,9 +232,15 @@ def main():
     dim_dsn = jdbc_to_psycopg2_dsn(dim_jdbc, dim_user, dim_password)
 
     provider = env("TPCH_LINEITEM_PROVIDER", "s3")
-    bucket = env("TPCH_LINEITEM_BUCKET", required=True)
+    bucket = env("TPCH_LINEITEM_BUCKET", "tpch")
 
     con = duckdb.connect()
+    # Optional caps so generation can't take a whole shared node (DuckDB otherwise sizes itself
+    # to most of the machine's memory, which is the wrong default inside a small pod).
+    if env("TPCH_DUCKDB_MEMORY_LIMIT"):
+        con.execute(f"SET memory_limit='{env('TPCH_DUCKDB_MEMORY_LIMIT')}'")
+    if env("TPCH_DUCKDB_THREADS"):
+        con.execute(f"SET threads={int(env('TPCH_DUCKDB_THREADS'))}")
     con.execute("INSTALL tpch; LOAD tpch;")
 
     expected_orders_rows = int(1_500_000 * sf)
@@ -179,6 +248,10 @@ def main():
     dim_conn = wait_for_postgres(dim_dsn)
 
     if provider == "s3":
+        ensure_s3_bucket(
+            env("TPCH_LINEITEM_ENDPOINT", ""), env("TPCH_LINEITEM_REGION", "us-east-1"),
+            env("TPCH_LINEITEM_ACCESS_KEY_ID", ""), env("TPCH_LINEITEM_SECRET_ACCESS_KEY", ""),
+            bucket, env("TPCH_LINEITEM_PATH_STYLE", "true"))
         lineitem_uri = configure_duckdb_object_storage(
             con, "s3", bucket,
             env("TPCH_LINEITEM_ENDPOINT", ""),
@@ -191,6 +264,13 @@ def main():
             log("TPC-H data already present at the configured targets -- skipping generation (set "
                 "TPCH_FORCE_RELOAD=true to reload anyway).")
             return
+    elif provider == "postgres":
+        fact_jdbc = env("TPCH_LINEITEM_JDBC_URL", required=True)  # jdbc:postgresql://host:port/<fact database>
+        fact_conn = wait_for_postgres(jdbc_to_psycopg2_dsn(fact_jdbc, dim_user, dim_password))
+        if not force and dimension_tables_loaded(dim_conn, expected_orders_rows) and lineitem_table_loaded(fact_conn):
+            log("TPC-H data already present at the configured targets -- skipping generation (set "
+                "TPCH_FORCE_RELOAD=true to reload anyway).")
+            return
     elif provider == "azureblob":
         azure_account = env("TPCH_LINEITEM_AZURE_ACCOUNT_NAME", required=True)
         azure_key = env("TPCH_LINEITEM_AZURE_ACCOUNT_KEY", required=True)
@@ -200,7 +280,7 @@ def main():
                 "TPCH_FORCE_RELOAD=true to reload anyway).")
             return
     else:
-        log(f"unknown TPCH_LINEITEM_PROVIDER '{provider}' -- expected 's3' or 'azureblob'")
+        log(f"unknown TPCH_LINEITEM_PROVIDER '{provider}' -- expected 's3', 'postgres' or 'azureblob'")
         sys.exit(1)
 
     log(f"generating TPC-H scale factor {sf} (~{sf:.1f} GB) via DuckDB's real tpch extension...")
@@ -211,6 +291,8 @@ def main():
     if provider == "s3":
         log(f"writing lineitem to {lineitem_uri} ...")
         con.execute(f"COPY lineitem TO '{lineitem_uri}' (FORMAT PARQUET)")
+    elif provider == "postgres":
+        load_lineitem_postgres(con, fact_conn)
     elif provider == "azureblob":
         upload_lineitem_azure(
             con, bucket,
@@ -219,7 +301,7 @@ def main():
             sf,
         )
     else:
-        log(f"unknown TPCH_LINEITEM_PROVIDER '{provider}' -- expected 's3' or 'azureblob'")
+        log(f"unknown TPCH_LINEITEM_PROVIDER '{provider}' -- expected 's3', 'postgres' or 'azureblob'")
         sys.exit(1)
 
     load_dimension_tables(con, dim_conn)

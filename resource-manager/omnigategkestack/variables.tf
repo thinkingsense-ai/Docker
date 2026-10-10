@@ -46,6 +46,32 @@ variable "omnigate_app_password" {
   sensitive   = true
 }
 
+variable "omnigate_admin_username" {
+  description = "Login name for the admin console. The admin console, the admin API (/api/query and friends) and the /mcp endpoint require this login (or a token), so they are not open to the internet."
+  type        = string
+  default     = "admin"
+}
+
+variable "omnigate_admin_password" {
+  description = "Admin console password, plain text, hashed during apply like omnigate_app_password. Leave blank to use the Ask-app password for the admin login as well; set a different one if you will share the Ask-app login with other people."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "omnigate_admin_api_token" {
+  description = "Optional bearer token (any long random string) that grants admin-role access to the admin API, for scripts. Blank = none."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "allowed_client_cidrs" {
+  description = "Comma-separated CIDR ranges (for example 203.0.113.7/32) that may reach OmniGate's web port. Blank leaves it open to the internet, which is what a first try-out needs. Set it once you have real data connected: the Ask app's agent endpoint (/mcp/agent) answers questions without a login, using your Anthropic key."
+  type        = string
+  default     = ""
+}
+
 variable "expose_wire_protocols" {
   description = "Also expose the Oracle/Postgres/MySQL wire-protocol ports (1521/5433/3306) via a second public LoadBalancer, in addition to the HTTP admin console/Ask app on 8080. Off by default -- these protocols carry their own auth per connection, but there's no reason to expose them publicly unless you actually plan to connect a wire-protocol client from outside the cluster."
   type        = bool
@@ -63,7 +89,7 @@ variable "image_repository" {
 variable "image_tag" {
   description = "Image tag to deploy. Pinned to a specific release rather than \"latest\" -- the \"latest\" tag was deliberately removed from the Artifact Registry repo, so this must always name a real, currently-published tag (see the \"Image\" section in README.md for how to check what's actually there)."
   type        = string
-  default     = "v0.10.0"
+  default     = "v0.10.4"
 }
 
 # --- Compute sizing ---------------------------------------------------------------------------

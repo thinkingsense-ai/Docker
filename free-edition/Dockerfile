@@ -46,7 +46,12 @@ ENV OMNIGATE_WEB_DIST_DIR=/app/web/dist
 #     the Server repo's own GatewayComponents#remoteLlamaOrNull, which checks the new
 #     _REMOTE_HOST env var first and falls through to that exact same existing local-spawn code
 #     path when it's unset).
-RUN mkdir -p /opt/omnigate && printf 'free' > /opt/omnigate/EDITION
+# Same jar, same image recipe for both editions -- the baked marker is the only difference
+# (see Edition.java: the marker file wins over OMNIGATE_EDITION). Defaults to free so a plain
+# `docker build .` can never produce an unlimited image by accident; the commercial image is
+# built with `--build-arg OMNIGATE_EDITION=commercial` and must only go to a private registry.
+ARG OMNIGATE_EDITION=free
+RUN mkdir -p /opt/omnigate && printf '%s' "$OMNIGATE_EDITION" > /opt/omnigate/EDITION
 
 # Default ConfigStore location: a file-backed embedded HSQLDB instance under this path unless
 # OMNIGATE_CONFIG_DB points at an external database (Postgres, for a larger deployment). Mount a

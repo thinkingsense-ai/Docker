@@ -41,6 +41,23 @@ spec:
         - sh
         - -c
         - until pg_isready -h {{ include "omnigate.postgresHost" . }} -U {{ .Values.postgres.user }}; do sleep 2; done
+{{- if .Values.tpch.enabled }}
+    # The TPC-H backends are registered at startup, so the pod must not start until the loader has
+    # finished. `orders` is loaded last, so a full-size orders table means everything is in place.
+    - name: wait-for-tpch
+      image: docker.io/library/postgres:16-alpine
+      env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "omnigate.fullname" . }}-postgres-secret
+              key: POSTGRES_PASSWORD
+      command:
+        - sh
+        - -c
+        - >-
+          until [ "$(psql -h {{ include "omnigate.postgresHost" . }} -U {{ .Values.postgres.user }} -d {{ .Values.tpch.database }} -tAc 'SELECT count(*) FROM orders' 2>/dev/null || echo 0)" -ge {{ int (mulf 1500000 .Values.tpch.scaleFactor) }} ]; do sleep 5; done
+{{- end }}
   containers:
     - name: omnigate
       image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
