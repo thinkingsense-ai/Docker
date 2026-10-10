@@ -17,6 +17,7 @@ Exit status is 1 if any check fails.
 """
 import argparse
 import json
+import os
 import sys
 import urllib.error
 import urllib.request
@@ -57,9 +58,14 @@ def skip(name, why):
     print(f"  [SKIP] {name}  -- {why}")
 
 
+TOKEN = None
+
+
 def query(base, sql, timeout):
-    req = urllib.request.Request(base + "/api/query", data=json.dumps({"sql": sql}).encode(),
-                                 headers={"Content-Type": "application/json"})
+    headers = {"Content-Type": "application/json"}
+    if TOKEN:
+        headers["Authorization"] = f"Bearer {TOKEN}"
+    req = urllib.request.Request(base + "/api/query", data=json.dumps({"sql": sql}).encode(), headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return json.loads(r.read())
@@ -117,7 +123,11 @@ def main():
     ap.add_argument("--url", required=True, help="e.g. http://<load-balancer-ip>:8080")
     ap.add_argument("--tpch", help="TPC-H scale factor loaded in the stack, e.g. 0.1")
     ap.add_argument("--timeout", type=int, default=300)
+    ap.add_argument("--token", default=os.environ.get("OMNIGATE_API_TOKEN"),
+                    help="admin API token (or $OMNIGATE_API_TOKEN), needed when admin authentication is on")
     a = ap.parse_args()
+    global TOKEN
+    TOKEN = a.token
     base = a.url.rstrip("/")
 
     print(f"OmniGate at {base}")
@@ -141,10 +151,10 @@ def main():
                          "segments": [(s, n, r) for s, n, r in SF01_SEGMENTS], "priority": None}
             check_query(base, "orders count (Postgres backend)", "SELECT COUNT(*) FROM postgres1.orders",
                         [(truth["orders"],)], a.timeout)
-            check_query(base, "lineitem count (Parquet backend)", "SELECT COUNT(*) FROM lineitem.lineitem",
+            check_query(base, "lineitem count (fact-table backend)", "SELECT COUNT(*) FROM lineitem.lineitem",
                         [(truth["lineitem"],)], a.timeout)
             names = dict(li="lineitem.lineitem", o="postgres1.orders", c="postgres1.customer")
-            check_query(base, "three-way join across both backends",
+            check_query(base, "three-way join across the two backends",
                         SEGMENTS_SQL.format(**names), truth["segments"], a.timeout)
             if truth["priority"] is not None:
                 check_query(base, "two-way join across both backends",

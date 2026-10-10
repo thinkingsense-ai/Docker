@@ -172,6 +172,18 @@ fixed in this stack (not hypothetical caveats — actually hit):
 The zonal-cluster-fee-waiver claim and the `standard-rwo` StorageClass both worked as expected
 (PVCs for both the `omnigate` data volume and Postgres bound and mounted with no issues).
 
+## Signing in, and who can reach it
+
+There are two logins. The **Ask app** (business users) uses the username and password you set at deploy time. The **admin
+console** (`/admin`), the admin API (`/api/query` and the rest) and the `/mcp` endpoint need the **admin login** (`omnigate_admin_username / omnigate_admin_password / omnigate_admin_api_token`;
+default user `admin`, and a blank password means the Ask-app password). Earlier versions left these open to anyone who
+could reach the load balancer; redeploying an older stack with this version turns the requirement on. Scripts send the admin API
+token as `Authorization: Bearer <token>`.
+
+One endpoint is still open: the Ask app's agent endpoint (`/mcp/agent`) answers questions without a login, using your Anthropic
+key (thinkingsense-ai/Server#17). To limit who can connect, set `allowed_client_cidrs` to your address or network, `allowed_client_cidrs = "203.0.113.7/32"` in `terraform.tfvars`, then `terraform apply`.
+Blank = open to the internet, which suits a first try-out. Check a deployment with `scripts/verify-secure-deploy.sh <url> <token>`.
+
 ## Publishing a release (maintainers)
 
 Follow the same infra-stack release process as the AWS/OCI stacks (see this repo root's

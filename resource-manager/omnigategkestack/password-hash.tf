@@ -22,7 +22,9 @@ data "external" "app_password_hash" {
         break
       fi
     done
-    PASSWORD=$(python3 -c "import json,sys; print(json.load(sys.stdin)['password'], end='')")
+    INPUT=$(cat)
+    PASSWORD=$(printf '%s' "$INPUT" | python3 -c "import json,sys; print(json.load(sys.stdin)['password'], end='')")
+    ADMIN_PASSWORD=$(printf '%s' "$INPUT" | python3 -c "import json,sys; print(json.load(sys.stdin)['admin_password'], end='')")
     # var.image_tag is the Artifact Registry *docker* tag (default "latest"), which is not itself
     # a GitHub release tag -- there is no release literally named "latest". When it's an actual
     # version (e.g. "v0.6.0") matching a real release, use it directly; otherwise resolve the
@@ -46,17 +48,22 @@ else:
     fi
     curl -fsSL -o /tmp/omnigate-hash-tool.jar "$JAR_URL" 1>&2
     HASH=$(java -cp /tmp/omnigate-hash-tool.jar com.omnigate.http.auth.PasswordHash "$PASSWORD")
+    ADMIN_HASH=$(java -cp /tmp/omnigate-hash-tool.jar com.omnigate.http.auth.PasswordHash "$ADMIN_PASSWORD")
     rm -f /tmp/omnigate-hash-tool.jar
-    python3 -c "import json,sys; print(json.dumps({'hash': sys.argv[1]}))" "$HASH"
+    python3 -c "import json,sys; print(json.dumps({'hash': sys.argv[1], 'admin_hash': sys.argv[2]}))" "$HASH" "$ADMIN_HASH"
   EOT
   ]
 
   query = {
-    password = var.omnigate_app_password
+    password       = var.omnigate_app_password
+    admin_password = var.omnigate_admin_password != "" ? var.omnigate_admin_password : var.omnigate_app_password
   }
 }
 
 locals {
   # "username:saltB64:hashB64::" -- the exact OMNIGATE_APP_USERS format the app expects.
   omnigate_app_users_computed = "${var.omnigate_app_username}:${data.external.app_password_hash.result.hash}::"
+
+  # Local admin login for the admin console, admin API and /mcp: "user:saltB64:hashB64:admin".
+  omnigate_auth_users_computed = "${var.omnigate_admin_username}:${data.external.app_password_hash.result.admin_hash}:admin"
 }

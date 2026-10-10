@@ -31,6 +31,19 @@ variable "omnigate_app_username" {
   default     = "demo"
 }
 
+variable "omnigate_admin_username" {
+  description = "Login name for the admin console. The admin console, the admin API (/api/query and friends) and the /mcp endpoint require this login (or a token, SSO), so they are not open to the internet."
+  type        = string
+  default     = "admin"
+}
+
+variable "omnigate_admin_password" {
+  description = "Admin console password, plain text, hashed during apply like omnigate_app_password. Leave blank to use the Ask-app password for the admin login as well; set a different one if you will share the Ask-app login with other people, because that login would otherwise also open the admin console."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "omnigate_app_password" {
   description = "Ask-app login password, plain text. Hashed automatically during apply (see password-hash.tf) using the same PasswordHash utility bundled in the deployed image -- no local Docker or manual hash generation needed."
   type        = string
@@ -74,6 +87,28 @@ variable "omnigate_config_db_adb_ocid" {
 
 variable "omnigate_config_db_password" {
   description = "Password for omnigate_config_db_url. Required when omnigate_replica_count > 1."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+# --- Network access (optional) --------------------------------------------------------------
+
+variable "allowed_client_cidrs" {
+  description = "Comma-separated CIDR ranges (for example 203.0.113.7/32,198.51.100.0/24) that may reach OmniGate's load balancers (web port, and the wire-protocol ports if enabled). Blank leaves it open to the internet, which is what a first try-out needs. Set it once you have real data connected: the Ask app's agent endpoint (/mcp/agent) answers questions without a login, using your Anthropic key, so an open deployment lets anyone who finds the address spend it."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = alltrue([for c in compact(split(",", replace(var.allowed_client_cidrs, " ", ""))) : can(cidrhost(c, 0))])
+    error_message = "allowed_client_cidrs must be a comma-separated list of CIDR ranges such as 203.0.113.7/32."
+  }
+}
+
+# --- Admin API access (optional) -----------------------------------------------------------
+
+variable "omnigate_admin_api_token" {
+  description = "Optional bearer token (any long random string) that grants admin-role access to the admin API, so scripts such as the test harness can call /api/query without a browser sign-in. Setting it switches admin authentication on. Blank leaves authentication as configured elsewhere. Note that admin accounts created in the admin console are saved in the config database and carry over to any later stack that uses the same database, which also switches authentication on."
   type        = string
   default     = ""
   sensitive   = true
@@ -123,6 +158,12 @@ variable "oidc_admin_groups" {
 
 # --- Tuning and diagnostics ------------------------------------------------------------------
 
+variable "omnigate_memory_limit_gb" {
+  description = "Memory limit (GB) for each OmniGate pod. The JVM heap is omnigate_max_ram_percentage of this. 3 is enough for the demo and the small TPC-H sizes; a join over TPC-H scale factor 1 (1.5M orders hashed in memory) ran out of heap at 3GB (about 2GB of heap), so use 6 or more for it. Keep it within what a node can hold alongside the other pods."
+  type        = number
+  default     = 3
+}
+
 variable "omnigate_max_ram_percentage" {
   description = "JVM heap as a percentage of each pod's memory limit. The JVM default of 25 leaves a 3Gi pod with a 768MB heap, which the S3/Parquet connector exhausts even on a 600,000-row table; 65 gives about 2GB."
   type        = number
@@ -133,6 +174,12 @@ variable "omnigate_parallel_join_min_rows" {
   description = "Row count below which the parallel hash join is skipped. Blank keeps the app default (10000). Lower it (for example to 1) only to exercise the parallel join on small demo tables."
   type        = string
   default     = ""
+}
+
+variable "omnigate_remote_join_enabled" {
+  description = "On a clustered deployment (more than one replica), let the parallel hash join ship work to the other replicas. Turn it off to compare against a run where one replica does everything."
+  type        = bool
+  default     = true
 }
 
 variable "omnigate_debug_federation" {
@@ -147,6 +194,17 @@ variable "enable_tpch_demo" {
   description = "Also load a TPC-H demo dataset: LINEITEM as Parquet in an in-cluster S3-compatible store, the other seven tables in a `tpch` database in the existing Postgres. Adds two data backends on top of the three supply-chain ones, so it needs a commercial-edition image (the free edition caps at three). The loader runs on first deploy and takes several minutes at scale factor 1; the OmniGate pods wait for it."
   type        = bool
   default     = false
+}
+
+variable "tpch_lineitem_store" {
+  description = "Where the TPC-H LINEITEM table lives: \"postgres\" (a second database, so the big join is database to database, which is the only shape the parallel hash join can plan) or \"s3\" (Parquet in an in-cluster object store; joins that include it never use the parallel engine, and the connector reads whole files onto the heap)."
+  type        = string
+  default     = "postgres"
+
+  validation {
+    condition     = contains(["postgres", "s3"], var.tpch_lineitem_store)
+    error_message = "tpch_lineitem_store must be \"postgres\" or \"s3\"."
+  }
 }
 
 variable "tpch_scale_factor" {
