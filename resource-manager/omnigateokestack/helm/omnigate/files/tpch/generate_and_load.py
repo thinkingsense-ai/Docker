@@ -187,6 +187,41 @@ def ensure_s3_bucket(endpoint, region, access_key, secret_key, bucket, path_styl
     log(f"created bucket '{bucket}'")
 
 
+LINEITEM_DDL = """CREATE TABLE IF NOT EXISTS lineitem (
+    l_orderkey BIGINT, l_partkey INTEGER, l_suppkey INTEGER, l_linenumber INTEGER,
+    l_quantity DECIMAL(15,2), l_extendedprice DECIMAL(15,2), l_discount DECIMAL(15,2), l_tax DECIMAL(15,2),
+    l_returnflag CHAR(1), l_linestatus CHAR(1), l_shipdate DATE, l_commitdate DATE, l_receiptdate DATE,
+    l_shipinstruct CHAR(25), l_shipmode CHAR(10), l_comment VARCHAR(44))"""
+
+
+def lineitem_table_loaded(conn):
+    """True when the Postgres LINEITEM table exists and has rows (it is loaded in one transaction, so
+    any rows at all mean a complete load)."""
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT to_regclass('public.lineitem')")
+            if cur.fetchone()[0] is None:
+                return False
+            cur.execute("SELECT count(*) FROM lineitem")
+            return cur.fetchone()[0] > 0
+    except Exception as e:  # noqa: BLE001 -- any failure here just means "not loaded yet"
+        log(f"lineitem check failed ({e}) -- treating as not loaded")
+        return False
+
+
+def load_lineitem_postgres(con, conn):
+    """LINEITEM as a table in a second Postgres database instead of Parquet in object storage. A join
+    against the dimension tables is then database to database, which is the shape OmniGate's parallel
+    hash join can plan (it never plans a join that includes the S3/Parquet backend)."""
+    log("writing lineitem to Postgres ...")
+    con.execute("COPY lineitem TO '/tmp/lineitem.csv' (FORMAT CSV, HEADER false)")
+    with conn.cursor() as cur, open("/tmp/lineitem.csv") as f:
+        cur.execute(LINEITEM_DDL)
+        cur.execute("TRUNCATE lineitem")
+        cur.copy_expert("COPY lineitem FROM STDIN WITH (FORMAT csv)", f)
+    conn.commit()
+
+
 def main():
     sf = float(env("TPCH_SCALE_FACTOR", "1"))
     force = str(env("TPCH_FORCE_RELOAD", "false")).lower() in ("1", "true", "yes")
@@ -197,7 +232,7 @@ def main():
     dim_dsn = jdbc_to_psycopg2_dsn(dim_jdbc, dim_user, dim_password)
 
     provider = env("TPCH_LINEITEM_PROVIDER", "s3")
-    bucket = env("TPCH_LINEITEM_BUCKET", required=True)
+    bucket = env("TPCH_LINEITEM_BUCKET", "tpch")
 
     con = duckdb.connect()
     # Optional caps so generation can't take a whole shared node (DuckDB otherwise sizes itself
@@ -229,6 +264,13 @@ def main():
             log("TPC-H data already present at the configured targets -- skipping generation (set "
                 "TPCH_FORCE_RELOAD=true to reload anyway).")
             return
+    elif provider == "postgres":
+        fact_jdbc = env("TPCH_LINEITEM_JDBC_URL", required=True)  # jdbc:postgresql://host:port/<fact database>
+        fact_conn = wait_for_postgres(jdbc_to_psycopg2_dsn(fact_jdbc, dim_user, dim_password))
+        if not force and dimension_tables_loaded(dim_conn, expected_orders_rows) and lineitem_table_loaded(fact_conn):
+            log("TPC-H data already present at the configured targets -- skipping generation (set "
+                "TPCH_FORCE_RELOAD=true to reload anyway).")
+            return
     elif provider == "azureblob":
         azure_account = env("TPCH_LINEITEM_AZURE_ACCOUNT_NAME", required=True)
         azure_key = env("TPCH_LINEITEM_AZURE_ACCOUNT_KEY", required=True)
@@ -238,7 +280,7 @@ def main():
                 "TPCH_FORCE_RELOAD=true to reload anyway).")
             return
     else:
-        log(f"unknown TPCH_LINEITEM_PROVIDER '{provider}' -- expected 's3' or 'azureblob'")
+        log(f"unknown TPCH_LINEITEM_PROVIDER '{provider}' -- expected 's3', 'postgres' or 'azureblob'")
         sys.exit(1)
 
     log(f"generating TPC-H scale factor {sf} (~{sf:.1f} GB) via DuckDB's real tpch extension...")
@@ -249,6 +291,8 @@ def main():
     if provider == "s3":
         log(f"writing lineitem to {lineitem_uri} ...")
         con.execute(f"COPY lineitem TO '{lineitem_uri}' (FORMAT PARQUET)")
+    elif provider == "postgres":
+        load_lineitem_postgres(con, fact_conn)
     elif provider == "azureblob":
         upload_lineitem_azure(
             con, bucket,
@@ -257,7 +301,7 @@ def main():
             sf,
         )
     else:
-        log(f"unknown TPCH_LINEITEM_PROVIDER '{provider}' -- expected 's3' or 'azureblob'")
+        log(f"unknown TPCH_LINEITEM_PROVIDER '{provider}' -- expected 's3', 'postgres' or 'azureblob'")
         sys.exit(1)
 
     load_dimension_tables(con, dim_conn)

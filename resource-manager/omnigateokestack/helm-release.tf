@@ -108,6 +108,10 @@ resource "helm_release" "omnigate" {
     name  = "image.pullAuthToken"
     value = var.image_pull_auth_token
   }
+  set_sensitive {
+    name  = "omnigate.adminApiToken"
+    value = var.omnigate_admin_api_token
+  }
   set {
     name  = "omnigate.oidc.issuer"
     value = local.oidc_issuer
@@ -133,6 +137,10 @@ resource "helm_release" "omnigate" {
     value = var.oidc_admin_groups
   }
   set {
+    name  = "resources.omnigate.limits.memory"
+    value = "${var.omnigate_memory_limit_gb}Gi"
+  }
+  set {
     name  = "omnigate.maxRamPercentage"
     value = var.omnigate_max_ram_percentage
   }
@@ -141,12 +149,20 @@ resource "helm_release" "omnigate" {
     value = var.omnigate_parallel_join_min_rows
   }
   set {
+    name  = "omnigate.remoteJoinEnabled"
+    value = var.omnigate_remote_join_enabled
+  }
+  set {
     name  = "omnigate.debugFederation"
     value = var.omnigate_debug_federation
   }
   set {
     name  = "tpch.enabled"
     value = var.enable_tpch_demo
+  }
+  set {
+    name  = "tpch.lineitemStore"
+    value = var.tpch_lineitem_store
   }
   set {
     name  = "tpch.scaleFactor"
