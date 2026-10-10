@@ -31,6 +31,19 @@ variable "omnigate_app_username" {
   default     = "demo"
 }
 
+variable "omnigate_admin_username" {
+  description = "Login name for the admin console. The admin console, the admin API (/api/query and friends) and the /mcp endpoint require this login (or a token, SSO), so they are not open to the internet."
+  type        = string
+  default     = "admin"
+}
+
+variable "omnigate_admin_password" {
+  description = "Admin console password, plain text, hashed during apply like omnigate_app_password. Leave blank to use the Ask-app password for the admin login as well; set a different one if you will share the Ask-app login with other people, because that login would otherwise also open the admin console."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "omnigate_app_password" {
   description = "Ask-app login password, plain text. Hashed automatically during apply (see password-hash.tf) using the same PasswordHash utility bundled in the deployed image -- no local Docker or manual hash generation needed."
   type        = string
@@ -77,6 +90,19 @@ variable "omnigate_config_db_password" {
   type        = string
   default     = ""
   sensitive   = true
+}
+
+# --- Network access (optional) --------------------------------------------------------------
+
+variable "allowed_client_cidrs" {
+  description = "Comma-separated CIDR ranges (for example 203.0.113.7/32,198.51.100.0/24) that may reach OmniGate's load balancers (web port, and the wire-protocol ports if enabled). Blank leaves it open to the internet, which is what a first try-out needs. Set it once you have real data connected: the Ask app's agent endpoint (/mcp/agent) answers questions without a login, using your Anthropic key, so an open deployment lets anyone who finds the address spend it."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = alltrue([for c in compact(split(",", replace(var.allowed_client_cidrs, " ", ""))) : can(cidrhost(c, 0))])
+    error_message = "allowed_client_cidrs must be a comma-separated list of CIDR ranges such as 203.0.113.7/32."
+  }
 }
 
 # --- Admin API access (optional) -----------------------------------------------------------

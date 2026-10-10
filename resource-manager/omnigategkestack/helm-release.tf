@@ -42,6 +42,18 @@ resource "helm_release" "omnigate" {
     value = var.omnigate_llm_model
   }
   set_sensitive {
+    name  = "omnigate.authUsers"
+    value = local.omnigate_auth_users_computed
+  }
+  set_sensitive {
+    name  = "omnigate.adminApiToken"
+    value = var.omnigate_admin_api_token
+  }
+  set {
+    name  = "service.loadBalancerSourceRanges"
+    value = "{${join(",", compact(split(",", replace(var.allowed_client_cidrs, " ", ""))))}}"
+  }
+  set_sensitive {
     name  = "omnigate.appUsers"
     value = local.omnigate_app_users_computed
   }

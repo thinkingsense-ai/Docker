@@ -19,7 +19,9 @@
 data "external" "app_password_hash" {
   program = ["bash", "-c", <<-EOT
     set -e
-    PASSWORD=$(python3 -c "import json,sys; print(json.load(sys.stdin)['password'], end='')")
+    INPUT=$(cat)
+    PASSWORD=$(printf '%s' "$INPUT" | python3 -c "import json,sys; print(json.load(sys.stdin)['password'], end='')")
+    ADMIN_PASSWORD=$(printf '%s' "$INPUT" | python3 -c "import json,sys; print(json.load(sys.stdin)['admin_password'], end='')")
     fetch_latest_release_jar_url() {
       python3 -c "
 import json, urllib.request
@@ -53,17 +55,24 @@ else:
       curl -fsSL -o /tmp/omnigate-hash-tool.jar "$JAR_URL" 1>&2
     fi
     HASH=$(java -cp /tmp/omnigate-hash-tool.jar com.omnigate.http.auth.PasswordHash "$PASSWORD")
+    ADMIN_HASH=$(java -cp /tmp/omnigate-hash-tool.jar com.omnigate.http.auth.PasswordHash "$ADMIN_PASSWORD")
     rm -f /tmp/omnigate-hash-tool.jar
-    python3 -c "import json,sys; print(json.dumps({'hash': sys.argv[1]}))" "$HASH"
+    python3 -c "import json,sys; print(json.dumps({'hash': sys.argv[1], 'admin_hash': sys.argv[2]}))" "$HASH" "$ADMIN_HASH"
   EOT
   ]
 
   query = {
     password = var.omnigate_app_password
+    # Blank means "use the Ask-app password for the admin login too" (see omnigate_admin_password).
+    admin_password = var.omnigate_admin_password != "" ? var.omnigate_admin_password : var.omnigate_app_password
   }
 }
 
 locals {
   # "username:saltB64:hashB64::" -- the exact OMNIGATE_APP_USERS format the app expects.
   omnigate_app_users_computed = "${var.omnigate_app_username}:${data.external.app_password_hash.result.hash}::"
+
+  # "username:saltB64:hashB64:admin" -- OMNIGATE_AUTH_USERS. Setting it turns admin authentication ON, which is
+  # the point: without it the admin console, /api/query and /mcp are open to anyone who can reach the load balancer.
+  omnigate_auth_users_computed = "${var.omnigate_admin_username}:${data.external.app_password_hash.result.admin_hash}:admin"
 }

@@ -106,6 +106,10 @@ metadata:
     service.beta.kubernetes.io/azure-load-balancer-internal: "false"
 spec:
   type: {{ .Values.service.type }}
+  {{- with compact .Values.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   selector:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: omnigate
@@ -127,6 +131,10 @@ metadata:
     service.beta.kubernetes.io/azure-load-balancer-internal: "false"
 spec:
   type: LoadBalancer
+  {{- with compact .Values.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   selector:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: omnigate

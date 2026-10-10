@@ -60,6 +60,9 @@ omnigate:
   # Bearer token with admin rights for the admin API (OMNIGATE_AUTH_API_TOKENS). Setting it switches
   # admin authentication on.
   adminApiToken: ""
+  # Admin console logins (OMNIGATE_AUTH_USERS: "user:saltB64:hashB64:admin[,...]"). Setting it turns admin
+  # authentication on. The Terraform stack always sets it; a bare `helm install` leaves the admin console open.
+  authUsers: ""
   # Single sign-on (any OIDC provider). Everything is off until issuer is set. One registration serves
   # both the admin console and the Ask app (the Ask app falls back to these when OMNIGATE_APP_OIDC_* is
   # unset). Register the redirect URIs /auth/oidc/callback and /app/oidc/callback with the provider.

@@ -23,6 +23,16 @@ Metadata:
           - OmnigateAppUsername
           - OmnigateAppPassword
       - Label:
+          default: "Admin console login"
+        Parameters:
+          - OmnigateAdminUsername
+          - OmnigateAdminPassword
+          - OmnigateAdminApiToken
+      - Label:
+          default: "Network access"
+        Parameters:
+          - AllowedClientCidrs
+      - Label:
           default: "NL2SQL (needed to use the Ask app)"
         Parameters:
           - OmnigateLlmApiKey
@@ -45,6 +55,14 @@ Metadata:
         default: "Ask-app username"
       OmnigateAppPassword:
         default: "Ask-app password"
+      OmnigateAdminUsername:
+        default: "Admin console username"
+      OmnigateAdminPassword:
+        default: "Admin console password (optional)"
+      OmnigateAdminApiToken:
+        default: "Admin API token (optional)"
+      AllowedClientCidrs:
+        default: "Restrict access to these addresses (optional)"
       OmnigateLlmApiKey:
         default: "Anthropic API key"
       ClusterName:
@@ -97,6 +115,24 @@ Parameters:
     Type: String
     NoEcho: true
     Description: "Plain text -- hashed automatically during deploy using the app's own PasswordHash utility. No local Docker or manual hash generation needed."
+  OmnigateAdminUsername:
+    Type: String
+    Default: admin
+    Description: "Login name for the admin console. The admin console, admin API and /mcp endpoint require this login, so they are not open to the internet."
+  OmnigateAdminPassword:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: "Admin console password, plain text. Leave blank to use the Ask-app password for the admin login as well; set a different one if you will share the Ask-app login with other people."
+  OmnigateAdminApiToken:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: "Optional bearer token (any long random string) granting admin-role access to the admin API, for scripts. Blank = none."
+  AllowedClientCidrs:
+    Type: String
+    Default: ""
+    Description: "Optional. Comma-separated CIDR ranges (e.g. 203.0.113.7/32) allowed to reach OmniGate. Blank = open to the internet, fine for a first try-out. Set it once real data is connected: the agent endpoint (/mcp/agent) answers questions without a login using your Anthropic key."
   OmnigateLlmApiKey:
     Type: String
     NoEcho: true
@@ -104,7 +140,7 @@ Parameters:
     Description: "Anthropic API key (console.anthropic.com) for NL2SQL -- required, since a stack created without one deploys fine but can't answer any question."
   ImageTag:
     Type: String
-    Default: v0.8.0
+    Default: v0.10.4
     Description: "OCIR docker tag for the omnigate image. Pinned to a specific free-edition
       release rather than :latest -- confirmed live that :latest had silently stopped tracking
       new app releases (frozen at v0.6.0's content for two releases), so a moving-target default
@@ -741,6 +777,10 @@ Resources:
         image.tag: !Ref ImageTag
       AppUsername: !Ref OmnigateAppUsername
       AppPassword: !Ref OmnigateAppPassword
+      AdminUsername: !Ref OmnigateAdminUsername
+      AdminPassword: !Ref OmnigateAdminPassword
+      AdminApiToken: !Ref OmnigateAdminApiToken
+      AllowedClientCidrs: !Ref AllowedClientCidrs
       LlmApiKey: !Ref OmnigateLlmApiKey
 
   # ============================== Final security-group sweep ==============================

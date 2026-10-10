@@ -109,6 +109,10 @@ resource "helm_release" "omnigate" {
     value = var.image_pull_auth_token
   }
   set_sensitive {
+    name  = "omnigate.authUsers"
+    value = local.omnigate_auth_users_computed
+  }
+  set_sensitive {
     name  = "omnigate.adminApiToken"
     value = var.omnigate_admin_api_token
   }

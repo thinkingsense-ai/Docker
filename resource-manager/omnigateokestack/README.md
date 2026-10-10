@@ -50,6 +50,20 @@ oci resource-manager stack create \
 
 Then `oci resource-manager job create-apply-job --stack-id <id> --execution-plan-strategy AUTO_APPROVED`.
 
+## Signing in (admin console and API)
+
+There are two separate logins:
+
+- **Ask app** (the page business users open): the username and password you set in the wizard.
+- **Admin console** (`/admin`, where you add Ask-app users and change settings): the **Admin console username**
+  (default `admin`) and **Admin console password**. If you leave the password blank it is the same as the Ask-app
+  password; set a different one if you will share the Ask-app login with other people, because otherwise it also opens the admin console.
+
+The admin console, the admin API (`/api/query` and the rest) and the `/mcp` endpoint all require a login, so they are not open to
+anyone who can reach the load balancer's address. (Earlier stack versions left them open; re-applying an older stack with this
+version turns the requirement on.) Scripts that call the API need an **Admin API token** (`omnigate_admin_api_token`, any long
+random string) sent as `Authorization: Bearer <token>`. Single sign-on, if you set it up, signs in the same admin console.
+
 ## Optional TPC-H demo dataset
 
 Set **Load the TPC-H demo dataset** (`enable_tpch_demo`) to add a realistic-size dataset on top of the
@@ -172,3 +186,11 @@ cluster is orphaned and safe to `oci bv volume delete --volume-id <id> --force`.
   StatefulSet, ConfigMap, Secret)
 - `variables.tf` / `schema.yaml` — Terraform variables and the Resource Manager wizard schema
 - `outputs.tf` — `ask_app_url`, `kubeconfig_command`
+
+## Restricting who can connect
+
+Set **Restrict access to these addresses** (`allowed_client_cidrs`, e.g. `203.0.113.7/32,198.51.100.0/24`) to limit who can reach the
+load balancers. Blank = open to the internet. It matters because the Ask app's agent endpoint (`/mcp/agent`) answers questions without a
+login, using your Anthropic key (thinkingsense-ai/Server#17). The stack enforces it in the load balancer subnet's security list; limiting the
+node ports or attaching a network security group to the Network Load Balancer does **not** narrow access (both tried, verified live).
+Check a deployment with `scripts/verify-secure-deploy.sh <url> <token>`.
