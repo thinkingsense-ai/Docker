@@ -30,11 +30,13 @@ cp terraform.tfvars terraform.tfvars.before-switch
 python3 - "$TO" "$COMMERCIAL_REPO" "$USER_" "$TOKEN" "$TAG" <<'PY'
 import re, sys
 to, repo, user, token, tag = sys.argv[1:6]
+def hcl(v):  # escape for an HCL string: backslash, quote, and the ${ / %{ template openers
+    return v.replace("\\", "\\\\").replace('"', '\\"').replace("${", "$${").replace("%{", "%%{")
 lines = open("terraform.tfvars").read().splitlines()
 drop = {"image_repository", "image_pull_username", "image_pull_auth_token"} | ({"image_tag"} if tag else set())
 keep = [l for l in lines if not (re.match(r"\s*(\w+)\s*=", l) and re.match(r"\s*(\w+)", l).group(1) in drop)]
 if to == "commercial":
-    keep += [f'image_repository = "{repo}"', f'image_pull_username = "{user}"', f'image_pull_auth_token = "{token}"']
+    keep += [f'image_repository = "{repo}"', f'image_pull_username = "{hcl(user)}"', f'image_pull_auth_token = "{hcl(token)}"']
 if tag:
     keep.append(f'image_tag = "{tag}"')
 open("terraform.tfvars", "w").write("\n".join(keep) + "\n")

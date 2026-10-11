@@ -172,6 +172,11 @@ fixed in this stack (not hypothetical caveats — actually hit):
 The zonal-cluster-fee-waiver claim and the `standard-rwo` StorageClass both worked as expected
 (PVCs for both the `omnigate` data volume and Postgres bound and mounted with no issues).
 
+## Commercial edition
+
+Customers with a commercial subscription switch a running stack to the commercial image in place, without rebuilding anything:
+see `COMMERCIAL.md`.
+
 ## Signing in, and who can reach it
 
 There are two logins. The **Ask app** (business users) uses the username and password you set at deploy time. The **admin

@@ -27,18 +27,24 @@ SV=${SV:-eks-stack-v$TV}
 case $TEMPLATE in http*) TSRC=(--template-url "$TEMPLATE");; *) TSRC=(--template-body "file://$TEMPLATE");; esac
 NAMES=$(aws cloudformation describe-stacks --region "$REGION" --stack-name "$STACK" --query 'Stacks[0].Parameters[].ParameterKey' --output text)
 NEW=$(aws cloudformation get-template-summary "${TSRC[@]}" --region "$REGION" --query 'Parameters[].ParameterKey' --output text)
-PARAMS=()
-for k in $NEW; do
-  case $k in
-    ImageRepository) [ "$TO" = commercial ] && PARAMS+=("ParameterKey=$k,ParameterValue=$COMMERCIAL_REPO") || PARAMS+=("ParameterKey=$k,ParameterValue=$FREE_REPO");;
-    ImagePullUsername) PARAMS+=("ParameterKey=$k,ParameterValue=${USER_}");;
-    ImagePullAuthToken) PARAMS+=("ParameterKey=$k,ParameterValue=${TOKEN}");;
-    SourceVersion) PARAMS+=("ParameterKey=$k,ParameterValue=$SV");;
-    ImageTag) [ -n "$TAG" ] && PARAMS+=("ParameterKey=$k,ParameterValue=$TAG") || PARAMS+=("ParameterKey=$k,UsePreviousValue=true");;
-    *) case " $NAMES " in *" $k "*) PARAMS+=("ParameterKey=$k,UsePreviousValue=true");; esac;;
-  esac
-done
-aws cloudformation update-stack --region "$REGION" --stack-name "$STACK" "${TSRC[@]}" --capabilities CAPABILITY_NAMED_IAM --parameters "${PARAMS[@]}" --query StackId --output text >/dev/null
+# Parameters go in as a JSON file, not the CLI's shorthand: a registry token can contain commas, brackets and other characters the
+# shorthand parser rejects or splits on.
+PJ=$(mktemp); trap 'rm -f "$PJ"' EXIT; chmod 600 "$PJ"
+python3 - "$PJ" "$TO" "$COMMERCIAL_REPO" "$FREE_REPO" "$USER_" "$TOKEN" "$TAG" "$SV" "$NAMES" "$NEW" <<'PY'
+import json, sys
+path, to, crepo, frepo, user, token, tag, sv, names, new = sys.argv[1:11]
+names = set(names.split())
+out = []
+for k in new.split():
+    if k == "ImageRepository":   out.append({"ParameterKey": k, "ParameterValue": crepo if to == "commercial" else frepo})
+    elif k == "ImagePullUsername": out.append({"ParameterKey": k, "ParameterValue": user})
+    elif k == "ImagePullAuthToken": out.append({"ParameterKey": k, "ParameterValue": token})
+    elif k == "SourceVersion":   out.append({"ParameterKey": k, "ParameterValue": sv})
+    elif k == "ImageTag" and tag: out.append({"ParameterKey": k, "ParameterValue": tag})
+    elif k in names:             out.append({"ParameterKey": k, "UsePreviousValue": True})
+json.dump(out, open(path, "w"))
+PY
+aws cloudformation update-stack --region "$REGION" --stack-name "$STACK" "${TSRC[@]}" --capabilities CAPABILITY_NAMED_IAM --parameters "file://$PJ" --query StackId --output text >/dev/null
 echo "updating $STACK (to $TO) ..."
 aws cloudformation wait stack-update-complete --region "$REGION" --stack-name "$STACK"
 echo "update: $(aws cloudformation describe-stacks --region "$REGION" --stack-name "$STACK" --query 'Stacks[0].StackStatus' --output text)"
