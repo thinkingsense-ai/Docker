@@ -134,6 +134,24 @@ Also raise `node_pool_size` (up to this stack's own cap of 4) so replicas actual
 real, separate worker nodes rather than all landing on the one default node — a single node's own
 failure would otherwise still take every replica down with it.
 
+**What to expect (verified on OCI, commercial image v0.10.4, 2 replicas on 2 nodes, Oracle Autonomous Database as the shared config
+store, with `omnigate_config_db_adb_ocid` set so the stack opens the database to the worker nodes):**
+
+- **Multi-node needs the commercial image.** On the free image the extra replica logs a warning and runs single-node. Switch first
+  (see `COMMERCIAL.md`), then add replicas.
+- **Your existing configuration does not move to the shared database.** The single-node setup keeps users and admin-edited settings
+  on the pod's local volume; with a shared database the replicas read whatever that database already holds. Business users you added
+  before the move are not carried over (verified). Set the shared database up first, then create users and edit settings, or re-enter them.
+  Data sources defined by the stack itself (the demo and TPC-H backends) are unaffected.
+- **Image v0.10.4: a business user or admin account added on one replica is not seen by the others until they restart** (verified:
+  added through pod 0, invisible on pod 1). Fixed in app v0.10.5, which re-reads these lists every 5 seconds.
+- The replicas form one cluster (the log shows "Topology snapshot ... servers=2", `/api/config` reports `clusterNodes: 2`), one pod per node.
+  Answers are identical to a single replica (the correctness harness passes on 2).
+- A cross-database join can run part of its work on the other replica: about 11-12% of the CPU landed on the second replica for a
+  join-and-aggregate (`scripts/commercial-harness/measure-distribution.py`). Do not size on the assumption that two replicas halve a query.
+- Availability: deleting one pod while queries ran returned HTTP 200 for every query through the load balancer, and the pod rejoined
+  the cluster in about a minute.
+
 **Real, honest limitation, not glossed over**: this makes the OmniGate APPLICATION layer
 horizontally scalable and tolerant of a single pod (or node) failing. It does NOT, by itself,
 make your own connected data sources (`OMNIGATE_BACKENDS`) or the shared config Postgres highly

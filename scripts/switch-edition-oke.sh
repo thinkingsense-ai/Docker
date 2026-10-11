@@ -41,7 +41,20 @@ if [ "$TO" = commercial ]; then
   # Check the credential and the tag BEFORE touching the stack: a wrong or revoked token would otherwise roll out a pod that
   # waits forever for an image it cannot pull.
   CHECK_TAG=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('image_tag',''))" "$VARS")
-  [ -n "$CHECK_TAG" ] || CHECK_TAG=$(curl -s -m 15 https://api.github.com/repos/thinkingsense-ai/Docker/releases/latest | python3 -c "import sys,json;print(json.load(sys.stdin)['tag_name'])")
+  # No explicit tag in the stack's variables: the stack runs its configured default, so read that from the stack's own Terraform
+  # (NOT the newest app release, which may not have a commercial image yet).
+  if [ -z "$CHECK_TAG" ]; then
+    CFG=$(mktemp -d); oci resource-manager stack get-stack-tf-config --stack-id "$STACK" --file "$CFG/c.zip" >/dev/null 2>&1 && unzip -qo "$CFG/c.zip" -d "$CFG/x" 2>/dev/null
+    CHECK_TAG=$(python3 - "$CFG" <<'PY'
+import re, glob, sys
+fs = glob.glob(sys.argv[1] + "/x/**/variables.tf", recursive=True)
+m = re.search(r'variable "image_tag" \{.*?default\s*=\s*"([^"]+)"', open(fs[0]).read(), re.S) if fs else None
+print(m.group(1) if m else "")
+PY
+)
+    rm -rf "$CFG"
+  fi
+  [ -n "$CHECK_TAG" ] || { echo "Could not tell which image tag this stack runs; pass --image-tag." >&2; exit 2; }
   HOST=phx.ocir.io; REPO=${REG#*/}/omnigate-commercial
   WA=$(curl -s -m 15 -D - -o /dev/null "https://$HOST/v2/" | tr -d '\r' | awk -F': ' 'tolower($1)=="www-authenticate"{print $2}')
   REALM=$(echo "$WA" | sed -E 's/.*realm="([^"]*)".*/\1/'); SVC=$(echo "$WA" | sed -E 's/.*service="([^"]*)".*/\1/')
