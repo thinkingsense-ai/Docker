@@ -29,6 +29,12 @@ Metadata:
           - OmnigateAdminPassword
           - OmnigateAdminApiToken
       - Label:
+          default: "Commercial edition (subscribers only)"
+        Parameters:
+          - ImageRepository
+          - ImagePullUsername
+          - ImagePullAuthToken
+      - Label:
           default: "Network access"
         Parameters:
           - AllowedClientCidrs
@@ -61,6 +67,12 @@ Metadata:
         default: "Admin console password (optional)"
       OmnigateAdminApiToken:
         default: "Admin API token (optional)"
+      ImageRepository:
+        default: "Image repository"
+      ImagePullUsername:
+        default: "Registry user (commercial only)"
+      ImagePullAuthToken:
+        default: "Registry token (commercial only)"
       AllowedClientCidrs:
         default: "Restrict access to these addresses (optional)"
       OmnigateLlmApiKey:
@@ -138,6 +150,19 @@ Parameters:
     NoEcho: true
     MinLength: 1
     Description: "Anthropic API key (console.anthropic.com) for NL2SQL -- required, since a stack created without one deploys fine but can't answer any question."
+  ImageRepository:
+    Type: String
+    Default: ocir.us-phoenix-1.oci.oraclecloud.com/ax8tpjdxhykk/omnigate
+    Description: "Image repository. Leave as the default (the public free edition). Commercial subscribers switch this to the private omnigate-commercial repository -- see scripts/switch-edition-eks.sh."
+  ImagePullUsername:
+    Type: String
+    Default: ""
+    Description: "Commercial edition only: the OCIR login (<namespace>/<user>) for the private repository, given to you with your subscription. Blank for the free edition."
+  ImagePullAuthToken:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: "Commercial edition only: the OCIR Auth Token that goes with ImagePullUsername. Blank for the free edition."
   ImageTag:
     Type: String
     Default: v0.10.4
@@ -773,10 +798,12 @@ Resources:
       ReleaseName: omnigate
       Namespace: default
       HelmSetValues:
-        image.repository: ocir.us-phoenix-1.oci.oraclecloud.com/ax8tpjdxhykk/omnigate
+        image.repository: !Ref ImageRepository
         image.tag: !Ref ImageTag
       AppUsername: !Ref OmnigateAppUsername
       AppPassword: !Ref OmnigateAppPassword
+      ImagePullUsername: !Ref ImagePullUsername
+      ImagePullAuthToken: !Ref ImagePullAuthToken
       AdminUsername: !Ref OmnigateAdminUsername
       AdminPassword: !Ref OmnigateAdminPassword
       AdminApiToken: !Ref OmnigateAdminApiToken

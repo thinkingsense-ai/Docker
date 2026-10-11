@@ -50,6 +50,10 @@ spec:
           operator: "Equal"
           value: "arm64"
           effect: "NoSchedule"
+{{- if and .Values.image.pullUsername .Values.image.pullAuthToken }}
+      imagePullSecrets:
+        - name: {{ include "omnigate.fullname" . }}-omnigate-imagepull
+{{- end }}
       initContainers:
         - name: wait-for-postgres
           image: docker.io/library/postgres:16-alpine

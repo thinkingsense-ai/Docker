@@ -8,6 +8,12 @@ image:
   repository: ""
   tag: latest
   pullPolicy: IfNotPresent
+  # Only needed for a private image repository (the commercial edition's image). Blank for the default public free-image path.
+  # pullUsername is OCIR's "<tenancy-namespace>/<oci-username>"; pullAuthToken is an OCI Auth Token. When set, this chart creates a
+  # kubernetes.io/dockerconfigjson Secret and wires it into the pod's imagePullSecrets; the registry hostname comes from
+  # image.repository (everything before the first "/").
+  pullUsername: ""
+  pullAuthToken: ""
 
 omnigate:
   llmModel: claude-sonnet-5

@@ -259,7 +259,7 @@ def lambda_handler(event, context):
     # Confirmed live: this redacted ResourceProperties but NOT OldResourceProperties (present on
     # Update events), which meant the *previous* AppPassword value was logged to CloudWatch in
     # plaintext on every password change. Both must be scrubbed the same way.
-    REDACT = {"AppPassword", "AdminPassword", "AdminApiToken", "LlmApiKey", "HelmSetSensitiveValues"}
+    REDACT = {"AppPassword", "AdminPassword", "AdminApiToken", "ImagePullAuthToken", "LlmApiKey", "HelmSetSensitiveValues"}
     safe_event = {
         k: v for k, v in event.items() if k not in ("ResourceProperties", "OldResourceProperties")
     }
@@ -316,7 +316,21 @@ def lambda_handler(event, context):
                 args += ["--set", f"{k}={v}"]
             for k, v in set_sensitive_values.items():
                 args += ["--set", f"{k}={v}"]
-            run_helm(args)
+            # Commercial edition: the registry credential goes in through --set-file so an Auth Token containing commas,
+            # braces or other characters Helm's --set parser treats specially arrives byte for byte.
+            pull_token_path = None
+            if props.get("ImagePullUsername") and props.get("ImagePullAuthToken"):
+                pull_token_path = "/tmp/omnigate-pull-token"
+                with open(pull_token_path, "w") as f:
+                    f.write(props["ImagePullAuthToken"])
+                os.chmod(pull_token_path, 0o600)
+                args += ["--set", f"image.pullUsername={props['ImagePullUsername']}",
+                         "--set-file", f"image.pullAuthToken={pull_token_path}"]
+            try:
+                run_helm(args)
+            finally:
+                if pull_token_path and os.path.exists(pull_token_path):
+                    os.remove(pull_token_path)
             lb_host = get_lb_hostname(namespace, f"{release_name}-omnigate-http")
             ask_app_url = f"http://{lb_host}:8080/" if lb_host else ""
             send_response(event, context, "SUCCESS", physical_resource_id=physical_id, data={"AskAppUrl": ask_app_url})
