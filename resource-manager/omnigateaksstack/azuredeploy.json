@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.47.16.16243",
-      "templateHash": "15503945853868278026"
+      "templateHash": "13547868401188062946"
     }
   },
   "parameters": {
@@ -146,7 +146,7 @@
     },
     "chartSourceUrl": {
       "type": "string",
-      "defaultValue": "https://github.com/thinkingsense-ai/Docker/archive/refs/tags/aks-stack-v1.0.7.tar.gz",
+      "defaultValue": "https://github.com/thinkingsense-ai/Docker/archive/refs/tags/aks-stack-v1.0.8.tar.gz",
       "metadata": {
         "description": "Tarball URL containing this stack's Helm chart (advanced). Pinned to this release's own tag so a deploy from this exact \"Deploy to Azure\" button/azuredeploy.json can never drift from a newer chart on main -- bump this alongside the version tag on every release, see README's \"Publishing a release\"."
       }

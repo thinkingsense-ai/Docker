@@ -11,7 +11,7 @@
 # (imageRepository, imagePullUsername, imagePullAuthToken) if you do.
 set -euo pipefail
 . "$(cd "$(dirname "$0")" && pwd)/lib/ocir-check.sh"
-RG= TO= USER_= TOKEN= TAG= URL= ATOK= CLUSTER= CHART=https://github.com/thinkingsense-ai/Docker/archive/refs/tags/aks-stack-v1.0.7.tar.gz
+RG= TO= USER_= TOKEN= TAG= URL= ATOK= CLUSTER= CHART=https://github.com/thinkingsense-ai/Docker/archive/refs/tags/aks-stack-v1.0.8.tar.gz
 while [ $# -gt 0 ]; do case $1 in
   --resource-group) RG=$2; shift 2;; --cluster) CLUSTER=$2; shift 2;; --to) TO=$2; shift 2;; --pull-user) USER_=$2; shift 2;;
   --pull-token) TOKEN=$2; shift 2;; --image-tag) TAG=$2; shift 2;; --url) URL=$2; shift 2;; --admin-token) ATOK=$2; shift 2;;
@@ -28,7 +28,7 @@ if [ "$TO" = commercial ]; then
 fi
 curl -fsSL "$CHART" | tar -xz -C "$W"
 CHART_DIR=$(ls -d "$W"/*/resource-manager/omnigateaksstack/helm/omnigate)
-grep -q pullAuthToken "$CHART_DIR/values.yaml" || { echo "that chart predates the commercial-image settings; use --chart-url of aks-stack-v1.0.7 or later" >&2; exit 2; }
+grep -q pullAuthToken "$CHART_DIR/values.yaml" || { echo "that chart predates the commercial-image settings; use --chart-url of aks-stack-v1.0.8 or later" >&2; exit 2; }
 ARGS=(--reuse-values)
 [ -z "$TAG" ] || ARGS+=(--set-string "image.tag=$TAG")
 if [ "$TO" = commercial ]; then

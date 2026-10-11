@@ -115,7 +115,7 @@ Parameters:
     Default: 2
   SourceVersion:
     Type: String
-    Default: eks-stack-v1.0.9
+    Default: eks-stack-v1.0.10
     Description: >-
       Git tag/ref in thinkingsense-ai/Docker that CodeBuild checks out to build the
       helm-deployer Lambda image. Pinned to a release tag (not a branch) so the image built

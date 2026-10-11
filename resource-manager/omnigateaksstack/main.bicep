@@ -77,7 +77,7 @@ param imagePullAuthToken string = ''
 param imageTag string = 'v0.10.5'
 
 @description('Tarball URL containing this stack\'s Helm chart (advanced). Pinned to this release\'s own tag so a deploy from this exact "Deploy to Azure" button/azuredeploy.json can never drift from a newer chart on main -- bump this alongside the version tag on every release, see README\'s "Publishing a release".')
-param chartSourceUrl string = 'https://github.com/thinkingsense-ai/Docker/archive/refs/tags/aks-stack-v1.0.7.tar.gz'
+param chartSourceUrl string = 'https://github.com/thinkingsense-ai/Docker/archive/refs/tags/aks-stack-v1.0.8.tar.gz'
 
 module network 'modules/network.bicep' = {
   name: 'omnigate-network'

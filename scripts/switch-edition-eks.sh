@@ -7,10 +7,10 @@
 #
 # Only the image changes; the cluster, network, database volumes and OmniGate's saved configuration stay, and the OmniGate pod restarts.
 # The stack must be on template eks-stack-v1.0.9 or later (the first with the commercial-image parameters); this script updates the
-# template for you (--template-version, default 1.0.9), which also rebuilds the deploy helper once (a few minutes).
+# template for you (--template-version, default 1.0.10), which also rebuilds the deploy helper once (a few minutes).
 set -euo pipefail
 . "$(cd "$(dirname "$0")" && pwd)/lib/ocir-check.sh"
-STACK= TO= USER_= TOKEN= TAG= URL= ATOK= REGION=${AWS_REGION:-${AWS_DEFAULT_REGION:-us-east-1}} TV=1.0.9 TEMPLATE=
+STACK= TO= USER_= TOKEN= TAG= URL= ATOK= REGION=${AWS_REGION:-${AWS_DEFAULT_REGION:-us-east-1}} TV=1.0.10 TEMPLATE=
 while [ $# -gt 0 ]; do case $1 in
   --stack-name) STACK=$2; shift 2;; --to) TO=$2; shift 2;; --pull-user) USER_=$2; shift 2;; --pull-token) TOKEN=$2; shift 2;;
   --image-tag) TAG=$2; shift 2;; --url) URL=$2; shift 2;; --admin-token) ATOK=$2; shift 2;; --region) REGION=$2; shift 2;;
