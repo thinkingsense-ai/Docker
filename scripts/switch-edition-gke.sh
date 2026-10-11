@@ -23,7 +23,10 @@ grep -q image_pull_username variables.tf || { echo "this directory predates the 
 if [ "$TO" = commercial ]; then
   { [ -n "$USER_" ] && [ -n "$TOKEN" ]; } || { echo "--to commercial needs --pull-user and --pull-token" >&2; exit 2; }
   CUR=$(sed -nE 's/^[[:space:]]*image_tag[[:space:]]*=[[:space:]]*"([^"]*)".*/\1/p' terraform.tfvars | head -1)
-  check_commercial_pull "$USER_" "$TOKEN" "${TAG:-${CUR:-$(latest_app_tag)}}"
+  # No tag in terraform.tfvars: the stack runs the default in variables.tf (not the newest app release, which may lack a commercial image).
+  [ -n "$CUR" ] || CUR=$(python3 -c "import re;m=re.search(r'variable \"image_tag\" \{.*?default\s*=\s*\"([^\"]+)\"',open('variables.tf').read(),re.S);print(m.group(1) if m else '')")
+  [ -n "${TAG:-$CUR}" ] || { echo "Could not tell which image tag this stack runs; pass --image-tag." >&2; exit 2; }
+  check_commercial_pull "$USER_" "$TOKEN" "${TAG:-$CUR}"
 fi
 cp terraform.tfvars terraform.tfvars.before-switch
 # Drop the three image settings (and image_tag when one was given), then append the new ones.
