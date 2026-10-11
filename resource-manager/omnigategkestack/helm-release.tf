@@ -41,6 +41,14 @@ resource "helm_release" "omnigate" {
     name  = "omnigate.llmModel"
     value = var.omnigate_llm_model
   }
+  set {
+    name  = "image.pullUsername"
+    value = var.image_pull_username
+  }
+  set_sensitive {
+    name  = "image.pullAuthToken"
+    value = var.image_pull_auth_token
+  }
   set_sensitive {
     name  = "omnigate.authUsers"
     value = local.omnigate_auth_users_computed

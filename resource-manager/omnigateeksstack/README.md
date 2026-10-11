@@ -52,6 +52,11 @@ aws cloudformation create-stack \
 Then poll with `aws cloudformation describe-stacks --stack-name omnigate-eks` until
 `StackStatus` is `CREATE_COMPLETE`.
 
+## Commercial edition
+
+Customers with a commercial subscription switch a running stack to the commercial image in place, without rebuilding anything:
+see `COMMERCIAL.md`.
+
 ## Signing in, and who can reach it
 
 There are two logins. The **Ask app** (business users) uses the username and password you set at deploy time. The **admin

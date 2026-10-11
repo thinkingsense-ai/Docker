@@ -221,10 +221,35 @@
             }
           },
           {
+            "name": "imagePullUsername",
+            "type": "Microsoft.Common.TextBox",
+            "label": "Registry user (commercial edition only)",
+            "defaultValue": "",
+            "toolTip": "Leave blank for the free edition. Commercial subscribers: the OCIR login given with your subscription, together with the commercial image repository above.",
+            "constraints": {
+              "required": false
+            }
+          },
+          {
+            "name": "imagePullAuthToken",
+            "type": "Microsoft.Common.PasswordBox",
+            "label": {
+              "password": "Registry token (commercial edition only)",
+              "confirmPassword": "Confirm token"
+            },
+            "toolTip": "Leave blank for the free edition.",
+            "constraints": {
+              "required": false
+            },
+            "options": {
+              "hideConfirmation": true
+            }
+          },
+          {
             "name": "chartSourceUrl",
             "type": "Microsoft.Common.TextBox",
             "label": "Helm chart source tarball URL",
-            "defaultValue": "https://github.com/thinkingsense-ai/Docker/archive/refs/tags/aks-stack-v1.0.6.tar.gz",
+            "defaultValue": "https://github.com/thinkingsense-ai/Docker/archive/refs/tags/aks-stack-v1.0.7.tar.gz",
             "toolTip": "Advanced -- override only if pointing at a fork or a different aks-stack-vX.Y.Z release tarball.",
             "constraints": {
               "required": false
@@ -250,7 +275,9 @@
       "adminUsername": "[steps('application').adminUsername]",
       "adminPassword": "[steps('application').adminPassword]",
       "allowedClientCidrs": "[steps('application').allowedClientCidrs]",
-      "adminApiToken": "[steps('application').adminApiToken]"
+      "adminApiToken": "[steps('application').adminApiToken]",
+      "imagePullUsername": "[steps('advanced').imagePullUsername]",
+      "imagePullAuthToken": "[steps('advanced').imagePullAuthToken]"
     }
   }
 }

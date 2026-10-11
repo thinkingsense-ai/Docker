@@ -92,6 +92,19 @@ variable "image_tag" {
   default     = "v0.10.4"
 }
 
+variable "image_pull_username" {
+  description = "Only for the commercial edition: the OCIR login (\"<namespace>/<user>\") for the private omnigate-commercial repository, given to you with your subscription. Leave blank for the public free image. See ../../scripts/switch-edition-gke.sh."
+  type        = string
+  default     = ""
+}
+
+variable "image_pull_auth_token" {
+  description = "Password half of image_pull_username: the OCIR Auth Token given to you with your subscription. Blank for the free image."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # --- Compute sizing ---------------------------------------------------------------------------
 # Unlike OCI's Always Free Ampere A1 allocation, GCP has no free compute shape generous enough to
 # actually run this (its free tier is one e2-micro, nowhere near the omnigate container's own 1

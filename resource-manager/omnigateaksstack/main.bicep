@@ -66,11 +66,18 @@ param omnigateDataStorageGb int = 2
 @description('Container image repository (advanced). Defaults to the publisher\'s GCP Artifact Registry mirror -- confirmed live that OCI\'s own OCIR registry rejects external pulls from a Free Tier tenancy (403 "Free tier account is not supported"), so pulling the AWS stack\'s documented OCIR path directly does not actually work cross-cloud; the GCP mirror does. Deployers should not need to build or push anything themselves.')
 param imageRepository string = 'us-docker.pkg.dev/thinkingsense/omnigate/omnigate'
 
+@description('Commercial edition only: the OCIR login (<namespace>/<user>) for the private omnigate-commercial repository, given to you with your subscription. Blank for the free edition. Set together with imageRepository and imagePullAuthToken -- see scripts/switch-edition-aks.sh.')
+param imagePullUsername string = ''
+
+@description('Commercial edition only: the OCIR Auth Token that goes with imagePullUsername. Blank for the free edition.')
+@secure()
+param imagePullAuthToken string = ''
+
 @description('Image tag (advanced). Pinned to a specific free-edition release rather than "latest" -- confirmed live that "latest" had silently stopped tracking new app releases (frozen at v0.6.0\'s content for two releases, since v0.7.0/v0.8.0 were only ever published to a different registry this stack never pulled from), so a moving-target default was not actually keeping deployers current, just non-reproducible. The AWS/OCI/GCP stacks made the identical fix the same way -- bump this deliberately when a newer free-edition image is built and pushed, do not go back to "latest".')
 param imageTag string = 'v0.10.4'
 
 @description('Tarball URL containing this stack\'s Helm chart (advanced). Pinned to this release\'s own tag so a deploy from this exact "Deploy to Azure" button/azuredeploy.json can never drift from a newer chart on main -- bump this alongside the version tag on every release, see README\'s "Publishing a release".')
-param chartSourceUrl string = 'https://github.com/thinkingsense-ai/Docker/archive/refs/tags/aks-stack-v1.0.6.tar.gz'
+param chartSourceUrl string = 'https://github.com/thinkingsense-ai/Docker/archive/refs/tags/aks-stack-v1.0.7.tar.gz'
 
 module network 'modules/network.bicep' = {
   name: 'omnigate-network'
@@ -105,6 +112,8 @@ module helmInstall 'modules/deploymentScript.bicep' = {
     adminUsername: adminUsername
     adminPassword: empty(adminPassword) ? appPassword : adminPassword
     adminApiToken: adminApiToken
+    imagePullUsername: imagePullUsername
+    imagePullAuthToken: imagePullAuthToken
     allowedClientCidrs: allowedClientCidrs
     llmApiKey: llmApiKey
     chartSourceUrl: chartSourceUrl

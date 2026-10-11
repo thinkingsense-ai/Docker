@@ -243,6 +243,11 @@ confirmed working (see that section). One real, unfixable-by-this-stack constrai
   manifest published for the omnigate image and switching to a universally-available `Dsv5`/`Dsv4`
   SKU instead.
 
+## Commercial edition
+
+Customers with a commercial subscription switch a running stack to the commercial image in place, without rebuilding anything:
+see `COMMERCIAL.md`.
+
 ## Signing in, and who can reach it
 
 There are two logins. The **Ask app** (business users) uses the username and password you set at deploy time. The **admin
