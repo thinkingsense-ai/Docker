@@ -159,7 +159,7 @@ variables:
   allowed_client_cidrs:
     type: string
     title: "Restrict access to these addresses"
-    description: "Optional. Comma-separated CIDR ranges allowed to connect, e.g. 203.0.113.7/32,198.51.100.0/24. Blank = open to the internet (fine for a first try-out). Set it once real data is connected: the agent endpoint (/mcp/agent) answers questions without a login using your Anthropic key."
+    description: "Optional. Comma-separated CIDR ranges allowed to connect, e.g. 203.0.113.7/32,198.51.100.0/24. Blank = open to the internet (fine for a first try-out). Worth setting once real data is connected, as one more layer on top of the logins."
     default: ""
     required: false
 
@@ -403,7 +403,7 @@ variables:
     description: "Pinned to a specific release rather than \"latest\" (a moving target isn't
       reproducible). Keep this in step with the version in the stack's variables.tf; RELEASING.md
       in the repo root describes how it is bumped."
-    default: "v0.10.4"
+    default: "v0.10.5"
     required: false
 
   image_pull_username:

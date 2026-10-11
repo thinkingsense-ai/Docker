@@ -95,7 +95,7 @@ variable "omnigate_config_db_password" {
 # --- Network access (optional) --------------------------------------------------------------
 
 variable "allowed_client_cidrs" {
-  description = "Comma-separated CIDR ranges (for example 203.0.113.7/32,198.51.100.0/24) that may reach OmniGate's load balancers (web port, and the wire-protocol ports if enabled). Blank leaves it open to the internet, which is what a first try-out needs. Set it once you have real data connected: the Ask app's agent endpoint (/mcp/agent) answers questions without a login, using your Anthropic key, so an open deployment lets anyone who finds the address spend it."
+  description = "Comma-separated CIDR ranges (for example 203.0.113.7/32,198.51.100.0/24) that may reach OmniGate's load balancers (web port, and the wire-protocol ports if enabled). Blank leaves it open to the internet, which is what a first try-out needs. Worth setting once real data is connected, as one more layer on top of the logins."
   type        = string
   default     = ""
 
@@ -224,7 +224,7 @@ variable "image_repository" {
 variable "image_tag" {
   description = "Image tag to deploy. Pinned to a specific free-edition release rather than \"latest\" -- confirmed live that \"latest\" had silently stopped tracking new app releases (frozen at v0.6.0's content for two releases), so a moving-target default wasn't actually keeping deployers current anyway, just non-reproducible. Bump this deliberately when a newer free-edition image is built and pushed to OCIR."
   type        = string
-  default     = "v0.10.4"
+  default     = "v0.10.5"
 }
 
 variable "image_pull_username" {
