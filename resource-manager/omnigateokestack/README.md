@@ -187,6 +187,11 @@ cluster is orphaned and safe to `oci bv volume delete --volume-id <id> --force`.
 - `variables.tf` / `schema.yaml` — Terraform variables and the Resource Manager wizard schema
 - `outputs.tf` — `ask_app_url`, `kubeconfig_command`
 
+## Commercial edition
+
+Customers with a commercial subscription switch a running stack to the commercial image in place, without rebuilding anything:
+see `COMMERCIAL.md` and `scripts/switch-edition-oke.sh`.
+
 ## Restricting who can connect
 
 Set **Restrict access to these addresses** (`allowed_client_cidrs`, e.g. `203.0.113.7/32,198.51.100.0/24`) to limit who can reach the
