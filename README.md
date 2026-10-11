@@ -117,6 +117,12 @@ The admin sign-in page then shows "Continue with <provider>" next to the local f
 
 **Workspaces from provider groups:** the groups in that claim become the user's roles at sign-in, so a workspace with `access: { roles: ["Sales-Analysts"] }` (Settings → Groups) admits everyone in that provider group. Member lists still work too.
 
+## Licence for the free image, and `/mcp/agent` access
+
+The free image can run as the commercial edition with a signed licence: set `OMNIGATE_LICENSE` to the token, or mount it at `/opt/omnigate/license`. It is verified offline and re-checked every minute; an expired or invalid licence leaves the server running on the free edition, and the Overview page and `GET /api/config` show why.
+
+When admin sign-in is on and no end-user identity provider is configured, `/mcp/agent` now requires an admin API token (`Authorization: Bearer <token>`). Set `OMNIGATE_AGENT_MCP_ALLOW_ANONYMOUS=true` to restore anonymous access, or `OMNIGATE_AGENT_MCP_ENABLED=false` to turn the endpoint off.
+
 ## Ports
 
 **By default there is exactly one port: `8080`** — the admin console at `/admin`, Ask at `/`. You
@@ -251,6 +257,6 @@ for the bundled model — commercial alternatives are listed there) and memory r
 
 ## Upgrading
 
-`docker build --build-arg OMNIGATE_RELEASE_TAG=v0.10.4 .` (or edit the `ARG` default in
+`docker build --build-arg OMNIGATE_RELEASE_TAG=v0.10.5 .` (or edit the `ARG` default in
 `Dockerfile`, which already points at the latest) picks a different published release. See
 [Releases](https://github.com/thinkingsense-ai/Docker/releases) for what's new in each one.
