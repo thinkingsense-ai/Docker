@@ -56,7 +56,8 @@ service stays down. Run the command above with `--to free` to recover.
 ## Not covered here
 
 - **Going multi-node.** More than one replica needs a shared configuration database. Do it as a second step after the switch,
-  following "Going multi-node" in `README.md`.
+  following "Going multi-node" in `README.md`. The move to a shared database does **not** carry over users or settings you created on
+  the single-node setup, so create them after the move. Verified on OCI with two replicas on two nodes.
 - **Other clouds.** This runbook is for OCI. The AWS, GCP and Azure stacks get the same switch later.
 
 ## Verified
