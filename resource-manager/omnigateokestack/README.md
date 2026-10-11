@@ -20,7 +20,7 @@ off the per-pod volume and into a shared Postgres every replica reads/writes —
 `helm/omnigate/values.yaml`'s `configDb` block). The AWS/GCP/Azure stacks all hardcode 1 replica.
 
 Deployers don't need to build or push anything — `image_repository` defaults to this project's
-own public OCIR repo, and `image_tag` to a specific pinned free-edition release (`v0.10.4`, not
+own public OCIR repo, and `image_tag` to a specific pinned free-edition release (`v0.10.5`, not
 `latest` -- see that variable's own description for why), so the stack pulls a pre-built image
 the same way `docker compose up` pulls from a registry.
 
@@ -195,7 +195,8 @@ see `COMMERCIAL.md` and `scripts/switch-edition-oke.sh`.
 ## Restricting who can connect
 
 Set **Restrict access to these addresses** (`allowed_client_cidrs`, e.g. `203.0.113.7/32,198.51.100.0/24`) to limit who can reach the
-load balancers. Blank = open to the internet. It matters because the Ask app's agent endpoint (`/mcp/agent`) answers questions without a
-login, using your Anthropic key (thinkingsense-ai/Server#17). The stack enforces it in the load balancer subnet's security list; limiting the
+load balancers. Blank = open to the internet, which suits a first try-out; it is one more layer on top of the logins once real data is connected.
+(On app v0.10.4 and earlier the agent endpoint `/mcp/agent` answered without a login, so the restriction mattered more there; v0.10.5 closes it.)
+The stack enforces it in the load balancer subnet's security list; limiting the
 node ports or attaching a network security group to the Network Load Balancer does **not** narrow access (both tried, verified live).
 Check a deployment with `scripts/verify-secure-deploy.sh <url> <token>`.

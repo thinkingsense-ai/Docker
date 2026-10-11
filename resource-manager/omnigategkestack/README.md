@@ -185,9 +185,7 @@ default user `admin`, and a blank password means the Ask-app password). Earlier 
 could reach the load balancer; redeploying an older stack with this version turns the requirement on. Scripts send the admin API
 token as `Authorization: Bearer <token>`.
 
-One endpoint is still open: the Ask app's agent endpoint (`/mcp/agent`) answers questions without a login, using your Anthropic
-key (thinkingsense-ai/Server#17). To limit who can connect, set `allowed_client_cidrs` to your address or network, `allowed_client_cidrs = "203.0.113.7/32"` in `terraform.tfvars`, then `terraform apply`.
-Blank = open to the internet, which suits a first try-out. Check a deployment with `scripts/verify-secure-deploy.sh <url> <token>`.
+Since app v0.10.5 the Ask app's agent endpoint (`/mcp/agent`) needs the admin API token like the rest of the admin surface. On v0.10.4 and earlier it answered without a login, so keep the address restriction below set on any stack still running those. To limit who can connect, set `allowed_client_cidrs` to your address or network. Blank = open to the internet, which suits a first try-out.
 
 ## Publishing a release (maintainers)
 

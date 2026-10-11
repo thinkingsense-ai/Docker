@@ -144,7 +144,7 @@ Parameters:
   AllowedClientCidrs:
     Type: String
     Default: ""
-    Description: "Optional. Comma-separated CIDR ranges (e.g. 203.0.113.7/32) allowed to reach OmniGate. Blank = open to the internet, fine for a first try-out. Set it once real data is connected: the agent endpoint (/mcp/agent) answers questions without a login using your Anthropic key."
+    Description: "Optional. Comma-separated CIDR ranges (e.g. 203.0.113.7/32) allowed to reach OmniGate. Blank = open to the internet, fine for a first try-out. Worth setting once real data is connected, as one more layer on top of the logins."
   OmnigateLlmApiKey:
     Type: String
     NoEcho: true
@@ -165,7 +165,7 @@ Parameters:
     Description: "Commercial edition only: the OCIR Auth Token that goes with ImagePullUsername. Blank for the free edition."
   ImageTag:
     Type: String
-    Default: v0.10.4
+    Default: v0.10.5
     Description: "OCIR docker tag for the omnigate image. Pinned to a specific free-edition
       release rather than :latest -- confirmed live that :latest had silently stopped tracking
       new app releases (frozen at v0.6.0's content for two releases), so a moving-target default

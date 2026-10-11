@@ -67,7 +67,7 @@ variable "omnigate_admin_api_token" {
 }
 
 variable "allowed_client_cidrs" {
-  description = "Comma-separated CIDR ranges (for example 203.0.113.7/32) that may reach OmniGate's web port. Blank leaves it open to the internet, which is what a first try-out needs. Set it once you have real data connected: the Ask app's agent endpoint (/mcp/agent) answers questions without a login, using your Anthropic key."
+  description = "Comma-separated CIDR ranges (for example 203.0.113.7/32) that may reach OmniGate's web port. Blank leaves it open to the internet, which is what a first try-out needs. Worth setting once real data is connected, as one more layer on top of the logins."
   type        = string
   default     = ""
 }
@@ -89,7 +89,7 @@ variable "image_repository" {
 variable "image_tag" {
   description = "Image tag to deploy. Pinned to a specific release rather than \"latest\" -- the \"latest\" tag was deliberately removed from the Artifact Registry repo, so this must always name a real, currently-published tag (see the \"Image\" section in README.md for how to check what's actually there)."
   type        = string
-  default     = "v0.10.4"
+  default     = "v0.10.5"
 }
 
 variable "image_pull_username" {
