@@ -31,6 +31,7 @@ Metadata:
       - Label:
           default: "Commercial edition (subscribers only)"
         Parameters:
+          - OmnigateLicense
           - ImageRepository
           - ImagePullUsername
           - ImagePullAuthToken
@@ -67,6 +68,8 @@ Metadata:
         default: "Admin console password (optional)"
       OmnigateAdminApiToken:
         default: "Admin API token (optional)"
+      OmnigateLicense:
+        default: "Commercial licence"
       ImageRepository:
         default: "Image repository"
       ImagePullUsername:
@@ -150,6 +153,11 @@ Parameters:
     NoEcho: true
     MinLength: 1
     Description: "Anthropic API key (console.anthropic.com) for NL2SQL -- required, since a stack created without one deploys fine but can't answer any question."
+  OmnigateLicense:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: "Commercial subscribers: the signed licence token (starts with ts1.) we issued to you. It lets the free image run as the commercial edition, with no image swap. Blank keeps any licence already installed. See COMMERCIAL.md."
   ImageRepository:
     Type: String
     Default: ocir.us-phoenix-1.oci.oraclecloud.com/ax8tpjdxhykk/omnigate
@@ -802,6 +810,7 @@ Resources:
         image.tag: !Ref ImageTag
       AppUsername: !Ref OmnigateAppUsername
       AppPassword: !Ref OmnigateAppPassword
+      License: !Ref OmnigateLicense
       ImagePullUsername: !Ref ImagePullUsername
       ImagePullAuthToken: !Ref ImagePullAuthToken
       AdminUsername: !Ref OmnigateAdminUsername

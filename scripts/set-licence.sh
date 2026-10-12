@@ -43,7 +43,7 @@ if 0 < days < 60:
     print(f"note: fewer than 60 days left -- time to renew.")
 PY
 SECRET="$REL-omnigate-license"
-"${K[@]}" get secret "$SECRET" >/dev/null 2>&1 || { echo "Secret $SECRET not found in namespace $NS: this deployment predates the licence support. Update the stack to oke-stack-v1.1.9 or later first." >&2; exit 1; }
+"${K[@]}" get secret "$SECRET" >/dev/null 2>&1 || { echo "Secret $SECRET not found in namespace $NS: this deployment predates the licence support. Update the stack to its latest release first." >&2; exit 1; }
 P=$(mktemp); trap 'rm -f "$P"' EXIT; chmod 600 "$P"
 python3 -c "import json,sys;print(json.dumps({'stringData':{'license':sys.argv[1]}}))" "$TOKEN" > "$P"
 "${K[@]}" patch secret "$SECRET" --type merge --patch-file "$P" >/dev/null
