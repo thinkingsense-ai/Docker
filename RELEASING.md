@@ -33,6 +33,32 @@ behavior, such as Ignite clustering, is gated at runtime on that marker.
 - Commercial only consumes patch releases from the release branch (v0.10.4, v0.10.5, ...).
 - Fixes land on `main` first, then are cherry-picked to `release/0.10`.
 
+## Automated image build **[today]**
+
+Publishing an app release (`vX.Y.Z`) runs `.github/workflows/build-images.yml`, which replaces building and pushing the images by hand:
+
+1. Checks the release has `omnigate.jar` and `web-dist.tar.gz` (the Dockerfile downloads them by tag).
+2. Builds the **free** and **commercial** images for arm64 on a native arm64 runner, and checks each image's edition marker.
+3. Pushes `omnigate:<tag>` (free, public) and `omnigate-commercial:<tag>` (private) to OCIR, and `omnigate:<tag>` to the Google Artifact
+   Registry (GKE and AKS pull from there). A release candidate (`vX.Y.Z-rc.N`) goes to OCIR only.
+4. Opens a PR "Bump pins to <tag>" with every stack pin moved by `scripts/version-pins.py`. **Merging it stays a person's decision**: do the
+   clean-room checks first, then cut the stack releases whose default image changed.
+
+Stack releases (`oke-stack-v*` and the others) share the Releases list but are ignored by the workflow.
+
+**Dry run, no secrets needed:** Actions > Build images > Run workflow, tag `v0.10.6`, "push" off. It builds both images and checks the markers.
+
+**One-time setup** (Settings > Secrets and variables > Actions):
+
+| Secret | What |
+|---|---|
+| `OCIR_USERNAME` | `<tenancy namespace>/<oci user>` of a user allowed to push to the `omnigate` and `omnigate-commercial` repositories |
+| `OCIR_AUTH_TOKEN` | that user's OCI Auth Token |
+| `GAR_SERVICE_ACCOUNT_KEY` | JSON key of a Google service account whose only role is Artifact Registry Writer on the `omnigate` repository |
+
+And Settings > Actions > General > Workflow permissions: tick "Allow GitHub Actions to create and approve pull requests" so step 4 can open the PR.
+Prefer short-lived credentials later (OIDC federation to Google and Oracle) over long-lived keys.
+
 ## Promotion: candidate, tested, released **[proposed]**
 
 An image reaches deployers by being promoted, not by being the newest build.
