@@ -10,8 +10,10 @@ terraform {
       version = "~> 2.25"
     }
     helm = {
-      source  = "hashicorp/helm"
-      version = "~> 2.12"
+      source = "hashicorp/helm"
+      # Excludes 2.17.x: that release's plugin process crashed intermittently ("Unrecognized remote plugin message",
+      # thinkingsense-ai/Docker#7). Raise the ceiling only after a newer release has been run clean.
+      version = ">= 2.12.0, < 2.17.0"
     }
     external = {
       source  = "hashicorp/external"

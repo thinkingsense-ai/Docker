@@ -59,7 +59,7 @@ resource "null_resource" "cleanup_pvcs" {
   }
 
   provisioner "local-exec" {
-    when    = destroy
+    when = destroy
     # `|| true` throughout: this is best-effort cleanup, not a required step -- a missing
     # kubectl binary or an already-gone cluster must never block the rest of the destroy.
     command = <<-EOT
@@ -86,12 +86,20 @@ locals {
 }
 
 resource "helm_release" "omnigate" {
-  name       = "omnigate"
-  chart      = "${path.module}/helm/omnigate"
+  name  = "omnigate"
+  chart = "${path.module}/helm/omnigate"
   # The omnigate pods wait for the optional TPC-H loader, which takes several minutes at scale factor 1.
   timeout    = var.enable_tpch_demo ? 2400 : 600
   depends_on = [null_resource.cleanup_pvcs, null_resource.adb_acl_add, null_resource.adb_acl_cleanup]
 
+  # The helm provider does not notice an edited local chart on its own: with `version:` unchanged in Chart.yaml,
+  # `terraform plan` reported "no changes" against a stale release (thinkingsense-ai/Docker#11). A hash of every
+  # file in the chart is passed as a value (no template reads it), so any template or values edit changes the
+  # release's inputs and the next apply upgrades it.
+  set {
+    name  = "chartContentHash"
+    value = sha1(join("", [for f in sort(fileset("${path.module}/helm/omnigate", "**")) : filesha1("${path.module}/helm/omnigate/${f}")]))
+  }
   set {
     name  = "image.repository"
     value = var.image_repository
