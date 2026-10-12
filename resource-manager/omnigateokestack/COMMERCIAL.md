@@ -27,7 +27,8 @@ scripts/set-licence.sh --token ts1.<...> --restart \
   (a rolling restart, about two minutes). **Renewals need no restart:** run the same command without `--restart` and the app
   picks the new licence up within a couple of minutes.
 - To set it at deploy time instead, paste the token into **Commercial licence** (`omnigate_license`) in the stack. Leaving that
-  field blank on a later apply keeps the licence already installed, so an unrelated apply never removes it.
+  field blank on a later apply keeps the licence already installed, so an unrelated apply never removes it. Use the script for
+  renewals: applying the stack also restarts the OmniGate pod (every apply currently does, thinkingsense-ai/Docker#59), the script does not.
 - `omnigate_license` / `set-licence.sh` work the same on the AWS, GCP and Azure stacks.
 
 **Before a licence lapses.** Renew it. After the grace period the free limits apply: one question at a time at once, and on the next restart only 3 data sources and a single node. A deployment with more than 3 data sources or more than one replica should renew well before then; improving how that downgrade behaves is tracked in thinkingsense-ai/Server#21.
@@ -95,6 +96,14 @@ service stays down. Run the command above with `--to free` to recover.
 - **Other clouds.** This runbook is for OCI. The AWS, GCP and Azure stacks get the same switch later.
 
 ## Verified
+
+On 2026-10-12, on a free OKE stack: the licence file is mounted empty (`licenseStatus: NONE`); installing a licence with `set-licence.sh`
+was read by the running pod within about 70 seconds with no restart (a deliberately invalid test licence showed `INVALID` and the reason,
+and the edition stayed free); an apply with the setting blank kept the installed licence; setting `omnigate_license` on the stack replaced
+it; `--restart` rolled the pod. **Not yet verified:** a genuinely valid, signed licence lifting the limits (needs a licence from the vendor's private
+key).
+
+Image swap, earlier:
 
 On 2026-10-11 a free OKE stack with the TPC-H demo turned on served 3 data sources (the cross-database TPC-H join was rejected as
 outside the allowed backends). After the switch it served 5 and the same join returned its answer; switching back
