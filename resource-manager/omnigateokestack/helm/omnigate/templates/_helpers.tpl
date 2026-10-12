@@ -67,6 +67,13 @@ spec:
             name: {{ include "omnigate.fullname" . }}-omnigate-config
         - secretRef:
             name: {{ include "omnigate.fullname" . }}-omnigate-secret
+      env:
+        # The signed licence that lets the free image run as the commercial edition (thinkingsense-ai/Server#18). The app
+        # re-reads this file every minute, so a renewed licence applies without a restart. It is a whole-directory Secret
+        # mount (not subPath, which never updates) and the Secret is its own template (license.yaml), outside the checksum
+        # annotation above, so changing it does not roll the pods.
+        - name: OMNIGATE_LICENSE_FILE
+          value: /etc/omnigate-license/license
       ports:
         - name: http
           containerPort: 8080
@@ -84,8 +91,11 @@ spec:
         - name: ignite-comm
           containerPort: 47100
 {{- end }}
-{{- if not .Values.omnigate.configDb.external }}
       volumeMounts:
+        - name: license
+          mountPath: /etc/omnigate-license
+          readOnly: true
+{{- if not .Values.omnigate.configDb.external }}
         - name: data
           mountPath: /var/lib/omnigate/data
 {{- end }}
@@ -97,8 +107,12 @@ spec:
         periodSeconds: 10
       resources:
         {{- toYaml .Values.resources.omnigate | nindent 8 }}
-{{- if not .Values.omnigate.configDb.external }}
   volumes:
+    - name: license
+      secret:
+        secretName: {{ include "omnigate.fullname" . }}-omnigate-license
+        optional: true
+{{- if not .Values.omnigate.configDb.external }}
     - name: data
       persistentVolumeClaim:
         claimName: {{ include "omnigate.fullname" . }}-omnigate-data

@@ -60,6 +60,9 @@ omnigate:
   # Bearer token with admin rights for the admin API (OMNIGATE_AUTH_API_TOKENS). Setting it switches
   # admin authentication on.
   adminApiToken: ""
+  # Signed licence token (ts1.<payload>.<signature>) that lets the free image run as the commercial edition. Blank keeps any
+  # licence already in the cluster. See COMMERCIAL.md.
+  license: ""
   # Admin console logins (OMNIGATE_AUTH_USERS: "user:saltB64:hashB64:admin[,...]"). Setting it turns admin
   # authentication on. The Terraform stack always sets it; a bare `helm install` leaves the admin console open.
   authUsers: ""
