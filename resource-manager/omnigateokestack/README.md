@@ -81,6 +81,17 @@ the parallel join, which on a clustered deployment can be shared across replicas
 - The store is SeaweedFS because MinIO no longer publishes free container images. The loader is the same one as
   `addons/tpch-demo/loader`, copied into `helm/omnigate/files/tpch/` (keep the two in sync).
 
+## Maintainer notes: two Terraform gotchas
+
+- **Chart edits are detected by a content hash.** `helm-release.tf` passes `chartContentHash` (a SHA-1 of every file under
+  `helm/omnigate/`), so editing a template or `values.yaml` makes `terraform apply` upgrade the release even when
+  `Chart.yaml`'s `version` stays `0.1.0`. You no longer need to bump the chart version for that.
+- **`oci_core_security_list.nodes` ignores rule changes.** It has `lifecycle { ignore_changes = [ingress_security_rules] }`
+  because OKE's cloud-controller-manager adds and removes its own per-NodePort rules on that list. The consequence is that
+  an edit to its `ingress_security_rules` in Terraform is never applied by a later `apply`. Put any rule you manage in the
+  dedicated load-balancer security list in `network.tf` (it has no such block), or change the node list by hand.
+- **The helm provider is capped below 2.17** (see `versions.tf`) because 2.17.x crashed intermittently.
+
 ## Publishing a release (maintainers)
 
 Cut a GitHub release zip of this directory (tag `oke-stack-vX.Y.Z`), then update the
