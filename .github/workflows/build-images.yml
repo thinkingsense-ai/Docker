@@ -141,6 +141,10 @@ jobs:
           # azuredeploy.json is generated from main.bicep; the bump edited the pin in both, so the diff is the tag only.
           git commit -am "Bump pins to $TAG"
           git push origin "$branch"
-          gh pr create --base main --head "$branch" --title "Bump pins to $TAG" --body "Opened automatically after the $TAG images were built and pushed to OCIR (free and commercial) and the Google Artifact Registry.
+          if ! gh pr create --base main --head "$branch" --title "Bump pins to $TAG" --body "Opened automatically after the $TAG images were built and pushed to OCIR (free and commercial) and the Google Artifact Registry.
 
-          Before merging, per RELEASING.md: a clean-room deploy of each cloud from this branch, then cut the stack releases whose default image changes (the pins here are the stacks' default image tags). Prose that mentions the old version (READMEs) is not edited automatically."
+          Before merging, per RELEASING.md: a clean-room deploy of each cloud from this branch, then cut the stack releases whose default image changes (the pins here are the stacks' default image tags). Prose that mentions the old version (READMEs) is not edited automatically."; then
+            # The images are already pushed; only the PR could not be opened (usually Settings > Actions > General >
+            # "Allow GitHub Actions to create and approve pull requests" is off). Say so without failing the run.
+            echo "::warning::The images are pushed, but the pin PR could not be opened. Open it from https://github.com/$GITHUB_REPOSITORY/compare/main...$branch"
+          fi
