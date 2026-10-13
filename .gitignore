@@ -5,3 +5,6 @@
 **/*.tfstate.backup
 **/.terraform.tfstate.lock.info
 **/tfplan*
+
+__pycache__/
+*.pyc
