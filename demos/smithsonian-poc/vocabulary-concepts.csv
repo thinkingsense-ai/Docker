@@ -1,0 +1,2326 @@
+canonical_concept,member_label,source_units,occurrence_count,confidence,status
+"Men","Men","SAAM;NPG",863,1.0,SINGLETON
+"(no topic)","(no topic)","NPG;SIL;NMNHBOTANY;SAAM",484,1.0,SINGLETON
+"Dress accessories","Dress accessories","SAAM;NPG",439,1.0,SINGLETON
+"Interior decoration","Interior decoration","SIL;NPG",438,0.9022996548449802,AUTO_ACCEPTED
+"Interior decoration","Interior decoration accessories","SIL",1,0.9022996548449802,AUTO_ACCEPTED
+"Government","Government","SAAM;SIL;NPG",314,1.0,SINGLETON
+"Women","Women","SAAM;SIL;NPG",305,1.0,SINGLETON
+"Facial Hair","Facial Hair","NPG",245,1.0,SINGLETON
+"Seating","Seating","NPG",217,1.0,SINGLETON
+"Military and Intelligence","Military and Intelligence","NPG",215,1.0,SINGLETON
+"Jewelry","Jewelry","SAAM;SIL;NPG",193,1.0,SINGLETON
+"Legislators","Legislators","NPG",165,0.9181348008398591,AUTO_ACCEPTED
+"Legislators","Legislator","NPG",1,0.9181348008398591,AUTO_ACCEPTED
+"Law and Crime","Law and Crime","NPG",157,1.0,SINGLETON
+"Lawyers","Lawyers","NPG",143,1.0,SINGLETON
+"Education and Scholarship","Education and Scholarship","NPG",143,1.0,SINGLETON
+"Figure group","Figure group","SAAM",135,1.0,SINGLETON
+"Equisetopsida","Equisetopsida","NMNHBOTANY",130,1.0,SINGLETON
+"Silhouette","Silhouette","NPG",121,1.0,SINGLETON
+"Congressmen","Congressmen","NPG",118,1.0,SINGLETON
+"Cut-out","Cut-out","NPG",116,1.0,SINGLETON
+"Bowtie","Bowtie","NPG",109,1.0,SINGLETON
+"Albums","Albums","NPG",107,1.0,SINGLETON
+"Column","Column","SAAM;NPG",105,1.0,SINGLETON
+"Occupations","Occupations","SAAM",100,1.0,SINGLETON
+"Curtain","Curtain","NPG",100,1.0,SINGLETON
+"American Civil War (1861-1865)","American Civil War (1861-1865)","SAAM;NPG",96,0.9668898869695663,AUTO_ACCEPTED
+"American Civil War (1861-1865)","Civil War, 1861-1865","SAAM;NPG",96,0.9668898869695663,AUTO_ACCEPTED
+"Printed Material","Printed Material","NPG",95,1.0,SINGLETON
+"Tables","Tables","SAAM;SIL;NPG",91,1.0,SINGLETON
+"Presidents","Presidents","SAAM;SIL;NPG",90,1.0,SINGLETON
+"Person with dwarfism","Person with dwarfism","NPG",80,1.0,SINGLETON
+"Chain","Chain","NPG",72,1.0,SINGLETON
+"Photographic format","Photographic format","NPG",67,1.0,SINGLETON
+"Trees","Trees","SAAM;SIL;NPG",57,1.0,SINGLETON
+"Cabinet member","Cabinet member","NPG",57,1.0,SINGLETON
+"Outerwear","Outerwear","NPG",52,1.0,SINGLETON
+"Reformers","Reformers","NPG",51,1.0,SINGLETON
+"Eyeglasses","Eyeglasses","NPG",48,1.0,SINGLETON
+"Boats and boating","Boats and boating","SAAM;SIL;NPG",48,1.0,SINGLETON
+"Domestic","Domestic","SAAM;NPG",48,1.0,SINGLETON
+"Botanical study","Botanical study","SAAM",47,1.0,SINGLETON
+"Cityscapes","Cityscapes","SAAM;NPG",45,1.0,SINGLETON
+"Children","Children","SAAM;SIL",42,1.0,SINGLETON
+"Handkerchief","Handkerchief","NPG",41,1.0,SINGLETON
+"Natural resources commerce","Natural resources commerce","NPG",40,1.0,SINGLETON
+"Carte-de-visite","Carte-de-visite","NPG",40,1.0,SINGLETON
+"Union Army","Union Army","NPG",39,1.0,SINGLETON
+"Nudity","Nudity","SAAM",39,1.0,SINGLETON
+"Bracelet","Bracelet","NPG",38,1.0,SINGLETON
+"Mountains","Mountains","SAAM;NPG",38,1.0,SINGLETON
+"Agriculturists","Agriculturists","NPG",37,1.0,SINGLETON
+"Containers","Containers","SAAM;SIL;NPG",36,1.0,SINGLETON
+"Muttonchops","Muttonchops","NPG",36,1.0,SINGLETON
+"Congressional Gold Medal","Congressional Gold Medal","NPG",36,1.0,SINGLETON
+"Belt","Belt","NPG",36,1.0,SINGLETON
+"Dwellings","Dwellings","SAAM;SIL;NPG",35,1.0,SINGLETON
+"Necklace","Necklace","NPG",35,1.0,SINGLETON
+"Description and travel","Description and travel","SAAM;SIL",35,1.0,SINGLETON
+"Religion and Spirituality","Religion and Spirituality","NPG",35,1.0,SINGLETON
+"Veil","Veil","NPG",34,0.9303121742633741,AUTO_ACCEPTED
+"Veil","Veils","SIL",1,0.9303121742633741,AUTO_ACCEPTED
+"Ulvophyceae","Ulvophyceae","NMNHBOTANY",33,1.0,SINGLETON
+"Clergy","Clergy","SAAM;NPG",29,1.0,SINGLETON
+"Rivers","Rivers","SAAM",29,1.0,SINGLETON
+"Judges","Judges","SIL;NPG",29,1.0,SINGLETON
+"Minister","Minister","NPG",29,1.0,SINGLETON
+"Secretary of State","Secretary of State","NPG",28,1.0,SINGLETON
+"Detail","Detail","SAAM",28,1.0,SINGLETON
+"Periodicals","Periodicals","SAAM;SIL;NPG",28,1.0,SINGLETON
+"Button","Button","NPG",28,1.0,SINGLETON
+"Surveyors","Surveyors","NPG",27,1.0,SINGLETON
+"Drape","Drape","NPG",26,1.0,SINGLETON
+"Confederate Army","Confederate Army","NPG",26,1.0,SINGLETON
+"Mayors","Mayors","NPG",25,1.0,SINGLETON
+"Tassel","Tassel","NPG",25,1.0,SINGLETON
+"Tradesman","Tradesman","NPG",24,1.0,SINGLETON
+"Vice-Presidents","Vice-Presidents","NPG",24,1.0,SINGLETON
+"Justice","Justice","SAAM;NPG",23,1.0,SINGLETON
+"Amusements","Amusements","SAAM",23,1.0,SINGLETON
+"Cloaks","Cloaks","NPG",22,0.9197742667526616,AUTO_ACCEPTED
+"Cloaks","Cloak","NPG",5,0.9197742667526616,AUTO_ACCEPTED
+"Abolitionists","Abolitionists","NPG",22,1.0,SINGLETON
+"State of being","State of being","SAAM",21,1.0,SINGLETON
+"Water","Water","SAAM;SIL;NPG",21,1.0,SINGLETON
+"Crown","Crown","NPG",21,1.0,SINGLETON
+"Cabinet card","Cabinet card","NPG",19,1.0,SINGLETON
+"Walking stick","Walking stick","NPG",19,1.0,SINGLETON
+"American Revolution (1775-1783)","American Revolution (1775-1783)","SAAM;NPG",19,1.0,SINGLETON
+"Ring","Ring","NPG",19,1.0,SINGLETON
+"Stage actor","Stage actor","NPG",19,1.0,SINGLETON
+"Staffs (Sticks, canes, etc.)","Staffs (Sticks, canes, etc.)","SAAM;NPG",19,1.0,SINGLETON
+"Lecturer","Lecturer","NPG",19,1.0,SINGLETON
+"Windows","Windows","SAAM;NPG",18,1.0,SINGLETON
+"Rocks","Rocks","SAAM;SIL;NPG",18,1.0,SINGLETON
+"Continental congressman","Continental congressman","NPG",18,1.0,SINGLETON
+"Seasons","Seasons","SAAM",18,1.0,SINGLETON
+"Actors and actresses","Actors and actresses","NPG",17,1.0,SINGLETON
+"Natural History","Natural History","SIL",17,1.0,SINGLETON
+"Mexican War, 1846-1848","Mexican War, 1846-1848","SIL;NPG",17,1.0,SINGLETON
+"Allegory","Allegory","SAAM",17,0.9459634643503555,AUTO_ACCEPTED
+"Allegory","Allegories","SIL",1,0.9459634643503555,AUTO_ACCEPTED
+"Feather","Feather","NPG",16,1.0,SINGLETON
+"Inventors","Inventors","NPG",16,1.0,SINGLETON
+"Philanthropists","Philanthropists","SAAM;NPG",16,1.0,SINGLETON
+"Bonnet","Bonnet","NPG",16,1.0,SINGLETON
+"Boat builder","Boat builder","NPG",16,1.0,SINGLETON
+"Harper's Weekly","Harper's Weekly","SAAM",16,1.0,SINGLETON
+"Sash","Sash","NPG",16,1.0,SINGLETON
+"War of 1812","War of 1812","NPG",16,1.0,SINGLETON
+"Star","Star","SAAM;NPG",15,1.0,SINGLETON
+"Pedestal","Pedestal","NPG",15,1.0,SINGLETON
+"Colonel","Colonel","NPG",15,1.0,SINGLETON
+"Folklore","Folklore","SIL",14,1.0,SINGLETON
+"Vase","Vase","SAAM;NPG",14,1.0,SINGLETON
+"Weather","Weather","SAAM;SIL",14,1.0,SINGLETON
+"Coasts","Coasts","SAAM;NPG",14,1.0,SINGLETON
+"Goatee","Goatee","NPG",14,1.0,SINGLETON
+"Poets","Poets","NPG",14,0.9065174122453064,AUTO_ACCEPTED
+"Poets","Poetry","SIL",2,0.9065174122453064,AUTO_ACCEPTED
+"Foliage","Foliage","SAAM;NPG",14,1.0,SINGLETON
+"Fence","Fence","SAAM;NPG",14,1.0,SINGLETON
+"Forests and forestry","Forests and forestry","SAAM;SIL;NPG",14,1.0,SINGLETON
+"Brass","Brass","NPG",14,1.0,SINGLETON
+"Reporter","Reporter","NPG",14,1.0,SINGLETON
+"Shawl","Shawl","NPG",14,1.0,SINGLETON
+"Pteridophyte","Pteridophyte","NMNHBOTANY",14,0.9560386621764323,AUTO_ACCEPTED
+"Pteridophyte","Ptéridophytes","SIL",1,0.9560386621764323,AUTO_ACCEPTED
+"Pteridophyte","Pteridophyta","SIL",1,0.9560386621764323,AUTO_ACCEPTED
+"First ladies","First ladies","SIL;NPG",13,1.0,SINGLETON
+"Mythology","Mythology","SAAM;SIL",13,1.0,SINGLETON
+"Private collections","Private collections","SIL",13,1.0,SINGLETON
+"Portraitist","Portraitist","NPG",13,1.0,SINGLETON
+"WW II","WW II","SIL;NPG",13,1.0,SINGLETON
+"Chief","Chief","SAAM;NPG",13,1.0,SINGLETON
+"Family","Family","SAAM;SIL",13,1.0,SINGLETON
+"Parks","Parks","SAAM;SIL",13,1.0,SINGLETON
+"Business executive","Business executive","NPG",13,1.0,SINGLETON
+"World War, 1939-1945","World War, 1939-1945","SIL;NPG",13,1.0,SINGLETON
+"Robe","Robe","NPG",13,1.0,SINGLETON
+"Industrialist","Industrialist","NPG",12,1.0,SINGLETON
+"Coat","Coat","NPG",12,1.0,SINGLETON
+"Rifle","Rifle","NPG",12,1.0,SINGLETON
+"Cattle","Cattle","SAAM",12,0.912289764115826,AUTO_ACCEPTED
+"Cattle","Cows","NPG",2,0.912289764115826,AUTO_ACCEPTED
+"Motion pictures","Motion pictures","SIL;NPG",11,1.0,SINGLETON
+"Brooch","Brooch","NPG",11,1.0,SINGLETON
+"Plains","Plains","SAAM",11,1.0,SINGLETON
+"Roads","Roads","SAAM",11,1.0,SINGLETON
+"Pince-nez","Pince-nez","NPG",11,1.0,SINGLETON
+"Aerial operations","Aerial operations","SIL",11,1.0,SINGLETON
+"Secretary of Treasury","Secretary of Treasury","NPG",10,1.0,SINGLETON
+"Speaker of the House","Speaker of the House","NPG",10,1.0,SINGLETON
+"Harbors","Harbors","SAAM;NPG",10,1.0,SINGLETON
+"Sailboats","Sailboats","SAAM;NPG",10,1.0,SINGLETON
+"Cats","Cats","SAAM;SIL;NPG",10,1.0,SINGLETON
+"Angels","Angels","SAAM;NPG",10,1.0,SINGLETON
+"Papers","Papers","NPG",10,0.9007648789204591,AUTO_ACCEPTED
+"Papers","Paper","SIL",2,0.9007648789204591,AUTO_ACCEPTED
+"Conservation and restoration","Conservation and restoration","SIL",10,1.0,SINGLETON
+"Union","Union","NPG",10,1.0,SINGLETON
+"Pictorial works","Pictorial works","SIL",10,1.0,SINGLETON
+"Railroads","Railroads","SIL",10,0.9398499356843595,AUTO_ACCEPTED
+"Railroads","Railroad","NPG",2,0.9398499356843595,AUTO_ACCEPTED
+"Drafting & Writing Implements","Drafting & Writing Implements","NPG",10,1.0,SINGLETON
+"Rope","Rope","NPG",9,1.0,SINGLETON
+"Captain","Captain","NPG",9,1.0,SINGLETON
+"Trains","Trains","SAAM;SIL;NPG",9,1.0,SINGLETON
+"Clocks and watches","Clocks and watches","SAAM;SIL;NPG",9,1.0,SINGLETON
+"Toys","Toys","SAAM;SIL;NPG",9,1.0,SINGLETON
+"Language and languages","Language and languages","SIL",9,1.0,SINGLETON
+"Mining","Mining","SAAM;SIL;NPG",9,1.0,SINGLETON
+"Native American leader","Native American leader","NPG",9,1.0,SINGLETON
+"Secretary of Interior","Secretary of Interior","NPG",9,1.0,SINGLETON
+"WW I","WW I","SAAM;SIL",9,1.0,SINGLETON
+"Editors","Editors","SAAM;NPG",9,1.0,SINGLETON
+"Manufacturer","Manufacturer","NPG",9,1.0,SINGLETON
+"Lieutenant Governor","Lieutenant Governor","NPG",9,1.0,SINGLETON
+"Bankers","Bankers","NPG",9,1.0,SINGLETON
+"Rear Admiral","Rear Admiral","NPG",9,1.0,SINGLETON
+"World War, 1914-1918","World War, 1914-1918","SAAM;SIL",9,1.0,SINGLETON
+"Western","Western","SAAM",9,1.0,SINGLETON
+"Law","Law","SAAM;SIL;NPG",8,1.0,SINGLETON
+"Carriage","Carriage","SAAM;NPG",8,1.0,SINGLETON
+"Streets","Streets","SAAM;NPG",8,1.0,SINGLETON
+"Schools","Schools","SIL;NPG",8,1.0,SINGLETON
+"Movie actor","Movie actor","NPG",8,1.0,SINGLETON
+"Awnings","Awnings","NPG",8,1.0,SINGLETON
+"Financier","Financier","NPG",8,1.0,SINGLETON
+"Railroad executive","Railroad executive","NPG",8,1.0,SINGLETON
+"Postal service","Postal service","SIL",8,1.0,SINGLETON
+"Pens","Pens","NPG",8,1.0,SINGLETON
+"Stereograph","Stereograph","NPG",8,1.0,SINGLETON
+"Monuments","Monuments","SAAM;NPG",8,1.0,SINGLETON
+"King","King","NPG",8,1.0,SINGLETON
+"University trustee","University trustee","NPG",8,1.0,SINGLETON
+"Art instructor","Art instructor","NPG",8,1.0,SINGLETON
+"Older people","Older people","SAAM",8,1.0,SINGLETON
+"Geology, Stratigraphic","Geology, Stratigraphic","SIL",8,1.0,SINGLETON
+"Snood","Snood","NPG",8,1.0,SINGLETON
+"Fans","Fans","SAAM;NPG",8,1.0,SINGLETON
+"Coat of arms","Coat of arms","NPG",8,1.0,SINGLETON
+"Ribbon","Ribbon","NPG",8,1.0,SINGLETON
+"Models (representations)","Models (representations)","SAAM;SIL",7,1.0,SINGLETON
+"Interior with Exterior View","Interior with Exterior View","NPG",7,1.0,SINGLETON
+"Castles","Castles","SAAM;NPG",7,1.0,SINGLETON
+"Umbrellas","Umbrellas","SAAM;NPG",7,1.0,SINGLETON
+"Cross","Cross","SAAM;NPG",7,1.0,SINGLETON
+"Food habits","Food habits","SAAM;SIL",7,1.0,SINGLETON
+"Grammar","Grammar","SIL",7,1.0,SINGLETON
+"Horsemen and horsewomen","Horsemen and horsewomen","SAAM",7,1.0,SINGLETON
+"Essayist","Essayist","NPG",7,1.0,SINGLETON
+"Outer space","Outer space","SAAM;SIL;NPG",7,1.0,SINGLETON
+"Dinophyceae","Dinophyceae","NMNHBOTANY",7,1.0,SINGLETON
+"Sea","Sea","SAAM",7,1.0,SINGLETON
+"Baggage & Luggage","Baggage & Luggage","NPG",7,1.0,SINGLETON
+"Hair Accessory","Hair Accessory","NPG",7,1.0,SINGLETON
+"Ruins","Ruins","SAAM;NPG",7,1.0,SINGLETON
+"Death","Death","SAAM;SIL",7,1.0,SINGLETON
+"Classical dress","Classical dress","SAAM",7,1.0,SINGLETON
+"Methodology","Methodology","SIL",7,1.0,SINGLETON
+"Territorial Governor","Territorial Governor","NPG",7,1.0,SINGLETON
+"Autumn","Autumn","SAAM",7,1.0,SINGLETON
+"Cased object","Cased object","NPG",7,1.0,SINGLETON
+"Games","Games","SAAM;SIL;NPG",6,1.0,SINGLETON
+"Pioneer","Pioneer","NPG",6,1.0,SINGLETON
+"Emblems","Emblems","SAAM;SIL;NPG",6,1.0,SINGLETON
+"Advertising","Advertising","SIL;NPG",6,1.0,SINGLETON
+"Naturalists","Naturalists","SIL;NPG",6,1.0,SINGLETON
+"Moon","Moon","SAAM;SIL;NPG",6,1.0,SINGLETON
+"Shield","Shield","SAAM;NPG",6,1.0,SINGLETON
+"Mary, Blessed Virgin, Saint","Mary, Blessed Virgin, Saint","SAAM",6,1.0,SINGLETON
+"Bishop","Bishop","SAAM;NPG",6,1.0,SINGLETON
+"Seeds","Seeds","SIL",6,1.0,SINGLETON
+"Evil","Evil","SAAM",6,1.0,SINGLETON
+"Nobel Prize","Nobel Prize","NPG",6,1.0,SINGLETON
+"Jesus Christ","Jesus Christ","SAAM",6,1.0,SINGLETON
+"Butterflies","Butterflies","SAAM;SIL",6,1.0,SINGLETON
+"Waterfalls","Waterfalls","SAAM;SIL",6,1.0,SINGLETON
+"Buffalo, NY","Buffalo, NY","NPG",6,1.0,SINGLETON
+"Art, abstract","Art, abstract","SAAM",6,0.9147246097894839,AUTO_ACCEPTED
+"Art, abstract","Drawing, Abstract","SIL",1,0.9147246097894839,AUTO_ACCEPTED
+"Tents","Tents","SAAM;NPG",6,1.0,SINGLETON
+"Fireplace","Fireplace","SAAM;NPG",6,1.0,SINGLETON
+"Secretary of the Navy","Secretary of the Navy","NPG",6,1.0,SINGLETON
+"Linens","Linens","SAAM",6,1.0,SINGLETON
+"Themes, motives","Themes, motives","SIL",6,1.0,SINGLETON
+"Inkwell","Inkwell","NPG",6,1.0,SINGLETON
+"Missionary","Missionary","NPG",6,0.9323754406366028,AUTO_ACCEPTED
+"Missionary","Missionaries","SIL",4,0.9323754406366028,AUTO_ACCEPTED
+"Saints","Saints","SAAM",6,1.0,SINGLETON
+"Quill","Quill","NPG",6,1.0,SINGLETON
+"Cultural property","Cultural property","SIL",6,1.0,SINGLETON
+"Fruit","Fruit","SAAM;SIL;NPG",5,1.0,SINGLETON
+"Donkey","Donkey","SAAM;NPG",5,1.0,SINGLETON
+"Soprano","Soprano","NPG",5,1.0,SINGLETON
+"Socialite","Socialite","NPG",5,1.0,SINGLETON
+"Eagles","Eagles","NPG",5,1.0,SINGLETON
+"Electric apparatus and appliances","Electric apparatus and appliances","SIL",5,1.0,SINGLETON
+"New York, NY","New York, NY","NPG",5,1.0,SINGLETON
+"Wall","Wall","SAAM;NPG",5,0.9135302511755669,AUTO_ACCEPTED
+"Wall","Walls","SIL",1,0.9135302511755669,AUTO_ACCEPTED
+"Pinopsida","Pinopsida","NMNHBOTANY",5,1.0,SINGLETON
+"Autograph","Autograph","NPG",5,1.0,SINGLETON
+"Juvenile literature","Juvenile literature","SIL",5,1.0,SINGLETON
+"Playwright","Playwright","NPG",5,1.0,SINGLETON
+"Academy Award","Academy Award","NPG",5,1.0,SINGLETON
+"Balustrade","Balustrade","NPG",5,1.0,SINGLETON
+"Humorist","Humorist","NPG",5,1.0,SINGLETON
+"Sheriff","Sheriff","NPG",5,1.0,SINGLETON
+"Wharf","Wharf","SAAM",5,1.0,SINGLETON
+"Conversation","Conversation","SAAM",5,1.0,SINGLETON
+"Composer","Composer","SAAM;NPG",5,0.915415142113229,AUTO_ACCEPTED
+"Composer","Composers","SIL",1,0.915415142113229,AUTO_ACCEPTED
+"Wig","Wig","NPG",5,1.0,SINGLETON
+"Box","Box","NPG",5,1.0,SINGLETON
+"Performing arts awards","Performing arts awards","NPG",5,1.0,SINGLETON
+"US Minister","US Minister","NPG",5,1.0,SINGLETON
+"Farmhouse","Farmhouse","SAAM",5,1.0,SINGLETON
+"Illustrator","Illustrator","NPG",5,0.9299601299960101,AUTO_ACCEPTED
+"Illustrator","Illustrators","SIL",1,0.9299601299960101,AUTO_ACCEPTED
+"Prelate","Prelate","NPG",5,1.0,SINGLETON
+"Holidays","Holidays","SAAM;SIL",5,1.0,SINGLETON
+"Money","Money","SIL;NPG",5,1.0,SINGLETON
+"Ruff","Ruff","NPG",5,1.0,SINGLETON
+"Origin","Origin","SIL",5,1.0,SINGLETON
+"Putti","Putti","SAAM;NPG",5,1.0,SINGLETON
+"Principal","Principal","NPG",5,1.0,SINGLETON
+"Beaches","Beaches","SAAM",5,1.0,SINGLETON
+"African influences","African influences","SIL",5,1.0,SINGLETON
+"Ducks","Ducks","SAAM",4,1.0,SINGLETON
+"Scarf","Scarf","SAAM;NPG",4,1.0,SINGLETON
+"Influence","Influence","SIL",4,1.0,SINGLETON
+"Summer","Summer","SAAM",4,1.0,SINGLETON
+"Canoes","Canoes","SAAM;NPG",4,1.0,SINGLETON
+"Testing","Testing","SIL",4,1.0,SINGLETON
+"Army scout","Army scout","NPG",4,1.0,SINGLETON
+"War","War","SAAM;SIL",4,0.9101283630926422,AUTO_ACCEPTED
+"War","Wars","SIL",3,0.9101283630926422,AUTO_ACCEPTED
+"Scroll","Scroll","SAAM;NPG",4,1.0,SINGLETON
+"Humanitarianism","Humanitarianism","NPG",4,1.0,SINGLETON
+"Spring","Spring","SAAM",4,1.0,SINGLETON
+"Spear","Spear","SAAM;NPG",4,1.0,SINGLETON
+"Railroad yard","Railroad yard","SAAM",4,1.0,SINGLETON
+"Canals","Canals","SAAM;SIL",4,1.0,SINGLETON
+"Cross-cultural studies","Cross-cultural studies","SIL",4,1.0,SINGLETON
+"Colonies","Colonies","SIL",4,1.0,SINGLETON
+"Fragment","Fragment","SAAM",4,1.0,SINGLETON
+"Cannon","Cannon","NPG",4,1.0,SINGLETON
+"Crafts","Crafts","SAAM;SIL",4,1.0,SINGLETON
+"Agriculture","Agriculture","SIL;NPG",4,1.0,SINGLETON
+"Shipper","Shipper","NPG",4,1.0,SINGLETON
+"Installations (Art)","Installations (Art)","SIL",4,1.0,SINGLETON
+"Grasses","Grasses","SIL;NPG",4,1.0,SINGLETON
+"Wit and humor","Wit and humor","SIL",4,1.0,SINGLETON
+"Quality","Quality","SAAM",4,1.0,SINGLETON
+"Astronautics","Astronautics","SIL",4,1.0,SINGLETON
+"Mantel","Mantel","NPG",4,1.0,SINGLETON
+"Government relations","Government relations","SIL",4,1.0,SINGLETON
+"Inkstand","Inkstand","NPG",4,1.0,SINGLETON
+"Peuples autochtones","Peuples autochtones","SIL",4,1.0,SINGLETON
+"Sheep","Sheep","SAAM",4,1.0,SINGLETON
+"Protection","Protection","SIL",4,1.0,SINGLETON
+"Frontiersman","Frontiersman","NPG",4,1.0,SINGLETON
+"Landowner","Landowner","NPG",4,1.0,SINGLETON
+"Profile","Profile","SAAM",4,1.0,SINGLETON
+"Pillow","Pillow","NPG",4,1.0,SINGLETON
+"Frontier and pioneer life","Frontier and pioneer life","SIL",4,1.0,SINGLETON
+"Drilling and boring machinery","Drilling and boring machinery","SIL",4,1.0,SINGLETON
+"Antiquités","Antiquités","SIL",4,1.0,SINGLETON
+"Religious life and customs","Religious life and customs","SIL",4,1.0,SINGLETON
+"Drinking vessel","Drinking vessel","NPG",4,1.0,SINGLETON
+"Envelopes (Stationery)","Envelopes (Stationery)","NPG",4,1.0,SINGLETON
+"Orchard","Orchard","SAAM",4,0.9021645775268511,AUTO_ACCEPTED
+"Orchard","Apple orchard","SAAM",1,0.9021645775268511,AUTO_ACCEPTED
+"Suffragist","Suffragist","NPG",4,1.0,SINGLETON
+"Embroidery","Embroidery","SIL",4,1.0,SINGLETON
+"Battleground","Battleground","NPG",4,1.0,SINGLETON
+"Statuette","Statuette","NPG",4,1.0,SINGLETON
+"Deserts","Deserts","SAAM",4,1.0,SINGLETON
+"Cloud","Cloud","SAAM",4,0.9096666642807919,AUTO_ACCEPTED
+"Cloud","Clouds","NPG",2,0.9096666642807919,AUTO_ACCEPTED
+"Ambassador","Ambassador","NPG",4,1.0,SINGLETON
+"Orator","Orator","NPG",3,1.0,SINGLETON
+"Parasol","Parasol","NPG",3,1.0,SINGLETON
+"National parks and reserves","National parks and reserves","SIL",3,1.0,SINGLETON
+"Paleoclimatology","Paleoclimatology","SIL",3,1.0,SINGLETON
+"Planes (Hand tools)","Planes (Hand tools)","SIL",3,1.0,SINGLETON
+"Popular culture","Popular culture","SIL",3,1.0,SINGLETON
+"Ethnobotany","Ethnobotany","SIL",3,1.0,SINGLETON
+"Armor","Armor","SAAM;SIL",3,1.0,SINGLETON
+"Arts and sciences","Arts and sciences","SAAM",3,1.0,SINGLETON
+"Bookcase","Bookcase","NPG",3,1.0,SINGLETON
+"Artists' books","Artists' books","SIL",3,1.0,SINGLETON
+"Bell tower","Bell tower","SAAM",3,1.0,SINGLETON
+"Morphology","Morphology","SIL",3,1.0,SINGLETON
+"Showman","Showman","NPG",3,1.0,SINGLETON
+"Christmas","Christmas","SAAM;SIL",3,1.0,SINGLETON
+"Intelligence agent","Intelligence agent","NPG",3,1.0,SINGLETON
+"Electric contactors","Electric contactors","SIL",3,1.0,SINGLETON
+"Postmarks","Postmarks","SIL",3,1.0,SINGLETON
+"Postcard","Postcard","NPG",3,1.0,SINGLETON
+"Suburban homes","Suburban homes","SIL",3,1.0,SINGLETON
+"Conceptual art","Conceptual art","SIL",3,1.0,SINGLETON
+"Teeth","Teeth","SIL;NPG",3,1.0,SINGLETON
+"US Postmaster General","US Postmaster General","NPG",3,1.0,SINGLETON
+"Portfolio","Portfolio","NPG",3,1.0,SINGLETON
+"Historiography","Historiography","SIL",3,1.0,SINGLETON
+"Patents","Patents","SIL",3,1.0,SINGLETON
+"Ferns","Ferns","SIL",3,1.0,SINGLETON
+"Banner","Banner","NPG",3,1.0,SINGLETON
+"Cannonball","Cannonball","NPG",3,1.0,SINGLETON
+"Medallion","Medallion","NPG",3,1.0,SINGLETON
+"Campaigns","Campaigns","SIL",3,1.0,SINGLETON
+"Emotions","Emotions","SAAM",3,1.0,SINGLETON
+"Spy","Spy","NPG",3,1.0,SINGLETON
+"Museum Administrator","Museum Administrator","NPG",3,0.9103738047750208,AUTO_ACCEPTED
+"Museum Administrator","Art museum administrator","NPG",2,0.9103738047750208,AUTO_ACCEPTED
+"Political science","Political science","SIL",3,1.0,SINGLETON
+"Biographer","Biographer","NPG",3,1.0,SINGLETON
+"Nursery stock","Nursery stock","SIL",3,1.0,SINGLETON
+"Interpretation of cultural and natural resources","Interpretation of cultural and natural resources","SIL;NPG",3,1.0,SINGLETON
+"Pearl","Pearl","NPG",3,0.9055801198388458,AUTO_ACCEPTED
+"Pearl","Pearls","NPG",1,0.9055801198388458,AUTO_ACCEPTED
+"Aerodynamics","Aerodynamics","SIL",3,1.0,SINGLETON
+"Marriage","Marriage","SIL",3,1.0,SINGLETON
+"Repatriation","Repatriation","SIL",3,1.0,SINGLETON
+"Wheel","Wheel","NPG",3,1.0,SINGLETON
+"Hand","Hand","SAAM",3,1.0,SINGLETON
+"Phytogeography","Phytogeography","SIL",3,1.0,SINGLETON
+"Views","Views","SIL",3,1.0,SINGLETON
+"Manners and customs","Manners and customs","SIL",3,1.0,SINGLETON
+"Porch","Porch","SAAM;NPG",3,1.0,SINGLETON
+"Daguerreotypist","Daguerreotypist","NPG",3,1.0,SINGLETON
+"Craniology","Craniology","SIL",3,1.0,SINGLETON
+"Native American warrior","Native American warrior","NPG",3,1.0,SINGLETON
+"Songwriter","Songwriter","NPG",3,1.0,SINGLETON
+"Spats","Spats","NPG",3,1.0,SINGLETON
+"Hotel","Hotel","SAAM",3,1.0,SINGLETON
+"Black people","Black people","SIL",3,1.0,SINGLETON
+"Japanese dress","Japanese dress","SAAM",3,1.0,SINGLETON
+"Turban","Turban","NPG",3,1.0,SINGLETON
+"Lithographer","Lithographer","NPG",3,1.0,SINGLETON
+"Lace and lace making","Lace and lace making","SIL",3,1.0,SINGLETON
+"Medical personnel","Medical personnel","NPG",3,1.0,SINGLETON
+"Lily","Lily","SAAM",3,1.0,SINGLETON
+"Siblings","Siblings","SAAM",3,1.0,SINGLETON
+"Circus owner","Circus owner","NPG",3,1.0,SINGLETON
+"Social change","Social change","SIL",3,1.0,SINGLETON
+"Bas-relief","Bas-relief","NPG",3,1.0,SINGLETON
+"Frontispiece","Frontispiece","NPG",3,1.0,SINGLETON
+"Bangiophyceae","Bangiophyceae","NMNHBOTANY",3,1.0,SINGLETON
+"Reptile","Reptile","SAAM",3,1.0,SINGLETON
+"Well","Well","SAAM",3,1.0,SINGLETON
+"Boxer","Boxer","NPG",3,1.0,SINGLETON
+"Morning","Morning","SAAM",3,1.0,SINGLETON
+"Patron of the arts","Patron of the arts","NPG",3,1.0,SINGLETON
+"Evangelist","Evangelist","NPG",3,1.0,SINGLETON
+"Fishing boat","Fishing boat","SAAM",3,1.0,SINGLETON
+"Control","Control","SIL",3,1.0,SINGLETON
+"Jacket","Jacket","NPG",3,1.0,SINGLETON
+"Rain","Rain","SAAM",3,1.0,SINGLETON
+"Canyon","Canyon","SAAM",3,0.926839793227468,AUTO_ACCEPTED
+"Canyon","Canyons","SIL",1,0.926839793227468,AUTO_ACCEPTED
+"Discoveries in geography","Discoveries in geography","SIL",3,1.0,SINGLETON
+"Engraving","Engraving","SIL",3,1.0,SINGLETON
+"Cigar","Cigar","NPG",3,1.0,SINGLETON
+"Stock","Stock","NPG",3,1.0,SINGLETON
+"Cigarette","Cigarette","NPG",3,1.0,SINGLETON
+"Tower","Tower","SAAM",3,0.9026916480653564,AUTO_ACCEPTED
+"Tower","Towers","SIL",1,0.9026916480653564,AUTO_ACCEPTED
+"Rancher","Rancher","NPG",3,1.0,SINGLETON
+"Arthropods","Arthropods","SIL",2,1.0,SINGLETON
+"Tricorne","Tricorne","NPG",2,1.0,SINGLETON
+"Club","Club","SAAM;NPG",2,1.0,SINGLETON
+"Cultural pluralism","Cultural pluralism","SIL",2,1.0,SINGLETON
+"Perennials","Perennials","SIL",2,1.0,SINGLETON
+"Relief","Relief","NPG",2,1.0,SINGLETON
+"Khayyam, Omar","Khayyam, Omar","SAAM",2,1.0,SINGLETON
+"Columbia (Symbolic character)","Columbia (Symbolic character)","SAAM;NPG",2,1.0,SINGLETON
+"Cooking, Mexican","Cooking, Mexican","SIL",2,1.0,SINGLETON
+"Scientific Theorist","Scientific Theorist","NPG",2,1.0,SINGLETON
+"Rubaiyat","Rubaiyat","SAAM",2,1.0,SINGLETON
+"Landscape assessment","Landscape assessment","SIL",2,1.0,SINGLETON
+"Tie pin","Tie pin","NPG",2,1.0,SINGLETON
+"Rare books","Rare books","SIL",2,0.9999999999999992,AUTO_ACCEPTED
+"Rare books","Rare Books","SIL",1,0.9999999999999992,AUTO_ACCEPTED
+"Cognition in animals","Cognition in animals","SIL",2,1.0,SINGLETON
+"Rabbits","Rabbits","SAAM;NPG",2,1.0,SINGLETON
+"Philadelphia, PA","Philadelphia, PA","NPG",2,1.0,SINGLETON
+"Phases","Phases","SIL",2,1.0,SINGLETON
+"Horticulturist","Horticulturist","SAAM;NPG",2,1.0,SINGLETON
+"Postmodernism","Postmodernism","SIL",2,1.0,SINGLETON
+"Tongue River","Tongue River","SAAM",2,1.0,SINGLETON
+"Tomb","Tomb","SAAM;NPG",2,0.9250282943046018,AUTO_ACCEPTED
+"Tomb","Tombs","SIL",1,0.9250282943046018,AUTO_ACCEPTED
+"Visual communication","Visual communication","SIL",2,1.0,SINGLETON
+"Chalice","Chalice","NPG",2,1.0,SINGLETON
+"Meteorology","Meteorology","SIL",2,1.0,SINGLETON
+"Emigration and immigration","Emigration and immigration","SIL",2,0.9392781222088155,AUTO_ACCEPTED
+"Emigration and immigration","Émigration et immigration","SIL",1,0.9392781222088155,AUTO_ACCEPTED
+"Patent model","Patent model","SAAM;NPG",2,1.0,SINGLETON
+"Aliens","Aliens","SIL",2,1.0,SINGLETON
+"Brooklyn","Brooklyn","SAAM",2,1.0,SINGLETON
+"Illustrated books","Illustrated books","SIL",2,0.913406286016469,AUTO_ACCEPTED
+"Illustrated books","Illustrated children's books","SIL",1,0.913406286016469,AUTO_ACCEPTED
+"Oak tree","Oak tree","SAAM",2,1.0,SINGLETON
+"Marchioness","Marchioness","NPG",2,1.0,SINGLETON
+"Biodiversity","Biodiversity","SIL",2,1.0,SINGLETON
+"Buffaloes","Buffaloes","SAAM",2,1.0,SINGLETON
+"Pipe","Pipe","SIL;NPG",2,1.0,SINGLETON
+"Pre-Raphaelitism","Pre-Raphaelitism","SIL",2,0.9185546151854278,AUTO_ACCEPTED
+"Pre-Raphaelitism","Pre-Raphaelites","SIL",1,0.9185546151854278,AUTO_ACCEPTED
+"Seafaring life","Seafaring life","SIL",2,1.0,SINGLETON
+"Funereal","Funereal","NPG",2,1.0,SINGLETON
+"Knight","Knight","SAAM",2,1.0,SINGLETON
+"Terracottas","Terracottas","SIL",2,1.0,SINGLETON
+"Copepoda","Copepoda","SIL",2,1.0,SINGLETON
+"Minority artists","Minority artists","SIL",2,1.0,SINGLETON
+"Grain","Grain","SIL",2,1.0,SINGLETON
+"Villages","Villages","NMNHANTHRO",2,1.0,SINGLETON
+"Chicken","Chicken","SAAM;NPG",2,1.0,SINGLETON
+"Endangered ecosystems","Endangered ecosystems","SIL",2,1.0,SINGLETON
+"Politique et gouvernement","Politique et gouvernement","SIL",2,1.0,SINGLETON
+"Monocle","Monocle","NPG",2,1.0,SINGLETON
+"Wales","Wales","SAAM",2,1.0,SINGLETON
+"Chess set","Chess set","NPG",2,1.0,SINGLETON
+"Washington, DC","Washington, DC","NPG",2,1.0,SINGLETON
+"Artists' preparatory studies","Artists' preparatory studies","SIL",2,1.0,SINGLETON
+"Museum conservation methods","Museum conservation methods","SIL",2,1.0,SINGLETON
+"Pendant","Pendant","NPG",2,1.0,SINGLETON
+"Pulitzer Prize","Pulitzer Prize","NPG",2,1.0,SINGLETON
+"Flathead (Indiens)","Flathead (Indiens)","SIL",2,1.0,SINGLETON
+"Nursery rhymes","Nursery rhymes","SIL",2,1.0,SINGLETON
+"Confederate official","Confederate official","NPG",2,1.0,SINGLETON
+"Art nouveau","Art nouveau","SIL",2,1.0,SINGLETON
+"Planter","Planter","NPG",2,1.0,SINGLETON
+"Moeurs et coutumes","Moeurs et coutumes","SIL",2,0.9299422467501877,AUTO_ACCEPTED
+"Moeurs et coutumes","Mœurs et coutumes","SIL",1,0.9299422467501877,AUTO_ACCEPTED
+"Aspect de l'environnement","Aspect de l'environnement","SIL",2,1.0,SINGLETON
+"Clay","Clay","SIL",2,1.0,SINGLETON
+"Violence","Violence","SAAM",2,1.0,SINGLETON
+"Bicycles","Bicycles","SAAM;SIL",2,1.0,SINGLETON
+"Visual arts administrator","Visual arts administrator","NPG",2,1.0,SINGLETON
+"Cart","Cart","SAAM",2,1.0,SINGLETON
+"Cliffs","Cliffs","NPG",2,1.0,SINGLETON
+"Colonizer","Colonizer","NPG",2,1.0,SINGLETON
+"Frame","Frame","NPG",2,1.0,SINGLETON
+"University president","University president","NPG",2,1.0,SINGLETON
+"Thebes","Thebes","SAAM",2,1.0,SINGLETON
+"Attitudes","Attitudes","SIL",2,1.0,SINGLETON
+"Dean","Dean","NPG",2,1.0,SINGLETON
+"Muff","Muff","NPG",2,1.0,SINGLETON
+"Spyglass","Spyglass","NPG",2,1.0,SINGLETON
+"Broadside","Broadside","NPG",2,1.0,SINGLETON
+"Bay","Bay","SAAM",2,1.0,SINGLETON
+"Discrimination","Discrimination","SIL",2,1.0,SINGLETON
+"Knitting","Knitting","SIL",2,1.0,SINGLETON
+"Prices","Prices","SIL",2,1.0,SINGLETON
+"Soap","Soap","NPG",2,1.0,SINGLETON
+"Time perception","Time perception","SIL",2,1.0,SINGLETON
+"Competitions","Competitions","SIL",2,1.0,SINGLETON
+"Pistol","Pistol","NPG",2,1.0,SINGLETON
+"Cornucopia","Cornucopia","SAAM;NPG",2,1.0,SINGLETON
+"Fiction","Fiction","SIL",2,1.0,SINGLETON
+"Yoruba festivals","Yoruba festivals","SIL",2,1.0,SINGLETON
+"Office","Office","NPG",2,1.0,SINGLETON
+"Commissioner","Commissioner","NPG",2,1.0,SINGLETON
+"Carroll","Carroll","SAAM",2,1.0,SINGLETON
+"Furnaces","Furnaces","SIL",2,1.0,SINGLETON
+"Religious leader","Religious leader","NPG",2,1.0,SINGLETON
+"Historic buildings","Historic buildings","SIL",2,1.0,SINGLETON
+"Toy and movable books","Toy and movable books","SIL",2,1.0,SINGLETON
+"Typewriters","Typewriters","SIL",2,1.0,SINGLETON
+"Thames River","Thames River","SAAM",2,1.0,SINGLETON
+"Cults","Cults","SIL",2,1.0,SINGLETON
+"Anthropometry","Anthropometry","SIL",2,1.0,SINGLETON
+"Pont-Aven school of art (Movement)","Pont-Aven school of art (Movement)","SIL",2,1.0,SINGLETON
+"Encyclopedias and dictionaries","Encyclopedias and dictionaries","SIL",2,1.0,SINGLETON
+"Scepter","Scepter","NPG",2,1.0,SINGLETON
+"Funeral","Funeral","SAAM",2,1.0,SINGLETON
+"Cartography","Cartography","SIL",2,1.0,SINGLETON
+"Temperance reformer","Temperance reformer","NPG",2,1.0,SINGLETON
+"Gathering","Gathering","SAAM",2,1.0,SINGLETON
+"Brick","Brick","NPG",2,1.0,SINGLETON
+"Case studies","Case studies","SIL",2,1.0,SINGLETON
+"Limnology","Limnology","SIL",2,1.0,SINGLETON
+"Environmental policy","Environmental policy","SIL",2,1.0,SINGLETON
+"Lepidoptera","Lepidoptera","SIL",2,1.0,SINGLETON
+"Wives","Wives","SIL",2,1.0,SINGLETON
+"Foreign leader","Foreign leader","NPG",2,1.0,SINGLETON
+"Dagger","Dagger","SAAM",2,1.0,SINGLETON
+"Nursing","Nursing","SAAM;NPG",2,1.0,SINGLETON
+"Mount Washington","Mount Washington","SAAM",2,1.0,SINGLETON
+"Phylogeny","Phylogeny","SIL",2,1.0,SINGLETON
+"Greenwich","Greenwich","SAAM",2,1.0,SINGLETON
+"Parliamentarian","Parliamentarian","NPG",2,1.0,SINGLETON
+"Brakes","Brakes","SIL",2,1.0,SINGLETON
+"Guided missiles","Guided missiles","SIL",2,1.0,SINGLETON
+"Buildings, structures, etc","Buildings, structures, etc","SIL",2,1.0,SINGLETON
+"Helicopters","Helicopters","SIL",2,0.9076861418968915,AUTO_ACCEPTED
+"Helicopters","Hélicoptères","SIL",1,0.9076861418968915,AUTO_ACCEPTED
+"Helicopters","Military helicopters","SIL",1,0.9076861418968915,AUTO_ACCEPTED
+"Leaves","Leaves","SAAM",2,1.0,SINGLETON
+"Entrepreneurship","Entrepreneurship","NPG",2,1.0,SINGLETON
+"American Indian interpreter","American Indian interpreter","NPG",2,1.0,SINGLETON
+"Statistics","Statistics","SIL",2,1.0,SINGLETON
+"Tethys (Paleogeography)","Tethys (Paleogeography)","SIL",2,1.0,SINGLETON
+"Sharks","Sharks","SIL",2,1.0,SINGLETON
+"Overcoat","Overcoat","NPG",2,1.0,SINGLETON
+"Welding","Welding","SIL",2,1.0,SINGLETON
+"Larvae","Larvae","SIL",2,1.0,SINGLETON
+"Afghan War, 2001-","Afghan War, 2001-","SIL",2,1.0,SINGLETON
+"Kilns","Kilns","SIL",2,1.0,SINGLETON
+"Occultism","Occultism","SAAM;SIL",2,1.0,SINGLETON
+"Pocket watch","Pocket watch","NPG",2,1.0,SINGLETON
+"Bayonet","Bayonet","NPG",2,1.0,SINGLETON
+"Technique","Technique","SIL",2,1.0,SINGLETON
+"Peonies","Peonies","SIL",2,1.0,SINGLETON
+"Animal horn","Animal horn","NPG",2,1.0,SINGLETON
+"Neoclassicism (Architecture)","Neoclassicism (Architecture)","SIL",2,0.901347987048641,AUTO_ACCEPTED
+"Neoclassicism (Architecture)","Neoclassicism","SIL",1,0.901347987048641,AUTO_ACCEPTED
+"Neoclassicism (Architecture)","Neoclassicism (Art)","SIL",1,0.901347987048641,AUTO_ACCEPTED
+"Stable","Stable","SAAM",2,1.0,SINGLETON
+"Literary awards","Literary awards","NPG",2,1.0,SINGLETON
+"Motion study","Motion study","SAAM",2,1.0,SINGLETON
+"Preservation","Preservation","SIL",2,1.0,SINGLETON
+"Graphic arts","Graphic arts","SIL",2,1.0,SINGLETON
+"Alice in Wonderland","Alice in Wonderland","SAAM",2,1.0,SINGLETON
+"Legumes","Legumes","SIL",2,1.0,SINGLETON
+"Globe","Globe","NPG",2,1.0,SINGLETON
+"Youth","Youth","SIL",2,1.0,SINGLETON
+"Sarracenia rubra","Sarracenia rubra","SAAM",2,1.0,SINGLETON
+"Alderman","Alderman","NPG",2,1.0,SINGLETON
+"Moral and ethical aspects","Moral and ethical aspects","SIL",2,1.0,SINGLETON
+"Cottage industries","Cottage industries","SIL",2,1.0,SINGLETON
+"Urn","Urn","NPG",2,1.0,SINGLETON
+"Eclecticism","Eclecticism","SIL",2,1.0,SINGLETON
+"Barrel","Barrel","NPG",2,1.0,SINGLETON
+"Fountain","Fountain","SAAM",2,1.0,SINGLETON
+"Airports","Airports","SIL",2,1.0,SINGLETON
+"Fire","Fire","SAAM;SIL",2,1.0,SINGLETON
+"Commodore","Commodore","NPG",2,1.0,SINGLETON
+"Coral reef ecology","Coral reef ecology","SIL",2,1.0,SINGLETON
+"Cornwall","Cornwall","SAAM",2,1.0,SINGLETON
+"Mood (Psychology)","Mood (Psychology)","SAAM",2,1.0,SINGLETON
+"Idols and images","Idols and images","SIL",2,1.0,SINGLETON
+"Monk","Monk","SAAM",2,1.0,SINGLETON
+"Menyanthes trifoliata","Menyanthes trifoliata","SAAM",2,1.0,SINGLETON
+"Texts","Texts","SIL",2,1.0,SINGLETON
+"Biological control","Biological control","SIL",2,1.0,SINGLETON
+"Comedian","Comedian","NPG",2,1.0,SINGLETON
+"Sound","Sound","SIL",2,1.0,SINGLETON
+"Monogenism and polygenism","Monogenism and polygenism","SIL",2,1.0,SINGLETON
+"Valves","Valves","SIL",2,1.0,SINGLETON
+"Precious stones","Precious stones","SIL",2,1.0,SINGLETON
+"Yorktown","Yorktown","SAAM",2,1.0,SINGLETON
+"Peasant","Peasant","SAAM",2,1.0,SINGLETON
+"Vendor","Vendor","SAAM",2,1.0,SINGLETON
+"Binoculars","Binoculars","NPG",2,1.0,SINGLETON
+"Labor unions","Labor unions","SIL",2,1.0,SINGLETON
+"Trolley","Trolley","NPG",2,1.0,SINGLETON
+"Palm","Palm","SAAM;NPG",2,1.0,SINGLETON
+"Fortress","Fortress","NPG",2,1.0,SINGLETON
+"Mice","Mice","SIL",2,1.0,SINGLETON
+"Museum finance","Museum finance","SIL",2,1.0,SINGLETON
+"Hairstyle","Hairstyle","NPG",2,1.0,SINGLETON
+"Collectibles","Collectibles","SIL",2,1.0,SINGLETON
+"Cambridge","Cambridge","SAAM",2,1.0,SINGLETON
+"Auditor","Auditor","NPG",2,1.0,SINGLETON
+"Fantasy","Fantasy","SAAM",2,1.0,SINGLETON
+"SOCIAL SCIENCE","SOCIAL SCIENCE","SIL",2,0.9455612705210202,AUTO_ACCEPTED
+"SOCIAL SCIENCE","Social sciences","SIL",1,0.9455612705210202,AUTO_ACCEPTED
+"Valleys","Valleys","SAAM",2,1.0,SINGLETON
+"Court and courtiers","Court and courtiers","SIL",2,1.0,SINGLETON
+"Native American diplomat","Native American diplomat","NPG",2,1.0,SINGLETON
+"Hydrodynamics","Hydrodynamics","SIL",2,1.0,SINGLETON
+"Lighthouses","Lighthouses","SAAM;NPG",2,1.0,SINGLETON
+"Civil rights movements","Civil rights movements","SIL",2,1.0,SINGLETON
+"Patriotism","Patriotism","SAAM;NPG",2,1.0,SINGLETON
+"Precancels","Precancels","SIL",2,1.0,SINGLETON
+"Sorrow","Sorrow","SAAM",2,1.0,SINGLETON
+"Bird's eye view","Bird's eye view","SAAM",2,1.0,SINGLETON
+"Apron","Apron","NPG",2,1.0,SINGLETON
+"Revolutionary","Revolutionary","NPG",2,1.0,SINGLETON
+"Rhine River","Rhine River","SAAM",2,1.0,SINGLETON
+"Landscape architect","Landscape architect","NPG",2,1.0,SINGLETON
+"Saber","Saber","NPG",2,1.0,SINGLETON
+"Swimming","Swimming","SAAM",2,1.0,SINGLETON
+"Steamboat captain","Steamboat captain","NPG",2,1.0,SINGLETON
+"Forest management","Forest management","SIL",2,1.0,SINGLETON
+"Air mail service","Air mail service","SIL",2,1.0,SINGLETON
+"Cytology","Cytology","SIL",2,1.0,SINGLETON
+"Amphibians","Amphibians","SIL",2,1.0,SINGLETON
+"Cooking","Cooking","SAAM;SIL",2,1.0,SINGLETON
+"Cetacea","Cetacea","SIL",2,1.0,SINGLETON
+"Coral reefs and islands","Coral reefs and islands","SIL",2,1.0,SINGLETON
+"China trade art","China trade art","SIL",2,1.0,SINGLETON
+"Sicily","Sicily","SAAM",2,1.0,SINGLETON
+"Elder","Elder","NPG",2,1.0,SINGLETON
+"Jurist","Jurist","NPG",2,1.0,SINGLETON
+"Mammifères","Mammifères","SIL",2,1.0,SINGLETON
+"Shovel","Shovel","NPG",2,1.0,SINGLETON
+"Cobbler","Cobbler","NPG",2,1.0,SINGLETON
+"Hygiène du milieu","Hygiène du milieu","SIL",2,1.0,SINGLETON
+"Signs and signboards","Signs and signboards","NPG",2,1.0,SINGLETON
+"Conservation of natural resources","Conservation of natural resources","SIL",2,1.0,SINGLETON
+"Impresario","Impresario","NPG",2,1.0,SINGLETON
+"Nationalism","Nationalism","SIL",2,1.0,SINGLETON
+"Geschichte","Geschichte","SIL",2,1.0,SINGLETON
+"Sunrise","Sunrise","SAAM",2,1.0,SINGLETON
+"Staphylinidae","Staphylinidae","SIL",2,1.0,SINGLETON
+"Safety appliances","Safety appliances","SIL",2,1.0,SINGLETON
+"Lacquer and lacquering","Lacquer and lacquering","SIL",2,1.0,SINGLETON
+"Still life artist","Still life artist","NPG",2,1.0,SINGLETON
+"Diseases and pests","Diseases and pests","SIL",2,1.0,SINGLETON
+"New Deal, 1933-1939","New Deal, 1933-1939","SAAM",2,1.0,SINGLETON
+"Iraq War, 2003-2011","Iraq War, 2003-2011","SIL",2,1.0,SINGLETON
+"Neolithic period","Neolithic period","SIL",2,1.0,SINGLETON
+"Watch","Watch","NPG",2,1.0,SINGLETON
+"Gardens, Italian","Gardens, Italian","SIL",2,1.0,SINGLETON
+"Lathes","Lathes","SIL",2,1.0,SINGLETON
+"Niagara Falls","Niagara Falls","SAAM",2,1.0,SINGLETON
+"Personal narratives","Personal narratives","SIL",2,1.0,SINGLETON
+"Photographie artistique","Photographie artistique","SIL",2,1.0,SINGLETON
+"Gate","Gate","SAAM",2,0.9163939800438063,AUTO_ACCEPTED
+"Gate","Gates","SIL",1,0.9163939800438063,AUTO_ACCEPTED
+"Shopping centers","Shopping centers","SIL",1,1.0,SINGLETON
+"Showy milkweed","Showy milkweed","SAAM",1,1.0,SINGLETON
+"Coloring books","Coloring books","SIL",1,1.0,SINGLETON
+"Aquilegia ecalcarata","Aquilegia ecalcarata","SAAM",1,1.0,SINGLETON
+"Monsters","Monsters","SAAM",1,1.0,SINGLETON
+"Discovery of United States","Discovery of United States","SAAM",1,1.0,SINGLETON
+"Goldenstar","Goldenstar","SAAM",1,1.0,SINGLETON
+"Parvati (Hindu deity)","Parvati (Hindu deity)","SIL",1,1.0,SINGLETON
+"Life cycles","Life cycles","SIL",1,1.0,SINGLETON
+"Photomicrography","Photomicrography","SIL",1,1.0,SINGLETON
+"Cinematography","Cinematography","SIL",1,1.0,SINGLETON
+"Journalistes","Journalistes","SIL",1,1.0,SINGLETON
+"Parapsychology","Parapsychology","SIL",1,1.0,SINGLETON
+"Industrie familiale","Industrie familiale","SIL",1,1.0,SINGLETON
+"Stadt","Stadt","SIL",1,1.0,SINGLETON
+"Character","Character","SAAM",1,1.0,SINGLETON
+"Birch tree","Birch tree","SAAM",1,1.0,SINGLETON
+"Lulua anthropomorphic sculpture","Lulua anthropomorphic sculpture","SIL",1,0.9031173813258156,AUTO_ACCEPTED
+"Lulua anthropomorphic sculpture","Lega anthropomorphic sculpture","SIL",1,0.9031173813258156,AUTO_ACCEPTED
+"Proboscidea (Mammals), Fossil","Proboscidea (Mammals), Fossil","SIL",1,1.0,SINGLETON
+"Syntax","Syntax","SIL",1,1.0,SINGLETON
+"Race","Race","SIL",1,1.0,SINGLETON
+"Lake Titicaca","Lake Titicaca","SAAM",1,1.0,SINGLETON
+"Tap-Cartridges (Brand name)","Tap-Cartridges (Brand name)","SIL",1,1.0,SINGLETON
+"Sapphires","Sapphires","SIL",1,1.0,SINGLETON
+"Long Branch Beach","Long Branch Beach","SAAM",1,1.0,SINGLETON
+"Nevada County","Nevada County","SAAM",1,1.0,SINGLETON
+"Telecommunication","Telecommunication","SIL",1,1.0,SINGLETON
+"Columnist","Columnist","NPG",1,1.0,SINGLETON
+"Scaphandres spatiaux","Scaphandres spatiaux","SIL",1,1.0,SINGLETON
+"Roof","Roof","SAAM",1,1.0,SINGLETON
+"Gebel el Haridi","Gebel el Haridi","SAAM",1,1.0,SINGLETON
+"Emptiness (Philosophy)","Emptiness (Philosophy)","SIL",1,1.0,SINGLETON
+"Physical measurements","Physical measurements","SIL",1,1.0,SINGLETON
+"Buses","Buses","SIL",1,1.0,SINGLETON
+"Lausanne","Lausanne","SAAM",1,1.0,SINGLETON
+"Atlantic and Great Western Railroad","Atlantic and Great Western Railroad","SAAM",1,1.0,SINGLETON
+"Sunset","Sunset","SAAM",1,1.0,SINGLETON
+"Embezzlement","Embezzlement","NPG",1,1.0,SINGLETON
+"Kolonie","Kolonie","SIL",1,1.0,SINGLETON
+"Islamic art metal-work","Islamic art metal-work","SIL",1,1.0,SINGLETON
+"Variation (Biology)","Variation (Biology)","SIL",1,1.0,SINGLETON
+"Cleaning","Cleaning","SIL",1,1.0,SINGLETON
+"Trade associations","Trade associations","SIL",1,1.0,SINGLETON
+"Rhetoric","Rhetoric","SIL",1,1.0,SINGLETON
+"Tower Creek","Tower Creek","SAAM",1,1.0,SINGLETON
+"Sculpture, Baule","Sculpture, Baule","SIL",1,1.0,SINGLETON
+"Silk","Silk","SIL",1,1.0,SINGLETON
+"Ceramic tableware","Ceramic tableware","SIL",1,1.0,SINGLETON
+"Portuguese literature","Portuguese literature","SIL",1,1.0,SINGLETON
+"Littoral","Littoral","SIL",1,1.0,SINGLETON
+"Depressions","Depressions","SIL",1,1.0,SINGLETON
+"Utica, NY","Utica, NY","NPG",1,1.0,SINGLETON
+"Leadership","Leadership","SIL",1,1.0,SINGLETON
+"Adhesives","Adhesives","SIL",1,1.0,SINGLETON
+"Medicine Ceremony","Medicine Ceremony","SAAM",1,1.0,SINGLETON
+"Sex role","Sex role","SIL",1,1.0,SINGLETON
+"Orthocarpus erianthus","Orthocarpus erianthus","SAAM",1,1.0,SINGLETON
+"Votive offerings in art","Votive offerings in art","SIL",1,1.0,SINGLETON
+"Mimulus caespitosus","Mimulus caespitosus","SAAM",1,1.0,SINGLETON
+"Commando operations","Commando operations","SIL",1,1.0,SINGLETON
+"Ipswich","Ipswich","SAAM",1,1.0,SINGLETON
+"American poetry","American poetry","SIL",1,1.0,SINGLETON
+"Channel","Channel","SAAM",1,1.0,SINGLETON
+"Jaina philosophy","Jaina philosophy","SIL",1,1.0,SINGLETON
+"Young adult literature, African (English)","Young adult literature, African (English)","SIL",1,1.0,SINGLETON
+"Photosynthesis","Photosynthesis","SIL",1,1.0,SINGLETON
+"Mycology","Mycology","SIL",1,1.0,SINGLETON
+"Natural areas","Natural areas","SIL",1,1.0,SINGLETON
+"Parasites","Parasites","SIL",1,1.0,SINGLETON
+"Middle class","Middle class","SIL",1,1.0,SINGLETON
+"Foreign licensing agreements","Foreign licensing agreements","SIL",1,1.0,SINGLETON
+"Brauchtum","Brauchtum","SIL",1,1.0,SINGLETON
+"Sex customs","Sex customs","SIL",1,1.0,SINGLETON
+"Pronunciation","Pronunciation","SIL",1,1.0,SINGLETON
+"Marquetry","Marquetry","SIL",1,1.0,SINGLETON
+"Basketmaking","Basketmaking","NMNHANTHRO",1,1.0,SINGLETON
+"Racially mixed people","Racially mixed people","SIL",1,1.0,SINGLETON
+"Wild hyacinth","Wild hyacinth","SAAM",1,1.0,SINGLETON
+"Press","Press","NPG",1,1.0,SINGLETON
+"Paper industry","Paper industry","SIL",1,0.936593093009629,AUTO_ACCEPTED
+"Paper industry","Paper products industry","SIL",1,0.936593093009629,AUTO_ACCEPTED
+"Bettws-y-Coed","Bettws-y-Coed","SAAM",1,1.0,SINGLETON
+"Intoxicated","Intoxicated","SAAM",1,1.0,SINGLETON
+"Goose","Goose","SAAM",1,1.0,SINGLETON
+"Gardenia","Gardenia","NPG",1,1.0,SINGLETON
+"Bands (Music)","Bands (Music)","SIL",1,1.0,SINGLETON
+"Alpine monkey flower","Alpine monkey flower","SAAM",1,1.0,SINGLETON
+"Atamosco atamasco","Atamosco atamasco","SAAM",1,1.0,SINGLETON
+"Grecs","Grecs","SIL",1,1.0,SINGLETON
+"Blue and white ware","Blue and white ware","SIL",1,1.0,SINGLETON
+"Vernal Falls","Vernal Falls","SAAM",1,1.0,SINGLETON
+"Metamorphosis","Metamorphosis","SIL",1,1.0,SINGLETON
+"Hallucinogenic drugs and religious experience","Hallucinogenic drugs and religious experience","SIL",1,1.0,SINGLETON
+"Navires","Navires","SIL",1,1.0,SINGLETON
+"Military Camp","Military Camp","NPG",1,1.0,SINGLETON
+"Pathogenic bacteria","Pathogenic bacteria","SIL",1,1.0,SINGLETON
+"Tillandsia fasciculata","Tillandsia fasciculata","SAAM",1,1.0,SINGLETON
+"Revolvers","Revolvers","SIL",1,1.0,SINGLETON
+"Crystallography","Crystallography","SIL",1,1.0,SINGLETON
+"Durham Cathedral","Durham Cathedral","SAAM",1,1.0,SINGLETON
+"Apple","Apple","SAAM",1,1.0,SINGLETON
+"Linguistic change","Linguistic change","SIL",1,1.0,SINGLETON
+"Artisanat","Artisanat","SIL",1,1.0,SINGLETON
+"Panicum","Panicum","SIL",1,1.0,SINGLETON
+"Fraternal insurance","Fraternal insurance","SIL",1,1.0,SINGLETON
+"Pickerelweed","Pickerelweed","SAAM",1,1.0,SINGLETON
+"General Land Office","General Land Office","NPG",1,1.0,SINGLETON
+"Polarizing microscopes","Polarizing microscopes","SIL",1,1.0,SINGLETON
+"Centaur","Centaur","SAAM",1,1.0,SINGLETON
+"Translations from Chinese","Translations from Chinese","SIL",1,1.0,SINGLETON
+"Sepulchral monuments","Sepulchral monuments","SIL",1,1.0,SINGLETON
+"Iroquois philosophy","Iroquois philosophy","SIL",1,1.0,SINGLETON
+"Duryea automobile","Duryea automobile","SIL",1,1.0,SINGLETON
+"Serer divination","Serer divination","SIL",1,1.0,SINGLETON
+"Musiciens de bluegrass","Musiciens de bluegrass","SIL",1,1.0,SINGLETON
+"Sculpture, Nigerian","Sculpture, Nigerian","SIL",1,1.0,SINGLETON
+"Missouri River","Missouri River","SAAM",1,1.0,SINGLETON
+"Stained glass","Stained glass","NPG",1,1.0,SINGLETON
+"Shock absorbers","Shock absorbers","SIL",1,1.0,SINGLETON
+"Automatic timers","Automatic timers","SIL",1,1.0,SINGLETON
+"Tankas (Tibetan scrolls)","Tankas (Tibetan scrolls)","SIL",1,1.0,SINGLETON
+"Feminist theory","Feminist theory","SIL",1,1.0,SINGLETON
+"American Revolution Bicentennial (1976)","American Revolution Bicentennial (1976)","SIL",1,1.0,SINGLETON
+"Saf-Te (Brand name)","Saf-Te (Brand name)","SIL",1,1.0,SINGLETON
+"Mummies","Mummies","SIL",1,1.0,SINGLETON
+"Steel executive","Steel executive","NPG",1,1.0,SINGLETON
+"Croissance","Croissance","SIL",1,1.0,SINGLETON
+"Cycling","Cycling","SAAM",1,1.0,SINGLETON
+"Curatorship","Curatorship","SIL",1,1.0,SINGLETON
+"Coal executive","Coal executive","NPG",1,1.0,SINGLETON
+"Coastal archaeology","Coastal archaeology","SIL",1,1.0,SINGLETON
+"Board game","Board game","NPG",1,1.0,SINGLETON
+"Cyclopidae","Cyclopidae","SIL",1,1.0,SINGLETON
+"Weariness","Weariness","SAAM",1,1.0,SINGLETON
+"Hydroelectric power plants","Hydroelectric power plants","SIL",1,1.0,SINGLETON
+"Konjo anthropomorphic sculpture","Konjo anthropomorphic sculpture","SIL",1,1.0,SINGLETON
+"Freight","Freight","SIL",1,1.0,SINGLETON
+"Fleas","Fleas","SIL",1,1.0,SINGLETON
+"Rouseville","Rouseville","SAAM",1,1.0,SINGLETON
+"Lurlei","Lurlei","SAAM",1,1.0,SINGLETON
+"Social worker","Social worker","NPG",1,1.0,SINGLETON
+"Armory","Armory","SAAM",1,1.0,SINGLETON
+"Glossaries, vocabularies, etc","Glossaries, vocabularies, etc","SIL",1,1.0,SINGLETON
+"Spurs","Spurs","NPG",1,1.0,SINGLETON
+"Seaplanes","Seaplanes","SIL",1,1.0,SINGLETON
+"Pottery, Akan","Pottery, Akan","SIL",1,1.0,SINGLETON
+"Forecasting","Forecasting","SIL",1,1.0,SINGLETON
+"Chrysogonum virginianum","Chrysogonum virginianum","SAAM",1,1.0,SINGLETON
+"Congregational churches","Congregational churches","SIL",1,1.0,SINGLETON
+"Victorian dress","Victorian dress","SAAM",1,1.0,SINGLETON
+"Tea","Tea","SIL",1,1.0,SINGLETON
+"Ethnische Beziehungen","Ethnische Beziehungen","SIL",1,1.0,SINGLETON
+"Traditional medicine","Traditional medicine","SIL",1,1.0,SINGLETON
+"Civil rights workers","Civil rights workers","SIL",1,1.0,SINGLETON
+"Galvanometer","Galvanometer","SIL",1,1.0,SINGLETON
+"Internal combustion engines","Internal combustion engines","SIL",1,1.0,SINGLETON
+"Radioactive dating","Radioactive dating","SIL",1,1.0,SINGLETON
+"Plantation life","Plantation life","SIL",1,1.0,SINGLETON
+"Spoon","Spoon","NPG",1,1.0,SINGLETON
+"Straw hat","Straw hat","NPG",1,1.0,SINGLETON
+"Digital media","Digital media","SIL",1,1.0,SINGLETON
+"Vegetables","Vegetables","SIL",1,0.9367531253332237,AUTO_ACCEPTED
+"Vegetables","Vegetable","NPG",1,0.9367531253332237,AUTO_ACCEPTED
+"Michigan Avenue","Michigan Avenue","SAAM",1,1.0,SINGLETON
+"Sacred books","Sacred books","SIL",1,1.0,SINGLETON
+"Brittany","Brittany","SAAM",1,1.0,SINGLETON
+"Rosenwald Museum","Rosenwald Museum","SAAM",1,1.0,SINGLETON
+"Tiara","Tiara","NPG",1,1.0,SINGLETON
+"Last Judgment","Last Judgment","SAAM",1,1.0,SINGLETON
+"Supply and demand","Supply and demand","SIL",1,1.0,SINGLETON
+"Typhoid fever","Typhoid fever","SIL",1,1.0,SINGLETON
+"American loyalists","American loyalists","SIL",1,1.0,SINGLETON
+"Sombrero","Sombrero","NPG",1,1.0,SINGLETON
+"Plasma (Ionized gases)","Plasma (Ionized gases)","SIL",1,1.0,SINGLETON
+"Quotations, English","Quotations, English","SIL",1,1.0,SINGLETON
+"42.21 evolution","42.21 evolution","SIL",1,1.0,SINGLETON
+"Graphic design (Typography)","Graphic design (Typography)","SIL",1,1.0,SINGLETON
+"Susquehanna River","Susquehanna River","SAAM",1,1.0,SINGLETON
+"Biology, Experimental","Biology, Experimental","SIL",1,1.0,SINGLETON
+"Afrique noire","Afrique noire","SIL",1,1.0,SINGLETON
+"Housekeeping","Housekeeping","SAAM",1,1.0,SINGLETON
+"Science, Ancient","Science, Ancient","SIL",1,1.0,SINGLETON
+"Zosterops borbonica","Zosterops borbonica","SIL",1,1.0,SINGLETON
+"Diptera","Diptera","SIL",1,1.0,SINGLETON
+"Ironwork, Colonial","Ironwork, Colonial","SIL",1,1.0,SINGLETON
+"Watermelon","Watermelon","SAAM",1,1.0,SINGLETON
+"Pueblo art","Pueblo art","SIL",1,1.0,SINGLETON
+"Zapotec art","Zapotec art","SIL",1,1.0,SINGLETON
+"Albi","Albi","SAAM",1,1.0,SINGLETON
+"Atamasco-lily","Atamasco-lily","SAAM",1,1.0,SINGLETON
+"Comets","Comets","SIL",1,1.0,SINGLETON
+"Digital cameras","Digital cameras","SIL",1,1.0,SINGLETON
+"Barge","Barge","SAAM",1,1.0,SINGLETON
+"Painting, Ethiopian","Painting, Ethiopian","SIL",1,1.0,SINGLETON
+"Cravat","Cravat","NPG",1,1.0,SINGLETON
+"Homo erectus","Homo erectus","SIL",1,1.0,SINGLETON
+"Motorcycles","Motorcycles","SIL",1,1.0,SINGLETON
+"Umbelliferae","Umbelliferae","SIL",1,1.0,SINGLETON
+"Geographical distribution","Geographical distribution","SIL",1,1.0,SINGLETON
+"Hostess","Hostess","NPG",1,1.0,SINGLETON
+"Watertown","Watertown","SAAM",1,1.0,SINGLETON
+"Public works","Public works","SIL",1,1.0,SINGLETON
+"Ukiyoe","Ukiyoe","SIL",1,1.0,SINGLETON
+"Auctions","Auctions","SIL",1,1.0,SINGLETON
+"Water-supply","Water-supply","SIL",1,1.0,SINGLETON
+"Twilight","Twilight","SAAM",1,1.0,SINGLETON
+"Pharmacy","Pharmacy","SIL",1,1.0,SINGLETON
+"Pewter","Pewter","SIL",1,1.0,SINGLETON
+"Zermatt","Zermatt","SAAM",1,1.0,SINGLETON
+"Stenus","Stenus","SIL",1,1.0,SINGLETON
+"Monocotyledons","Monocotyledons","SIL",1,1.0,SINGLETON
+"Parade","Parade","SAAM",1,1.0,SINGLETON
+"Environnement","Environnement","SIL",1,1.0,SINGLETON
+"Crusades","Crusades","SAAM",1,1.0,SINGLETON
+"Game and game-birds","Game and game-birds","SIL",1,1.0,SINGLETON
+"Higher education","Higher education","SIL",1,1.0,SINGLETON
+"Perception","Perception","SIL",1,1.0,SINGLETON
+"Technologie","Technologie","SIL",1,1.0,SINGLETON
+"Concerts","Concerts","SIL",1,1.0,SINGLETON
+"Flares","Flares","SIL",1,1.0,SINGLETON
+"Fuel","Fuel","SIL",1,1.0,SINGLETON
+"Woodcock, American","Woodcock, American","SIL",1,1.0,SINGLETON
+"First day covers (Philately)","First day covers (Philately)","SIL",1,1.0,SINGLETON
+"West Palm Beach","West Palm Beach","SAAM",1,1.0,SINGLETON
+"Alpine pointvetch","Alpine pointvetch","SAAM",1,1.0,SINGLETON
+"Scabbard","Scabbard","NPG",1,1.0,SINGLETON
+"Continental margins","Continental margins","SIL",1,1.0,SINGLETON
+"Silk industry","Silk industry","SIL",1,1.0,SINGLETON
+"Art, Puno","Art, Puno","SIL",1,1.0,SINGLETON
+"George Inn","George Inn","SAAM",1,1.0,SINGLETON
+"Developmental biology","Developmental biology","SIL",1,1.0,SINGLETON
+"Dog shows","Dog shows","SIL",1,1.0,SINGLETON
+"Shipbuilder","Shipbuilder","NPG",1,1.0,SINGLETON
+"Columbia Bridge","Columbia Bridge","SAAM",1,1.0,SINGLETON
+"Rugs, Caucasian","Rugs, Caucasian","SIL",1,1.0,SINGLETON
+"Persephone","Persephone","SAAM",1,1.0,SINGLETON
+"Marshes","Marshes","SAAM",1,1.0,SINGLETON
+"Librarian","Librarian","NPG",1,1.0,SINGLETON
+"Doniphan's Expedition, 1846-1847","Doniphan's Expedition, 1846-1847","SIL",1,1.0,SINGLETON
+"Legal writer","Legal writer","NPG",1,1.0,SINGLETON
+"Arts and crafts movement","Arts and crafts movement","SIL",1,1.0,SINGLETON
+"Beret","Beret","NPG",1,1.0,SINGLETON
+"Lilium montanum","Lilium montanum","SAAM",1,1.0,SINGLETON
+"Leatherwork","Leatherwork","SIL",1,1.0,SINGLETON
+"Ismailites","Ismailites","SIL",1,1.0,SINGLETON
+"Wheat broker","Wheat broker","NPG",1,1.0,SINGLETON
+"Animal Nutritional Physiological Phenomena","Animal Nutritional Physiological Phenomena","SIL",1,1.0,SINGLETON
+"Archives","Archives","SIL",1,1.0,SINGLETON
+"Pig","Pig","NPG",1,1.0,SINGLETON
+"Dining room","Dining room","SAAM",1,1.0,SINGLETON
+"Relief of sick and wounded","Relief of sick and wounded","SIL",1,1.0,SINGLETON
+"Squirrel","Squirrel","SAAM",1,1.0,SINGLETON
+"Granaries","Granaries","SIL",1,1.0,SINGLETON
+"Landleben","Landleben","SIL",1,1.0,SINGLETON
+"Humanities","Humanities","SIL",1,1.0,SINGLETON
+"Religion maya","Religion maya","SIL",1,1.0,SINGLETON
+"Primitivism in art","Primitivism in art","SIL",1,1.0,SINGLETON
+"Critical periods (Biology)","Critical periods (Biology)","SIL",1,1.0,SINGLETON
+"Saltige (Ritual)","Saltige (Ritual)","SIL",1,1.0,SINGLETON
+"Amphenol (Brand name)","Amphenol (Brand name)","SIL",1,1.0,SINGLETON
+"Plants, Edible","Plants, Edible","SIL",1,1.0,SINGLETON
+"Candle","Candle","NPG",1,1.0,SINGLETON
+"Pollen","Pollen","SIL",1,1.0,SINGLETON
+"Scripts (writing)","Scripts (writing)","SIL",1,1.0,SINGLETON
+"Ndiki weaving","Ndiki weaving","SIL",1,1.0,SINGLETON
+"Marine resources","Marine resources","SIL",1,1.0,SINGLETON
+"Railroad station","Railroad station","SAAM",1,1.0,SINGLETON
+"Trolls","Trolls","SIL",1,1.0,SINGLETON
+"Landscape changes","Landscape changes","SIL",1,1.0,SINGLETON
+"Whaling","Whaling","SIL",1,1.0,SINGLETON
+"Stockbrokers","Stockbrokers","SIL",1,1.0,SINGLETON
+"Sculpture, Vili","Sculpture, Vili","SIL",1,1.0,SINGLETON
+"Taoism","Taoism","SIL",1,1.0,SINGLETON
+"Boeing 747 (Jet transports)","Boeing 747 (Jet transports)","SIL",1,1.0,SINGLETON
+"San Francisco, CA","San Francisco, CA","NPG",1,1.0,SINGLETON
+"Life on other plants","Life on other plants","SIL",1,1.0,SINGLETON
+"Writing tablet","Writing tablet","NPG",1,1.0,SINGLETON
+"Sans serif type","Sans serif type","SIL",1,1.0,SINGLETON
+"Podium","Podium","NPG",1,1.0,SINGLETON
+"Pony express","Pony express","SIL",1,1.0,SINGLETON
+"Goldenclub","Goldenclub","SAAM",1,1.0,SINGLETON
+"Minnesota State Capitol","Minnesota State Capitol","SAAM",1,1.0,SINGLETON
+"Goldenpea","Goldenpea","SAAM",1,1.0,SINGLETON
+"Spanish prose literature","Spanish prose literature","SIL",1,0.9021954310778352,AUTO_ACCEPTED
+"Spanish prose literature","Spanish literature","SIL",1,0.9021954310778352,AUTO_ACCEPTED
+"Telegraph","Telegraph","NPG",1,1.0,SINGLETON
+"Taildragger airplanes","Taildragger airplanes","SIL",1,1.0,SINGLETON
+"Harlech","Harlech","SAAM",1,1.0,SINGLETON
+"Linguists","Linguists","NPG",1,1.0,SINGLETON
+"MP3 players","MP3 players","SIL",1,1.0,SINGLETON
+"Fixed base operators industry","Fixed base operators industry","SIL",1,1.0,SINGLETON
+"State","State","SIL",1,1.0,SINGLETON
+"Américains d'origine japonaise","Américains d'origine japonaise","SIL",1,1.0,SINGLETON
+"Real property","Real property","SIL",1,1.0,SINGLETON
+"Spiral computed tomography","Spiral computed tomography","SIL",1,1.0,SINGLETON
+"Prononciation","Prononciation","SIL",1,1.0,SINGLETON
+"United Farm Workers","United Farm Workers","SAAM",1,1.0,SINGLETON
+"Timing belts","Timing belts","SIL",1,1.0,SINGLETON
+"Tivoli","Tivoli","SAAM",1,1.0,SINGLETON
+"Curculionidae","Curculionidae","SIL",1,1.0,SINGLETON
+"Taps and dies","Taps and dies","SIL",1,1.0,SINGLETON
+"Tower Falls","Tower Falls","SAAM",1,1.0,SINGLETON
+"Wound","Wound","SAAM",1,1.0,SINGLETON
+"Sailor","Sailor","SAAM",1,1.0,SINGLETON
+"Geometry, Descriptive","Geometry, Descriptive","SIL",1,1.0,SINGLETON
+"Bull Run, 1st Battle of, Va., 1861","Bull Run, 1st Battle of, Va., 1861","SIL",1,0.9030331648512366,AUTO_ACCEPTED
+"Bull Run, 1st Battle of, Va., 1861","Bull Run, 2nd Battle of, Va., 1862","SIL",1,0.9030331648512366,AUTO_ACCEPTED
+"Research institutes","Research institutes","SIL",1,1.0,SINGLETON
+"Adire","Adire","SIL",1,1.0,SINGLETON
+"Tribesman","Tribesman","SAAM",1,1.0,SINGLETON
+"Istanbul","Istanbul","SAAM",1,1.0,SINGLETON
+"Vegetation dynamics","Vegetation dynamics","SIL",1,1.0,SINGLETON
+"Pilot guides","Pilot guides","SIL",1,1.0,SINGLETON
+"Culture matérielle","Culture matérielle","SIL",1,1.0,SINGLETON
+"Defenses","Defenses","SIL",1,1.0,SINGLETON
+"Home economics","Home economics","SIL",1,1.0,SINGLETON
+"Wood-nymph","Wood-nymph","SAAM",1,1.0,SINGLETON
+"Electrochemistry","Electrochemistry","SIL",1,1.0,SINGLETON
+"Vocal scores with piano","Vocal scores with piano","SIL",1,1.0,SINGLETON
+"Alimentation","Alimentation","SIL",1,1.0,SINGLETON
+"Temperature control","Temperature control","SIL",1,1.0,SINGLETON
+"Stock exchanges","Stock exchanges","SIL",1,1.0,SINGLETON
+"Geometric","Geometric","SAAM",1,1.0,SINGLETON
+"Industrial arts","Industrial arts","SIL",1,1.0,SINGLETON
+"Mineral waters z Spa (Belgium)","Mineral waters z Spa (Belgium)","SIL",1,1.0,SINGLETON
+"Gravitation","Gravitation","SIL",1,1.0,SINGLETON
+"Paint jar","Paint jar","NPG",1,1.0,SINGLETON
+"Pumping machinery","Pumping machinery","SIL",1,1.0,SINGLETON
+"Silicon","Silicon","SIL",1,1.0,SINGLETON
+"Solar activity","Solar activity","SIL",1,1.0,SINGLETON
+"Trademarks","Trademarks","SIL",1,1.0,SINGLETON
+"Electric cables","Electric cables","SIL",1,1.0,SINGLETON
+"Implements","Implements","SIL",1,1.0,SINGLETON
+"Droits","Droits","SIL",1,1.0,SINGLETON
+"Crow","Crow","SAAM",1,1.0,SINGLETON
+"Kruhsea streptopoides","Kruhsea streptopoides","SAAM",1,1.0,SINGLETON
+"Planets","Planets","SIL",1,1.0,SINGLETON
+"Connecticut River","Connecticut River","SAAM",1,1.0,SINGLETON
+"Vertragsrecht","Vertragsrecht","SIL",1,1.0,SINGLETON
+"Patroon","Patroon","NPG",1,1.0,SINGLETON
+"Gardens of Villa Palmieri","Gardens of Villa Palmieri","SAAM",1,1.0,SINGLETON
+"Visual education","Visual education","SIL",1,1.0,SINGLETON
+"St. Thechla","St. Thechla","SAAM",1,1.0,SINGLETON
+"Painting, Sienese","Painting, Sienese","SIL",1,1.0,SINGLETON
+"Classification, Library of Congress","Classification, Library of Congress","SIL",1,1.0,SINGLETON
+"New York Harbor","New York Harbor","SAAM",1,1.0,SINGLETON
+"Artisans","Artisans","SIL",1,1.0,SINGLETON
+"Isle of Man","Isle of Man","SAAM",1,1.0,SINGLETON
+"Chimie physique et théorique","Chimie physique et théorique","SIL",1,1.0,SINGLETON
+"Psychohistory","Psychohistory","SIL",1,1.0,SINGLETON
+"Stove","Stove","SAAM",1,1.0,SINGLETON
+"Spring-action (Brand name)","Spring-action (Brand name)","SIL",1,1.0,SINGLETON
+"Pycnogonida","Pycnogonida","SIL",1,1.0,SINGLETON
+"Kalispel (Indiens)","Kalispel (Indiens)","SIL",1,1.0,SINGLETON
+"Iwi taketake","Iwi taketake","SIL",1,1.0,SINGLETON
+"Civilisation","Civilisation","SIL",1,1.0,SINGLETON
+"Color prints","Color prints","SIL",1,1.0,SINGLETON
+"Osteoglossiformes","Osteoglossiformes","SIL",1,1.0,SINGLETON
+"Bow and arrow making","Bow and arrow making","SIL",1,1.0,SINGLETON
+"Lupines","Lupines","SIL",1,1.0,SINGLETON
+"Writing, Hieroglyphic","Writing, Hieroglyphic","SIL",1,1.0,SINGLETON
+"Excerpts","Excerpts","SIL",1,1.0,SINGLETON
+"Glaucophane","Glaucophane","SIL",1,1.0,SINGLETON
+"Skullcap","Skullcap","NPG",1,1.0,SINGLETON
+"Saab aircraft","Saab aircraft","SIL",1,1.0,SINGLETON
+"Limber pine","Limber pine","SAAM",1,1.0,SINGLETON
+"Photographie de nus","Photographie de nus","SIL",1,1.0,SINGLETON
+"Painting, European","Painting, European","SIL",1,0.9302673966176793,AUTO_ACCEPTED
+"Painting, European","Landscape painting, European","SIL",1,0.9302673966176793,AUTO_ACCEPTED
+"Chemical industry","Chemical industry","SIL",1,1.0,SINGLETON
+"Urban health","Urban health","SIL",1,1.0,SINGLETON
+"Fort","Fort","SAAM",1,1.0,SINGLETON
+"Football","Football","SAAM",1,1.0,SINGLETON
+"Parrot","Parrot","SAAM",1,1.0,SINGLETON
+"Prints, British","Prints, British","SIL",1,1.0,SINGLETON
+"Chiefdoms","Chiefdoms","SIL",1,1.0,SINGLETON
+"Shortwave radio","Shortwave radio","SIL",1,1.0,SINGLETON
+"Container gardening","Container gardening","SIL",1,1.0,SINGLETON
+"Hellenismus","Hellenismus","SIL",1,1.0,SINGLETON
+"Textile worker","Textile worker","NPG",1,1.0,SINGLETON
+"Centennial celebrations, etc","Centennial celebrations, etc","SIL",1,1.0,SINGLETON
+"Sleeves","Sleeves","SIL",1,1.0,SINGLETON
+"Meubles","Meubles","SIL",1,1.0,SINGLETON
+"Flight of Jesus Christ into Egypt","Flight of Jesus Christ into Egypt","SAAM",1,1.0,SINGLETON
+"Land tenure","Land tenure","SIL",1,1.0,SINGLETON
+"Thanksgiving","Thanksgiving","SAAM",1,1.0,SINGLETON
+"Poisoning","Poisoning","SIL",1,1.0,SINGLETON
+"Criminalistique","Criminalistique","SIL",1,1.0,SINGLETON
+"Vaudeville","Vaudeville","SIL",1,1.0,SINGLETON
+"Banjo","Banjo","SIL",1,1.0,SINGLETON
+"Solar energy Conference proceedings","Solar energy Conference proceedings","SIL",1,1.0,SINGLETON
+"Molekulargenetik","Molekulargenetik","SIL",1,1.0,SINGLETON
+"Blotter","Blotter","NPG",1,1.0,SINGLETON
+"Pistoia","Pistoia","SAAM",1,1.0,SINGLETON
+"Academic costume","Academic costume","SAAM",1,1.0,SINGLETON
+"Human performance","Human performance","SIL",1,1.0,SINGLETON
+"Nevada Falls","Nevada Falls","SAAM",1,1.0,SINGLETON
+"Human biology","Human biology","SIL",1,1.0,SINGLETON
+"Cell phones","Cell phones","SIL",1,1.0,SINGLETON
+"Social stratification","Social stratification","SIL",1,1.0,SINGLETON
+"Artillery","Artillery","SIL",1,1.0,SINGLETON
+"Metals","Metals","SIL",1,1.0,SINGLETON
+"Semantics, Historical","Semantics, Historical","SIL",1,1.0,SINGLETON
+"Hasami porcelain","Hasami porcelain","SIL",1,1.0,SINGLETON
+"Zoologist","Zoologist","NPG",1,1.0,SINGLETON
+"Art, Mogul Empire","Art, Mogul Empire","SIL",1,1.0,SINGLETON
+"Carbonated beverages","Carbonated beverages","SIL",1,1.0,SINGLETON
+"Cabinetmakers","Cabinetmakers","SIL",1,0.952455690531709,AUTO_ACCEPTED
+"Cabinetmakers","Cabinetmaker","NPG",1,0.952455690531709,AUTO_ACCEPTED
+"Buddhist calligraphy","Buddhist calligraphy","SIL",1,1.0,SINGLETON
+"Arctic Ocean","Arctic Ocean","SAAM",1,1.0,SINGLETON
+"War work","War work","SIL",1,1.0,SINGLETON
+"White Mountains","White Mountains","SAAM",1,1.0,SINGLETON
+"Cemetary","Cemetary","NPG",1,1.0,SINGLETON
+"Embroidery, Elizabethan","Embroidery, Elizabethan","SIL",1,1.0,SINGLETON
+"Zeichnung","Zeichnung","SIL",1,1.0,SINGLETON
+"Dick Swiveller","Dick Swiveller","SAAM",1,1.0,SINGLETON
+"Apes","Apes","SIL",1,1.0,SINGLETON
+"Blue ribbon (Brand name)","Blue ribbon (Brand name)","SIL",1,1.0,SINGLETON
+"Bookbinding","Bookbinding","SIL",1,1.0,SINGLETON
+"Computational intelligence","Computational intelligence","SIL",1,1.0,SINGLETON
+"Cooking (Wild foods)","Cooking (Wild foods)","SIL",1,1.0,SINGLETON
+"Moneses uniflora","Moneses uniflora","SAAM",1,1.0,SINGLETON
+"Air travel","Air travel","SIL",1,1.0,SINGLETON
+"Volcano","Volcano","SAAM",1,1.0,SINGLETON
+"Public safety","Public safety","SIL",1,1.0,SINGLETON
+"Forgery","Forgery","SIL",1,1.0,SINGLETON
+"Jazz","Jazz","SIL",1,1.0,SINGLETON
+"United Empire loyalists","United Empire loyalists","SIL",1,1.0,SINGLETON
+"Farm tractors","Farm tractors","SIL",1,1.0,SINGLETON
+"Western hemlock","Western hemlock","SAAM",1,1.0,SINGLETON
+"Ilex vomitoria","Ilex vomitoria","SAAM",1,1.0,SINGLETON
+"Lobelia kalmii","Lobelia kalmii","SAAM",1,1.0,SINGLETON
+"Employment forecasting","Employment forecasting","SIL",1,1.0,SINGLETON
+"Sirióno","Sirióno","SIL",1,1.0,SINGLETON
+"Maske","Maske","SIL",1,1.0,SINGLETON
+"Telephone Switchboards","Telephone Switchboards","SIL",1,1.0,SINGLETON
+"Black Muslims","Black Muslims","SIL",1,1.0,SINGLETON
+"Genealogy","Genealogy","SIL",1,1.0,SINGLETON
+"Decorative balls","Decorative balls","SIL",1,1.0,SINGLETON
+"Tyrolean Alps","Tyrolean Alps","SAAM",1,1.0,SINGLETON
+"Windmill","Windmill","SAAM",1,1.0,SINGLETON
+"Umkreis","Umkreis","SIL",1,1.0,SINGLETON
+"Coal-tar colors","Coal-tar colors","SIL",1,1.0,SINGLETON
+"Horse racing","Horse racing","NPG",1,1.0,SINGLETON
+"Architecture, Sukiya","Architecture, Sukiya","SIL",1,1.0,SINGLETON
+"Mourning","Mourning","SAAM",1,1.0,SINGLETON
+"Caterpillars","Caterpillars","SAAM",1,1.0,SINGLETON
+"Utensils","Utensils","NPG",1,0.9106694469473829,AUTO_ACCEPTED
+"Utensils","Kitchen utensils","SIL",1,0.9106694469473829,AUTO_ACCEPTED
+"Laurel","Laurel","SAAM",1,1.0,SINGLETON
+"Avions à décollage et atterrissage verticaux","Avions à décollage et atterrissage verticaux","SIL",1,1.0,SINGLETON
+"Modern dance","Modern dance","SIL",1,1.0,SINGLETON
+"Paprika","Paprika","SIL",1,1.0,SINGLETON
+"Metamorphic rocks","Metamorphic rocks","SIL",1,1.0,SINGLETON
+"Campanula rotundifolia","Campanula rotundifolia","SAAM",1,1.0,SINGLETON
+"Geological time","Geological time","SIL",1,1.0,SINGLETON
+"Population","Population","SIL",1,1.0,SINGLETON
+"Nature stories","Nature stories","SIL",1,1.0,SINGLETON
+"Algology","Algology","SIL",1,1.0,SINGLETON
+"Space plasma","Space plasma","SIL",1,1.0,SINGLETON
+"Hummingbirds","Hummingbirds","SIL",1,1.0,SINGLETON
+"Écologie humaine","Écologie humaine","SIL",1,1.0,SINGLETON
+"Technical institute","Technical institute","NPG",1,1.0,SINGLETON
+"Fetishism (Sexual behavior)","Fetishism (Sexual behavior)","SIL",1,1.0,SINGLETON
+"Triumphal arch","Triumphal arch","SAAM",1,1.0,SINGLETON
+"Seminary founder","Seminary founder","NPG",1,1.0,SINGLETON
+"Relogement et internement forcés, 1942-1945","Relogement et internement forcés, 1942-1945","SIL",1,1.0,SINGLETON
+"Skating","Skating","SAAM",1,1.0,SINGLETON
+"Firefighters","Firefighters","SIL",1,1.0,SINGLETON
+"Cuisine mexicaine","Cuisine mexicaine","SIL",1,1.0,SINGLETON
+"Procession","Procession","SAAM",1,1.0,SINGLETON
+"Office equipment and supplies","Office equipment and supplies","SIL",1,1.0,SINGLETON
+"Wallpaper","Wallpaper","SIL",1,1.0,SINGLETON
+"Shipbuilding","Shipbuilding","SIL",1,1.0,SINGLETON
+"Magmatism","Magmatism","SIL",1,1.0,SINGLETON
+"Berkeley Springs","Berkeley Springs","SAAM",1,1.0,SINGLETON
+"Aquatic organisms","Aquatic organisms","SIL",1,1.0,SINGLETON
+"New York Bay","New York Bay","SAAM",1,1.0,SINGLETON
+"Kayaks","Kayaks","SIL",1,1.0,SINGLETON
+"Video art","Video art","SIL",1,1.0,SINGLETON
+"Rock shelters","Rock shelters","SIL",1,1.0,SINGLETON
+"Horseshoe Falls","Horseshoe Falls","SAAM",1,1.0,SINGLETON
+"Roma","Roma","SAAM",1,1.0,SINGLETON
+"Moccasins","Moccasins","NPG",1,1.0,SINGLETON
+"Waves","Waves","SIL",1,1.0,SINGLETON
+"Clothier","Clothier","NPG",1,1.0,SINGLETON
+"Polynices","Polynices","SAAM",1,1.0,SINGLETON
+"Secret societies","Secret societies","SIL",1,1.0,SINGLETON
+"Orfèvrerie","Orfèvrerie","SIL",1,1.0,SINGLETON
+"Balls (Sporting goods)","Balls (Sporting goods)","SAAM",1,1.0,SINGLETON
+"Petroleum industry","Petroleum industry","SIL",1,1.0,SINGLETON
+"Sleep","Sleep","SAAM",1,1.0,SINGLETON
+"Audio equipment industry","Audio equipment industry","SIL",1,1.0,SINGLETON
+"Maya (culture or style)","Maya (culture or style)","SIL",1,1.0,SINGLETON
+"Stone carving","Stone carving","SIL",1,1.0,SINGLETON
+"Old age","Old age","SAAM",1,1.0,SINGLETON
+"Holzkonstruktion","Holzkonstruktion","SIL",1,1.0,SINGLETON
+"Minority Studies","Minority Studies","SIL",1,1.0,SINGLETON
+"Pumpkin","Pumpkin","NPG",1,1.0,SINGLETON
+"Meghoppen","Meghoppen","SAAM",1,1.0,SINGLETON
+"Rosicrucians","Rosicrucians","SIL",1,1.0,SINGLETON
+"Eriocaulaceae","Eriocaulaceae","SIL",1,1.0,SINGLETON
+"Guarani mythology","Guarani mythology","SIL",1,1.0,SINGLETON
+"Dyes and dyeing","Dyes and dyeing","SIL",1,1.0,SINGLETON
+"Clay industries","Clay industries","SIL",1,1.0,SINGLETON
+"Xylocopa pubescens","Xylocopa pubescens","SIL",1,1.0,SINGLETON
+"Phonology","Phonology","SIL",1,1.0,SINGLETON
+"Caldecott Medal","Caldecott Medal","SIL",1,1.0,SINGLETON
+"Logotypes (Printing)","Logotypes (Printing)","SIL",1,1.0,SINGLETON
+"Heyligenstaedt (Brand name)","Heyligenstaedt (Brand name)","SIL",1,1.0,SINGLETON
+"Biological rhythms","Biological rhythms","SIL",1,1.0,SINGLETON
+"Hotelier","Hotelier","NPG",1,1.0,SINGLETON
+"Social media","Social media","SIL",1,1.0,SINGLETON
+"Social ecology","Social ecology","SIL",1,1.0,SINGLETON
+"Séchage","Séchage","SIL",1,1.0,SINGLETON
+"Superheaters","Superheaters","SIL",1,1.0,SINGLETON
+"Recherche","Recherche","SIL",1,1.0,SINGLETON
+"Classical Ife art","Classical Ife art","SIL",1,1.0,SINGLETON
+"Evening and continuation schools","Evening and continuation schools","SIL",1,1.0,SINGLETON
+"Rug","Rug","NPG",1,1.0,SINGLETON
+"Grumman airplanes","Grumman airplanes","SIL",1,1.0,SINGLETON
+"Graminales","Graminales","SIL",1,1.0,SINGLETON
+"Shepherd","Shepherd","SAAM",1,1.0,SINGLETON
+"Shipwreck","Shipwreck","SAAM",1,0.9283573642537201,AUTO_ACCEPTED
+"Shipwreck","Shipwrecks","SIL",1,0.9283573642537201,AUTO_ACCEPTED
+"Perennial phlox","Perennial phlox","SAAM",1,1.0,SINGLETON
+"Fans (Machinery)","Fans (Machinery)","SIL",1,1.0,SINGLETON
+"Villes antiques","Villes antiques","SIL",1,1.0,SINGLETON
+"Médecine","Médecine","SIL",1,1.0,SINGLETON
+"Transcendentalist","Transcendentalist","NPG",1,1.0,SINGLETON
+"Priest","Priest","NPG",1,1.0,SINGLETON
+"Tree branch","Tree branch","NPG",1,1.0,SINGLETON
+"West African fiction (English)","West African fiction (English)","SIL",1,1.0,SINGLETON
+"Airships","Airships","SIL",1,1.0,SINGLETON
+"Vie intellectuelle","Vie intellectuelle","SIL",1,1.0,SINGLETON
+"Inspiration Point","Inspiration Point","SAAM",1,1.0,SINGLETON
+"Raffia work","Raffia work","SIL",1,1.0,SINGLETON
+"Coins, Medieval","Coins, Medieval","SIL",1,1.0,SINGLETON
+"Navajo mythology","Navajo mythology","SIL",1,1.0,SINGLETON
+"Dulcimer","Dulcimer","SIL",1,1.0,SINGLETON
+"Street sweeper","Street sweeper","SAAM",1,1.0,SINGLETON
+"National characteristics, Asian","National characteristics, Asian","SIL",1,1.0,SINGLETON
+"War damage, Industrial","War damage, Industrial","SIL",1,1.0,SINGLETON
+"Theorem","Theorem","SAAM",1,1.0,SINGLETON
+"Cypress tree","Cypress tree","SAAM",1,1.0,SINGLETON
+"Algae","Algae","SIL",1,1.0,SINGLETON
+"Bears","Bears","SAAM",1,1.0,SINGLETON
+"Kilims","Kilims","SIL",1,1.0,SINGLETON
+"Pagoda","Pagoda","SAAM",1,1.0,SINGLETON
+"Ceratophyllidae","Ceratophyllidae","SIL",1,1.0,SINGLETON
+"Las Nubes","Las Nubes","SAAM",1,1.0,SINGLETON
+"Social policy","Social policy","SIL",1,1.0,SINGLETON
+"Solar energy","Solar energy","SIL",1,1.0,SINGLETON
+"Glue","Glue","SIL",1,1.0,SINGLETON
+"Halkomelem (Langue)","Halkomelem (Langue)","SIL",1,1.0,SINGLETON
+"Stereophonic sound systems","Stereophonic sound systems","SIL",1,1.0,SINGLETON
+"Hydropterideae","Hydropterideae","SIL",1,1.0,SINGLETON
+"Livres rares","Livres rares","SIL",1,1.0,SINGLETON
+"Rebecca","Rebecca","SAAM",1,1.0,SINGLETON
+"Tupi mythology","Tupi mythology","SIL",1,1.0,SINGLETON
+"Cordelia","Cordelia","SAAM",1,1.0,SINGLETON
+"Cameo","Cameo","NPG",1,1.0,SINGLETON
+"Railroads, Elevated","Railroads, Elevated","SIL",1,1.0,SINGLETON
+"Crimean War, 1853-1856","Crimean War, 1853-1856","SIL",1,1.0,SINGLETON
+"Physiologie","Physiologie","SIL",1,1.0,SINGLETON
+"Women, Sakata","Women, Sakata","SIL",1,1.0,SINGLETON
+"Bodies","Bodies","SIL",1,1.0,SINGLETON
+"Oxytropis podocarpa","Oxytropis podocarpa","SAAM",1,1.0,SINGLETON
+"Artistic collaboration","Artistic collaboration","SIL",1,1.0,SINGLETON
+"Norfolk, VA","Norfolk, VA","NPG",1,1.0,SINGLETON
+"Sports executive","Sports executive","NPG",1,1.0,SINGLETON
+"Bayonet rush","Bayonet rush","SAAM",1,1.0,SINGLETON
+"Bantous","Bantous","SIL",1,1.0,SINGLETON
+"Starfishes","Starfishes","SIL",1,1.0,SINGLETON
+"Creation (Literary, artistic, etc.)","Creation (Literary, artistic, etc.)","SIL",1,1.0,SINGLETON
+"Suspenders","Suspenders","NPG",1,1.0,SINGLETON
+"Hagar","Hagar","SAAM",1,1.0,SINGLETON
+"Outsider art","Outsider art","SIL",1,1.0,SINGLETON
+"Iceberg Canyon","Iceberg Canyon","SAAM",1,1.0,SINGLETON
+"Yachts","Yachts","SIL",1,0.9212443497087291,AUTO_ACCEPTED
+"Yachts","Yacht","SAAM",1,0.9212443497087291,AUTO_ACCEPTED
+"Introduced organisms","Introduced organisms","SIL",1,1.0,SINGLETON
+"Religion and social problems","Religion and social problems","SIL",1,1.0,SINGLETON
+"Premier","Premier","NPG",1,1.0,SINGLETON
+"Behaviorism (Psychology)","Behaviorism (Psychology)","SIL",1,1.0,SINGLETON
+"Collectionneurs et collections","Collectionneurs et collections","SIL",1,1.0,SINGLETON
+"Handles","Handles","SIL",1,1.0,SINGLETON
+"Hydraulic engineering","Hydraulic engineering","SIL",1,1.0,SINGLETON
+"Boundaries","Boundaries","SIL",1,1.0,SINGLETON
+"Norwegians in the Midwest","Norwegians in the Midwest","SIL",1,1.0,SINGLETON
+"Spanish fiction","Spanish fiction","SIL",1,1.0,SINGLETON
+"Garland","Garland","NPG",1,1.0,SINGLETON
+"Coronations","Coronations","SIL",1,1.0,SINGLETON
+"Studebaker automobile","Studebaker automobile","SIL",1,1.0,SINGLETON
+"Library materials","Library materials","SIL",1,1.0,SINGLETON
+"Ocean circulation","Ocean circulation","SIL",1,1.0,SINGLETON
+"Papier japon","Papier japon","SIL",1,1.0,SINGLETON
+"Isis","Isis","SAAM",1,1.0,SINGLETON
+"Chestnut tree","Chestnut tree","SAAM",1,1.0,SINGLETON
+"Grooming","Grooming","SAAM",1,1.0,SINGLETON
+"Laboratoires","Laboratoires","SIL",1,1.0,SINGLETON
+"Style","Style","SIL",1,1.0,SINGLETON
+"Choltí","Choltí","SIL",1,1.0,SINGLETON
+"Architekturzeichnung","Architekturzeichnung","SIL",1,1.0,SINGLETON
+"Genetic psychology","Genetic psychology","SIL",1,1.0,SINGLETON
+"Medical screening","Medical screening","SIL",1,1.0,SINGLETON
+"Animal migration","Animal migration","SIL",1,1.0,SINGLETON
+"Beads","Beads","SIL",1,1.0,SINGLETON
+"Nonviolence","Nonviolence","SIL",1,1.0,SINGLETON
+"Eye wear","Eye wear","SAAM",1,1.0,SINGLETON
+"Cicada","Cicada","SAAM",1,1.0,SINGLETON
+"Women dancers","Women dancers","SIL",1,1.0,SINGLETON
+"Folk dancing, Japanese","Folk dancing, Japanese","SIL",1,1.0,SINGLETON
+"Broom","Broom","NPG",1,1.0,SINGLETON
+"Agastat (Brand name)","Agastat (Brand name)","SIL",1,1.0,SINGLETON
+"Selkirk Mountains","Selkirk Mountains","SAAM",1,1.0,SINGLETON
+"Radiators","Radiators","SIL",1,1.0,SINGLETON
+"Heliosphere (Astrophysics)","Heliosphere (Astrophysics)","SIL",1,1.0,SINGLETON
+"Log cabin","Log cabin","NPG",1,1.0,SINGLETON
+"Drinking customs","Drinking customs","SIL",1,1.0,SINGLETON
+"Santeria","Santeria","SIL",1,1.0,SINGLETON
+"Danger","Danger","SAAM",1,1.0,SINGLETON
+"Almanacs","Almanacs","SIL",1,1.0,SINGLETON
+"Aromatic plants","Aromatic plants","SIL",1,1.0,SINGLETON
+"Tzotzil poetry","Tzotzil poetry","SIL",1,1.0,SINGLETON
+"Tsuga heterophylla","Tsuga heterophylla","SAAM",1,1.0,SINGLETON
+"Metal thread embroidery","Metal thread embroidery","SIL",1,1.0,SINGLETON
+"Marine invertebrates","Marine invertebrates","SIL",1,1.0,SINGLETON
+"Ingénierie","Ingénierie","SIL",1,1.0,SINGLETON
+"Friendly societies","Friendly societies","SIL",1,1.0,SINGLETON
+"American prose literature","American prose literature","SIL",1,1.0,SINGLETON
+"Asclepias speciosa","Asclepias speciosa","SAAM",1,1.0,SINGLETON
+"Pianist","Pianist","NPG",1,1.0,SINGLETON
+"Treasurer","Treasurer","NPG",1,1.0,SINGLETON
+"Earth construction","Earth construction","SIL",1,1.0,SINGLETON
+"Yaure","Yaure","SIL",1,1.0,SINGLETON
+"Couch","Couch","SAAM",1,1.0,SINGLETON
+"Bouddhisme","Bouddhisme","SIL",1,1.0,SINGLETON
+"Law and literature","Law and literature","SIL",1,1.0,SINGLETON
+"Job stress","Job stress","SIL",1,1.0,SINGLETON
+"Arm","Arm","SAAM",1,1.0,SINGLETON
+"Western larch","Western larch","SAAM",1,1.0,SINGLETON
+"Bilingualism","Bilingualism","SIL",1,1.0,SINGLETON
+"Drying","Drying","SIL",1,1.0,SINGLETON
+"Cleaning compounds","Cleaning compounds","SIL",1,1.0,SINGLETON
+"Bruchidae","Bruchidae","SIL",1,1.0,SINGLETON
+"Hatchet","Hatchet","NPG",1,1.0,SINGLETON
+"Draperies","Draperies","SIL",1,1.0,SINGLETON
+"Air warfare","Air warfare","SIL",1,1.0,SINGLETON
+"Ponds","Ponds","SAAM",1,1.0,SINGLETON
+"Weathervane","Weathervane","SAAM",1,1.0,SINGLETON
+"Annelida","Annelida","SIL",1,1.0,SINGLETON
+"Skin","Skin","SIL",1,1.0,SINGLETON
+"Coral reef management","Coral reef management","SIL",1,1.0,SINGLETON
+"Sozioökonomischer Wandel","Sozioökonomischer Wandel","SIL",1,1.0,SINGLETON
+"Plantations","Plantations","SIL",1,1.0,SINGLETON
+"Canvas","Canvas","NPG",1,1.0,SINGLETON
+"Terminology","Terminology","SIL",1,1.0,SINGLETON
+"Men's meeting houses","Men's meeting houses","SIL",1,1.0,SINGLETON
+"Grain drying racks","Grain drying racks","SIL",1,1.0,SINGLETON
+"Diesel motor","Diesel motor","SIL",1,1.0,SINGLETON
+"Polychaeta","Polychaeta","SIL",1,1.0,SINGLETON
+"Ethnological museums and collections","Ethnological museums and collections","SIL",1,1.0,SINGLETON
+"Domotique","Domotique","SIL",1,1.0,SINGLETON
+"Labor market","Labor market","SIL",1,1.0,SINGLETON
+"Bluegrass musicians","Bluegrass musicians","SIL",1,1.0,SINGLETON
+"Whip","Whip","NPG",1,1.0,SINGLETON
+"Silhouettist","Silhouettist","NPG",1,1.0,SINGLETON
+"Stool","Stool","NPG",1,1.0,SINGLETON
+"Salish (Langue)","Salish (Langue)","SIL",1,1.0,SINGLETON
+"Screws","Screws","SIL",1,1.0,SINGLETON
+"Execution","Execution","SAAM",1,1.0,SINGLETON
+"Schuylkill River","Schuylkill River","SAAM",1,1.0,SINGLETON
+"Jumping","Jumping","SAAM",1,1.0,SINGLETON
+"Australian Bicentenary, 1988","Australian Bicentenary, 1988","SIL",1,1.0,SINGLETON
+"Segovia","Segovia","SAAM",1,1.0,SINGLETON
+"Theologian","Theologian","NPG",1,1.0,SINGLETON
+"Farmer Brown","Farmer Brown","SAAM",1,1.0,SINGLETON
+"Motorcycle industry","Motorcycle industry","SIL",1,1.0,SINGLETON
+"Memory","Memory","SAAM",1,1.0,SINGLETON
+"Carp","Carp","SIL",1,1.0,SINGLETON
+"Tropical medicine","Tropical medicine","SIL",1,1.0,SINGLETON
+"Kalorama","Kalorama","SAAM",1,1.0,SINGLETON
+"Tiles, Ancient","Tiles, Ancient","SIL",1,1.0,SINGLETON
+"Linney (Brand name)","Linney (Brand name)","SIL",1,1.0,SINGLETON
+"Rugs, Nomadic","Rugs, Nomadic","SIL",1,1.0,SINGLETON
+"Songs with orchestra","Songs with orchestra","SIL",1,1.0,SINGLETON
+"Chimney","Chimney","SAAM",1,1.0,SINGLETON
+"Guerres","Guerres","SIL",1,1.0,SINGLETON
+"Specifications","Specifications","SIL",1,1.0,SINGLETON
+"Precisionism","Precisionism","SIL",1,1.0,SINGLETON
+"Gays","Gays","SIL",1,1.0,SINGLETON
+"Gunsmithing","Gunsmithing","SIL",1,1.0,SINGLETON
+"Odyssey","Odyssey","SAAM",1,1.0,SINGLETON
+"Tab-Loc (Brand name)","Tab-Loc (Brand name)","SIL",1,1.0,SINGLETON
+"Television","Television","SIL",1,1.0,SINGLETON
+"Annotations","Annotations","SIL",1,1.0,SINGLETON
+"Text messages (Cell phone systems)","Text messages (Cell phone systems)","SIL",1,1.0,SINGLETON
+"Castor bean","Castor bean","SAAM",1,1.0,SINGLETON
+"Cires","Cires","SIL",1,1.0,SINGLETON
+"Pregnancy","Pregnancy","SIL",1,1.0,SINGLETON
+"Riding Crop","Riding Crop","NPG",1,1.0,SINGLETON
+"Enseignement technique","Enseignement technique","SIL",1,1.0,SINGLETON
+"Atmospheric carbon dioxide","Atmospheric carbon dioxide","SIL",1,1.0,SINGLETON
+"Women's dress","Women's dress","SIL",1,1.0,SINGLETON
+"Entertainment executive","Entertainment executive","NPG",1,1.0,SINGLETON
+"Jetons","Jetons","SIL",1,1.0,SINGLETON
+"Gold","Gold","SIL",1,1.0,SINGLETON
+"Lithographic workshops","Lithographic workshops","SIL",1,1.0,SINGLETON
+"Children's literature, Swedish","Children's literature, Swedish","SIL",1,1.0,SINGLETON
+"Weeds","Weeds","SIL",1,1.0,SINGLETON
+"Eggs","Eggs","NPG",1,1.0,SINGLETON
+"Tellem pottery","Tellem pottery","SIL",1,1.0,SINGLETON
+"Cloister","Cloister","SAAM",1,1.0,SINGLETON
+"Human face recognition (Computer science)","Human face recognition (Computer science)","SIL",1,1.0,SINGLETON
+"Mende headdresses","Mende headdresses","SIL",1,1.0,SINGLETON
+"Beadwork, Bamileke","Beadwork, Bamileke","SIL",1,1.0,SINGLETON
+"Indentured servants","Indentured servants","SIL",1,1.0,SINGLETON
+"Siedlung","Siedlung","SIL",1,1.0,SINGLETON
+"Gulls","Gulls","SAAM",1,1.0,SINGLETON
+"St. Raphael","St. Raphael","SAAM",1,1.0,SINGLETON
+"Pintura","Pintura","SIL",1,1.0,SINGLETON
+"Indic influences","Indic influences","SIL",1,1.0,SINGLETON
+"Münze","Münze","SIL",1,1.0,SINGLETON
+"Political parties","Political parties","SIL",1,1.0,SINGLETON
+"Ultrastructure (Biology)","Ultrastructure (Biology)","SIL",1,1.0,SINGLETON
+"Star routes","Star routes","SIL",1,1.0,SINGLETON
+"Waxes","Waxes","SIL",1,0.9150140774188558,AUTO_ACCEPTED
+"Waxes","Wax","SIL",1,0.9150140774188558,AUTO_ACCEPTED
+"Swan","Swan","SAAM",1,1.0,SINGLETON
+"Parka","Parka","NPG",1,1.0,SINGLETON
+"Faience","Faience","SIL",1,1.0,SINGLETON
+"Square","Square","SAAM",1,1.0,SINGLETON
+"Cup","Cup","NPG",1,1.0,SINGLETON
+"Altars","Altars","SAAM",1,1.0,SINGLETON
+"Settee","Settee","NPG",1,1.0,SINGLETON
+"King Lear","King Lear","SAAM",1,1.0,SINGLETON
+"Sociology","Sociology","SIL",1,1.0,SINGLETON
+"Canteen","Canteen","NPG",1,1.0,SINGLETON
+"Florist","Florist","SAAM",1,1.0,SINGLETON
+"Hymenoptera","Hymenoptera","SIL",1,1.0,SINGLETON
+"Saturn launch vehicles","Saturn launch vehicles","SIL",1,1.0,SINGLETON
+"Sculpture, Ngoni","Sculpture, Ngoni","SIL",1,1.0,SINGLETON
+"Chilula Indians","Chilula Indians","SIL",1,1.0,SINGLETON
+"Grape","Grape","SAAM",1,1.0,SINGLETON
+"Alcoholism","Alcoholism","SIL",1,1.0,SINGLETON
+"Papier","Papier","SIL",1,1.0,SINGLETON
+"Trapping","Trapping","SIL",1,1.0,SINGLETON
+"Sculpture, Matengo","Sculpture, Matengo","SIL",1,1.0,SINGLETON
+"Cream violet","Cream violet","SAAM",1,1.0,SINGLETON
+"Rowboat","Rowboat","SAAM",1,1.0,SINGLETON
+"Photocopying","Photocopying","SIL",1,1.0,SINGLETON
+"Cancellations (Philately)","Cancellations (Philately)","SIL",1,1.0,SINGLETON
+"Parallax","Parallax","SIL",1,1.0,SINGLETON
+"X-rays","X-rays","SIL",1,1.0,SINGLETON
+"Materials science","Materials science","SIL",1,1.0,SINGLETON
+"Chromolithography","Chromolithography","SIL",1,1.0,SINGLETON
+"Porte St. Martin","Porte St. Martin","SAAM",1,1.0,SINGLETON
+"West Point","West Point","SAAM",1,1.0,SINGLETON
+"Cactus","Cactus","SIL",1,1.0,SINGLETON
+"Early printed books","Early printed books","SIL",1,1.0,SINGLETON
+"Personal robotics","Personal robotics","SIL",1,1.0,SINGLETON
+"Camping","Camping","SAAM",1,1.0,SINGLETON
+"Tasks","Tasks","SIL",1,1.0,SINGLETON
+"Medicine, Industrial","Medicine, Industrial","SIL",1,1.0,SINGLETON
+"Melville Bay","Melville Bay","SAAM",1,1.0,SINGLETON
+"Calendars","Calendars","NPG",1,1.0,SINGLETON
+"Celluloid","Celluloid","SIL",1,1.0,SINGLETON
+"Théâtres flottants","Théâtres flottants","SIL",1,1.0,SINGLETON
+"Foreign","Foreign","SAAM",1,1.0,SINGLETON
+"Civil service","Civil service","SIL",1,1.0,SINGLETON
+"Neuropsychological tests","Neuropsychological tests","SIL",1,1.0,SINGLETON
+"Gender inequality","Gender inequality","SIL",1,1.0,SINGLETON
+"European influences","European influences","SIL",1,1.0,SINGLETON
+"Martyr","Martyr","SAAM",1,1.0,SINGLETON
+"Filices","Filices","SIL",1,1.0,SINGLETON
+"Basketball","Basketball","SIL",1,1.0,SINGLETON
+"Ornithologist","Ornithologist","NPG",1,1.0,SINGLETON
+"Penologist","Penologist","NPG",1,1.0,SINGLETON
+"Sedimentation and deposition","Sedimentation and deposition","SIL",1,1.0,SINGLETON
+"Circe","Circe","SAAM",1,1.0,SINGLETON
+"Micropublishing","Micropublishing","SIL",1,1.0,SINGLETON
+"Imprints (Publications)","Imprints (Publications)","SIL",1,1.0,SINGLETON
+"St. Anthony","St. Anthony","SAAM",1,1.0,SINGLETON
+"Weckesser (Brand name)","Weckesser (Brand name)","SIL",1,1.0,SINGLETON
+"Sculpture, Lobi","Sculpture, Lobi","SIL",1,1.0,SINGLETON
+"Mannerism (Landscape architecture)","Mannerism (Landscape architecture)","SIL",1,1.0,SINGLETON
+"Orontium aquaticum","Orontium aquaticum","SAAM",1,1.0,SINGLETON
+"Sundials","Sundials","SIL",1,1.0,SINGLETON
+"Sociolinguistics","Sociolinguistics","SIL",1,1.0,SINGLETON
+"Homage","Homage","SAAM",1,1.0,SINGLETON
+"Cables, Submarine","Cables, Submarine","SIL",1,1.0,SINGLETON
+"Organic gardening","Organic gardening","SIL",1,1.0,SINGLETON
+"Art historians","Art historians","SIL",1,1.0,SINGLETON
+"Love","Love","SAAM",1,1.0,SINGLETON
+"National security","National security","SIL",1,1.0,SINGLETON
+"Kentucky Derby","Kentucky Derby","NPG",1,1.0,SINGLETON
+"Decorative arts, Renaissance","Decorative arts, Renaissance","SIL",1,1.0,SINGLETON
+"Biological models","Biological models","SIL",1,1.0,SINGLETON
+"Government publications","Government publications","SIL",1,1.0,SINGLETON
+"Confucian influences","Confucian influences","SIL",1,1.0,SINGLETON
+"Eve (Biblical figure)","Eve (Biblical figure)","SAAM",1,1.0,SINGLETON
+"Décolonisation","Décolonisation","SIL",1,0.9140458754182472,AUTO_ACCEPTED
+"Décolonisation","Decolonization","SIL",1,0.9140458754182472,AUTO_ACCEPTED
+"Railroad conductors","Railroad conductors","NPG",1,1.0,SINGLETON
+"Technical education","Technical education","SIL",1,1.0,SINGLETON
+"Buckbean","Buckbean","SAAM",1,1.0,SINGLETON
+"Mosses","Mosses","SIL",1,1.0,SINGLETON
+"Open-hearth process","Open-hearth process","SIL",1,1.0,SINGLETON
+"Pontederia cordata","Pontederia cordata","SAAM",1,1.0,SINGLETON
+"Adventure stories","Adventure stories","SIL",1,1.0,SINGLETON
+"Professional associations","Professional associations","SIL",1,1.0,SINGLETON
+"Asiatiques","Asiatiques","SIL",1,1.0,SINGLETON
+"Synaphobranchidae","Synaphobranchidae","SIL",1,1.0,SINGLETON
+"Siren","Siren","SAAM",1,1.0,SINGLETON
+"Aviação (história)","Aviação (história)","SIL",1,1.0,SINGLETON
+"Fairy Glen","Fairy Glen","SAAM",1,1.0,SINGLETON
+"Helen","Helen","SAAM",1,1.0,SINGLETON
+"Winchester Cathedral","Winchester Cathedral","SAAM",1,1.0,SINGLETON
+"Geyser","Geyser","SAAM",1,1.0,SINGLETON
+"Mangium","Mangium","SIL",1,1.0,SINGLETON
+"Doctrines","Doctrines","SIL",1,1.0,SINGLETON
+"Exobiology","Exobiology","SIL",1,1.0,SINGLETON
+"Compasses (Mathematical instruments)","Compasses (Mathematical instruments)","SIL",1,1.0,SINGLETON
+"Jacquard weaving","Jacquard weaving","SIL",1,1.0,SINGLETON
+"Carpentry","Carpentry","SIL",1,1.0,SINGLETON
+"Taoist literature, Chinese","Taoist literature, Chinese","SIL",1,1.0,SINGLETON
+"Rocking chair","Rocking chair","NPG",1,1.0,SINGLETON
+"Identité sexuelle","Identité sexuelle","SIL",1,1.0,SINGLETON
+"Warbler","Warbler","SAAM",1,1.0,SINGLETON
+"Hornbills","Hornbills","SIL",1,1.0,SINGLETON
+"Petroglyphs","Petroglyphs","SIL",1,1.0,SINGLETON
+"Princeton University","Princeton University","SAAM",1,1.0,SINGLETON
+"Plant-soil relationships","Plant-soil relationships","SIL",1,1.0,SINGLETON
+"Plein air painting","Plein air painting","SIL",1,1.0,SINGLETON
+"Checkers","Checkers","SAAM",1,1.0,SINGLETON
+"Electroplating","Electroplating","SIL",1,1.0,SINGLETON
+"Transcendentalists (New England)","Transcendentalists (New England)","SIL",1,0.9580299077298801,AUTO_ACCEPTED
+"Transcendentalists (New England)","Transcendentalism (New England)","SIL",1,0.9580299077298801,AUTO_ACCEPTED
+"Collages","Collages","SIL",1,1.0,SINGLETON
+"Medicine, Rural","Medicine, Rural","SIL",1,1.0,SINGLETON
+"Charities","Charities","SIL",1,1.0,SINGLETON
+"Bottle gentian","Bottle gentian","SAAM",1,1.0,SINGLETON
+"Charity administrator","Charity administrator","NPG",1,1.0,SINGLETON
+"Launching","Launching","SIL",1,1.0,SINGLETON
+"Kissel automobile","Kissel automobile","SIL",1,1.0,SINGLETON
+"Public health","Public health","SIL",1,1.0,SINGLETON
+"Zoroastrianism","Zoroastrianism","SIL",1,1.0,SINGLETON
+"Foreign workers","Foreign workers","SIL",1,1.0,SINGLETON
+"Greenhouses","Greenhouses","SIL",1,1.0,SINGLETON
+"Foreign public opinion","Foreign public opinion","SIL",1,1.0,SINGLETON
+"Harvard University","Harvard University","SAAM",1,1.0,SINGLETON
+"Stelae","Stelae","SIL",1,1.0,SINGLETON
+"Fiberwork","Fiberwork","SIL",1,1.0,SINGLETON
+"Door knobs","Door knobs","SIL",1,1.0,SINGLETON
+"Saint Valery-sur-Somme","Saint Valery-sur-Somme","SAAM",1,1.0,SINGLETON
+"Pelt","Pelt","NPG",1,1.0,SINGLETON
+"Glaciology","Glaciology","SIL",1,1.0,SINGLETON
+"Architect-designed houses","Architect-designed houses","SIL",1,1.0,SINGLETON
+"Newbery Medal","Newbery Medal","SIL",1,1.0,SINGLETON
+"Toquerville","Toquerville","SAAM",1,1.0,SINGLETON
+"Biophysics","Biophysics","SIL",1,1.0,SINGLETON
+"Delegate","Delegate","NPG",1,1.0,SINGLETON
+"Kultur","Kultur","SIL",1,1.0,SINGLETON
+"Taïno (Indiens)","Taïno (Indiens)","SIL",1,1.0,SINGLETON
+"Expressionism (Art)","Expressionism (Art)","SIL",1,1.0,SINGLETON
+"Adultery","Adultery","SIL",1,1.0,SINGLETON
+"Shells","Shells","SIL",1,1.0,SINGLETON
+"Buddhist pilgrims and pilgrimages","Buddhist pilgrims and pilgrimages","SIL",1,1.0,SINGLETON
+"Ballet","Ballet","NPG",1,1.0,SINGLETON
+"Louis XIV style","Louis XIV style","SIL",1,1.0,SINGLETON
+"Obelisk","Obelisk","NPG",1,1.0,SINGLETON
+"Hollow-cut","Hollow-cut","NPG",1,1.0,SINGLETON
+"Showboats","Showboats","SIL",1,1.0,SINGLETON
+"Benthos","Benthos","SIL",1,1.0,SINGLETON
+"Highbush blackberry","Highbush blackberry","SAAM",1,1.0,SINGLETON
+"Begonia","Begonia","SAAM",1,1.0,SINGLETON
+"Beavers","Beavers","SIL",1,1.0,SINGLETON
+"Temple of the Sibyl","Temple of the Sibyl","SAAM",1,1.0,SINGLETON
+"Radicofane","Radicofane","SAAM",1,1.0,SINGLETON
+"Syndedra","Syndedra","SIL",1,1.0,SINGLETON
+"Black Sea bottlenose dolphin","Black Sea bottlenose dolphin","SIL",1,1.0,SINGLETON
+"Genomic imprinting","Genomic imprinting","SIL",1,0.9931328592048752,AUTO_ACCEPTED
+"Genomic imprinting","Genomic Imprinting","SIL",1,0.9931328592048752,AUTO_ACCEPTED
+"Vector control","Vector control","SIL",1,1.0,SINGLETON
+"Contrats","Contrats","SIL",1,1.0,SINGLETON
+"Finishes and finishing","Finishes and finishing","SIL",1,1.0,SINGLETON
+"Critics","Critics","SIL",1,1.0,SINGLETON
+"Staples and stapling machines","Staples and stapling machines","SIL",1,1.0,SINGLETON
+"Laboratory animal technicians","Laboratory animal technicians","SIL",1,0.9015417981091459,AUTO_ACCEPTED
+"Laboratory animal technicians","Animal health technicians","SIL",1,0.9015417981091459,AUTO_ACCEPTED
+"Slavey language","Slavey language","SIL",1,1.0,SINGLETON
+"Femmes mariées","Femmes mariées","SIL",1,1.0,SINGLETON
+"Paintbrush","Paintbrush","NPG",1,1.0,SINGLETON
+"Censorship","Censorship","SIL",1,1.0,SINGLETON
+"Herpetology","Herpetology","SIL",1,1.0,SINGLETON
+"Vibo Valentia","Vibo Valentia","SAAM",1,1.0,SINGLETON
+"Mine","Mine","SAAM",1,1.0,SINGLETON
+"Pottery, Somali","Pottery, Somali","SIL",1,1.0,SINGLETON
+"Information storage and retrieval systems","Information storage and retrieval systems","SIL",1,1.0,SINGLETON
+"Textile trade","Textile trade","SIL",1,1.0,SINGLETON
+"Cranial sutures","Cranial sutures","SIL",1,1.0,SINGLETON
+"Wilco-Seal (Brand name)","Wilco-Seal (Brand name)","SIL",1,1.0,SINGLETON
+"Greek dress","Greek dress","SAAM",1,1.0,SINGLETON
+"Qualitative","Qualitative","SIL",1,1.0,SINGLETON
+"Kintampo","Kintampo","SIL",1,1.0,SINGLETON
+"Strategy","Strategy","SIL",1,1.0,SINGLETON
+"Einwanderer","Einwanderer","SIL",1,1.0,SINGLETON
+"Monnaies sassanides","Monnaies sassanides","SIL",1,1.0,SINGLETON
+"Wonder-Paste (Brand name)","Wonder-Paste (Brand name)","SIL",1,1.0,SINGLETON
+"Southport","Southport","SAAM",1,1.0,SINGLETON
+"Plant collectors","Plant collectors","SIL",1,1.0,SINGLETON
+"Paleobotany","Paleobotany","SIL",1,1.0,SINGLETON
+"Sculpture, Mende","Sculpture, Mende","SIL",1,1.0,SINGLETON
+"Protozoa","Protozoa","SIL",1,1.0,SINGLETON
+"Split-rail","Split-rail","NPG",1,1.0,SINGLETON
+"Contracts","Contracts","SIL",1,1.0,SINGLETON
+"Oath","Oath","SAAM",1,1.0,SINGLETON
+"Biretta","Biretta","NPG",1,1.0,SINGLETON
+"Health risk assessment","Health risk assessment","SIL",1,1.0,SINGLETON
+"Sex discrimination against women","Sex discrimination against women","SIL",1,1.0,SINGLETON
+"Shakespeare","Shakespeare","SAAM",1,1.0,SINGLETON
+"Économie domestique","Économie domestique","SIL",1,1.0,SINGLETON
+"Diagnosis","Diagnosis","SIL",1,1.0,SINGLETON
+"Divorce","Divorce","SIL",1,1.0,SINGLETON
+"Public utilities","Public utilities","SIL",1,1.0,SINGLETON
+"Justice, Administration of","Justice, Administration of","SIL",1,1.0,SINGLETON
+"Photojournalism","Photojournalism","SIL",1,1.0,SINGLETON
+"Lariat","Lariat","NPG",1,1.0,SINGLETON
+"Intaglio printing","Intaglio printing","SIL",1,1.0,SINGLETON
+"Functionalism (Architecture)","Functionalism (Architecture)","SIL",1,1.0,SINGLETON
+"Südstaaten","Südstaaten","SIL",1,1.0,SINGLETON
+"Plant embryology","Plant embryology","SIL",1,1.0,SINGLETON
+"Lexington","Lexington","SAAM",1,1.0,SINGLETON
+"Baton","Baton","NPG",1,1.0,SINGLETON
+"Combat survivability","Combat survivability","SIL",1,1.0,SINGLETON
+"Screen","Screen","NPG",1,1.0,SINGLETON
+"Billets de banque","Billets de banque","SIL",1,1.0,SINGLETON
+"Pocket computers","Pocket computers","SIL",1,1.0,SINGLETON
+"Iron","Iron","NPG",1,1.0,SINGLETON
+"Cardinal","Cardinal","NPG",1,1.0,SINGLETON
+"Emancipation","Emancipation","SIL",1,1.0,SINGLETON
+"Sex role in art","Sex role in art","SIL",1,1.0,SINGLETON
+"Zeeman effect","Zeeman effect","SIL",1,1.0,SINGLETON
+"Penstemon barbatus","Penstemon barbatus","SAAM",1,1.0,SINGLETON
+"Informatique","Informatique","SIL",1,1.0,SINGLETON
+"Ethnic food industry","Ethnic food industry","SIL",1,1.0,SINGLETON
+"Patronage, Political","Patronage, Political","SIL",1,1.0,SINGLETON
+"Instant messaging","Instant messaging","SIL",1,1.0,SINGLETON
+"Cours du soir","Cours du soir","SIL",1,1.0,SINGLETON
+"Pulpit","Pulpit","NPG",1,1.0,SINGLETON
+"Phanérogames","Phanérogames","SIL",1,1.0,SINGLETON
+"Animal feeding","Animal feeding","SIL",1,1.0,SINGLETON
+"Laliburte's Fur Parlor","Laliburte's Fur Parlor","SAAM",1,1.0,SINGLETON
+"Serer diviners","Serer diviners","SIL",1,1.0,SINGLETON
+"Legion of Honor","Legion of Honor","NPG",1,1.0,SINGLETON
+"Military policy","Military policy","SIL",1,1.0,SINGLETON
+"Alphabets","Alphabets","SIL",1,1.0,SINGLETON
+"Pheasants","Pheasants","SIL",1,1.0,SINGLETON
+"Mathematical recreations","Mathematical recreations","SIL",1,1.0,SINGLETON
+"Plant cells and tissues","Plant cells and tissues","SIL",1,1.0,SINGLETON
+"Biomineralization","Biomineralization","SIL",1,1.0,SINGLETON
+"Gas producers","Gas producers","SIL",1,1.0,SINGLETON
+"Plastics","Plastics","SIL",1,1.0,SINGLETON
+"Banking executive","Banking executive","NPG",1,1.0,SINGLETON
+"High technology industries","High technology industries","SIL",1,1.0,SINGLETON
+"Pesticides","Pesticides","SIL",1,1.0,SINGLETON
+"Tides","Tides","SIL",1,1.0,SINGLETON
+"Art museum trustee","Art museum trustee","NPG",1,1.0,SINGLETON
+"Robin","Robin","SAAM",1,1.0,SINGLETON
+"Solar wind","Solar wind","SIL",1,1.0,SINGLETON
+"Massachusett (Langue)","Massachusett (Langue)","SIL",1,1.0,SINGLETON
+"Sledding","Sledding","SAAM",1,1.0,SINGLETON
+"Ottoman","Ottoman","NPG",1,1.0,SINGLETON
+"Chagres River","Chagres River","SAAM",1,1.0,SINGLETON
+"Gondola","Gondola","NPG",1,1.0,SINGLETON
+"Electronic trading of securities","Electronic trading of securities","SIL",1,1.0,SINGLETON
+"Secretary of New Mexico Territory","Secretary of New Mexico Territory","NPG",1,1.0,SINGLETON
+"Glauchau","Glauchau","SAAM",1,1.0,SINGLETON
+"Academic study","Academic study","SAAM",1,1.0,SINGLETON
+"Metal-working machinery","Metal-working machinery","SIL",1,1.0,SINGLETON
+"Plate tectonics","Plate tectonics","SIL",1,1.0,SINGLETON
+"Meditation","Meditation","SAAM",1,1.0,SINGLETON
+"Prix","Prix","SIL",1,1.0,SINGLETON
+"Herkimer","Herkimer","SAAM",1,1.0,SINGLETON
+"Sham Fight","Sham Fight","SAAM",1,1.0,SINGLETON
+"Thermopsis rhombifolia","Thermopsis rhombifolia","SAAM",1,1.0,SINGLETON
+"Etho-Loc (Brand name)","Etho-Loc (Brand name)","SIL",1,1.0,SINGLETON
+"Body fluids","Body fluids","SIL",1,1.0,SINGLETON
+"Birdhouse","Birdhouse","SAAM",1,1.0,SINGLETON
+"Foreign mail","Foreign mail","SIL",1,1.0,SINGLETON
+"Face","Face","SIL",1,1.0,SINGLETON
+"Flute","Flute","SAAM",1,1.0,SINGLETON
+"Television picture tubes","Television picture tubes","SIL",1,1.0,SINGLETON
+"Gelatin","Gelatin","SIL",1,1.0,SINGLETON
+"Oberammergau","Oberammergau","SAAM",1,1.0,SINGLETON
+"Rucksack","Rucksack","NPG",1,1.0,SINGLETON
+"Literature and the war","Literature and the war","SIL",1,1.0,SINGLETON
+"Picnic","Picnic","SAAM",1,1.0,SINGLETON
+"Statesmen","Statesmen","SIL",1,1.0,SINGLETON
+"Play","Play","SIL",1,1.0,SINGLETON
+"Brodiaea pulchella","Brodiaea pulchella","SAAM",1,1.0,SINGLETON
+"Homoptera","Homoptera","SIL",1,1.0,SINGLETON
+"Patchwork","Patchwork","SIL",1,1.0,SINGLETON
+"St. John","St. John","SAAM",1,1.0,SINGLETON
+"Purpurea venosa","Purpurea venosa","SAAM",1,1.0,SINGLETON
+"Computer network resources","Computer network resources","SIL",1,1.0,SINGLETON
+"Instrumentation and orchestration (Band)","Instrumentation and orchestration (Band)","SIL",1,1.0,SINGLETON
+"Recording and reproducing","Recording and reproducing","SIL",1,1.0,SINGLETON
+"History of the King (Tapestries)","History of the King (Tapestries)","SIL",1,1.0,SINGLETON
+"Sitka","Sitka","SAAM",1,1.0,SINGLETON
+"Sécurité","Sécurité","SIL",1,1.0,SINGLETON
+"Osteichthyes","Osteichthyes","SIL",1,1.0,SINGLETON
+"Médecine légale","Médecine légale","SIL",1,1.0,SINGLETON
+"Bowl","Bowl","NPG",1,1.0,SINGLETON
+"Bombardment, 1943","Bombardment, 1943","SIL",1,1.0,SINGLETON
+"Cosmology","Cosmology","SIL",1,1.0,SINGLETON
+"Nsapo ceremonial axes","Nsapo ceremonial axes","SIL",1,1.0,SINGLETON
+"Goat","Goat","SAAM",1,1.0,SINGLETON
+"Photography of parachutes","Photography of parachutes","SIL",1,1.0,SINGLETON
+"Wood-engraving, Chinese","Wood-engraving, Chinese","SIL",1,1.0,SINGLETON
+"Folk music","Folk music","SIL",1,1.0,SINGLETON
+"Turbine-propeller engines","Turbine-propeller engines","SIL",1,1.0,SINGLETON
+"Comic books, strips, etc","Comic books, strips, etc","SIL",1,1.0,SINGLETON
+"Art moghol","Art moghol","SIL",1,1.0,SINGLETON
+"Effect of human beings on","Effect of human beings on","SIL",1,1.0,SINGLETON
+"Choreographer","Choreographer","NPG",1,0.9283737233250505,AUTO_ACCEPTED
+"Choreographer","Choreographers","SIL",1,0.9283737233250505,AUTO_ACCEPTED
+"Fob","Fob","NPG",1,1.0,SINGLETON
+"Automation","Automation","SIL",1,1.0,SINGLETON
+"Gems, jade etc","Gems, jade etc","SIL",1,1.0,SINGLETON
+"Dinosaurs","Dinosaurs","SIL",1,1.0,SINGLETON
+"Vision","Vision","SAAM",1,1.0,SINGLETON
+"Staff","Staff","NPG",1,1.0,SINGLETON
+"Marmots","Marmots","SIL",1,1.0,SINGLETON
+"Japanese American journalists","Japanese American journalists","SIL",1,1.0,SINGLETON
+"Home automation","Home automation","SIL",1,1.0,SINGLETON
+"History, Local","History, Local","SIL",1,1.0,SINGLETON
+"Cockroaches","Cockroaches","SIL",1,1.0,SINGLETON
+"Biosphere reserves","Biosphere reserves","SIL",1,1.0,SINGLETON
+"Eels","Eels","SIL",1,1.0,SINGLETON
+"Social medicine","Social medicine","SIL",1,1.0,SINGLETON
+"Parachuting","Parachuting","SIL",1,1.0,SINGLETON
+"Balances (Weighing instruments)","Balances (Weighing instruments)","SIL",1,1.0,SINGLETON
+"Furniture, Rococo","Furniture, Rococo","SIL",1,1.0,SINGLETON
+"Prudence","Prudence","SAAM",1,1.0,SINGLETON
+"Listening","Listening","SIL",1,1.0,SINGLETON
+"Seto pottery","Seto pottery","SIL",1,1.0,SINGLETON
+"Mural study","Mural study","SAAM",1,1.0,SINGLETON
+"Coins, Portuguese","Coins, Portuguese","SIL",1,1.0,SINGLETON
+"Yaupon","Yaupon","SAAM",1,1.0,SINGLETON
+"Earth resistance","Earth resistance","SIL",1,1.0,SINGLETON
+"Speech and social status","Speech and social status","SIL",1,1.0,SINGLETON
+"Objectifs photographiques","Objectifs photographiques","SIL",1,1.0,SINGLETON
+"Ndiki baskets","Ndiki baskets","SIL",1,1.0,SINGLETON
+"Poverty","Poverty","SAAM",1,1.0,SINGLETON
+"Literature and science","Literature and science","SIL",1,1.0,SINGLETON
+"Ironmaster","Ironmaster","NPG",1,1.0,SINGLETON
+"Humidity","Humidity","SIL",1,1.0,SINGLETON
+"Elections","Elections","SIL",1,1.0,SINGLETON
+"Particles","Particles","SIL",1,1.0,SINGLETON
+"Zodiac","Zodiac","SIL",1,1.0,SINGLETON
+"Geranium","Geranium","SAAM",1,1.0,SINGLETON
+"Submarine valleys","Submarine valleys","SIL",1,1.0,SINGLETON
+"Children's stories, Arabic","Children's stories, Arabic","SIL",1,1.0,SINGLETON
+"Acre","Acre","SIL",1,1.0,SINGLETON
+"Belt buckles","Belt buckles","SIL",1,1.0,SINGLETON
+"Rancho de Taos","Rancho de Taos","SAAM",1,1.0,SINGLETON
+"Materials","Materials","SIL",1,1.0,SINGLETON
+"Bonsai","Bonsai","SIL",1,1.0,SINGLETON
+"Nomenclature","Nomenclature","SIL",1,1.0,SINGLETON
+"Human geography","Human geography","SIL",1,1.0,SINGLETON
+"Limpets","Limpets","SIL",1,1.0,SINGLETON
+"Lifeguard","Lifeguard","SAAM",1,1.0,SINGLETON
+"Lute","Lute","SAAM",1,1.0,SINGLETON
+"Plaintiff","Plaintiff","NPG",1,1.0,SINGLETON
+"Causes","Causes","SIL",1,1.0,SINGLETON
+"Cottidae","Cottidae","SIL",1,1.0,SINGLETON
+"Rangelands","Rangelands","SIL",1,1.0,SINGLETON
+"Kom Ombos","Kom Ombos","SAAM",1,1.0,SINGLETON
+"Zoological libraries","Zoological libraries","SIL",1,1.0,SINGLETON
+"Minieh","Minieh","SAAM",1,1.0,SINGLETON
+"Lilies","Lilies","SIL",1,1.0,SINGLETON
+"Male singers","Male singers","SIL",1,1.0,SINGLETON
+"Wax printed textiles","Wax printed textiles","SIL",1,1.0,SINGLETON
+"Greniers (Entrepôts)","Greniers (Entrepôts)","SIL",1,1.0,SINGLETON
+"Hobbyhorse","Hobbyhorse","SAAM",1,1.0,SINGLETON
+"Shapers","Shapers","SIL",1,1.0,SINGLETON
+"San (Peuple d'Afrique)","San (Peuple d'Afrique)","SIL",1,1.0,SINGLETON
+"Reconstruction (U.S. history, 1865-1877)","Reconstruction (U.S. history, 1865-1877)","SIL",1,1.0,SINGLETON
+"Cherry tree","Cherry tree","SAAM",1,1.0,SINGLETON
+"Reconnaissance faciale (Informatique)","Reconnaissance faciale (Informatique)","SIL",1,1.0,SINGLETON
+"Upper class","Upper class","SIL",1,1.0,SINGLETON
+"Foreign relations","Foreign relations","SIL",1,1.0,SINGLETON
+"Yaoure (African people)","Yaoure (African people)","SIL",1,1.0,SINGLETON
+"Dressmaker","Dressmaker","NPG",1,1.0,SINGLETON
+"Miscegenation","Miscegenation","SIL",1,1.0,SINGLETON
+"Sashiko","Sashiko","SIL",1,1.0,SINGLETON
+"Lake Maggiore","Lake Maggiore","SAAM",1,1.0,SINGLETON
+"Coins in the Bible","Coins in the Bible","SIL",1,1.0,SINGLETON
+"Medical jurisprudence","Medical jurisprudence","SIL",1,1.0,SINGLETON
+"Emeralds","Emeralds","SIL",1,1.0,SINGLETON
+"Plant spacing","Plant spacing","SIL",1,1.0,SINGLETON
+"Cell interaction","Cell interaction","SIL",1,1.0,SINGLETON
+"Orchids","Orchids","SIL",1,1.0,SINGLETON
+"Pullman cars","Pullman cars","SIL",1,1.0,SINGLETON
+"Titles of honor and nobility","Titles of honor and nobility","SIL",1,1.0,SINGLETON
+"Real estate agent","Real estate agent","NPG",1,1.0,SINGLETON
+"Deforestation","Deforestation","SIL",1,1.0,SINGLETON
+"Social conflict in art","Social conflict in art","SIL",1,1.0,SINGLETON
+"Umweltschutz","Umweltschutz","SIL",1,1.0,SINGLETON
+"Ticks","Ticks","SIL",1,1.0,SINGLETON
+"Mariposa County","Mariposa County","SAAM",1,1.0,SINGLETON
+"Domestic worker","Domestic worker","NPG",1,1.0,SINGLETON
+"Construction workers","Construction workers","SIL",1,1.0,SINGLETON
+"Buckman Tavern","Buckman Tavern","SAAM",1,1.0,SINGLETON
+"Confrontation","Confrontation","SAAM",1,1.0,SINGLETON
+"Silverwork","Silverwork","SIL",1,1.0,SINGLETON
+"Larix occidentalis","Larix occidentalis","SAAM",1,1.0,SINGLETON
+"Washing machines","Washing machines","SIL",1,1.0,SINGLETON
+"Courting","Courting","SAAM",1,1.0,SINGLETON
+"Maple","Maple","SAAM",1,1.0,SINGLETON
+"Artistes du spectacle","Artistes du spectacle","SIL",1,1.0,SINGLETON
+"Commerce, Prehistoric","Commerce, Prehistoric","SIL",1,1.0,SINGLETON
+"Multiculturalism","Multiculturalism","SIL",1,1.0,SINGLETON
+"Tiles, Roofing","Tiles, Roofing","SIL",1,1.0,SINGLETON
+"Monreale","Monreale","SAAM",1,1.0,SINGLETON
+"Mushrooms, Hallucinogenic","Mushrooms, Hallucinogenic","SIL",1,1.0,SINGLETON
+"Rubus argutus","Rubus argutus","SAAM",1,1.0,SINGLETON
+"Mail steamers","Mail steamers","SIL",1,1.0,SINGLETON
+"Totty","Totty","SAAM",1,1.0,SINGLETON
+"Solola","Solola","SAAM",1,1.0,SINGLETON
+"Continental shelf","Continental shelf","SIL",1,1.0,SINGLETON
+"Mill","Mill","SAAM",1,1.0,SINGLETON
+"Wildlife management","Wildlife management","SIL",1,1.0,SINGLETON
+"Fougères","Fougères","SIL",1,1.0,SINGLETON
+"Nylatch (Brand name)","Nylatch (Brand name)","SIL",1,1.0,SINGLETON
+"Space Suits","Space Suits","SIL",1,0.9999999999999998,AUTO_ACCEPTED
+"Space Suits","Space suits","SIL",1,0.9999999999999998,AUTO_ACCEPTED
+"Coins, Swedish","Coins, Swedish","SIL",1,1.0,SINGLETON
+"Ventilation","Ventilation","SIL",1,1.0,SINGLETON
+"Tokens","Tokens","SIL",1,1.0,SINGLETON
+"Judaism","Judaism","SIL",1,1.0,SINGLETON
+"Harebell","Harebell","SAAM",1,1.0,SINGLETON
+"Factory","Factory","NPG",1,1.0,SINGLETON
+"Zeitung","Zeitung","SIL",1,1.0,SINGLETON
+"Neo-Confucianism","Neo-Confucianism","SIL",1,1.0,SINGLETON
+"Stone circles","Stone circles","SIL",1,1.0,SINGLETON
+"Antigone (Greek mythology)","Antigone (Greek mythology)","SAAM",1,1.0,SINGLETON
+"Chest","Chest","NPG",1,0.909090117575638,AUTO_ACCEPTED
+"Chest","Chests","SIL",1,0.909090117575638,AUTO_ACCEPTED
+"Sports writer","Sports writer","NPG",1,1.0,SINGLETON
+"Journaux américains","Journaux américains","SIL",1,1.0,SINGLETON
+"Vivariums","Vivariums","SIL",1,1.0,SINGLETON
+"Animaux","Animaux","SIL",1,1.0,SINGLETON
+"Lake Geneva","Lake Geneva","SAAM",1,1.0,SINGLETON
+"Lighting, Architectural and decorative","Lighting, Architectural and decorative","SIL",1,1.0,SINGLETON
+"Camwood sculpture","Camwood sculpture","SIL",1,1.0,SINGLETON
+"Army physician","Army physician","NPG",1,1.0,SINGLETON
+"Game-laws","Game-laws","SIL",1,0.944103049317509,AUTO_ACCEPTED
+"Game-laws","Game laws","SIL",1,0.944103049317509,AUTO_ACCEPTED
+"Rubies","Rubies","SIL",1,1.0,SINGLETON
+"Catalogs, Booksellers'","Catalogs, Booksellers'","SIL",1,1.0,SINGLETON
+"Women, Nso","Women, Nso","SIL",1,1.0,SINGLETON
+"Painting, Canadian","Painting, Canadian","SIL",1,1.0,SINGLETON
+"Masks, Makonde","Masks, Makonde","SIL",1,1.0,SINGLETON
+"Platinotype","Platinotype","SIL",1,1.0,SINGLETON
+"Twins","Twins","SIL",1,1.0,SINGLETON
+"Scale","Scale","SAAM",1,1.0,SINGLETON
+"Living room","Living room","SAAM",1,1.0,SINGLETON
+"Sculpture, Sukuma","Sculpture, Sukuma","SIL",1,1.0,SINGLETON
+"Machinist","Machinist","NPG",1,1.0,SINGLETON
+"Carpet","Carpet","NPG",1,1.0,SINGLETON
+"Plantas Forrageiras","Plantas Forrageiras","SIL",1,1.0,SINGLETON
+"Train launching","Train launching","SAAM",1,1.0,SINGLETON
+"Sauli","Sauli","SAAM",1,1.0,SINGLETON
+"Public Works of Art Project","Public Works of Art Project","SAAM",1,1.0,SINGLETON
+"Guidebooks","Guidebooks","SIL",1,1.0,SINGLETON
+"Japanese paper","Japanese paper","SIL",1,1.0,SINGLETON
+"Microfilms","Microfilms","SIL",1,1.0,SINGLETON
+"Electronic music","Electronic music","SIL",1,1.0,SINGLETON
+"Task Performance and Analysis","Task Performance and Analysis","SIL",1,1.0,SINGLETON
+"Multiring basins (Astrogeology)","Multiring basins (Astrogeology)","SIL",1,1.0,SINGLETON
+"Hawkweeds","Hawkweeds","SIL",1,1.0,SINGLETON
+"Tavern","Tavern","SAAM",1,1.0,SINGLETON
+"Energie solaire","Energie solaire","SIL",1,1.0,SINGLETON
+"Chucks","Chucks","SIL",1,1.0,SINGLETON
+"Norton St. Philip","Norton St. Philip","SAAM",1,1.0,SINGLETON
+"Plate","Plate","NPG",1,1.0,SINGLETON
+"Furniture maker","Furniture maker","NPG",1,1.0,SINGLETON
+"Roi et souverains","Roi et souverains","SIL",1,1.0,SINGLETON
+"Maruyama School","Maruyama School","SIL",1,1.0,SINGLETON
+"Physical instruments","Physical instruments","SIL",1,1.0,SINGLETON
+"VETCOA (Brand name)","VETCOA (Brand name)","SIL",1,1.0,SINGLETON
+"Gentiana saponaria","Gentiana saponaria","SAAM",1,1.0,SINGLETON
+"Graphology","Graphology","SIL",1,1.0,SINGLETON
+"Syncretism (Religion)","Syncretism (Religion)","SIL",1,1.0,SINGLETON
+"Sin","Sin","SAAM",1,1.0,SINGLETON
+"Relations with Americans","Relations with Americans","SIL",1,1.0,SINGLETON
+"Poliomyelitis vaccine","Poliomyelitis vaccine","SIL",1,1.0,SINGLETON
+"Liverpool","Liverpool","SAAM",1,1.0,SINGLETON
+"Trading posts","Trading posts","SIL",1,1.0,SINGLETON
+"Argile","Argile","SIL",1,1.0,SINGLETON
+"Finances","Finances","SIL",1,1.0,SINGLETON
+"Weights and measures","Weights and measures","SIL",1,1.0,SINGLETON
+"Plow","Plow","NPG",1,1.0,SINGLETON
+"Amiens Cathedral","Amiens Cathedral","SAAM",1,1.0,SINGLETON
+"Host-parasite relationships","Host-parasite relationships","SIL",1,1.0,SINGLETON
+"LANGUAGE ARTS & DISCIPLINES","LANGUAGE ARTS & DISCIPLINES","SIL",1,1.0,SINGLETON
+"Seneca Falls","Seneca Falls","SAAM",1,1.0,SINGLETON
+"Chashitsu (Japanese tearooms)","Chashitsu (Japanese tearooms)","SIL",1,1.0,SINGLETON
+"Art thefts","Art thefts","SIL",1,1.0,SINGLETON
+"Pouch","Pouch","NPG",1,1.0,SINGLETON
+"Pest introduction","Pest introduction","SIL",1,1.0,SINGLETON
+"Packaging","Packaging","SIL",1,1.0,SINGLETON
+"Chemie","Chemie","SIL",1,1.0,SINGLETON
+"Red Cross","Red Cross","SIL",1,1.0,SINGLETON
+"Weapons industry","Weapons industry","SIL",1,1.0,SINGLETON
+"Molecular biology","Molecular biology","SIL",1,1.0,SINGLETON
+"Hydrographer","Hydrographer","NPG",1,1.0,SINGLETON
+"Critiques","Critiques","SIL",1,1.0,SINGLETON
+"Children with social disabilities","Children with social disabilities","SIL",1,1.0,SINGLETON
+"Raven","Raven","SAAM",1,1.0,SINGLETON
+"Etching","Etching","SIL",1,1.0,SINGLETON
+"Deck rail","Deck rail","NPG",1,1.0,SINGLETON
+"Rooms","Rooms","SIL",1,1.0,SINGLETON
+"Corals","Corals","SIL",1,1.0,SINGLETON
+"Bullets","Bullets","NMNHANTHRO",1,1.0,SINGLETON
+"Laziness","Laziness","SIL",1,1.0,SINGLETON
+"Applications for positions","Applications for positions","SIL",1,1.0,SINGLETON
+"Epitaphs","Epitaphs","SIL",1,1.0,SINGLETON
+"Panther","Panther","SAAM",1,1.0,SINGLETON
+"Iron Pillar (Delhi, India)","Iron Pillar (Delhi, India)","SIL",1,1.0,SINGLETON
+"Stream","Stream","SAAM",1,1.0,SINGLETON
+"Exiles","Exiles","SIL",1,1.0,SINGLETON
+"Rhododendrons","Rhododendrons","SIL",1,1.0,SINGLETON
+"Princir (Brand name)","Princir (Brand name)","SIL",1,1.0,SINGLETON
+"Stigma (Social psychology)","Stigma (Social psychology)","SIL",1,1.0,SINGLETON
+"Isola Madre","Isola Madre","SAAM",1,1.0,SINGLETON
+"Postal museums","Postal museums","SIL",1,1.0,SINGLETON
+"Winged being","Winged being","SAAM",1,1.0,SINGLETON
+"Libraries and pictures","Libraries and pictures","SIL",1,1.0,SINGLETON
+"Museum registration methods","Museum registration methods","SIL",1,1.0,SINGLETON
+"Monarchy","Monarchy","SIL",1,1.0,SINGLETON
+"Goblet","Goblet","NPG",1,1.0,SINGLETON
+"Religious writer","Religious writer","NPG",1,1.0,SINGLETON
+"Progress","Progress","SIL",1,1.0,SINGLETON
+"Poupées","Poupées","SIL",1,1.0,SINGLETON
+"Vietnam War, 1961-1975","Vietnam War, 1961-1975","SIL",1,1.0,SINGLETON
+"Schwarze","Schwarze","SIL",1,1.0,SINGLETON
+"Glassworker","Glassworker","SAAM",1,1.0,SINGLETON
+"Siva (Hindu deity)","Siva (Hindu deity)","SIL",1,1.0,SINGLETON
+"Fog","Fog","SAAM",1,1.0,SINGLETON
+"Kunstschilders","Kunstschilders","SIL",1,1.0,SINGLETON
+"Bucket","Bucket","NPG",1,1.0,SINGLETON
+"Creative writing (Secondary education)","Creative writing (Secondary education)","SIL",1,1.0,SINGLETON
+"Interracial marriage","Interracial marriage","SIL",1,1.0,SINGLETON
+"Ferry","Ferry","SAAM",1,1.0,SINGLETON
+"Transport workers","Transport workers","SIL",1,1.0,SINGLETON
+"Space shuttles","Space shuttles","SIL",1,1.0,SINGLETON
+"Pipe, Plastic","Pipe, Plastic","SIL",1,1.0,SINGLETON
+"Stearman airplanes","Stearman airplanes","SIL",1,1.0,SINGLETON
+"Greenhouse effect, Atmospheric","Greenhouse effect, Atmospheric","SIL",1,1.0,SINGLETON
+"Veterinary radiography","Veterinary radiography","SIL",1,1.0,SINGLETON
+"Clockmaker","Clockmaker","NPG",1,1.0,SINGLETON
+"Nativistic movements","Nativistic movements","SIL",1,1.0,SINGLETON
+"Morning-glory","Morning-glory","SAAM",1,1.0,SINGLETON
+"Diarist","Diarist","NPG",1,1.0,SINGLETON
+"St. Maur","St. Maur","SAAM",1,1.0,SINGLETON
+"Magnetosphere","Magnetosphere","SIL",1,1.0,SINGLETON
+"Fetishes (Ceremonial objects)","Fetishes (Ceremonial objects)","SIL",1,1.0,SINGLETON
+"Expandable space structures","Expandable space structures","SIL",1,1.0,SINGLETON
+"Pastures","Pastures","SIL",1,1.0,SINGLETON
+"Sea-power","Sea-power","SIL",1,1.0,SINGLETON
+"New Jersey Collection","New Jersey Collection","SIL",1,1.0,SINGLETON
+"Bicycle industry","Bicycle industry","SIL",1,1.0,SINGLETON
+"Zosteropidae","Zosteropidae","SIL",1,1.0,SINGLETON
+"Choker","Choker","NPG",1,1.0,SINGLETON
+"Biologie moléculaire","Biologie moléculaire","SIL",1,1.0,SINGLETON
+"Nishnabottana Bluffs","Nishnabottana Bluffs","SAAM",1,1.0,SINGLETON
+"Legal stories, American","Legal stories, American","SIL",1,1.0,SINGLETON
+"Mino pottery","Mino pottery","SIL",1,1.0,SINGLETON
+"Bank notes","Bank notes","SIL",1,1.0,SINGLETON
+"Security measures","Security measures","SIL",1,1.0,SINGLETON
+"Opium trade","Opium trade","SIL",1,1.0,SINGLETON
+"Olive","Olive","SAAM",1,1.0,SINGLETON
+"Atelopus","Atelopus","SIL",1,1.0,SINGLETON
+"Homer","Homer","SAAM",1,1.0,SINGLETON
+"Genesis","Genesis","SAAM",1,1.0,SINGLETON
+"Textile fabrics, Medieval","Textile fabrics, Medieval","SIL",1,1.0,SINGLETON
+"Opera","Opera","SAAM",1,0.9299631935978442,AUTO_ACCEPTED
+"Opera","Operas","SIL",1,0.9299631935978442,AUTO_ACCEPTED
+"Mesilla","Mesilla","SAAM",1,1.0,SINGLETON
+"Wedding Band","Wedding Band","NPG",1,1.0,SINGLETON
+"Columbia Hill","Columbia Hill","SAAM",1,1.0,SINGLETON
+"Gregg","Gregg","SIL",1,1.0,SINGLETON
+"Bouddhisme et politique","Bouddhisme et politique","SIL",1,1.0,SINGLETON
+"Spiders","Spiders","SIL",1,1.0,SINGLETON
+"Oswego, NY","Oswego, NY","NPG",1,1.0,SINGLETON
+"Freshwater productivity","Freshwater productivity","SIL",1,1.0,SINGLETON
+"Méthodologie","Méthodologie","SIL",1,1.0,SINGLETON
+"Sculpture, Kongo","Sculpture, Kongo","SIL",1,1.0,SINGLETON
+"Mormon Church","Mormon Church","SIL",1,1.0,SINGLETON
+"Bookplates, Japanese","Bookplates, Japanese","SIL",1,1.0,SINGLETON
+"Aquarium libraries","Aquarium libraries","SIL",1,1.0,SINGLETON
+"Polarization (Electricity)","Polarization (Electricity)","SIL",1,1.0,SINGLETON
+"Seneca River","Seneca River","SAAM",1,1.0,SINGLETON
+"Agarwood (Wood)","Agarwood (Wood)","SIL",1,1.0,SINGLETON
+"Psychoanalysis","Psychoanalysis","SIL",1,1.0,SINGLETON
+"Bijoux","Bijoux","SIL",1,1.0,SINGLETON
+"Constructions à ossature de bois","Constructions à ossature de bois","SIL",1,1.0,SINGLETON
+"Bolts and nuts","Bolts and nuts","SIL",1,1.0,SINGLETON
+"Cycadopsida","Cycadopsida","NMNHBOTANY",1,1.0,SINGLETON
+"Pacifists","Pacifists","SIL",1,1.0,SINGLETON
+"Sheaf","Sheaf","NPG",1,1.0,SINGLETON
+"Chocolate","Chocolate","NPG",1,1.0,SINGLETON
+"Yombe ivory scepters","Yombe ivory scepters","SIL",1,1.0,SINGLETON
+"Household employees","Household employees","SIL",1,1.0,SINGLETON
+"Gear selectivity","Gear selectivity","SIL",1,1.0,SINGLETON
+"Vertical take-off and landing aircraft","Vertical take-off and landing aircraft","SIL",1,1.0,SINGLETON
+"Lewis and Clark Centennial Exposition, 1905","Lewis and Clark Centennial Exposition, 1905","SIL",1,1.0,SINGLETON
+"Plantes comestibles","Plantes comestibles","SIL",1,1.0,SINGLETON
+"Joseph","Joseph","SAAM",1,1.0,SINGLETON
+"Netting","Netting","SIL",1,1.0,SINGLETON
+"Celts","Celts","SIL",1,1.0,SINGLETON
+"Crocus","Crocus","SAAM",1,1.0,SINGLETON
+"Harper's Monthly Magazine","Harper's Monthly Magazine","SAAM",1,1.0,SINGLETON
+"Guardhouse","Guardhouse","SAAM",1,1.0,SINGLETON
+"Neogastropoda","Neogastropoda","SIL",1,1.0,SINGLETON
+"Pottery, Dogon","Pottery, Dogon","SIL",1,1.0,SINGLETON
+"Savings and loan associations","Savings and loan associations","SIL",1,1.0,SINGLETON
+"Relation (Soziol., Psychol.)","Relation (Soziol., Psychol.)","SIL",1,1.0,SINGLETON
+"Spandrels","Spandrels","NPG",1,1.0,SINGLETON
+"Lightning","Lightning","SAAM",1,1.0,SINGLETON
+"Tapestries","Tapestries","SIL",1,1.0,SINGLETON
+"Corundum","Corundum","SIL",1,1.0,SINGLETON
+"Environnementalisme","Environnementalisme","SIL",1,1.0,SINGLETON
+"Salix","Salix","SAAM",1,1.0,SINGLETON
+"Demeter (Greek deity)","Demeter (Greek deity)","SAAM",1,1.0,SINGLETON
+"False hellebores","False hellebores","SIL",1,1.0,SINGLETON
+"Kites (Military and naval reconnaissance)","Kites (Military and naval reconnaissance)","SIL",1,1.0,SINGLETON
+"Palette","Palette","NPG",1,1.0,SINGLETON
+"Compositae","Compositae","SIL",1,1.0,SINGLETON
+"Superstition","Superstition","SIL",1,1.0,SINGLETON
+"Geopolitics","Geopolitics","SIL",1,1.0,SINGLETON
+"Gospel musician","Gospel musician","NPG",1,1.0,SINGLETON
+"Calibration","Calibration","SIL",1,1.0,SINGLETON
+"Industrias Quimicas (Processos)","Industrias Quimicas (Processos)","SIL",1,1.0,SINGLETON
+"Port Arthur","Port Arthur","SAAM",1,1.0,SINGLETON
+"Ivories, Yombe (Congo and Angola)","Ivories, Yombe (Congo and Angola)","SIL",1,1.0,SINGLETON
+"Artificial satellites","Artificial satellites","SIL",1,1.0,SINGLETON
+"Westminster Bridge","Westminster Bridge","SAAM",1,1.0,SINGLETON
+"Radiolaria, Fossil","Radiolaria, Fossil","SIL",1,1.0,SINGLETON
+"Earth Sciences","Earth Sciences","SIL",1,1.0,SINGLETON
+"Brook lobelia","Brook lobelia","SAAM",1,1.0,SINGLETON
+"Barbiturates","Barbiturates","SIL",1,1.0,SINGLETON
+"Thorny skate","Thorny skate","SIL",1,1.0,SINGLETON
+"Rhodophyceae","Rhodophyceae","NMNHBOTANY",1,1.0,SINGLETON
+"Imperial (Brand name)","Imperial (Brand name)","SIL",1,1.0,SINGLETON
+"Testing-machines","Testing-machines","SIL",1,1.0,SINGLETON
+"Chotscho","Chotscho","SIL",1,1.0,SINGLETON
+"Code switching (Linguistics)","Code switching (Linguistics)","SIL",1,1.0,SINGLETON
+"Roosevelt, Eleanor","Roosevelt, Eleanor","SIL",1,1.0,SINGLETON
+"Maya chronology","Maya chronology","SIL",1,1.0,SINGLETON
+"Sculpture, Teke","Sculpture, Teke","SIL",1,1.0,SINGLETON
+"Faune","Faune","SIL",1,1.0,SINGLETON
+"Hoisting machinery","Hoisting machinery","SIL",1,1.0,SINGLETON
+"Curricula","Curricula","SIL",1,1.0,SINGLETON
+"Legislative chamber","Legislative chamber","NPG",1,1.0,SINGLETON
+"Rain-making rites","Rain-making rites","SIL",1,1.0,SINGLETON
+"Vanity","Vanity","SAAM",1,1.0,SINGLETON
+"Cascade Mountains","Cascade Mountains","SAAM",1,1.0,SINGLETON
+"15.85 history of America","15.85 history of America","SIL",1,1.0,SINGLETON
+"Hydrologic factors","Hydrologic factors","SIL",1,1.0,SINGLETON
+"Dispositifs","Dispositifs","SIL",1,1.0,SINGLETON
+"Spirituals (Songs)","Spirituals (Songs)","SIL",1,1.0,SINGLETON
+"Deformations (Mechanics)","Deformations (Mechanics)","SIL",1,1.0,SINGLETON
+"Phlox stansburyi","Phlox stansburyi","SAAM",1,1.0,SINGLETON
+"Harvest festival","Harvest festival","SAAM",1,1.0,SINGLETON
+"Literatura Italiana","Literatura Italiana","SIL",1,1.0,SINGLETON
+"Kruhsea","Kruhsea","SAAM",1,1.0,SINGLETON
+"Chemins de fer","Chemins de fer","SIL",1,1.0,SINGLETON
+"Private libraries","Private libraries","SIL",1,1.0,SINGLETON
+"Pont des Arts","Pont des Arts","SAAM",1,1.0,SINGLETON
+"Erythronium albidum","Erythronium albidum","SAAM",1,1.0,SINGLETON
+"Criminal","Criminal","NPG",1,1.0,SINGLETON
+"Cartouche","Cartouche","NPG",1,1.0,SINGLETON
+"Poker chips","Poker chips","NPG",1,1.0,SINGLETON
+"Christentum","Christentum","SIL",1,1.0,SINGLETON
+"Suffrage","Suffrage","SIL",1,1.0,SINGLETON
+"Calendar, Ashanti","Calendar, Ashanti","SIL",1,1.0,SINGLETON
+"Geographic information systems","Geographic information systems","SIL",1,1.0,SINGLETON
+"Bicorne","Bicorne","NPG",1,1.0,SINGLETON
+"Sausalito","Sausalito","SAAM",1,1.0,SINGLETON
+"Rainbow","Rainbow","SAAM",1,1.0,SINGLETON
+"Windsor Park","Windsor Park","SAAM",1,1.0,SINGLETON
+"Power lines","Power lines","SAAM",1,1.0,SINGLETON
+"March on Washington for Jobs and Freedom (1963 : Washington, D.C.)","March on Washington for Jobs and Freedom (1963 : Washington, D.C.)","SIL",1,1.0,SINGLETON
+"Aphididae","Aphididae","SIL",1,1.0,SINGLETON
+"Ditomaceae","Ditomaceae","SIL",1,1.0,SINGLETON
+"Clamps (Engineering)","Clamps (Engineering)","SIL",1,1.0,SINGLETON
+"Bugle","Bugle","NPG",1,1.0,SINGLETON
+"Blouay","Blouay","SAAM",1,1.0,SINGLETON
+"Motors","Motors","SIL",1,1.0,SINGLETON
+"Sculpture bouddhique","Sculpture bouddhique","SIL",1,1.0,SINGLETON
+"Anemone","Anemone","SAAM",1,1.0,SINGLETON
+"Ornamental woody plants","Ornamental woody plants","SIL",1,1.0,SINGLETON
+"Saxifraga caespitosa","Saxifraga caespitosa","SAAM",1,1.0,SINGLETON
+"Aeronaves","Aeronaves","SIL",1,1.0,SINGLETON
+"Oiseaux","Oiseaux","SIL",1,1.0,SINGLETON
+"Academic freedom","Academic freedom","SIL",1,1.0,SINGLETON
+"Political movements","Political movements","SIL",1,1.0,SINGLETON
+"Honey","Honey","SIL",1,1.0,SINGLETON
+"Paint removers","Paint removers","SIL",1,1.0,SINGLETON
+"Mayan (language family)","Mayan (language family)","SIL",1,1.0,SINGLETON
+"Bacillariaceae","Bacillariaceae","SIL",1,1.0,SINGLETON
+"Purse","Purse","NPG",1,1.0,SINGLETON
+"Indexes","Indexes","SIL",1,1.0,SINGLETON
+"Airlift, Military","Airlift, Military","SIL",1,1.0,SINGLETON
+"Congr̈s","Congr̈s","SIL",1,1.0,SINGLETON
+"Torch","Torch","SAAM",1,1.0,SINGLETON
+"Sociology of disability","Sociology of disability","SIL",1,1.0,SINGLETON
+"Buddhistische Kunst","Buddhistische Kunst","SIL",1,1.0,SINGLETON
+"Women, Hausa","Women, Hausa","SIL",1,1.0,SINGLETON
+"Holzbau","Holzbau","SIL",1,1.0,SINGLETON
+"St. Legier","St. Legier","SAAM",1,1.0,SINGLETON
+"Facial reconstruction (Anthropology)","Facial reconstruction (Anthropology)","SIL",1,1.0,SINGLETON
+"Cathedral Rocks","Cathedral Rocks","SAAM",1,1.0,SINGLETON
+"Language usage","Language usage","SIL",1,1.0,SINGLETON
+"Pedicularis bracteosa","Pedicularis bracteosa","SAAM",1,1.0,SINGLETON
+"Library science","Library science","SIL",1,1.0,SINGLETON
+"Thread cutting","Thread cutting","SIL",1,1.0,SINGLETON
+"Chronology","Chronology","SIL",1,1.0,SINGLETON
+"St. Nicolas du Chardonnet","St. Nicolas du Chardonnet","SAAM",1,1.0,SINGLETON
+"Meiofauna","Meiofauna","SIL",1,1.0,SINGLETON
+"Riverboat","Riverboat","SAAM",1,1.0,SINGLETON
+"Islamic influences","Islamic influences","SIL",1,1.0,SINGLETON
+"Glacial epoch","Glacial epoch","SIL",1,1.0,SINGLETON
+"Laziness in literature","Laziness in literature","SIL",1,1.0,SINGLETON
+"Type and type-founding","Type and type-founding","SIL",1,1.0,SINGLETON
+"Akwete cloth","Akwete cloth","SIL",1,1.0,SINGLETON
+"Plant communities","Plant communities","SIL",1,1.0,SINGLETON
+"Scaphidiinae","Scaphidiinae","SIL",1,1.0,SINGLETON
+"Military telephone","Military telephone","SIL",1,1.0,SINGLETON
+"Manuscripts, Ethiopic","Manuscripts, Ethiopic","SIL",1,1.0,SINGLETON
+"Popular works","Popular works","SIL",1,1.0,SINGLETON
+"Waiting","Waiting","SAAM",1,1.0,SINGLETON
+"Daisy","Daisy","SAAM",1,1.0,SINGLETON
+"Bogbean","Bogbean","SAAM",1,1.0,SINGLETON
+"PowerGrip (Brand name)","PowerGrip (Brand name)","SIL",1,1.0,SINGLETON
+"Cylinders","Cylinders","SIL",1,1.0,SINGLETON
+"Utility pole","Utility pole","NPG",1,1.0,SINGLETON
+"Rock formation","Rock formation","SAAM",1,1.0,SINGLETON
+"Mixed media (Art)","Mixed media (Art)","SIL",1,1.0,SINGLETON
+"Sudbury","Sudbury","SAAM",1,1.0,SINGLETON
+"Storms","Storms","SAAM",1,1.0,SINGLETON
+"Imaginary","Imaginary","NPG",1,1.0,SINGLETON
+"Primers, Huichol","Primers, Huichol","SIL",1,1.0,SINGLETON
+"Fertilization of plants","Fertilization of plants","SIL",1,1.0,SINGLETON
+"Forest mapping","Forest mapping","SIL",1,1.0,SINGLETON
+"Art building","Art building","SAAM",1,1.0,SINGLETON
+"Storytelling","Storytelling","SAAM",1,1.0,SINGLETON
+"Photographic lenses","Photographic lenses","SIL",1,1.0,SINGLETON
+"Servant","Servant","NPG",1,1.0,SINGLETON
+"Nonindigenous aquatic pests","Nonindigenous aquatic pests","SIL",1,1.0,SINGLETON
+"WHITE TRUCKS","WHITE TRUCKS","SIL",1,1.0,SINGLETON
+"Video recordings industry","Video recordings industry","SIL",1,1.0,SINGLETON
+"Wooden-frame buildings","Wooden-frame buildings","SIL",1,1.0,SINGLETON
+"Oral histories","Oral histories","SIL",1,1.0,SINGLETON
+"Pharmacist","Pharmacist","SAAM",1,1.0,SINGLETON
+"Oil well drilling","Oil well drilling","SIL",1,1.0,SINGLETON
+"Coastal zone management","Coastal zone management","SIL",1,1.0,SINGLETON
+"Tufted saxifrage","Tufted saxifrage","SAAM",1,1.0,SINGLETON
+"India Early Minshall Collection","India Early Minshall Collection","SIL",1,1.0,SINGLETON
+"White troutlily","White troutlily","SAAM",1,1.0,SINGLETON
+"Steam engineering","Steam engineering","SIL",1,1.0,SINGLETON
+"Stamp collections","Stamp collections","SIL",1,1.0,SINGLETON
+"Homosexualité","Homosexualité","SIL",1,1.0,SINGLETON
+"Tribal art","Tribal art","SIL",1,1.0,SINGLETON
+"Klein Laufenberg","Klein Laufenberg","SAAM",1,1.0,SINGLETON
+"Water resources development","Water resources development","SIL",1,1.0,SINGLETON
+"Myctophiformes","Myctophiformes","SIL",1,1.0,SINGLETON
+"Famiies","Famiies","SIL",1,1.0,SINGLETON
+"Men's clothing","Men's clothing","SIL",1,1.0,SINGLETON
+"Public welfare","Public welfare","SIL",1,1.0,SINGLETON
+"Actuators","Actuators","SIL",1,1.0,SINGLETON
+"Cultural relations","Cultural relations","SIL",1,1.0,SINGLETON
+"Way (Brand name)","Way (Brand name)","SIL",1,1.0,SINGLETON
+"Coat hooks","Coat hooks","SIL",1,1.0,SINGLETON
+"Mexican influences","Mexican influences","SIL",1,1.0,SINGLETON
+"Shorthand","Shorthand","SIL",1,1.0,SINGLETON
+"Passenger pigeon","Passenger pigeon","SIL",1,1.0,SINGLETON
+"Grocer","Grocer","NPG",1,1.0,SINGLETON
+"Céréales","Céréales","SIL",1,1.0,SINGLETON
+"Supersymmetry","Supersymmetry","SIL",1,1.0,SINGLETON
+"Buddhist antiquities","Buddhist antiquities","SIL",1,1.0,SINGLETON
+"Fouilles (Archéologie)","Fouilles (Archéologie)","SIL",1,1.0,SINGLETON
+"Griechen","Griechen","SIL",1,1.0,SINGLETON
+"Jerusalem","Jerusalem","SAAM",1,1.0,SINGLETON
+"Peace activist","Peace activist","NPG",1,1.0,SINGLETON
+"Orbits","Orbits","SIL",1,1.0,SINGLETON
+"Pinus flexilis","Pinus flexilis","SAAM",1,1.0,SINGLETON
+"Coatings","Coatings","SIL",1,1.0,SINGLETON
+"Nectaries","Nectaries","SIL",1,1.0,SINGLETON
+"Eurocentrism","Eurocentrism","SIL",1,1.0,SINGLETON
+"Baltimore, Battle of (Maryland : 1814)","Baltimore, Battle of (Maryland : 1814)","SIL",1,1.0,SINGLETON
+"Molecular aspects","Molecular aspects","SIL",1,1.0,SINGLETON
+"Hotels, taverns, etc","Hotels, taverns, etc","SIL",1,1.0,SINGLETON
+"Parliament","Parliament","SAAM",1,1.0,SINGLETON
+"Medical instruments and apparatus","Medical instruments and apparatus","SIL",1,1.0,SINGLETON
+"Tomahawk","Tomahawk","NPG",1,1.0,SINGLETON
+"Passenger cars","Passenger cars","SIL",1,1.0,SINGLETON
+"Tea in art","Tea in art","SIL",1,1.0,SINGLETON
+"Coffin","Coffin","NPG",1,1.0,SINGLETON
+"Skyscraper","Skyscraper","SAAM",1,1.0,SINGLETON
+"Sea turtles","Sea turtles","SIL",1,1.0,SINGLETON
+"Jewelry making","Jewelry making","SIL",1,1.0,SINGLETON
+"Troy","Troy","SAAM",1,1.0,SINGLETON
+"Plant introduction","Plant introduction","SIL",1,1.0,SINGLETON
+"Nativity","Nativity","SAAM",1,1.0,SINGLETON
+"Red-helmet","Red-helmet","SAAM",1,1.0,SINGLETON
+"Petrified Forest National Park","Petrified Forest National Park","SAAM",1,1.0,SINGLETON
+"Artificial light gardening","Artificial light gardening","SIL",1,1.0,SINGLETON
+"Pompeii","Pompeii","SAAM",1,1.0,SINGLETON
+"Aquilegia caerulea","Aquilegia caerulea","SAAM",1,1.0,SINGLETON
+"Indo-Iranian philology","Indo-Iranian philology","SIL",1,1.0,SINGLETON
+"Knife","Knife","NPG",1,1.0,SINGLETON
+"Throne","Throne","NPG",1,1.0,SINGLETON
+"Legislative bodies","Legislative bodies","SIL",1,1.0,SINGLETON
+"Islands","Islands","SAAM",1,1.0,SINGLETON
+"Hammocks in African art","Hammocks in African art","SIL",1,1.0,SINGLETON
+"Mount Etna","Mount Etna","SAAM",1,1.0,SINGLETON
+"Bacchantes","Bacchantes","SAAM",1,1.0,SINGLETON
+"Unionidae","Unionidae","SIL",1,1.0,SINGLETON
+"Fasces","Fasces","NPG",1,1.0,SINGLETON
+"Santé et hygiène","Santé et hygiène","SIL",1,1.0,SINGLETON
+"Cultural policy","Cultural policy","SIL",1,1.0,SINGLETON
+"Sculpture, Nyamwezi","Sculpture, Nyamwezi","SIL",1,1.0,SINGLETON
+"Freins","Freins","SIL",1,1.0,SINGLETON
+"Effets des innovations technologiques","Effets des innovations technologiques","SIL",1,1.0,SINGLETON
+"Women, Ndebele","Women, Ndebele","SIL",1,1.0,SINGLETON
+"East Asia in art","East Asia in art","SIL",1,1.0,SINGLETON
+"Students","Students","SIL",1,1.0,SINGLETON
+"Violin makers","Violin makers","SIL",1,1.0,SINGLETON
+"Refuse as art material","Refuse as art material","SIL",1,1.0,SINGLETON
+"Wood-carving, Bini","Wood-carving, Bini","SIL",1,1.0,SINGLETON
+"Iron smelting","Iron smelting","SIL",1,1.0,SINGLETON
+"Kimonos","Kimonos","SIL",1,1.0,SINGLETON
+"Drill presses","Drill presses","SIL",1,1.0,SINGLETON
+"Producer cooperatives","Producer cooperatives","SIL",1,1.0,SINGLETON
+"Population biology","Population biology","SIL",1,1.0,SINGLETON
+"Androïdes","Androïdes","SIL",1,1.0,SINGLETON
+"Daimyo","Daimyo","SIL",1,1.0,SINGLETON
+"Volcan Zunil","Volcan Zunil","SAAM",1,1.0,SINGLETON
+"Minorcans","Minorcans","SIL",1,1.0,SINGLETON
+"Gravestone","Gravestone","SAAM",1,1.0,SINGLETON
+"Chemical apparatus","Chemical apparatus","SIL",1,1.0,SINGLETON
+"Tin","Tin","SIL",1,1.0,SINGLETON
+"Baskets","Baskets","SAAM",1,1.0,SINGLETON
+"Environmental impact analysis","Environmental impact analysis","SIL",1,1.0,SINGLETON
+"Tiger","Tiger","SAAM",1,1.0,SINGLETON
+"Kutenai (Indiens)","Kutenai (Indiens)","SIL",1,1.0,SINGLETON
+"Sign painter","Sign painter","NPG",1,1.0,SINGLETON
+"Discharge of ballast water","Discharge of ballast water","SIL",1,1.0,SINGLETON
+"Stone implements","Stone implements","SIL",1,1.0,SINGLETON
+"Chemistry, Physical","Chemistry, Physical","SIL",1,1.0,SINGLETON
+"15.51 Antiquity","15.51 Antiquity","SIL",1,1.0,SINGLETON
+"Bannister","Bannister","NPG",1,1.0,SINGLETON
+"Nso palace wives","Nso palace wives","SIL",1,1.0,SINGLETON
+"Inventions","Inventions","SIL",1,1.0,SINGLETON
+"Politique dans l'art","Politique dans l'art","SIL",1,1.0,SINGLETON
+"Children's stories, Canadian","Children's stories, Canadian","SIL",1,1.0,SINGLETON
+"Kangaroo","Kangaroo","SAAM",1,1.0,SINGLETON
+"Innenarchitektur","Innenarchitektur","SIL",1,1.0,SINGLETON
+"Forced labor","Forced labor","SIL",1,1.0,SINGLETON
+"Devil","Devil","NPG",1,1.0,SINGLETON
+"St. Mark's Cathedral","St. Mark's Cathedral","SAAM",1,1.0,SINGLETON
+"Blue columbine","Blue columbine","SAAM",1,1.0,SINGLETON
+"Ice","Ice","SIL",1,1.0,SINGLETON
+"Viola striata","Viola striata","SAAM",1,1.0,SINGLETON
+"Muralist","Muralist","NPG",1,1.0,SINGLETON
+"Electric conductivity","Electric conductivity","SIL",1,1.0,SINGLETON
+"Falcon","Falcon","SAAM",1,1.0,SINGLETON
+"Oceanographer","Oceanographer","NPG",1,1.0,SINGLETON
+"Golfer","Golfer","NPG",1,1.0,SINGLETON
+"Goldschmiedekunst","Goldschmiedekunst","SIL",1,1.0,SINGLETON
+"Nudibranchia","Nudibranchia","SIL",1,1.0,SINGLETON
+"Pianos","Pianos","NPG",1,1.0,SINGLETON
+"Type specimens","Type specimens","SIL",1,1.0,SINGLETON
+"Point Lobos","Point Lobos","SAAM",1,1.0,SINGLETON
+"Regalia","Regalia","SIL",1,1.0,SINGLETON
+"Chrysanthemum","Chrysanthemum","SAAM",1,1.0,SINGLETON
+"Textile fabrics, Kalabari","Textile fabrics, Kalabari","SIL",1,1.0,SINGLETON
+"Nupe glassworking","Nupe glassworking","SIL",1,1.0,SINGLETON
+"Phlox paniculata","Phlox paniculata","SAAM",1,1.0,SINGLETON
+"Plumed","Plumed","NPG",1,1.0,SINGLETON
+"Routing-machines","Routing-machines","SIL",1,1.0,SINGLETON
+"Robots humanoïdes","Robots humanoïdes","SIL",1,1.0,SINGLETON
+"Sculpture, Yao","Sculpture, Yao","SIL",1,1.0,SINGLETON
+"Historical society administrator","Historical society administrator","NPG",1,1.0,SINGLETON
+"Ethiopian Orthodox manuscripts","Ethiopian Orthodox manuscripts","SIL",1,1.0,SINGLETON
+"Snuff boxes and bottles","Snuff boxes and bottles","SIL",1,1.0,SINGLETON
+"Charlestown","Charlestown","SAAM",1,1.0,SINGLETON
+"Shijō school of art","Shijō school of art","SIL",1,1.0,SINGLETON
+"Ships, Iron and steel","Ships, Iron and steel","SIL",1,1.0,SINGLETON
+"Potlatch","Potlatch","SIL",1,1.0,SINGLETON
+"Greek colonies","Greek colonies","SIL",1,1.0,SINGLETON
+"Proprietor","Proprietor","NPG",1,1.0,SINGLETON
+"Flower arrangement, Japanese","Flower arrangement, Japanese","SIL",1,1.0,SINGLETON
+"Soda fountains","Soda fountains","SIL",1,1.0,SINGLETON
+"Amphipoda","Amphipoda","SIL",1,1.0,SINGLETON
+"Table setting and decoration","Table setting and decoration","SIL",1,1.0,SINGLETON
+"Industrial design","Industrial design","SIL",1,1.0,SINGLETON
+"Surrealism","Surrealism","SIL",1,1.0,SINGLETON
+"Wood sculpture, Ivoirian","Wood sculpture, Ivoirian","SIL",1,1.0,SINGLETON
+"Loom","Loom","NPG",1,1.0,SINGLETON
+"Artistes expatriés","Artistes expatriés","SIL",1,1.0,SINGLETON
+"Scientific expeditions","Scientific expeditions","SIL",1,1.0,SINGLETON
+"Laboratories","Laboratories","SIL",1,1.0,SINGLETON
+"Ionosphere","Ionosphere","SIL",1,1.0,SINGLETON
+"Boathouse","Boathouse","SAAM",1,1.0,SINGLETON
+"Lelant","Lelant","SAAM",1,1.0,SINGLETON
+"Green dragon","Green dragon","SAAM",1,1.0,SINGLETON
+"Fez","Fez","NPG",1,1.0,SINGLETON
+"Dollhouses","Dollhouses","SIL",1,1.0,SINGLETON
+"Terra-cotta sculpture","Terra-cotta sculpture","SIL",1,1.0,SINGLETON
+"French poetry","French poetry","SIL",1,1.0,SINGLETON
+"Stifle joint","Stifle joint","SIL",1,1.0,SINGLETON
+"Shotgun houses","Shotgun houses","SIL",1,1.0,SINGLETON
+"African diaspora","African diaspora","SIL",1,1.0,SINGLETON
+"Cranes, derricks, etc","Cranes, derricks, etc","SIL",1,1.0,SINGLETON
+"Owl","Owl","SAAM",1,1.0,SINGLETON
+"Masks, Makhuwa","Masks, Makhuwa","SIL",1,1.0,SINGLETON
+"Hunger","Hunger","SAAM",1,1.0,SINGLETON
+"Uncle Sam (Symbolic character)","Uncle Sam (Symbolic character)","NPG",1,1.0,SINGLETON
+"Boston, MA","Boston, MA","NPG",1,1.0,SINGLETON
