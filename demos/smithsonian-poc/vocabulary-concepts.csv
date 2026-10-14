@@ -1,15 +1,15 @@
 canonical_concept,member_label,source_units,occurrence_count,confidence,status
-"Men","Men","SAAM;NPG",863,1.0,SINGLETON
-"(no topic)","(no topic)","NPG;SIL;NMNHBOTANY;SAAM",484,1.0,SINGLETON
-"Dress accessories","Dress accessories","SAAM;NPG",439,1.0,SINGLETON
-"Interior decoration","Interior decoration","SIL;NPG",438,0.9022996548449802,AUTO_ACCEPTED
+"Men","Men","NPG;SAAM",863,1.0,SINGLETON
+"(no topic)","(no topic)","NPG;SAAM;NMNHBOTANY;SIL",484,1.0,SINGLETON
+"Dress accessories","Dress accessories","NPG;SAAM",439,1.0,SINGLETON
+"Interior decoration","Interior decoration","NPG;SIL",438,0.9022996548449802,AUTO_ACCEPTED
 "Interior decoration","Interior decoration accessories","SIL",1,0.9022996548449802,AUTO_ACCEPTED
-"Government","Government","SAAM;SIL;NPG",314,1.0,SINGLETON
-"Women","Women","SAAM;SIL;NPG",305,1.0,SINGLETON
+"Government","Government","SAAM;NPG;SIL",314,1.0,SINGLETON
+"Women","Women","SAAM;NPG;SIL",305,1.0,SINGLETON
 "Facial Hair","Facial Hair","NPG",245,1.0,SINGLETON
 "Seating","Seating","NPG",217,1.0,SINGLETON
 "Military and Intelligence","Military and Intelligence","NPG",215,1.0,SINGLETON
-"Jewelry","Jewelry","SAAM;SIL;NPG",193,1.0,SINGLETON
+"Jewelry","Jewelry","SAAM;NPG;SIL",193,1.0,SINGLETON
 "Legislators","Legislators","NPG",165,0.9181348008398591,AUTO_ACCEPTED
 "Legislators","Legislator","NPG",1,0.9181348008398591,AUTO_ACCEPTED
 "Law and Crime","Law and Crime","NPG",157,1.0,SINGLETON
@@ -22,53 +22,53 @@ canonical_concept,member_label,source_units,occurrence_count,confidence,status
 "Cut-out","Cut-out","NPG",116,1.0,SINGLETON
 "Bowtie","Bowtie","NPG",109,1.0,SINGLETON
 "Albums","Albums","NPG",107,1.0,SINGLETON
-"Column","Column","SAAM;NPG",105,1.0,SINGLETON
+"Column","Column","NPG;SAAM",105,1.0,SINGLETON
 "Occupations","Occupations","SAAM",100,1.0,SINGLETON
 "Curtain","Curtain","NPG",100,1.0,SINGLETON
-"American Civil War (1861-1865)","American Civil War (1861-1865)","SAAM;NPG",96,0.9668898869695663,AUTO_ACCEPTED
-"American Civil War (1861-1865)","Civil War, 1861-1865","SAAM;NPG",96,0.9668898869695663,AUTO_ACCEPTED
+"American Civil War (1861-1865)","American Civil War (1861-1865)","NPG;SAAM",96,0.9668898869695663,AUTO_ACCEPTED
+"American Civil War (1861-1865)","Civil War, 1861-1865","NPG;SAAM",96,0.9668898869695663,AUTO_ACCEPTED
 "Printed Material","Printed Material","NPG",95,1.0,SINGLETON
-"Tables","Tables","SAAM;SIL;NPG",91,1.0,SINGLETON
-"Presidents","Presidents","SAAM;SIL;NPG",90,1.0,SINGLETON
+"Tables","Tables","SAAM;NPG;SIL",91,1.0,SINGLETON
+"Presidents","Presidents","SAAM;NPG;SIL",90,1.0,SINGLETON
 "Person with dwarfism","Person with dwarfism","NPG",80,1.0,SINGLETON
 "Chain","Chain","NPG",72,1.0,SINGLETON
 "Photographic format","Photographic format","NPG",67,1.0,SINGLETON
-"Trees","Trees","SAAM;SIL;NPG",57,1.0,SINGLETON
+"Trees","Trees","SAAM;NPG;SIL",57,1.0,SINGLETON
 "Cabinet member","Cabinet member","NPG",57,1.0,SINGLETON
 "Outerwear","Outerwear","NPG",52,1.0,SINGLETON
 "Reformers","Reformers","NPG",51,1.0,SINGLETON
 "Eyeglasses","Eyeglasses","NPG",48,1.0,SINGLETON
-"Boats and boating","Boats and boating","SAAM;SIL;NPG",48,1.0,SINGLETON
-"Domestic","Domestic","SAAM;NPG",48,1.0,SINGLETON
+"Boats and boating","Boats and boating","SAAM;NPG;SIL",48,1.0,SINGLETON
+"Domestic","Domestic","NPG;SAAM",48,1.0,SINGLETON
 "Botanical study","Botanical study","SAAM",47,1.0,SINGLETON
-"Cityscapes","Cityscapes","SAAM;NPG",45,1.0,SINGLETON
-"Children","Children","SAAM;SIL",42,1.0,SINGLETON
+"Cityscapes","Cityscapes","NPG;SAAM",45,1.0,SINGLETON
+"Children","Children","SIL;SAAM",42,1.0,SINGLETON
 "Handkerchief","Handkerchief","NPG",41,1.0,SINGLETON
 "Natural resources commerce","Natural resources commerce","NPG",40,1.0,SINGLETON
 "Carte-de-visite","Carte-de-visite","NPG",40,1.0,SINGLETON
 "Union Army","Union Army","NPG",39,1.0,SINGLETON
 "Nudity","Nudity","SAAM",39,1.0,SINGLETON
 "Bracelet","Bracelet","NPG",38,1.0,SINGLETON
-"Mountains","Mountains","SAAM;NPG",38,1.0,SINGLETON
+"Mountains","Mountains","NPG;SAAM",38,1.0,SINGLETON
 "Agriculturists","Agriculturists","NPG",37,1.0,SINGLETON
-"Containers","Containers","SAAM;SIL;NPG",36,1.0,SINGLETON
+"Containers","Containers","SAAM;NPG;SIL",36,1.0,SINGLETON
 "Muttonchops","Muttonchops","NPG",36,1.0,SINGLETON
 "Congressional Gold Medal","Congressional Gold Medal","NPG",36,1.0,SINGLETON
 "Belt","Belt","NPG",36,1.0,SINGLETON
-"Dwellings","Dwellings","SAAM;SIL;NPG",35,1.0,SINGLETON
+"Dwellings","Dwellings","SAAM;NPG;SIL",35,1.0,SINGLETON
 "Necklace","Necklace","NPG",35,1.0,SINGLETON
-"Description and travel","Description and travel","SAAM;SIL",35,1.0,SINGLETON
+"Description and travel","Description and travel","SIL;SAAM",35,1.0,SINGLETON
 "Religion and Spirituality","Religion and Spirituality","NPG",35,1.0,SINGLETON
 "Veil","Veil","NPG",34,0.9303121742633741,AUTO_ACCEPTED
 "Veil","Veils","SIL",1,0.9303121742633741,AUTO_ACCEPTED
 "Ulvophyceae","Ulvophyceae","NMNHBOTANY",33,1.0,SINGLETON
-"Clergy","Clergy","SAAM;NPG",29,1.0,SINGLETON
+"Clergy","Clergy","NPG;SAAM",29,1.0,SINGLETON
 "Rivers","Rivers","SAAM",29,1.0,SINGLETON
-"Judges","Judges","SIL;NPG",29,1.0,SINGLETON
+"Judges","Judges","NPG;SIL",29,1.0,SINGLETON
 "Minister","Minister","NPG",29,1.0,SINGLETON
 "Secretary of State","Secretary of State","NPG",28,1.0,SINGLETON
 "Detail","Detail","SAAM",28,1.0,SINGLETON
-"Periodicals","Periodicals","SAAM;SIL;NPG",28,1.0,SINGLETON
+"Periodicals","Periodicals","SAAM;NPG;SIL",28,1.0,SINGLETON
 "Button","Button","NPG",28,1.0,SINGLETON
 "Surveyors","Surveyors","NPG",27,1.0,SINGLETON
 "Drape","Drape","NPG",26,1.0,SINGLETON
@@ -77,74 +77,74 @@ canonical_concept,member_label,source_units,occurrence_count,confidence,status
 "Tassel","Tassel","NPG",25,1.0,SINGLETON
 "Tradesman","Tradesman","NPG",24,1.0,SINGLETON
 "Vice-Presidents","Vice-Presidents","NPG",24,1.0,SINGLETON
-"Justice","Justice","SAAM;NPG",23,1.0,SINGLETON
+"Justice","Justice","NPG;SAAM",23,1.0,SINGLETON
 "Amusements","Amusements","SAAM",23,1.0,SINGLETON
 "Cloaks","Cloaks","NPG",22,0.9197742667526616,AUTO_ACCEPTED
 "Cloaks","Cloak","NPG",5,0.9197742667526616,AUTO_ACCEPTED
 "Abolitionists","Abolitionists","NPG",22,1.0,SINGLETON
 "State of being","State of being","SAAM",21,1.0,SINGLETON
-"Water","Water","SAAM;SIL;NPG",21,1.0,SINGLETON
+"Water","Water","SAAM;NPG;SIL",21,1.0,SINGLETON
 "Crown","Crown","NPG",21,1.0,SINGLETON
 "Cabinet card","Cabinet card","NPG",19,1.0,SINGLETON
 "Walking stick","Walking stick","NPG",19,1.0,SINGLETON
-"American Revolution (1775-1783)","American Revolution (1775-1783)","SAAM;NPG",19,1.0,SINGLETON
+"American Revolution (1775-1783)","American Revolution (1775-1783)","NPG;SAAM",19,1.0,SINGLETON
 "Ring","Ring","NPG",19,1.0,SINGLETON
 "Stage actor","Stage actor","NPG",19,1.0,SINGLETON
-"Staffs (Sticks, canes, etc.)","Staffs (Sticks, canes, etc.)","SAAM;NPG",19,1.0,SINGLETON
+"Staffs (Sticks, canes, etc.)","Staffs (Sticks, canes, etc.)","NPG;SAAM",19,1.0,SINGLETON
 "Lecturer","Lecturer","NPG",19,1.0,SINGLETON
-"Windows","Windows","SAAM;NPG",18,1.0,SINGLETON
-"Rocks","Rocks","SAAM;SIL;NPG",18,1.0,SINGLETON
+"Windows","Windows","NPG;SAAM",18,1.0,SINGLETON
+"Rocks","Rocks","SAAM;NPG;SIL",18,1.0,SINGLETON
 "Continental congressman","Continental congressman","NPG",18,1.0,SINGLETON
 "Seasons","Seasons","SAAM",18,1.0,SINGLETON
 "Actors and actresses","Actors and actresses","NPG",17,1.0,SINGLETON
 "Natural History","Natural History","SIL",17,1.0,SINGLETON
-"Mexican War, 1846-1848","Mexican War, 1846-1848","SIL;NPG",17,1.0,SINGLETON
+"Mexican War, 1846-1848","Mexican War, 1846-1848","NPG;SIL",17,1.0,SINGLETON
 "Allegory","Allegory","SAAM",17,0.9459634643503555,AUTO_ACCEPTED
 "Allegory","Allegories","SIL",1,0.9459634643503555,AUTO_ACCEPTED
 "Feather","Feather","NPG",16,1.0,SINGLETON
 "Inventors","Inventors","NPG",16,1.0,SINGLETON
-"Philanthropists","Philanthropists","SAAM;NPG",16,1.0,SINGLETON
+"Philanthropists","Philanthropists","NPG;SAAM",16,1.0,SINGLETON
 "Bonnet","Bonnet","NPG",16,1.0,SINGLETON
 "Boat builder","Boat builder","NPG",16,1.0,SINGLETON
 "Harper's Weekly","Harper's Weekly","SAAM",16,1.0,SINGLETON
 "Sash","Sash","NPG",16,1.0,SINGLETON
 "War of 1812","War of 1812","NPG",16,1.0,SINGLETON
-"Star","Star","SAAM;NPG",15,1.0,SINGLETON
+"Star","Star","NPG;SAAM",15,1.0,SINGLETON
 "Pedestal","Pedestal","NPG",15,1.0,SINGLETON
 "Colonel","Colonel","NPG",15,1.0,SINGLETON
 "Folklore","Folklore","SIL",14,1.0,SINGLETON
-"Vase","Vase","SAAM;NPG",14,1.0,SINGLETON
-"Weather","Weather","SAAM;SIL",14,1.0,SINGLETON
-"Coasts","Coasts","SAAM;NPG",14,1.0,SINGLETON
+"Vase","Vase","NPG;SAAM",14,1.0,SINGLETON
+"Weather","Weather","SIL;SAAM",14,1.0,SINGLETON
+"Coasts","Coasts","NPG;SAAM",14,1.0,SINGLETON
 "Goatee","Goatee","NPG",14,1.0,SINGLETON
 "Poets","Poets","NPG",14,0.9065174122453064,AUTO_ACCEPTED
 "Poets","Poetry","SIL",2,0.9065174122453064,AUTO_ACCEPTED
-"Foliage","Foliage","SAAM;NPG",14,1.0,SINGLETON
-"Fence","Fence","SAAM;NPG",14,1.0,SINGLETON
-"Forests and forestry","Forests and forestry","SAAM;SIL;NPG",14,1.0,SINGLETON
+"Foliage","Foliage","NPG;SAAM",14,1.0,SINGLETON
+"Fence","Fence","NPG;SAAM",14,1.0,SINGLETON
+"Forests and forestry","Forests and forestry","SAAM;NPG;SIL",14,1.0,SINGLETON
 "Brass","Brass","NPG",14,1.0,SINGLETON
 "Reporter","Reporter","NPG",14,1.0,SINGLETON
 "Shawl","Shawl","NPG",14,1.0,SINGLETON
 "Pteridophyte","Pteridophyte","NMNHBOTANY",14,0.9560386621764323,AUTO_ACCEPTED
 "Pteridophyte","Ptéridophytes","SIL",1,0.9560386621764323,AUTO_ACCEPTED
 "Pteridophyte","Pteridophyta","SIL",1,0.9560386621764323,AUTO_ACCEPTED
-"First ladies","First ladies","SIL;NPG",13,1.0,SINGLETON
-"Mythology","Mythology","SAAM;SIL",13,1.0,SINGLETON
+"First ladies","First ladies","NPG;SIL",13,1.0,SINGLETON
+"Mythology","Mythology","SIL;SAAM",13,1.0,SINGLETON
 "Private collections","Private collections","SIL",13,1.0,SINGLETON
 "Portraitist","Portraitist","NPG",13,1.0,SINGLETON
-"WW II","WW II","SIL;NPG",13,1.0,SINGLETON
-"Chief","Chief","SAAM;NPG",13,1.0,SINGLETON
-"Family","Family","SAAM;SIL",13,1.0,SINGLETON
-"Parks","Parks","SAAM;SIL",13,1.0,SINGLETON
+"WW II","WW II","NPG;SIL",13,1.0,SINGLETON
+"Chief","Chief","NPG;SAAM",13,1.0,SINGLETON
+"Family","Family","SIL;SAAM",13,1.0,SINGLETON
+"Parks","Parks","SIL;SAAM",13,1.0,SINGLETON
 "Business executive","Business executive","NPG",13,1.0,SINGLETON
-"World War, 1939-1945","World War, 1939-1945","SIL;NPG",13,1.0,SINGLETON
+"World War, 1939-1945","World War, 1939-1945","NPG;SIL",13,1.0,SINGLETON
 "Robe","Robe","NPG",13,1.0,SINGLETON
 "Industrialist","Industrialist","NPG",12,1.0,SINGLETON
 "Coat","Coat","NPG",12,1.0,SINGLETON
 "Rifle","Rifle","NPG",12,1.0,SINGLETON
 "Cattle","Cattle","SAAM",12,0.912289764115826,AUTO_ACCEPTED
 "Cattle","Cows","NPG",2,0.912289764115826,AUTO_ACCEPTED
-"Motion pictures","Motion pictures","SIL;NPG",11,1.0,SINGLETON
+"Motion pictures","Motion pictures","NPG;SIL",11,1.0,SINGLETON
 "Brooch","Brooch","NPG",11,1.0,SINGLETON
 "Plains","Plains","SAAM",11,1.0,SINGLETON
 "Roads","Roads","SAAM",11,1.0,SINGLETON
@@ -152,10 +152,10 @@ canonical_concept,member_label,source_units,occurrence_count,confidence,status
 "Aerial operations","Aerial operations","SIL",11,1.0,SINGLETON
 "Secretary of Treasury","Secretary of Treasury","NPG",10,1.0,SINGLETON
 "Speaker of the House","Speaker of the House","NPG",10,1.0,SINGLETON
-"Harbors","Harbors","SAAM;NPG",10,1.0,SINGLETON
-"Sailboats","Sailboats","SAAM;NPG",10,1.0,SINGLETON
-"Cats","Cats","SAAM;SIL;NPG",10,1.0,SINGLETON
-"Angels","Angels","SAAM;NPG",10,1.0,SINGLETON
+"Harbors","Harbors","NPG;SAAM",10,1.0,SINGLETON
+"Sailboats","Sailboats","NPG;SAAM",10,1.0,SINGLETON
+"Cats","Cats","SAAM;NPG;SIL",10,1.0,SINGLETON
+"Angels","Angels","NPG;SAAM",10,1.0,SINGLETON
 "Papers","Papers","NPG",10,0.9007648789204591,AUTO_ACCEPTED
 "Papers","Paper","SIL",2,0.9007648789204591,AUTO_ACCEPTED
 "Conservation and restoration","Conservation and restoration","SIL",10,1.0,SINGLETON
@@ -166,25 +166,25 @@ canonical_concept,member_label,source_units,occurrence_count,confidence,status
 "Drafting & Writing Implements","Drafting & Writing Implements","NPG",10,1.0,SINGLETON
 "Rope","Rope","NPG",9,1.0,SINGLETON
 "Captain","Captain","NPG",9,1.0,SINGLETON
-"Trains","Trains","SAAM;SIL;NPG",9,1.0,SINGLETON
-"Clocks and watches","Clocks and watches","SAAM;SIL;NPG",9,1.0,SINGLETON
-"Toys","Toys","SAAM;SIL;NPG",9,1.0,SINGLETON
+"Trains","Trains","SAAM;NPG;SIL",9,1.0,SINGLETON
+"Clocks and watches","Clocks and watches","SAAM;NPG;SIL",9,1.0,SINGLETON
+"Toys","Toys","SAAM;NPG;SIL",9,1.0,SINGLETON
 "Language and languages","Language and languages","SIL",9,1.0,SINGLETON
-"Mining","Mining","SAAM;SIL;NPG",9,1.0,SINGLETON
+"Mining","Mining","SAAM;NPG;SIL",9,1.0,SINGLETON
 "Native American leader","Native American leader","NPG",9,1.0,SINGLETON
 "Secretary of Interior","Secretary of Interior","NPG",9,1.0,SINGLETON
-"WW I","WW I","SAAM;SIL",9,1.0,SINGLETON
-"Editors","Editors","SAAM;NPG",9,1.0,SINGLETON
+"WW I","WW I","SIL;SAAM",9,1.0,SINGLETON
+"Editors","Editors","NPG;SAAM",9,1.0,SINGLETON
 "Manufacturer","Manufacturer","NPG",9,1.0,SINGLETON
 "Lieutenant Governor","Lieutenant Governor","NPG",9,1.0,SINGLETON
 "Bankers","Bankers","NPG",9,1.0,SINGLETON
 "Rear Admiral","Rear Admiral","NPG",9,1.0,SINGLETON
-"World War, 1914-1918","World War, 1914-1918","SAAM;SIL",9,1.0,SINGLETON
+"World War, 1914-1918","World War, 1914-1918","SIL;SAAM",9,1.0,SINGLETON
 "Western","Western","SAAM",9,1.0,SINGLETON
-"Law","Law","SAAM;SIL;NPG",8,1.0,SINGLETON
-"Carriage","Carriage","SAAM;NPG",8,1.0,SINGLETON
-"Streets","Streets","SAAM;NPG",8,1.0,SINGLETON
-"Schools","Schools","SIL;NPG",8,1.0,SINGLETON
+"Law","Law","SAAM;NPG;SIL",8,1.0,SINGLETON
+"Carriage","Carriage","NPG;SAAM",8,1.0,SINGLETON
+"Streets","Streets","NPG;SAAM",8,1.0,SINGLETON
+"Schools","Schools","NPG;SIL",8,1.0,SINGLETON
 "Movie actor","Movie actor","NPG",8,1.0,SINGLETON
 "Awnings","Awnings","NPG",8,1.0,SINGLETON
 "Financier","Financier","NPG",8,1.0,SINGLETON
@@ -192,57 +192,57 @@ canonical_concept,member_label,source_units,occurrence_count,confidence,status
 "Postal service","Postal service","SIL",8,1.0,SINGLETON
 "Pens","Pens","NPG",8,1.0,SINGLETON
 "Stereograph","Stereograph","NPG",8,1.0,SINGLETON
-"Monuments","Monuments","SAAM;NPG",8,1.0,SINGLETON
+"Monuments","Monuments","NPG;SAAM",8,1.0,SINGLETON
 "King","King","NPG",8,1.0,SINGLETON
 "University trustee","University trustee","NPG",8,1.0,SINGLETON
 "Art instructor","Art instructor","NPG",8,1.0,SINGLETON
 "Older people","Older people","SAAM",8,1.0,SINGLETON
 "Geology, Stratigraphic","Geology, Stratigraphic","SIL",8,1.0,SINGLETON
 "Snood","Snood","NPG",8,1.0,SINGLETON
-"Fans","Fans","SAAM;NPG",8,1.0,SINGLETON
+"Fans","Fans","NPG;SAAM",8,1.0,SINGLETON
 "Coat of arms","Coat of arms","NPG",8,1.0,SINGLETON
 "Ribbon","Ribbon","NPG",8,1.0,SINGLETON
-"Models (representations)","Models (representations)","SAAM;SIL",7,1.0,SINGLETON
+"Models (representations)","Models (representations)","SIL;SAAM",7,1.0,SINGLETON
 "Interior with Exterior View","Interior with Exterior View","NPG",7,1.0,SINGLETON
-"Castles","Castles","SAAM;NPG",7,1.0,SINGLETON
-"Umbrellas","Umbrellas","SAAM;NPG",7,1.0,SINGLETON
-"Cross","Cross","SAAM;NPG",7,1.0,SINGLETON
-"Food habits","Food habits","SAAM;SIL",7,1.0,SINGLETON
+"Castles","Castles","NPG;SAAM",7,1.0,SINGLETON
+"Umbrellas","Umbrellas","NPG;SAAM",7,1.0,SINGLETON
+"Cross","Cross","NPG;SAAM",7,1.0,SINGLETON
+"Food habits","Food habits","SIL;SAAM",7,1.0,SINGLETON
 "Grammar","Grammar","SIL",7,1.0,SINGLETON
 "Horsemen and horsewomen","Horsemen and horsewomen","SAAM",7,1.0,SINGLETON
 "Essayist","Essayist","NPG",7,1.0,SINGLETON
-"Outer space","Outer space","SAAM;SIL;NPG",7,1.0,SINGLETON
+"Outer space","Outer space","SAAM;NPG;SIL",7,1.0,SINGLETON
 "Dinophyceae","Dinophyceae","NMNHBOTANY",7,1.0,SINGLETON
 "Sea","Sea","SAAM",7,1.0,SINGLETON
 "Baggage & Luggage","Baggage & Luggage","NPG",7,1.0,SINGLETON
 "Hair Accessory","Hair Accessory","NPG",7,1.0,SINGLETON
-"Ruins","Ruins","SAAM;NPG",7,1.0,SINGLETON
-"Death","Death","SAAM;SIL",7,1.0,SINGLETON
+"Ruins","Ruins","NPG;SAAM",7,1.0,SINGLETON
+"Death","Death","SIL;SAAM",7,1.0,SINGLETON
 "Classical dress","Classical dress","SAAM",7,1.0,SINGLETON
 "Methodology","Methodology","SIL",7,1.0,SINGLETON
 "Territorial Governor","Territorial Governor","NPG",7,1.0,SINGLETON
 "Autumn","Autumn","SAAM",7,1.0,SINGLETON
 "Cased object","Cased object","NPG",7,1.0,SINGLETON
-"Games","Games","SAAM;SIL;NPG",6,1.0,SINGLETON
+"Games","Games","SAAM;NPG;SIL",6,1.0,SINGLETON
 "Pioneer","Pioneer","NPG",6,1.0,SINGLETON
-"Emblems","Emblems","SAAM;SIL;NPG",6,1.0,SINGLETON
-"Advertising","Advertising","SIL;NPG",6,1.0,SINGLETON
-"Naturalists","Naturalists","SIL;NPG",6,1.0,SINGLETON
-"Moon","Moon","SAAM;SIL;NPG",6,1.0,SINGLETON
-"Shield","Shield","SAAM;NPG",6,1.0,SINGLETON
+"Emblems","Emblems","SAAM;NPG;SIL",6,1.0,SINGLETON
+"Advertising","Advertising","NPG;SIL",6,1.0,SINGLETON
+"Naturalists","Naturalists","NPG;SIL",6,1.0,SINGLETON
+"Moon","Moon","SAAM;NPG;SIL",6,1.0,SINGLETON
+"Shield","Shield","NPG;SAAM",6,1.0,SINGLETON
 "Mary, Blessed Virgin, Saint","Mary, Blessed Virgin, Saint","SAAM",6,1.0,SINGLETON
-"Bishop","Bishop","SAAM;NPG",6,1.0,SINGLETON
+"Bishop","Bishop","NPG;SAAM",6,1.0,SINGLETON
 "Seeds","Seeds","SIL",6,1.0,SINGLETON
 "Evil","Evil","SAAM",6,1.0,SINGLETON
 "Nobel Prize","Nobel Prize","NPG",6,1.0,SINGLETON
 "Jesus Christ","Jesus Christ","SAAM",6,1.0,SINGLETON
-"Butterflies","Butterflies","SAAM;SIL",6,1.0,SINGLETON
-"Waterfalls","Waterfalls","SAAM;SIL",6,1.0,SINGLETON
+"Butterflies","Butterflies","SIL;SAAM",6,1.0,SINGLETON
+"Waterfalls","Waterfalls","SIL;SAAM",6,1.0,SINGLETON
 "Buffalo, NY","Buffalo, NY","NPG",6,1.0,SINGLETON
 "Art, abstract","Art, abstract","SAAM",6,0.9147246097894839,AUTO_ACCEPTED
 "Art, abstract","Drawing, Abstract","SIL",1,0.9147246097894839,AUTO_ACCEPTED
-"Tents","Tents","SAAM;NPG",6,1.0,SINGLETON
-"Fireplace","Fireplace","SAAM;NPG",6,1.0,SINGLETON
+"Tents","Tents","NPG;SAAM",6,1.0,SINGLETON
+"Fireplace","Fireplace","NPG;SAAM",6,1.0,SINGLETON
 "Secretary of the Navy","Secretary of the Navy","NPG",6,1.0,SINGLETON
 "Linens","Linens","SAAM",6,1.0,SINGLETON
 "Themes, motives","Themes, motives","SIL",6,1.0,SINGLETON
@@ -252,14 +252,14 @@ canonical_concept,member_label,source_units,occurrence_count,confidence,status
 "Saints","Saints","SAAM",6,1.0,SINGLETON
 "Quill","Quill","NPG",6,1.0,SINGLETON
 "Cultural property","Cultural property","SIL",6,1.0,SINGLETON
-"Fruit","Fruit","SAAM;SIL;NPG",5,1.0,SINGLETON
-"Donkey","Donkey","SAAM;NPG",5,1.0,SINGLETON
+"Fruit","Fruit","SAAM;NPG;SIL",5,1.0,SINGLETON
+"Donkey","Donkey","NPG;SAAM",5,1.0,SINGLETON
 "Soprano","Soprano","NPG",5,1.0,SINGLETON
 "Socialite","Socialite","NPG",5,1.0,SINGLETON
 "Eagles","Eagles","NPG",5,1.0,SINGLETON
 "Electric apparatus and appliances","Electric apparatus and appliances","SIL",5,1.0,SINGLETON
 "New York, NY","New York, NY","NPG",5,1.0,SINGLETON
-"Wall","Wall","SAAM;NPG",5,0.9135302511755669,AUTO_ACCEPTED
+"Wall","Wall","NPG;SAAM",5,0.9135302511755669,AUTO_ACCEPTED
 "Wall","Walls","SIL",1,0.9135302511755669,AUTO_ACCEPTED
 "Pinopsida","Pinopsida","NMNHBOTANY",5,1.0,SINGLETON
 "Autograph","Autograph","NPG",5,1.0,SINGLETON
@@ -271,7 +271,7 @@ canonical_concept,member_label,source_units,occurrence_count,confidence,status
 "Sheriff","Sheriff","NPG",5,1.0,SINGLETON
 "Wharf","Wharf","SAAM",5,1.0,SINGLETON
 "Conversation","Conversation","SAAM",5,1.0,SINGLETON
-"Composer","Composer","SAAM;NPG",5,0.915415142113229,AUTO_ACCEPTED
+"Composer","Composer","NPG;SAAM",5,0.915415142113229,AUTO_ACCEPTED
 "Composer","Composers","SIL",1,0.915415142113229,AUTO_ACCEPTED
 "Wig","Wig","NPG",5,1.0,SINGLETON
 "Box","Box","NPG",5,1.0,SINGLETON
@@ -281,38 +281,38 @@ canonical_concept,member_label,source_units,occurrence_count,confidence,status
 "Illustrator","Illustrator","NPG",5,0.9299601299960101,AUTO_ACCEPTED
 "Illustrator","Illustrators","SIL",1,0.9299601299960101,AUTO_ACCEPTED
 "Prelate","Prelate","NPG",5,1.0,SINGLETON
-"Holidays","Holidays","SAAM;SIL",5,1.0,SINGLETON
-"Money","Money","SIL;NPG",5,1.0,SINGLETON
+"Holidays","Holidays","SIL;SAAM",5,1.0,SINGLETON
+"Money","Money","NPG;SIL",5,1.0,SINGLETON
 "Ruff","Ruff","NPG",5,1.0,SINGLETON
 "Origin","Origin","SIL",5,1.0,SINGLETON
-"Putti","Putti","SAAM;NPG",5,1.0,SINGLETON
+"Putti","Putti","NPG;SAAM",5,1.0,SINGLETON
 "Principal","Principal","NPG",5,1.0,SINGLETON
 "Beaches","Beaches","SAAM",5,1.0,SINGLETON
 "African influences","African influences","SIL",5,1.0,SINGLETON
 "Ducks","Ducks","SAAM",4,1.0,SINGLETON
-"Scarf","Scarf","SAAM;NPG",4,1.0,SINGLETON
+"Scarf","Scarf","NPG;SAAM",4,1.0,SINGLETON
 "Influence","Influence","SIL",4,1.0,SINGLETON
 "Summer","Summer","SAAM",4,1.0,SINGLETON
-"Canoes","Canoes","SAAM;NPG",4,1.0,SINGLETON
+"Canoes","Canoes","NPG;SAAM",4,1.0,SINGLETON
 "Testing","Testing","SIL",4,1.0,SINGLETON
 "Army scout","Army scout","NPG",4,1.0,SINGLETON
-"War","War","SAAM;SIL",4,0.9101283630926422,AUTO_ACCEPTED
+"War","War","SIL;SAAM",4,0.9101283630926422,AUTO_ACCEPTED
 "War","Wars","SIL",3,0.9101283630926422,AUTO_ACCEPTED
-"Scroll","Scroll","SAAM;NPG",4,1.0,SINGLETON
+"Scroll","Scroll","NPG;SAAM",4,1.0,SINGLETON
 "Humanitarianism","Humanitarianism","NPG",4,1.0,SINGLETON
 "Spring","Spring","SAAM",4,1.0,SINGLETON
-"Spear","Spear","SAAM;NPG",4,1.0,SINGLETON
+"Spear","Spear","NPG;SAAM",4,1.0,SINGLETON
 "Railroad yard","Railroad yard","SAAM",4,1.0,SINGLETON
-"Canals","Canals","SAAM;SIL",4,1.0,SINGLETON
+"Canals","Canals","SIL;SAAM",4,1.0,SINGLETON
 "Cross-cultural studies","Cross-cultural studies","SIL",4,1.0,SINGLETON
 "Colonies","Colonies","SIL",4,1.0,SINGLETON
 "Fragment","Fragment","SAAM",4,1.0,SINGLETON
 "Cannon","Cannon","NPG",4,1.0,SINGLETON
-"Crafts","Crafts","SAAM;SIL",4,1.0,SINGLETON
-"Agriculture","Agriculture","SIL;NPG",4,1.0,SINGLETON
+"Crafts","Crafts","SIL;SAAM",4,1.0,SINGLETON
+"Agriculture","Agriculture","NPG;SIL",4,1.0,SINGLETON
 "Shipper","Shipper","NPG",4,1.0,SINGLETON
 "Installations (Art)","Installations (Art)","SIL",4,1.0,SINGLETON
-"Grasses","Grasses","SIL;NPG",4,1.0,SINGLETON
+"Grasses","Grasses","NPG;SIL",4,1.0,SINGLETON
 "Wit and humor","Wit and humor","SIL",4,1.0,SINGLETON
 "Quality","Quality","SAAM",4,1.0,SINGLETON
 "Astronautics","Astronautics","SIL",4,1.0,SINGLETON
@@ -349,21 +349,21 @@ canonical_concept,member_label,source_units,occurrence_count,confidence,status
 "Planes (Hand tools)","Planes (Hand tools)","SIL",3,1.0,SINGLETON
 "Popular culture","Popular culture","SIL",3,1.0,SINGLETON
 "Ethnobotany","Ethnobotany","SIL",3,1.0,SINGLETON
-"Armor","Armor","SAAM;SIL",3,1.0,SINGLETON
+"Armor","Armor","SIL;SAAM",3,1.0,SINGLETON
 "Arts and sciences","Arts and sciences","SAAM",3,1.0,SINGLETON
 "Bookcase","Bookcase","NPG",3,1.0,SINGLETON
 "Artists' books","Artists' books","SIL",3,1.0,SINGLETON
 "Bell tower","Bell tower","SAAM",3,1.0,SINGLETON
 "Morphology","Morphology","SIL",3,1.0,SINGLETON
 "Showman","Showman","NPG",3,1.0,SINGLETON
-"Christmas","Christmas","SAAM;SIL",3,1.0,SINGLETON
+"Christmas","Christmas","SIL;SAAM",3,1.0,SINGLETON
 "Intelligence agent","Intelligence agent","NPG",3,1.0,SINGLETON
 "Electric contactors","Electric contactors","SIL",3,1.0,SINGLETON
 "Postmarks","Postmarks","SIL",3,1.0,SINGLETON
 "Postcard","Postcard","NPG",3,1.0,SINGLETON
 "Suburban homes","Suburban homes","SIL",3,1.0,SINGLETON
 "Conceptual art","Conceptual art","SIL",3,1.0,SINGLETON
-"Teeth","Teeth","SIL;NPG",3,1.0,SINGLETON
+"Teeth","Teeth","NPG;SIL",3,1.0,SINGLETON
 "US Postmaster General","US Postmaster General","NPG",3,1.0,SINGLETON
 "Portfolio","Portfolio","NPG",3,1.0,SINGLETON
 "Historiography","Historiography","SIL",3,1.0,SINGLETON
@@ -380,7 +380,7 @@ canonical_concept,member_label,source_units,occurrence_count,confidence,status
 "Political science","Political science","SIL",3,1.0,SINGLETON
 "Biographer","Biographer","NPG",3,1.0,SINGLETON
 "Nursery stock","Nursery stock","SIL",3,1.0,SINGLETON
-"Interpretation of cultural and natural resources","Interpretation of cultural and natural resources","SIL;NPG",3,1.0,SINGLETON
+"Interpretation of cultural and natural resources","Interpretation of cultural and natural resources","NPG;SIL",3,1.0,SINGLETON
 "Pearl","Pearl","NPG",3,0.9055801198388458,AUTO_ACCEPTED
 "Pearl","Pearls","NPG",1,0.9055801198388458,AUTO_ACCEPTED
 "Aerodynamics","Aerodynamics","SIL",3,1.0,SINGLETON
@@ -391,7 +391,7 @@ canonical_concept,member_label,source_units,occurrence_count,confidence,status
 "Phytogeography","Phytogeography","SIL",3,1.0,SINGLETON
 "Views","Views","SIL",3,1.0,SINGLETON
 "Manners and customs","Manners and customs","SIL",3,1.0,SINGLETON
-"Porch","Porch","SAAM;NPG",3,1.0,SINGLETON
+"Porch","Porch","NPG;SAAM",3,1.0,SINGLETON
 "Daguerreotypist","Daguerreotypist","NPG",3,1.0,SINGLETON
 "Craniology","Craniology","SIL",3,1.0,SINGLETON
 "Native American warrior","Native American warrior","NPG",3,1.0,SINGLETON
@@ -433,12 +433,12 @@ canonical_concept,member_label,source_units,occurrence_count,confidence,status
 "Rancher","Rancher","NPG",3,1.0,SINGLETON
 "Arthropods","Arthropods","SIL",2,1.0,SINGLETON
 "Tricorne","Tricorne","NPG",2,1.0,SINGLETON
-"Club","Club","SAAM;NPG",2,1.0,SINGLETON
+"Club","Club","NPG;SAAM",2,1.0,SINGLETON
 "Cultural pluralism","Cultural pluralism","SIL",2,1.0,SINGLETON
 "Perennials","Perennials","SIL",2,1.0,SINGLETON
 "Relief","Relief","NPG",2,1.0,SINGLETON
 "Khayyam, Omar","Khayyam, Omar","SAAM",2,1.0,SINGLETON
-"Columbia (Symbolic character)","Columbia (Symbolic character)","SAAM;NPG",2,1.0,SINGLETON
+"Columbia (Symbolic character)","Columbia (Symbolic character)","NPG;SAAM",2,1.0,SINGLETON
 "Cooking, Mexican","Cooking, Mexican","SIL",2,1.0,SINGLETON
 "Scientific Theorist","Scientific Theorist","NPG",2,1.0,SINGLETON
 "Rubaiyat","Rubaiyat","SAAM",2,1.0,SINGLETON
@@ -447,20 +447,20 @@ canonical_concept,member_label,source_units,occurrence_count,confidence,status
 "Rare books","Rare books","SIL",2,0.9999999999999992,AUTO_ACCEPTED
 "Rare books","Rare Books","SIL",1,0.9999999999999992,AUTO_ACCEPTED
 "Cognition in animals","Cognition in animals","SIL",2,1.0,SINGLETON
-"Rabbits","Rabbits","SAAM;NPG",2,1.0,SINGLETON
+"Rabbits","Rabbits","NPG;SAAM",2,1.0,SINGLETON
 "Philadelphia, PA","Philadelphia, PA","NPG",2,1.0,SINGLETON
 "Phases","Phases","SIL",2,1.0,SINGLETON
-"Horticulturist","Horticulturist","SAAM;NPG",2,1.0,SINGLETON
+"Horticulturist","Horticulturist","NPG;SAAM",2,1.0,SINGLETON
 "Postmodernism","Postmodernism","SIL",2,1.0,SINGLETON
 "Tongue River","Tongue River","SAAM",2,1.0,SINGLETON
-"Tomb","Tomb","SAAM;NPG",2,0.9250282943046018,AUTO_ACCEPTED
+"Tomb","Tomb","NPG;SAAM",2,0.9250282943046018,AUTO_ACCEPTED
 "Tomb","Tombs","SIL",1,0.9250282943046018,AUTO_ACCEPTED
 "Visual communication","Visual communication","SIL",2,1.0,SINGLETON
 "Chalice","Chalice","NPG",2,1.0,SINGLETON
 "Meteorology","Meteorology","SIL",2,1.0,SINGLETON
 "Emigration and immigration","Emigration and immigration","SIL",2,0.9392781222088155,AUTO_ACCEPTED
 "Emigration and immigration","Émigration et immigration","SIL",1,0.9392781222088155,AUTO_ACCEPTED
-"Patent model","Patent model","SAAM;NPG",2,1.0,SINGLETON
+"Patent model","Patent model","NPG;SAAM",2,1.0,SINGLETON
 "Aliens","Aliens","SIL",2,1.0,SINGLETON
 "Brooklyn","Brooklyn","SAAM",2,1.0,SINGLETON
 "Illustrated books","Illustrated books","SIL",2,0.913406286016469,AUTO_ACCEPTED
@@ -469,7 +469,7 @@ canonical_concept,member_label,source_units,occurrence_count,confidence,status
 "Marchioness","Marchioness","NPG",2,1.0,SINGLETON
 "Biodiversity","Biodiversity","SIL",2,1.0,SINGLETON
 "Buffaloes","Buffaloes","SAAM",2,1.0,SINGLETON
-"Pipe","Pipe","SIL;NPG",2,1.0,SINGLETON
+"Pipe","Pipe","NPG;SIL",2,1.0,SINGLETON
 "Pre-Raphaelitism","Pre-Raphaelitism","SIL",2,0.9185546151854278,AUTO_ACCEPTED
 "Pre-Raphaelitism","Pre-Raphaelites","SIL",1,0.9185546151854278,AUTO_ACCEPTED
 "Seafaring life","Seafaring life","SIL",2,1.0,SINGLETON
@@ -480,7 +480,7 @@ canonical_concept,member_label,source_units,occurrence_count,confidence,status
 "Minority artists","Minority artists","SIL",2,1.0,SINGLETON
 "Grain","Grain","SIL",2,1.0,SINGLETON
 "Villages","Villages","NMNHANTHRO",2,1.0,SINGLETON
-"Chicken","Chicken","SAAM;NPG",2,1.0,SINGLETON
+"Chicken","Chicken","NPG;SAAM",2,1.0,SINGLETON
 "Endangered ecosystems","Endangered ecosystems","SIL",2,1.0,SINGLETON
 "Politique et gouvernement","Politique et gouvernement","SIL",2,1.0,SINGLETON
 "Monocle","Monocle","NPG",2,1.0,SINGLETON
@@ -501,7 +501,7 @@ canonical_concept,member_label,source_units,occurrence_count,confidence,status
 "Aspect de l'environnement","Aspect de l'environnement","SIL",2,1.0,SINGLETON
 "Clay","Clay","SIL",2,1.0,SINGLETON
 "Violence","Violence","SAAM",2,1.0,SINGLETON
-"Bicycles","Bicycles","SAAM;SIL",2,1.0,SINGLETON
+"Bicycles","Bicycles","SIL;SAAM",2,1.0,SINGLETON
 "Visual arts administrator","Visual arts administrator","NPG",2,1.0,SINGLETON
 "Cart","Cart","SAAM",2,1.0,SINGLETON
 "Cliffs","Cliffs","NPG",2,1.0,SINGLETON
@@ -522,7 +522,7 @@ canonical_concept,member_label,source_units,occurrence_count,confidence,status
 "Time perception","Time perception","SIL",2,1.0,SINGLETON
 "Competitions","Competitions","SIL",2,1.0,SINGLETON
 "Pistol","Pistol","NPG",2,1.0,SINGLETON
-"Cornucopia","Cornucopia","SAAM;NPG",2,1.0,SINGLETON
+"Cornucopia","Cornucopia","NPG;SAAM",2,1.0,SINGLETON
 "Fiction","Fiction","SIL",2,1.0,SINGLETON
 "Yoruba festivals","Yoruba festivals","SIL",2,1.0,SINGLETON
 "Office","Office","NPG",2,1.0,SINGLETON
@@ -551,7 +551,7 @@ canonical_concept,member_label,source_units,occurrence_count,confidence,status
 "Wives","Wives","SIL",2,1.0,SINGLETON
 "Foreign leader","Foreign leader","NPG",2,1.0,SINGLETON
 "Dagger","Dagger","SAAM",2,1.0,SINGLETON
-"Nursing","Nursing","SAAM;NPG",2,1.0,SINGLETON
+"Nursing","Nursing","NPG;SAAM",2,1.0,SINGLETON
 "Mount Washington","Mount Washington","SAAM",2,1.0,SINGLETON
 "Phylogeny","Phylogeny","SIL",2,1.0,SINGLETON
 "Greenwich","Greenwich","SAAM",2,1.0,SINGLETON
@@ -573,7 +573,7 @@ canonical_concept,member_label,source_units,occurrence_count,confidence,status
 "Larvae","Larvae","SIL",2,1.0,SINGLETON
 "Afghan War, 2001-","Afghan War, 2001-","SIL",2,1.0,SINGLETON
 "Kilns","Kilns","SIL",2,1.0,SINGLETON
-"Occultism","Occultism","SAAM;SIL",2,1.0,SINGLETON
+"Occultism","Occultism","SIL;SAAM",2,1.0,SINGLETON
 "Pocket watch","Pocket watch","NPG",2,1.0,SINGLETON
 "Bayonet","Bayonet","NPG",2,1.0,SINGLETON
 "Technique","Technique","SIL",2,1.0,SINGLETON
@@ -600,7 +600,7 @@ canonical_concept,member_label,source_units,occurrence_count,confidence,status
 "Barrel","Barrel","NPG",2,1.0,SINGLETON
 "Fountain","Fountain","SAAM",2,1.0,SINGLETON
 "Airports","Airports","SIL",2,1.0,SINGLETON
-"Fire","Fire","SAAM;SIL",2,1.0,SINGLETON
+"Fire","Fire","SIL;SAAM",2,1.0,SINGLETON
 "Commodore","Commodore","NPG",2,1.0,SINGLETON
 "Coral reef ecology","Coral reef ecology","SIL",2,1.0,SINGLETON
 "Cornwall","Cornwall","SAAM",2,1.0,SINGLETON
@@ -621,7 +621,7 @@ canonical_concept,member_label,source_units,occurrence_count,confidence,status
 "Binoculars","Binoculars","NPG",2,1.0,SINGLETON
 "Labor unions","Labor unions","SIL",2,1.0,SINGLETON
 "Trolley","Trolley","NPG",2,1.0,SINGLETON
-"Palm","Palm","SAAM;NPG",2,1.0,SINGLETON
+"Palm","Palm","NPG;SAAM",2,1.0,SINGLETON
 "Fortress","Fortress","NPG",2,1.0,SINGLETON
 "Mice","Mice","SIL",2,1.0,SINGLETON
 "Museum finance","Museum finance","SIL",2,1.0,SINGLETON
@@ -636,9 +636,9 @@ canonical_concept,member_label,source_units,occurrence_count,confidence,status
 "Court and courtiers","Court and courtiers","SIL",2,1.0,SINGLETON
 "Native American diplomat","Native American diplomat","NPG",2,1.0,SINGLETON
 "Hydrodynamics","Hydrodynamics","SIL",2,1.0,SINGLETON
-"Lighthouses","Lighthouses","SAAM;NPG",2,1.0,SINGLETON
+"Lighthouses","Lighthouses","NPG;SAAM",2,1.0,SINGLETON
 "Civil rights movements","Civil rights movements","SIL",2,1.0,SINGLETON
-"Patriotism","Patriotism","SAAM;NPG",2,1.0,SINGLETON
+"Patriotism","Patriotism","NPG;SAAM",2,1.0,SINGLETON
 "Precancels","Precancels","SIL",2,1.0,SINGLETON
 "Sorrow","Sorrow","SAAM",2,1.0,SINGLETON
 "Bird's eye view","Bird's eye view","SAAM",2,1.0,SINGLETON
@@ -653,7 +653,7 @@ canonical_concept,member_label,source_units,occurrence_count,confidence,status
 "Air mail service","Air mail service","SIL",2,1.0,SINGLETON
 "Cytology","Cytology","SIL",2,1.0,SINGLETON
 "Amphibians","Amphibians","SIL",2,1.0,SINGLETON
-"Cooking","Cooking","SAAM;SIL",2,1.0,SINGLETON
+"Cooking","Cooking","SIL;SAAM",2,1.0,SINGLETON
 "Cetacea","Cetacea","SIL",2,1.0,SINGLETON
 "Coral reefs and islands","Coral reefs and islands","SIL",2,1.0,SINGLETON
 "China trade art","China trade art","SIL",2,1.0,SINGLETON

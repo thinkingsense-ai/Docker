@@ -1,8 +1,6 @@
 # Smithsonian POC demo (admin, curator, public)
 
-Copied from `thinkingsense-ai/Server` (`demo-smithsonian-poc/`). `ThinkingSense-SI-POC-Mock.html` is the clickable mock of the three screens.
-The picture gallery, vocabulary build route and measured model-share panel need the Server build from `main` after v0.10.7 (the next release), not the v0.10.7 image.
-Paths in `launch.sh` are relative to a Server checkout (`target/omnigate.jar`).
+**Start here: [SETUP.md](SETUP.md)** (requirements, one-command setup, and a 10-minute walkthrough). The notes below are the short version.
 
 Three people, one semantic layer, on the Smithsonian's own Open Access sample (31,185 rows, 7,792 records, 5 museums).
 Nothing leaves the machine: the models run locally; a cloud model is only used if `.env` supplies a key.
@@ -14,6 +12,7 @@ Nothing leaves the machine: the models run locally; a cloud model is only used i
 | Public (`public` / `Public-SI-1`) | `http://localhost:8110` | Open Access (CC0) records only, under an "unofficial prototype" banner, with pictures and links to each record |
 
 ## Set up
+The quickest way is `./demo.sh up` (see SETUP.md). By hand:
 1. `demo-smithsonian-poc/load-data.sh` loads the data into Postgres database `si_poc`.
 2. Start the local model servers (agentic `:18090`, fast `:8092`, nomic embeddings `:8120`) and run `demo-smithsonian-poc/launch.sh`.
 3. Build the vocabulary (admin session cookie needed):
