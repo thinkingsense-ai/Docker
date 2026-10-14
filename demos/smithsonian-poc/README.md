@@ -1,18 +1,18 @@
 # Smithsonian POC demo (admin, curator, public)
 
-**Start here: [SETUP.md](SETUP.md)** (requirements, one-command setup, and a 10-minute walkthrough). The notes below are the short version.
+**Start here: [SETUP.md](SETUP.md)** (install, `./bootstrap.sh`, `demo up`, and a 10-minute walkthrough). The notes below are the short version.
 
 Three people, one semantic layer, on the Smithsonian's own Open Access sample (31,185 rows, 7,792 records, 5 museums).
 Nothing leaves the machine: the models run locally; a cloud model is only used if `.env` supplies a key.
 
 | Person | Signs in at | Sees |
 |---|---|---|
-| Admin (`admin` / `Admin-SI-1`) | `http://localhost:8110/admin` | Data Sources, the subject-vocabulary review queue (Business Catalog), the Models page with the measured share of answers by small model vs cloud model |
+| Admin (`admin` / `Admin-SI-1`) | `http://127.0.0.1:8110/admin` (use `127.0.0.1` for the admin and `localhost` for Ask, or the two sign-ins sign each other out) | Data Sources, the subject-vocabulary review queue (Business Catalog), the Models page with the measured share of answers by small model vs cloud model |
 | Curator (`curator` / `Curator-SI-1`) | `http://localhost:8110` | Staff questions across all museums, with charts and a picture gallery |
 | Public (`public` / `Public-SI-1`) | `http://localhost:8110` | Open Access (CC0) records only, under an "unofficial prototype" banner, with pictures and links to each record |
 
 ## Set up
-The quickest way is `./demo.sh up` (see SETUP.md). By hand:
+The quickest way is `./bootstrap.sh` (once) and then `~/smithsonian-poc/demo up` (see SETUP.md). By hand:
 1. `demo-smithsonian-poc/load-data.sh` loads the data into Postgres database `si_poc`.
 2. Start the local model servers (agentic `:18090`, fast `:8092`, nomic embeddings `:8120`) and run `demo-smithsonian-poc/launch.sh`.
 3. Build the vocabulary (admin session cookie needed):
