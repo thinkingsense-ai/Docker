@@ -36,6 +36,7 @@ else bad "Node" "brew install node"; fi
 command -v git >/dev/null && ok "git" || bad "git" "xcode-select --install"
 command -v curl >/dev/null && ok "curl" || bad "curl" "brew install curl"
 command -v python3 >/dev/null && ok "python3" || bad "python3" "brew install python"
+if command -v docker >/dev/null && docker info >/dev/null 2>&1; then ok "Docker (runs the local MinIO that stands in for object storage)"; else bad "Docker, installed and running" "install Docker Desktop and start it"; fi
 command -v llama-server >/dev/null && ok "llama-server" || bad "llama-server (llama.cpp)" "brew install llama.cpp"
 command -v psql >/dev/null || { [ -x /opt/homebrew/opt/postgresql@16/bin/psql ] && export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH"; }
 if command -v psql >/dev/null; then
