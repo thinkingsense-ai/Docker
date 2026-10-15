@@ -13,7 +13,8 @@ read access to the private `thinkingsense-ai/Server` repository on GitHub.
 
 ## Step 1. Install the tools (once)
 
-Copy this whole block into Terminal:
+Copy this whole block into Terminal (you also need **Docker Desktop** installed and running: the demo's second data source, a CSV in
+object storage, runs in a small local MinIO container that stands in for Amazon S3):
 
 ```bash
 brew install openjdk@21 maven node llama.cpp postgresql@16
@@ -70,7 +71,7 @@ It is safe to run again at any time; it skips what is done. It finishes with `Al
 ```
 
 About 30 seconds. It starts three small model servers, loads the Smithsonian sample into a database called `si_poc`, starts the
-demo on port 8110, builds the subject vocabulary, and approves four demo questions. When it finishes you see:
+demo on port 8110, builds the subject vocabulary, and approves five demo questions (one of them joins the database with the CSV in object storage). When it finishes you see:
 
 ```
 Ready. Admin  http://127.0.0.1:8110/admin   (admin / Admin-SI-1)
@@ -113,8 +114,10 @@ table layout and sometimes the result rows go to the cloud provider, so this is 
 
 ## Walkthrough (about 10 minutes)
 
-**1. Admin: what is connected (2 min).** Sign in to the admin. Open **Data Sources**: the Smithsonian database is there. Say: "This
-is 31,185 subject rows over 7,792 records from five museums, straight from Open Access."
+**1. Admin: what is connected (2 min).** Sign in to the admin. Open **Data Sources**: there are **two**. `si` is the Smithsonian database in
+PostgreSQL: 31,185 subject rows over 7,792 records from five museums, straight from Open Access. `museums` is a **CSV file in object
+storage** (a local MinIO standing in for Amazon S3): the museum directory, with each unit's full name, department and web site. Say:
+"The records live in a database, the directory is just a file in a bucket. ThinkingSense reads both in place."
 
 **2. Admin: the subject vocabulary (3 min).** Open **Business Catalog**, then **Terms & ontology**, then the **Review Queue** tab. Say:
 "Each museum names subjects in its own way. ThinkingSense proposed one vocabulary: 53 groups of labels it is sure are the same, and 433
@@ -124,6 +127,8 @@ War, 1861-1865" are already merged, and both point to the same 96 records.
 
 **3. Curator: ask across museums (2 min).** Sign in to Ask as `curator`. Ask: *What do we hold on the American Civil War across all
 museums, and how much of it has an image?* It answers from both museums (NPG 90 records, SAAM 6) with a chart and shows its checks.
+Then ask *How many records does each museum hold, with its full name and department?* This one **joins the database with the CSV in
+object storage** in a single question: the full museum names and departments come from the file, the counts from the database.
 Then in a **new question** ask: *Show me what the Smithsonian has about the Civil War*. You get a **gallery of pictures** with the
 title, museum and a link to the record. Click a picture to enlarge it.
 
@@ -138,7 +143,7 @@ share by no model at all, because a trusted question already existed." Ask a few
 
 ## Good to know
 
-- **Trusted questions.** The four demo questions are pre-approved, so they are fast and reliable. Free-form questions go to the small
+- **Trusted questions.** The five demo questions are pre-approved, so they are fast and reliable. Free-form questions go to the small
   models and are right some of the time; the demo shows this honestly. Do not promise that every question works.
 - **Every record in the sample is already CC0**, so the public view is not visibly narrower than the curator's. The rule is real and
   applies as soon as staff-only records are loaded.
@@ -155,7 +160,7 @@ share by no model at all, because a trusted question already existed." Ask a few
 | Strange Java errors, or "unsupported class version" | You ran a script by hand with a different default Java. Use `~/smithsonian-poc/demo ...`, which always uses Java 21 |
 | `demo up` prints `agentic already running on :18090` (or `fast`/`embeddings`) but nothing was started | Something else is using that port, for example a `kubectl port-forward`. Find it with `lsof -nP -iTCP:18090 -sTCP:LISTEN`, stop it, then `demo stop` and `demo up`. The demo needs ports **8110, 18090, 8092 and 8120** free |
 | "address already in use" in `server.log` | Another ThinkingSense is running on port 8110. `demo stop`, or stop the other one |
-| The Ask app says it could not get a working query | The model needs a moment, or the question is outside the data. Ask one of the four demo questions, or rephrase |
+| The Ask app says it could not get a working query | The model needs a moment, or the question is outside the data. Ask one of the five demo questions, or rephrase |
 | Pictures are blank boxes | They load from the Smithsonian's server (a few seconds), or there is no internet |
 | Admin sign-in bounces you out | Use `127.0.0.1` for the admin and `localhost` for Ask, not the same name for both |
 | The review queue is empty | The vocabulary build did not run; run `demo up` again |

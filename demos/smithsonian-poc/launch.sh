@@ -3,12 +3,15 @@
 # a .env with the cloud model key (optional), and the local model servers (agentic :18090, fast :8092, embeddings :8120 (nomic-embed-text)).
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-JAVA_BIN="$("$HERE/java21.sh")" || { echo "No Java 21 found (looked at JAVA_HOME, /usr/libexec/java_home -v 21 and the PATH). Install a Java 21 JDK, or set JAVA_HOME to one." >&2; exit 1; }
+JAVA_BIN="${JAVA_BIN_OVERRIDE:-$("$HERE/java21.sh")}" || { echo "No Java 21 found (looked at JAVA_HOME, /usr/libexec/java_home -v 21 and the PATH). Install a Java 21 JDK, or set JAVA_HOME to one." >&2; exit 1; }
 cd "$HERE/.."
 export OMNIGATE_HTTP_PORT=8110 OMNIGATE_GRPC_PORT=7210 OMNIGATE_TLS_PORT=2610 OMNIGATE_ORACLE_PORT=1710 OMNIGATE_MYSQL_PORT=3510 OMNIGATE_PGWIRE_PORT=5610 OMNIGATE_MYWIRE_PORT=3511 OMNIGATE_HTTPS_PORT=8610
 export OMNIGATE_DATA_DIR=demo-smithsonian-poc/data
 export OMNIGATE_BACKENDS='si=jdbc:postgresql://127.0.0.1:5432/si_poc?currentSchema=public|'"${SI_DB_USER:-$USER}"'|'
-export OMNIGATE_ROUTER_SCHEMA_RULES='public:si'
+# Second data source: the museum directory, a CSV in object storage (a local MinIO standing in for S3). Queried as museums.museums.
+export OMNIGATE_BACKENDS="$OMNIGATE_BACKENDS"';museums=jdbc:calcite:model=inline:{"version":"1.0","schemas":[{"name":"museums","type":"custom","factory":"com.omnigate.calcite.s3.S3SchemaFactory","operand":{"provider":"s3","bucket":"si-poc","endpoint":"http://127.0.0.1:19110","pathStyleAccess":true,"accessKeyId":"minioadmin","secretAccessKey":"minioadmin","region":"us-east-1","tables":{"museums":{"key":"museums.csv","format":"csv"}}}}]}|'
+export OMNIGATE_ROUTER_SCHEMA_RULES='public:si,museums:museums'
+export OMNIGATE_FEDERATION_SYNONYM_ADDRESSING=true
 export OMNIGATE_ACCESS_POLICY_CONFIG=demo-smithsonian-poc/access-policy.yaml
 # admin console login, and the two Ask users: a curator (role staff, sees everything) and a public visitor (CC0 only)
 export OMNIGATE_AUTH_USERS='admin:iJZrK4sybaSbtK0YIYcjTg==:kL2m6rNCnLwpfitbhe2+bAaK9GdfApB53J4uHhUd160=:ADMIN'
