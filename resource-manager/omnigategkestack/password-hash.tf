@@ -1,62 +1,55 @@
-# Computes OMNIGATE_APP_USERS server-side during apply, identical in spirit and almost identical
-# in implementation to the OCI stack's password-hash.tf -- see that file for the full reasoning on
-# why this is a `data "external"` source (not a null_resource + local_file, which breaks on
-# `destroy`: each Cloud Shell/CI run gets a fresh checkout, so a file a local-exec provisioner
-# wrote during an earlier `apply` doesn't exist when a later `destroy` tries to read it).
+# Computes OMNIGATE_APP_USERS / OMNIGATE_AUTH_USERS during apply, so deployers never hand-assemble a
+# "username:saltB64:hashB64::" string.
 #
-# Requires curl, java (a JRE), and python3 on whatever machine runs `terraform apply` -- Cloud
-# Shell (this stack's documented deploy path, see tutorial.md) has all three preinstalled, same as
-# the OCI Resource Manager job runner did for the OCI stack.
+# The hash is STABLE across applies (issue #59). It used to run the release jar's PasswordHash on
+# every plan, and that utility draws a fresh random salt each run -- so the Secret's hashes changed on
+# every apply, `checksum/secret` on the pod template followed them, and Kubernetes rolled the pod even
+# when the only change was unrelated (a licence, a debug flag, scale). Now the salts are `random_id`
+# resources, which live in Terraform state and never change, and the PBKDF2 is computed here with
+# python3's hashlib from (password, salt). Same password + same salt = the same hash, so the Secret
+# only changes when a password changes. It also means no jar download, no JRE and no network egress.
+#
+# FORMAT CONTRACT: this must reproduce com.omnigate.http.auth.PasswordHash exactly --
+# PBKDF2-HMAC-SHA256, 210000 iterations, 32-byte key, 16-byte salt, "saltB64:hashB64". The Server
+# repo pins that contract in PasswordHashTest.matchesTheTerraformStacksPythonImplementation; if
+# the iteration count ever changes there, change `iterations` below in the same release.
+#
+# Still a `data "external"` source, not a null_resource + local_file: a file written by an earlier
+# apply job does not exist when a later destroy job runs, and a data source is read in every
+# operation. The program is deterministic now, so re-running it on every plan changes nothing.
+# Passwords and salts arrive as JSON on stdin and are parsed with python3, so quotes, backslashes
+# or unicode in a real password cannot break the parse.
+resource "random_id" "app_password_salt" {
+  byte_length = 16
+}
+
+resource "random_id" "admin_password_salt" {
+  byte_length = 16
+}
+
 data "external" "app_password_hash" {
-  program = ["bash", "-c", <<-EOT
-    set -e
-    # Homebrew's openjdk formula is keg-only (deliberately not symlinked onto PATH, to avoid
-    # clashing with macOS's own /usr/bin/java stub) -- confirmed live on a real deploy attempt.
-    # `command -v java` is NOT a safe existence check here: the macOS stub is still found by it,
-    # then fails only when actually invoked (it just pops an "install Java" prompt and exits
-    # nonzero). So prefer a real Homebrew JDK on PATH unconditionally whenever one is present,
-    # rather than only falling back to it when nothing resolves at all.
-    for candidate in /opt/homebrew/opt/openjdk/bin /usr/local/opt/openjdk/bin; do
-      if [ -x "$candidate/java" ]; then
-        export PATH="$candidate:$PATH"
-        break
-      fi
-    done
-    INPUT=$(cat)
-    PASSWORD=$(printf '%s' "$INPUT" | python3 -c "import json,sys; print(json.load(sys.stdin)['password'], end='')")
-    ADMIN_PASSWORD=$(printf '%s' "$INPUT" | python3 -c "import json,sys; print(json.load(sys.stdin)['admin_password'], end='')")
-    # var.image_tag is the Artifact Registry *docker* tag (default "latest"), which is not itself
-    # a GitHub release tag -- there is no release literally named "latest". When it's an actual
-    # version (e.g. "v0.6.0") matching a real release, use it directly; otherwise resolve the
-    # GitHub API's own "latest release" so the jar always matches whatever :latest currently
-    # points at -- same fix as the OCI stack's identical comment/bug (a plain
-    # releases/download/latest/omnigate.jar URL 404s).
-    if [ "${var.image_tag}" = "latest" ]; then
-      JAR_URL=$(python3 -c "
-import json, urllib.request
-with urllib.request.urlopen('https://api.github.com/repos/thinkingsense-ai/Docker/releases/latest', timeout=15) as r:
-    release = json.load(r)
-for asset in release.get('assets', []):
-    if asset['name'] == 'omnigate.jar':
-        print(asset['browser_download_url'])
-        break
-else:
-    raise SystemExit('omnigate.jar asset not found on latest GitHub release')
-")
-    else
-      JAR_URL="https://github.com/thinkingsense-ai/Docker/releases/download/${var.image_tag}/omnigate.jar"
-    fi
-    curl -fsSL -o /tmp/omnigate-hash-tool.jar "$JAR_URL" 1>&2
-    HASH=$(java -cp /tmp/omnigate-hash-tool.jar com.omnigate.http.auth.PasswordHash "$PASSWORD")
-    ADMIN_HASH=$(java -cp /tmp/omnigate-hash-tool.jar com.omnigate.http.auth.PasswordHash "$ADMIN_PASSWORD")
-    rm -f /tmp/omnigate-hash-tool.jar
-    python3 -c "import json,sys; print(json.dumps({'hash': sys.argv[1], 'admin_hash': sys.argv[2]}))" "$HASH" "$ADMIN_HASH"
+  program = ["python3", "-c", <<-EOT
+import base64, hashlib, json, sys
+q = json.load(sys.stdin)
+iterations = 210000  # = PasswordHash.ITERATIONS in the Server repo
+
+
+def entry(password, salt_b64):
+    salt = base64.b64decode(salt_b64)
+    key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations, 32)
+    return salt_b64 + ":" + base64.b64encode(key).decode("ascii")
+
+
+print(json.dumps({"hash": entry(q["password"], q["salt"]), "admin_hash": entry(q["admin_password"], q["admin_salt"])}))
   EOT
   ]
 
   query = {
-    password       = var.omnigate_app_password
+    password = var.omnigate_app_password
+    # Blank means "use the Ask-app password for the admin login too" (see omnigate_admin_password).
     admin_password = var.omnigate_admin_password != "" ? var.omnigate_admin_password : var.omnigate_app_password
+    salt           = random_id.app_password_salt.b64_std
+    admin_salt     = random_id.admin_password_salt.b64_std
   }
 }
 
