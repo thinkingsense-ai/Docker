@@ -27,7 +27,7 @@ data with zero setup, so you can see it work before connecting anything of your 
 run takes a minute or two (downloading the jar/web UI, pulling the Postgres image).
 
 **Just want the image, no clone?** The same image is also published pre-built to GitHub Container
-Registry — `docker pull ghcr.io/thinkingsense-ai/server:0.80` (or `:latest`) — built from source
+Registry — `docker pull ghcr.io/thinkingsense-ai/server:0.10.8` (or `:0.10` for the newest 0.10 patch; `:0.10.8-free` is the free edition) — built from source
 by the `thinkingsense-ai/Server` repo's own Dockerfile rather than downloaded from a release.
 Point it at your own Postgres via `OMNIGATE_BACKENDS` (see the Server repo's README) instead of
 using this repo's `docker-compose.yml`.

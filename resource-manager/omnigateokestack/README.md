@@ -108,6 +108,10 @@ the parallel join, which on a clustered deployment can be shared across replicas
 
 ## Publishing a release (maintainers)
 
+> **Update (v0.10.8, Docker #72):** the stacks no longer download the app's `omnigate.jar` to hash the login passwords (the hash is
+> now computed in the stack itself with a salt that stays the same between applies), so a stack release that becomes "latest" no longer
+> breaks a deploy. Keep passing `--latest=false` for stack tags anyway: the app release should stay the repository's Latest.
+
 Cut a GitHub release zip of this directory (tag `oke-stack-vX.Y.Z`), then update the
 `oke-stack-vX.Y.Z` / `omnigateokestack-vX.Y.Z.zip` references in `deploy-oci.html` (the
 `zipUrl=` Launch link, the "Download the zip" link, and the CLI snippet's `--config-source`) on

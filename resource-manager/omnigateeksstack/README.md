@@ -69,6 +69,10 @@ Since app v0.10.5 the Ask app's agent endpoint (`/mcp/agent`) needs the admin AP
 
 ## Publishing a release (maintainers)
 
+> **Update (v0.10.8, Docker #72):** the stacks no longer download the app's `omnigate.jar` to hash the login passwords (the hash is
+> now computed in the stack itself with a salt that stays the same between applies), so a stack release that becomes "latest" no longer
+> breaks a deploy. Keep passing `--latest=false` for stack tags anyway: the app release should stay the repository's Latest.
+
 CloudFormation's `TemplateURL` (both the Console's quick-create deep link and the
 `create-stack --template-url` CLI flag) only accepts a template hosted in an S3 bucket or an
 SSM document -- confirmed live: a GitHub raw-content URL is rejected outright ("Template URL
