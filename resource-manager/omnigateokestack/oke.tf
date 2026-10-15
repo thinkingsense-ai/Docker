@@ -14,15 +14,47 @@ locals {
   effective_node_pool_size = max(var.node_pool_size, var.omnigate_replica_count)
 }
 
+locals {
+  # Arm (Ampere A1) node images, not GPU, and the Kubernetes versions that have at least one. Oracle's list of cluster versions is
+  # ascending and sometimes runs ahead of its node images, and its list of images is newest-build-first but mixes every Kubernetes
+  # version: taking "the last version" with "the first image" made a cluster at one version and a node image at another, which
+  # Oracle rejects ("Kubernetes version does not match Kubernetes version of OKE worker node image", seen when v1.37.0 appeared
+  # while the first image was for v1.36.4).
+  arm_sources = [
+    for src in data.oci_containerengine_node_pool_option.this.sources : src
+    if length(regexall("aarch64", src.source_name)) > 0 && length(regexall("GPU", src.source_name)) == 0
+  ]
+  versions_with_arm_image = [
+    for v in data.oci_containerengine_cluster_option.this.kubernetes_versions : v
+    if length([
+      for src in local.arm_sources : src
+      if length(regexall("-OKE-${replace(trimprefix(v, "v"), ".", "\\.")}-[0-9]+$", src.source_name)) > 0
+    ]) > 0
+  ]
+  # Pinned by default (reproducible, like image_tag); "" means the newest version that has an arm image.
+  kubernetes_version = var.kubernetes_version != "" ? var.kubernetes_version : element(local.versions_with_arm_image, length(local.versions_with_arm_image) - 1)
+  # The newest build (Oracle lists newest first) of the image for exactly that version.
+  node_images = [
+    for src in local.arm_sources : src.image_id
+    if length(regexall("-OKE-${replace(trimprefix(local.kubernetes_version, "v"), ".", "\\.")}-[0-9]+$", src.source_name)) > 0
+  ]
+  node_image_id = local.node_images[0]
+}
+
 resource "oci_containerengine_cluster" "this" {
   compartment_id = var.compartment_ocid
   name           = "omnigate-oke"
   vcn_id         = oci_core_vcn.this.id
   # "BASIC_CLUSTER" is the free-control-plane tier -- the only one within Always Free.
   type = "BASIC_CLUSTER"
-  kubernetes_version = data.oci_containerengine_cluster_option.this.kubernetes_versions[
-    length(data.oci_containerengine_cluster_option.this.kubernetes_versions) - 1
-  ]
+
+  lifecycle {
+    precondition {
+      condition     = length(local.node_images) > 0
+      error_message = "Kubernetes ${local.kubernetes_version} has no Arm worker-node image in this region right now. Choose one of: ${join(", ", local.versions_with_arm_image)} (set kubernetes_version, or leave it blank for the newest)."
+    }
+  }
+  kubernetes_version = local.kubernetes_version
 
   endpoint_config {
     is_public_ip_enabled = true
@@ -52,7 +84,7 @@ resource "oci_containerengine_node_pool" "this" {
 
   node_source_details {
     source_type             = "IMAGE"
-    image_id                = data.oci_containerengine_node_pool_option.this.sources[0].image_id
+    image_id                = local.node_image_id
     boot_volume_size_in_gbs = var.node_boot_volume_gb
   }
 

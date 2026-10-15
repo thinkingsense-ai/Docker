@@ -4,6 +4,7 @@ import subprocess
 import time
 import urllib.request
 import base64
+import hashlib
 import boto3
 import botocore.session
 from botocore.signers import RequestSigner
@@ -104,46 +105,56 @@ def run_helm(args):
     return run_cmd("helm", args)
 
 
-def resolve_jar_url(image_tag):
-    # image_tag is the OCIR *docker* tag (default "latest"), which is not itself a GitHub
-    # release tag -- there is no release literally named "latest". When it's an actual version
-    # (e.g. "v0.6.0") that matches a real release, use it directly; otherwise resolve the
-    # GitHub API's own "latest release" so the jar always matches whatever OCIR's :latest
-    # currently points at.
-    if image_tag and image_tag != "latest":
-        return f"https://github.com/thinkingsense-ai/Docker/releases/download/{image_tag}/omnigate.jar"
-    api_url = "https://api.github.com/repos/thinkingsense-ai/Docker/releases/latest"
-    with urllib.request.urlopen(api_url, timeout=15) as resp:
-        release = json.loads(resp.read())
-    for asset in release.get("assets", []):
-        if asset["name"] == "omnigate.jar":
-            return asset["browser_download_url"]
-    raise RuntimeError("omnigate.jar asset not found on latest GitHub release")
+# PBKDF2-HMAC-SHA256, 210000 iterations, 32-byte key, 16-byte salt, "saltB64:hashB64" -- the format
+# of the app's own com.omnigate.http.auth.PasswordHash (pinned by PasswordHashTest in the Server
+# repo; change ITERATIONS here in the same release if it ever changes there).
+ITERATIONS = 210000
 
 
-def compute_password_hashes(passwords, image_tag):
-    # Same technique used to fix the OCI stack's own password UX (Docker#15/#16): download the
-    # exact release jar being deployed and run its own bundled PasswordHash utility, so the hash
-    # format always matches whatever's actually deployed rather than a separately-maintained
-    # reimplementation of the hashing algorithm. One download serves every password.
-    jar_path = "/tmp/omnigate-hash-tool.jar"
-    subprocess.run(
-        ["curl", "-fsSL", "-o", jar_path, resolve_jar_url(image_tag)],
-        check=True, timeout=60,
-    )
-    hashes = []
+def _salt_of(entry, username):
+    parts = (entry or "").split(":")
+    if len(parts) >= 3 and parts[0] == username:
+        try:
+            base64.b64decode(parts[1], validate=True)
+            return parts[1]
+        except ValueError:
+            return None
+    return None
+
+
+def previous_users(release_name, namespace):
+    # The users strings of the release already installed, or {} on a first install. Hashes only
+    # (never a password), and nothing here is logged.
+    # Deliberately NOT run_cmd/run_helm: those print stdout to the function's logs, and `helm get
+    # values` also carries the LLM API key and admin token that were passed with --set.
+    env = dict(os.environ, KUBECONFIG=KUBECONFIG_PATH, HOME="/tmp", XDG_CONFIG_HOME="/tmp/.config",
+               XDG_CACHE_HOME="/tmp/.cache", XDG_DATA_HOME="/tmp/.local/share")
     try:
-        for password in passwords:
-            result = subprocess.run(
-                ["java", "-cp", jar_path, "com.omnigate.http.auth.PasswordHash", password],
-                capture_output=True, text=True, timeout=30,
-            )
-            if result.returncode != 0:
-                raise RuntimeError(f"PasswordHash failed: {result.stderr}")
-            hashes.append(result.stdout.strip())
-    finally:
-        os.remove(jar_path)
-    return hashes
+        result = subprocess.run(["helm", "get", "values", release_name, "--namespace", namespace, "-o", "json"],
+                                capture_output=True, text=True, env=env, timeout=60)
+        if result.returncode != 0:
+            return {}
+        return (json.loads(result.stdout or "{}") or {}).get("omnigate") or {}
+    except Exception:
+        return {}
+
+
+def hash_password(password, salt_b64=None):
+    salt = base64.b64decode(salt_b64) if salt_b64 else os.urandom(16)
+    key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, ITERATIONS, 32)
+    return base64.b64encode(salt).decode("ascii") + ":" + base64.b64encode(key).decode("ascii")
+
+
+def compute_password_hashes(app_username, app_password, admin_username, admin_password, release_name, namespace):
+    # Issue #59: a fresh random salt on every update changed the Secret's hashes, so
+    # `checksum/secret` changed and the pod restarted even when only an unrelated setting changed.
+    # The salt is reused from the installed release when it is the same user, so an unchanged
+    # password gives an identical hash and no restart; a first install or a new user gets a new salt.
+    prior = previous_users(release_name, namespace)
+    return (
+        hash_password(app_password, _salt_of(prior.get("appUsers"), app_username)),
+        hash_password(admin_password, _salt_of(prior.get("authUsers"), admin_username)),
+    )
 
 
 def ensure_lbc(cluster_name, region, vpc_id, role_arn):
@@ -282,13 +293,12 @@ def lambda_handler(event, context):
         if request_type in ("Create", "Update"):
             ensure_storageclass()
             ensure_lbc(cluster_name, region, props["VpcId"], props["LbcRoleArn"])
-            image_tag = props.get("HelmSetValues", {}).get("image.tag", "latest")
             app_username = props.get("AppUsername", "demo")
             app_password = props["AppPassword"]
             admin_username = props.get("AdminUsername") or "admin"
             # Blank admin password = same as the Ask-app password.
             admin_password = props.get("AdminPassword") or app_password
-            password_hash, admin_hash = compute_password_hashes([app_password, admin_password], image_tag)
+            password_hash, admin_hash = compute_password_hashes(app_username, app_password, admin_username, admin_password, release_name, namespace)
 
             set_values = dict(props.get("HelmSetValues", {}))
             set_values.setdefault("storageClassName", "gp3")

@@ -26,6 +26,7 @@ variableGroups:
   - title: "Compute Sizing (Always Free: VM.Standard.A1.Flex)"
     visible: true
     variables:
+      - kubernetes_version
       - node_pool_size
       - node_ocpus
       - node_memory_gb
@@ -166,6 +167,13 @@ variables:
     title: "Restrict access to these addresses"
     description: "Optional. Comma-separated CIDR ranges allowed to connect, e.g. 203.0.113.7/32,198.51.100.0/24. Blank = open to the internet (fine for a first try-out). Worth setting once real data is connected, as one more layer on top of the logins."
     default: ""
+    required: false
+
+  kubernetes_version:
+    type: string
+    title: "Kubernetes version"
+    description: "Kubernetes version of the cluster and its Arm worker nodes, e.g. v1.36.4. The default is the version this stack release was tested with. Leave blank to use the newest version that has an Arm worker-node image."
+    default: "v1.36.4"
     required: false
 
   node_pool_size:

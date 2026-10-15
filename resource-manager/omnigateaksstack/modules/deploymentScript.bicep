@@ -166,33 +166,48 @@ resource helmInstall 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
         exit 1
       fi
 
-      # Computes OMNIGATE_APP_USERS server-side, the same algorithm as the AWS Lambda's
-      # resolve_jar_url()/compute_password_hash() and OCI's password-hash.tf `data "external"`:
-      # resolve the exact release jar matching $IMAGE_TAG (a literal version tag, or GitHub
-      # /releases/latest if the tag is the literal string "latest" -- the default OCI/ACR-style
-      # docker tag, not itself a GitHub release name), download it, and run its own bundled
-      # PasswordHash utility so the hash format always matches whatever image is actually
-      # deployed, rather than a separately-maintained reimplementation of the hash algorithm.
+      # Computes OMNIGATE_APP_USERS / OMNIGATE_AUTH_USERS with python3's hashlib: PBKDF2-HMAC-SHA256,
+      # 210000 iterations, 32-byte key, 16-byte salt, "saltB64:hashB64" -- the format of the app's own
+      # com.omnigate.http.auth.PasswordHash (pinned by PasswordHashTest in the Server repo).
+      # The salt is REUSED from the release already installed whenever it is the same user, so
+      # re-running this deployment with an unchanged password yields an identical hash, the Secret's
+      # checksum is unchanged and the pod is not restarted (issue #59). A first install, a new
+      # username or a missing release draws a fresh random salt.
       echo "== Computing app login hash =="
-      if [ "$IMAGE_TAG" = "latest" ]; then
-        JAR_URL=$(python3 -c "
-import json, urllib.request
-with urllib.request.urlopen('https://api.github.com/repos/thinkingsense-ai/Docker/releases/latest', timeout=15) as r:
-    release = json.load(r)
-for asset in release.get('assets', []):
-    if asset['name'] == 'omnigate.jar':
-        print(asset['browser_download_url'])
-        break
-else:
-    raise SystemExit('omnigate.jar asset not found on latest GitHub release')
-")
-      else
-        JAR_URL="https://github.com/thinkingsense-ai/Docker/releases/download/${IMAGE_TAG}/omnigate.jar"
-      fi
-      curl -fsSL -o /tmp/omnigate-hash-tool.jar "$JAR_URL"
-      APP_HASH=$(java -cp /tmp/omnigate-hash-tool.jar com.omnigate.http.auth.PasswordHash "$APP_PASSWORD")
-      ADMIN_HASH=$(java -cp /tmp/omnigate-hash-tool.jar com.omnigate.http.auth.PasswordHash "$ADMIN_PASSWORD")
-      rm -f /tmp/omnigate-hash-tool.jar
+      PRIOR_VALUES=$(helm get values omnigate -o json 2>/dev/null || echo '{}')
+      HASHES=$(PRIOR_VALUES="$PRIOR_VALUES" python3 - <<'PYEOF'
+import base64, hashlib, json, os
+
+iterations = 210000  # = PasswordHash.ITERATIONS in the Server repo
+try:
+    prior = (json.loads(os.environ.get("PRIOR_VALUES") or "{}") or {}).get("omnigate") or {}
+except ValueError:
+    prior = {}
+
+
+def salt_of(entry, username):
+    parts = (entry or "").split(":")
+    if len(parts) >= 3 and parts[0] == username:
+        try:
+            base64.b64decode(parts[1], validate=True)
+            return parts[1]
+        except ValueError:
+            return None
+    return None
+
+
+def entry(password, salt_b64):
+    salt = base64.b64decode(salt_b64) if salt_b64 else os.urandom(16)
+    key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations, 32)
+    return base64.b64encode(salt).decode("ascii") + ":" + base64.b64encode(key).decode("ascii")
+
+
+print(entry(os.environ["APP_PASSWORD"], salt_of(prior.get("appUsers"), os.environ["APP_USERNAME"])))
+print(entry(os.environ["ADMIN_PASSWORD"], salt_of(prior.get("authUsers"), os.environ["ADMIN_USERNAME"])))
+PYEOF
+)
+      APP_HASH=$(printf '%s\n' "$HASHES" | sed -n 1p)
+      ADMIN_HASH=$(printf '%s\n' "$HASHES" | sed -n 2p)
       # Local admin login for the admin console, admin API and /mcp ("user:salt:hash:admin"). Without
       # it those are open to anyone who can reach the load balancer.
       AUTH_USERS="${ADMIN_USERNAME}:${ADMIN_HASH}:admin"

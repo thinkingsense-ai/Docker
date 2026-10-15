@@ -249,6 +249,12 @@ variable "image_pull_auth_token" {
 
 # --- Compute sizing (Always Free: VM.Standard.A1.Flex, Ampere) ------------------------------
 
+variable "kubernetes_version" {
+  description = "Kubernetes version for the OKE cluster and its worker nodes, e.g. v1.36.4. Pinned by default so a new deploy matches what was tested; Oracle retires old versions, so a deliberate bump is part of each stack release. Leave blank to use the newest version that has an Arm worker-node image."
+  type        = string
+  default     = "v1.36.4"
+}
+
 variable "node_pool_size" {
   description = "Number of worker nodes -- a floor, not the final word: automatically raised to at least omnigate_replica_count if you set this lower (see oke.tf's local.effective_node_pool_size), since one OmniGate replica per node is what this stack's default node sizing actually fits. Confirmed live: leaving this below the replica count schedules the first couple of pods fine, then the rest sit Pending forever with no node to place them on."
   type        = number

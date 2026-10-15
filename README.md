@@ -3,7 +3,7 @@
 Run ThinkingSense — ask plain-English questions across your databases, governed and explained —
 on your own machine or server with one command.
 
-This is the **free edition**: scale-capped (100 concurrent connections, 2 named backends), not
+This is the **free edition**: scale-capped (100 concurrent connections, 3 named data sources, 1 question in flight at a time, 8 join worker threads, single node), not
 feature-limited. This repo is fully self-contained and public — it downloads a pre-compiled
 `omnigate.jar` and the pre-built web UI from this repo's own
 [GitHub Releases](https://github.com/thinkingsense-ai/Docker/releases). No source code and no

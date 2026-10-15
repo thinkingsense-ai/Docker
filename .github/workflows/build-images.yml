@@ -1,0 +1,150 @@
+# Builds the free and commercial OmniGate images when an app release is published, pushes them to the registries the cloud
+# stacks pull from, and opens a PR that bumps the stack pins. See RELEASING.md ("Automated image build").
+#
+# Triggered by: a published release whose tag is an app version (vX.Y.Z, or vX.Y.Z-rc.N for a candidate). Stack releases
+# (oke-stack-v*, eks-stack-v*, ...) are ignored. Can also be run by hand (Actions > Build images > Run workflow), with
+# "push" off for a dry run that builds and checks both images without publishing or needing any secret.
+#
+# Repository secrets (Settings > Secrets and variables > Actions):
+#   OCIR_USERNAME            <tenancy namespace>/<oci user>, e.g. ax8tpjdxhykk/someone@example.com (a user allowed to push)
+#   OCIR_AUTH_TOKEN          that user's OCI Auth Token
+#   GAR_SERVICE_ACCOUNT_KEY  JSON key of a Google service account with only "Artifact Registry Writer" on the omnigate repository
+name: Build images
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "App release tag to build, e.g. v0.10.7 (must already be a published release with omnigate.jar and web-dist.tar.gz)"
+        required: true
+      push:
+        description: "Push the images (and open the pin PR). Leave off for a dry run."
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  OCIR: ocir.us-phoenix-1.oci.oraclecloud.com/ax8tpjdxhykk
+  GAR: us-docker.pkg.dev/thinkingsense/omnigate
+
+jobs:
+  build:
+    # Only app releases. Stack releases share the same Releases list, so filter by tag shape.
+    if: github.event_name == 'workflow_dispatch' || (startsWith(github.event.release.tag_name, 'v') && !contains(github.event.release.tag_name, 'stack'))
+    # Native arm64 runner: the images are arm64-only (OKE A1, EKS Graviton, GKE T2A, AKS Ampere), so no emulation.
+    runs-on: ubuntu-24.04-arm
+    outputs:
+      tag: ${{ steps.vars.outputs.tag }}
+      candidate: ${{ steps.vars.outputs.candidate }}
+      push: ${{ steps.vars.outputs.push }}
+    steps:
+      - name: Work out what to build
+        id: vars
+        env:
+          EVENT: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_PUSH: ${{ inputs.push }}
+        run: |
+          tag="${RELEASE_TAG:-$INPUT_TAG}"
+          if ! printf '%s' "$tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$'; then
+            echo "::error::'$tag' is not an app version tag (vX.Y.Z or vX.Y.Z-rc.N)"; exit 1
+          fi
+          push=true; [ "$EVENT" = workflow_dispatch ] && push="$INPUT_PUSH"
+          candidate=false; case "$tag" in *-rc.*) candidate=true;; esac
+          { echo "tag=$tag"; echo "push=$push"; echo "candidate=$candidate"; } >> "$GITHUB_OUTPUT"
+          echo "building $tag (push=$push, candidate=$candidate)"
+
+      - uses: actions/checkout@v4
+
+      - name: The release has what the Dockerfile downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.vars.outputs.tag }}
+        run: |
+          for f in omnigate.jar web-dist.tar.gz; do
+            gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' | grep -qx "$f" \
+              || { echo "::error::release $TAG has no asset $f"; exit 1; }
+          done
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build free and commercial (arm64)
+        env:
+          TAG: ${{ steps.vars.outputs.tag }}
+        run: |
+          docker buildx build --platform linux/arm64 --load --build-arg OMNIGATE_RELEASE_TAG="$TAG" --build-arg OMNIGATE_EDITION=free \
+            -t "$OCIR/omnigate:$TAG" -t "$GAR/omnigate:$TAG" .
+          docker buildx build --platform linux/arm64 --load --build-arg OMNIGATE_RELEASE_TAG="$TAG" --build-arg OMNIGATE_EDITION=commercial \
+            -t "$OCIR/omnigate-commercial:$TAG" .
+
+      - name: Each image carries the right edition marker
+        env:
+          TAG: ${{ steps.vars.outputs.tag }}
+        run: |
+          free=$(docker run --rm --entrypoint cat "$OCIR/omnigate:$TAG" /opt/omnigate/EDITION)
+          com=$(docker run --rm --entrypoint cat "$OCIR/omnigate-commercial:$TAG" /opt/omnigate/EDITION)
+          echo "free image marker: $free; commercial image marker: $com"
+          [ "$free" = free ] && [ "$com" = commercial ] || { echo "::error::edition markers are wrong"; exit 1; }
+          # The free image must NOT be able to run as commercial by environment alone (the marker wins).
+          ver=$(docker run --rm --entrypoint java "$OCIR/omnigate:$TAG" -cp /app/omnigate.jar com.omnigate.core.LicenseTool check x 2>&1 | head -1 || true)
+          echo "licence tool present: $ver"
+
+      - name: Push the images (skipped on a dry run)
+        if: steps.vars.outputs.push == 'true'
+        env:
+          TAG: ${{ steps.vars.outputs.tag }}
+          CANDIDATE: ${{ steps.vars.outputs.candidate }}
+          OCIR_USERNAME: ${{ secrets.OCIR_USERNAME }}
+          OCIR_AUTH_TOKEN: ${{ secrets.OCIR_AUTH_TOKEN }}
+          GAR_KEY: ${{ secrets.GAR_SERVICE_ACCOUNT_KEY }}
+        run: |
+          [ -n "$OCIR_USERNAME" ] && [ -n "$OCIR_AUTH_TOKEN" ] || { echo "::error::OCIR_USERNAME / OCIR_AUTH_TOKEN secrets are not set"; exit 1; }
+          printf '%s' "$OCIR_AUTH_TOKEN" | docker login ocir.us-phoenix-1.oci.oraclecloud.com -u "$OCIR_USERNAME" --password-stdin
+          docker push "$OCIR/omnigate:$TAG"
+          docker push "$OCIR/omnigate-commercial:$TAG"
+          # A release candidate goes to OCIR only: GKE and AKS must not see it.
+          if [ "$CANDIDATE" = false ]; then
+            [ -n "$GAR_KEY" ] || { echo "::error::GAR_SERVICE_ACCOUNT_KEY secret is not set"; exit 1; }
+            printf '%s' "$GAR_KEY" | docker login us-docker.pkg.dev -u _json_key --password-stdin
+            docker push "$GAR/omnigate:$TAG"
+          fi
+
+  bump-pins:
+    # After a real (non-candidate) release has been pushed: open a PR with every stack pin moved to the new tag. Merging it is
+    # still a person's decision, after the clean-room checks in RELEASING.md.
+    needs: build
+    if: needs.build.outputs.push == 'true' && needs.build.outputs.candidate == 'false'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Bump the pins and open a PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.build.outputs.tag }}
+        run: |
+          branch="pins-$TAG"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then echo "branch $branch already exists; nothing to do"; exit 0; fi
+          git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          python3 scripts/version-pins.py bump "$TAG" --group core --group gke --group aks
+          python3 scripts/version-pins.py check
+          # azuredeploy.json is generated from main.bicep; the bump edited the pin in both, so the diff is the tag only.
+          git commit -am "Bump pins to $TAG"
+          git push origin "$branch"
+          if ! gh pr create --base main --head "$branch" --title "Bump pins to $TAG" --body "Opened automatically after the $TAG images were built and pushed to OCIR (free and commercial) and the Google Artifact Registry.
+
+          Before merging, per RELEASING.md: a clean-room deploy of each cloud from this branch, then cut the stack releases whose default image changes (the pins here are the stacks' default image tags). Prose that mentions the old version (READMEs) is not edited automatically."; then
+            # The images are already pushed; only the PR could not be opened (usually Settings > Actions > General >
+            # "Allow GitHub Actions to create and approve pull requests" is off). Say so without failing the run.
+            echo "::warning::The images are pushed, but the pin PR could not be opened. Open it from https://github.com/$GITHUB_REPOSITORY/compare/main...$branch"
+          fi
