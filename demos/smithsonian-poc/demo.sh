@@ -24,7 +24,8 @@ up_port() { curl -s -m 3 -o /dev/null "http://127.0.0.1:$1$2"; }
 check() {
   MISSING=0
   say "Prerequisites:"
-  need java "install a Java 21 JDK"
+  if JAVA_BIN="$(./java21.sh)"; then say "  ok   java 21 ($JAVA_BIN)"
+  else say "  MISSING Java 21 -- the demo must run on Java 21 ($(java -version 2>&1 | head -1 | tr -d '\n') is what is on your PATH). Install a Java 21 JDK or set JAVA_HOME to one."; MISSING=1; fi
   need mvn "install Maven (only needed to build the jar)"
   need psql "install PostgreSQL client tools"
   need llama-server "brew install llama.cpp"
@@ -40,21 +41,31 @@ check() {
 
 start_model() { # name port model extra...
   local name=$1 port=$2 model=$3; shift 3
-  if curl -s -m 2 "http://127.0.0.1:$port/health" >/dev/null 2>&1; then say "  $name already running on :$port"; return; fi
+  # Whatever listens on the port must really be llama-server: a health answer from something else (a kubectl
+  # port-forward, another service) is not our model, and the demo would quietly talk to the wrong thing.
+  local owner; owner="$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -Fc 2>/dev/null | sed -n 's/^c//p' | head -1)"
+  if [ -n "$owner" ]; then
+    case "$owner" in
+      llama-server*|llama*) say "  $name already running on :$port"; return ;;
+      *) say "  port $port is in use by '$owner', not llama-server -- stop it (lsof -nP -iTCP:$port -sTCP:LISTEN) and run ./demo.sh models again"; MODELS_FAILED=1; return ;;
+    esac
+  fi
   nohup llama-server -m "$model" --port "$port" --host 127.0.0.1 -ngl 0 "$@" > "/tmp/si-demo-$name.log" 2>&1 &
   echo $! >> /tmp/si-demo-models.pids
   say "  started $name on :$port"
 }
 
 models() {
+  MODELS_FAILED=0
   say "Local model servers:"
   start_model agentic 18090 "$AGENTIC_MODEL" -c 8192
   start_model fast 8092 "$FAST_MODEL" -c 4096
   start_model embeddings 8120 "$EMBED_MODEL" --embeddings -c 2048
   for p in 18090 8092 8120; do
     for i in $(seq 1 30); do curl -s -m 2 "http://127.0.0.1:$p/health" >/dev/null 2>&1 && break; sleep 2; done
-    curl -s -m 2 "http://127.0.0.1:$p/health" >/dev/null 2>&1 && say "  ready :$p" || say "  NOT READY :$p (see /tmp/si-demo-*.log)"
+    curl -s -m 2 "http://127.0.0.1:$p/health" >/dev/null 2>&1 && say "  ready :$p" || { say "  NOT READY :$p (see /tmp/si-demo-*.log)"; MODELS_FAILED=1; }
   done
+  [ "$MODELS_FAILED" = 0 ]
 }
 
 wait_ready() {
@@ -65,7 +76,7 @@ wait_ready() {
 
 up() {
   check || return 1
-  models
+  models || { say "A model server is not ready -- fix the lines above, then run ./demo.sh up again."; return 1; }
   say "Loading the data into Postgres (database si_poc)..."; ./load-data.sh || return 1
   say "Starting the demo on :$PORT..."; [ -f server.pid ] && kill "$(cat server.pid)" 2>/dev/null; sleep 2
   ./launch.sh >/dev/null; wait_ready || { say "The demo did not start; see server.log"; return 1; }
