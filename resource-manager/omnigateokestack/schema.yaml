@@ -1,0 +1,452 @@
+title: "OmniGate on OKE"
+description: "Deploy OmniGate (NL2SQL gateway) with a seeded Postgres demo backend onto a new Oracle Kubernetes Engine cluster, sized for the Always Free tier."
+schemaVersion: 1.1.0
+version: "20230101"
+locale: "en"
+
+variableGroups:
+  - title: "Required Configuration"
+    visible: true
+    variables:
+      - compartment_ocid
+      - region
+
+  - title: "Application"
+    visible: true
+    variables:
+      - omnigate_app_username
+      - omnigate_app_password
+      - omnigate_admin_username
+      - omnigate_admin_password
+      - omnigate_llm_api_key
+      - omnigate_llm_model
+      - expose_wire_protocols
+      - allowed_client_cidrs
+
+  - title: "Compute Sizing (Always Free: VM.Standard.A1.Flex)"
+    visible: true
+    variables:
+      - kubernetes_version
+      - node_pool_size
+      - node_ocpus
+      - node_memory_gb
+      - node_boot_volume_gb
+
+  - title: "Storage"
+    visible: true
+    variables:
+      - postgres_storage_gb
+      - omnigate_data_storage_gb
+
+  - title: "High Availability (optional)"
+    visible: true
+    variables:
+      - omnigate_replica_count
+      - omnigate_config_db_url
+      - omnigate_config_db_user
+      - omnigate_config_db_password
+      - omnigate_config_db_adb_ocid
+
+  - title: "Admin API access (optional)"
+    visible: true
+    variables:
+      - omnigate_admin_api_token
+
+  - title: "Single sign-on (optional)"
+    visible: true
+    variables:
+      - oidc_issuer
+      - oidc_client_id
+      - oidc_client_secret
+      - oidc_scopes
+      - oidc_admin_users
+      - oidc_admin_groups
+
+  - title: "Demo dataset (optional)"
+    visible: true
+    variables:
+      - enable_tpch_demo
+      - tpch_lineitem_store
+      - tpch_scale_factor
+
+  - title: "Tuning and diagnostics (optional)"
+    visible: true
+    variables:
+      - omnigate_memory_limit_gb
+      - omnigate_max_ram_percentage
+      - omnigate_parallel_join_min_rows
+      - omnigate_remote_join_enabled
+      - omnigate_debug_federation
+
+  - title: "Advanced"
+    visible: true
+    variables:
+      - image_repository
+      - image_tag
+
+  - title: "Commercial licence (subscribers)"
+    visible: true
+    variables:
+      - omnigate_license
+
+  - title: "Private Image Registry (internal / commercial testing only)"
+    visible: true
+    variables:
+      - image_pull_username
+      - image_pull_auth_token
+
+variables:
+  compartment_ocid:
+    type: oci:identity:compartment:id
+    title: "Compartment"
+    description: "Compartment to create the cluster, network, and node pool in."
+    required: true
+
+  region:
+    type: oci:identity:region:name
+    title: "Region"
+    description: "Deploy region. Must match a region your tenancy is subscribed to."
+    required: true
+
+  omnigate_app_username:
+    type: string
+    title: "Ask-app login username"
+    description: "Business-user login for the Ask app (not the same as an OCI account)."
+    default: "demo"
+    required: true
+
+  omnigate_app_password:
+    type: password
+    title: "Ask-app login password"
+    description: "Plain text -- hashed automatically during Apply using the deployed image's own PasswordHash utility, so nothing to generate yourself. Required so this deployment doesn't ship the repo's well-known demo/demo login on a public LoadBalancer."
+    required: true
+    sensitive: true
+
+  omnigate_admin_username:
+    type: string
+    title: "Admin console username"
+    description: "Login name for the admin console. The admin console, the admin API and the /mcp endpoint require a login, so they are not open to the internet."
+    default: "admin"
+    required: true
+
+  omnigate_admin_password:
+    type: password
+    title: "Admin console password (optional)"
+    description: "Leave blank to use the Ask-app password for the admin login as well. Set a different one if you will share the Ask-app login with other people, because that login would otherwise also open the admin console."
+    default: ""
+    required: false
+    sensitive: true
+
+  omnigate_llm_api_key:
+    type: password
+    title: "Anthropic API key"
+    description: "From console.anthropic.com. Powers NL2SQL (English -> SQL translation) -- required because the Ask app can't answer any question without it, so an unset key just means a stack that deploys successfully but is useless."
+    required: true
+    sensitive: true
+
+  omnigate_llm_model:
+    type: enum
+    title: "Anthropic model"
+    description: "Model used for NL2SQL."
+    enum:
+      - "claude-sonnet-5"
+      - "claude-opus-5"
+      - "claude-haiku-4-5-20251001"
+    default: "claude-sonnet-5"
+    required: true
+
+  expose_wire_protocols:
+    type: boolean
+    title: "Expose DB wire protocols publicly"
+    description: "Also publish the Oracle/Postgres/MySQL wire-protocol ports (1521/5433/3306) on a second public LoadBalancer. Off by default -- turn on only if you plan to connect a wire-protocol client (e.g. psql, a BI tool) from outside the cluster."
+    default: false
+    required: true
+
+  allowed_client_cidrs:
+    type: string
+    title: "Restrict access to these addresses"
+    description: "Optional. Comma-separated CIDR ranges allowed to connect, e.g. 203.0.113.7/32,198.51.100.0/24. Blank = open to the internet (fine for a first try-out). Worth setting once real data is connected, as one more layer on top of the logins."
+    default: ""
+    required: false
+
+  kubernetes_version:
+    type: string
+    title: "Kubernetes version"
+    description: "Kubernetes version of the cluster and its Arm worker nodes, e.g. v1.36.4. The default is the version this stack release was tested with. Leave blank to use the newest version that has an Arm worker-node image."
+    default: "v1.36.4"
+    required: false
+
+  node_pool_size:
+    # enum, not integer+minimum/maximum -- see omnigate_replica_count's own comment on why
+    # (Resource Manager's slider widget zero-pads tick labels regardless of actual range).
+    type: enum
+    title: "Node count"
+    description: "A floor, not the final word: automatically raised to at least OmniGate
+      replicas (above) if you leave this lower -- one replica per node is what this stack's
+      default node sizing actually fits."
+    enum:
+      - 1
+      - 2
+      - 3
+      - 4
+    default: 1
+    required: true
+
+  node_ocpus:
+    # enum, not integer+minimum/maximum -- see omnigate_replica_count's own comment on why
+    # (Resource Manager's slider widget zero-pads tick labels regardless of actual range).
+    type: enum
+    title: "OCPUs per node"
+    description: "Always Free tenancies share a limited Ampere A1 (VM.Standard.A1.Flex) allocation across the whole account -- check Governance & Administration > Limits, Quotas and Usage in the Console before raising node count x OCPUs beyond your tenancy's free allocation."
+    enum:
+      - 1
+      - 2
+      - 3
+      - 4
+    default: 2
+    required: true
+
+  node_memory_gb:
+    type: integer
+    title: "Memory (GB) per node"
+    minimum: 6
+    maximum: 24
+    default: 12
+    required: true
+
+  node_boot_volume_gb:
+    type: integer
+    title: "Boot volume size (GB) per node"
+    minimum: 50
+    maximum: 200
+    default: 50
+    required: true
+
+  postgres_storage_gb:
+    type: integer
+    title: "Postgres storage (GB)"
+    minimum: 1
+    maximum: 100
+    default: 5
+    required: true
+
+  omnigate_data_storage_gb:
+    type: integer
+    title: "OmniGate config storage (GB)"
+    description: "Holds OmniGate's own admin-set configuration (e.g. an API key entered live in the admin console) so it survives pod restarts."
+    minimum: 1
+    maximum: 20
+    default: 2
+    required: true
+
+  omnigate_replica_count:
+    # enum, not integer+minimum/maximum: confirmed live that Resource Manager's slider widget for
+    # a min/max integer zero-pads its tick labels ("02", "03") regardless of how few digits the
+    # actual range needs -- an enum dropdown just shows the literal values given here instead.
+    type: enum
+    title: "OmniGate replicas"
+    description: "Number of OmniGate pods behind the load balancer, for high availability / horizontal scale. Leave at 1 unless you also fill in the config-database fields below -- more than one replica needs a shared, separately-provisioned Postgres for admin-set config, not the default per-pod volume. More than one replica also turns on real Ignite cluster mode automatically (commercial-edition images only; a free-edition image logs a warning and stays single-node)."
+    enum:
+      - 1
+      - 2
+      - 3
+      - 4
+    default: 1
+    required: true
+
+  omnigate_config_db_url:
+    type: string
+    title: "Shared config database URL (for >1 replica)"
+    description: "A real, separately-provisioned Postgres JDBC URL, e.g. jdbc:postgresql://your-managed-db-host:5432/omnigate_config. Leave blank for a single-replica deployment."
+    default: ""
+    required: false
+
+  omnigate_config_db_user:
+    type: string
+    title: "Shared config database username"
+    default: ""
+    required: false
+
+  omnigate_config_db_password:
+    type: password
+    title: "Shared config database password"
+    default: ""
+    required: false
+    sensitive: true
+
+  omnigate_config_db_adb_ocid:
+    type: string
+    title: "Autonomous Database OCID (optional)"
+    description: "Only if the config database above is an OCI Autonomous Database with an IP access list. When set, this stack adds its worker nodes' public IPs to that list automatically, before the pods start and again on every scale-up (and removes them on destroy). Leave blank to whitelist the nodes yourself."
+    default: ""
+    required: false
+
+  omnigate_admin_api_token:
+    type: password
+    title: "Admin API token"
+    description: "Optional bearer token (any long random string) giving scripts admin access to the admin API without a browser sign-in. Setting it switches admin authentication on. Admin accounts created in the admin console are saved in the config database and carry over to any later stack using the same database, which also switches authentication on."
+    default: ""
+    required: false
+    sensitive: true
+
+  oidc_issuer:
+    type: string
+    title: "OIDC issuer URL"
+    description: "e.g. https://your-org.okta.com/oauth2/default. Setting this turns on single sign-on for the admin console and the Ask app. Register the redirect URIs <host>/auth/oidc/callback and <host>/app/oidc/callback with the provider."
+    default: ""
+    required: false
+
+  oidc_client_id:
+    type: string
+    title: "OIDC client ID"
+    default: ""
+    required: false
+    visible: ${oidc_issuer}
+
+  oidc_client_secret:
+    type: password
+    title: "OIDC client secret"
+    default: ""
+    required: false
+    sensitive: true
+    visible: ${oidc_issuer}
+
+  oidc_scopes:
+    type: string
+    title: "OIDC scopes"
+    description: "Add \"groups\" only if the provider returns a groups claim."
+    default: "openid profile email"
+    required: false
+    visible: ${oidc_issuer}
+
+  oidc_admin_users:
+    type: string
+    title: "Admin users (emails)"
+    description: "Comma-separated emails that get the admin role on sign-in. Everyone else who signs in is read-only in the admin console. Without at least one, nobody can change settings."
+    default: ""
+    required: false
+    visible: ${oidc_issuer}
+
+  oidc_admin_groups:
+    type: string
+    title: "Admin groups (optional)"
+    description: "Comma-separated groups-claim values that grant the admin role."
+    default: ""
+    required: false
+    visible: ${oidc_issuer}
+
+  omnigate_memory_limit_gb:
+    type: number
+    title: "Memory per OmniGate pod (GB)"
+    description: "The JVM heap is the percentage below of this. 3 is enough for the demo and small TPC-H sizes; a join over TPC-H scale factor 1 ran out of heap at 3, so use 6 or more for it. Keep it within what a node can hold alongside the other pods."
+    default: 3
+    minimum: 2
+    maximum: 8
+    required: false
+
+  omnigate_max_ram_percentage:
+    type: number
+    title: "JVM heap (% of pod memory)"
+    description: "The JVM default of 25 leaves a 3Gi pod with a 768MB heap, which the S3/Parquet connector exhausts even on a 600,000-row table. 65 gives about 2GB."
+    default: 65
+    minimum: 25
+    maximum: 80
+    required: false
+
+  omnigate_parallel_join_min_rows:
+    type: string
+    title: "Parallel join minimum rows"
+    description: "Row count below which the parallel hash join is skipped. Blank keeps the app default (10000). Lower it only to exercise the parallel join on small demo tables."
+    default: ""
+    required: false
+
+  omnigate_remote_join_enabled:
+    type: boolean
+    title: "Share join work across replicas"
+    description: "With more than one replica, let the parallel hash join ship work to the other replicas. Turn it off to compare against a run where one replica does everything."
+    default: true
+    required: false
+
+  omnigate_debug_federation:
+    type: boolean
+    title: "Debug logging for query planning"
+    description: "The planner logs why it did or did not use the parallel join engine only at debug level."
+    default: false
+    required: false
+
+  enable_tpch_demo:
+    type: boolean
+    title: "Load the TPC-H demo dataset"
+    description: "Adds a TPC-H dataset (LINEITEM as Parquet in an in-cluster S3-compatible store, the other seven tables in Postgres) on top of the supply-chain demo, so questions can join across backends at a realistic size. Needs a commercial-edition image: it adds two backends, and the free edition allows three. The first deploy takes several minutes longer while the data loads."
+    default: false
+    required: false
+
+  tpch_lineitem_store:
+    type: enum
+    title: "TPC-H LINEITEM storage"
+    description: "postgres puts the big table in a second database, so the join is database to database (the shape the parallel join can plan). s3 keeps Parquet in an in-cluster object store; joins that include it never use the parallel engine."
+    enum:
+      - postgres
+      - s3
+    default: postgres
+    required: false
+    visible: ${enable_tpch_demo}
+
+  tpch_scale_factor:
+    type: enum
+    title: "TPC-H scale factor"
+    description: "1 is about 1GB of source data (6M lineitem rows, 1.5M orders). 0.1 is a smaller smoke-test size."
+    enum:
+      - 0.1
+      - 1
+    default: 1
+    required: false
+    visible: ${enable_tpch_demo}
+
+  image_repository:
+    type: string
+    title: "Container image (advanced)"
+    description: "Fully-qualified OCIR path for the omnigate image. Leave as the default unless you've mirrored the image into your own registry."
+    default: "ocir.us-phoenix-1.oci.oraclecloud.com/ax8tpjdxhykk/omnigate"
+    required: false
+
+  image_tag:
+    type: string
+    title: "Image tag (advanced)"
+    description: "Pinned to a specific release rather than \"latest\" (a moving target isn't
+      reproducible). Keep this in step with the version in the stack's variables.tf; RELEASING.md
+      in the repo root describes how it is bumped."
+    default: "v0.10.5"
+    required: false
+
+  omnigate_license:
+    type: password
+    title: "Commercial licence"
+    description: "Commercial subscribers: paste the licence token we issued to you (it starts with ts1.). It lifts the free edition's limits without changing the image. Leave blank for the free edition; a blank value keeps any licence already installed."
+    default: ""
+    required: false
+
+  image_pull_username:
+    type: string
+    title: "Private registry username"
+    description: "Only needed when Image repository (above) points at a private repository --
+      OCIR's own \"<tenancy-namespace>/<oci-username>\" format. Leave blank for the default
+      public free-image path, which needs no credentials at all."
+    default: ""
+    required: false
+
+  image_pull_auth_token:
+    type: password
+    title: "Private registry auth token"
+    description: "Password half of Private registry username: a real OCI Auth Token (Identity ->
+      Users -> your user -> Auth Tokens -> Generate Token) -- NOT your console password or API
+      signing key. Required alongside the username above for a private image repository."
+    default: ""
+    required: false
+    sensitive: true
+
+outputGroups:
+  - title: "Access"
+    outputs:
+      - kubeconfig_command
+      - ask_app_url

@@ -1,0 +1,26 @@
+version: 0.2
+
+# Builds and pushes the helm-deployer Lambda container image into the deploying customer's own
+# ECR repo. Lambda container images must live in an ECR repo in the same account and Region as
+# the function -- there's no cross-account equivalent of OCI's Resource Manager job runner, which
+# already has Docker/Java/kubectl available for a local-exec step. CodeBuild is triggered by the
+# CloudFormation template itself (via the BuildTrigger custom resource) so the whole stack stays
+# a single one-click deploy with nothing to build or push by hand.
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to ECR...
+      - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$REPOSITORY_URI"
+  build:
+    commands:
+      - echo Building the helm-deployer image...
+      - cd resource-manager/omnigateeksstack/helm-deployer-lambda
+      # Docker's default attestation/provenance manifests break Lambda's image loader --
+      # confirmed live ("Lambda can only support images with two layers max" / manifest-type
+      # errors) -- so both are disabled here.
+      - docker build --provenance=false --sbom=false -t "$REPOSITORY_URI:$IMAGE_TAG" .
+  post_build:
+    commands:
+      - echo Pushing image...
+      - docker push "$REPOSITORY_URI:$IMAGE_TAG"

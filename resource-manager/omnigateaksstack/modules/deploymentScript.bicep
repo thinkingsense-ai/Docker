@@ -1,0 +1,280 @@
+// Azure has no native "run Helm as part of an ARM deployment" resource, the same gap AWS (no
+// CloudFormation Helm resource type) and OCI (Terraform *does* have a native helm_release
+// provider, so OCI doesn't need this module at all) each hit. AWS's answer is a Lambda-backed
+// custom resource requiring its own ECR repo + CodeBuild bootstrap just to get the Lambda's own
+// container image built and pushed. Azure's `Microsoft.Resources/deploymentScripts` (kind:
+// AzureCLI) is the more direct mirror of that same imperative-script idea, but simpler: it runs
+// in a managed container Azure already provides, no image build/push step of our own required.
+//
+// This resource needs its own identity with permission to fetch AKS credentials -- unlike a
+// Lambda execution role (IAM) or ORM's job runner (OCI CLI + tenancy-scoped policy), ARM
+// deploymentScripts get no implicit access to sibling resources in the same template.
+param location string
+param clusterName string
+param imageRepository string
+param imageTag string
+param llmModel string
+param exposeWireProtocols bool
+param dataVolumeGb int
+param postgresStorageGb int
+param appUsername string
+@secure()
+param appPassword string
+@secure()
+param llmApiKey string
+param adminUsername string
+@secure()
+param adminPassword string
+param allowedClientCidrs string
+// A new value on every deployment, so changing a setting and re-deploying really re-runs the install script
+// (Azure otherwise skips a deploymentScript whose resource looks unchanged).
+param forceUpdateTag string = utcNow()
+@secure()
+param adminApiToken string
+param imagePullUsername string
+@secure()
+param imagePullAuthToken string
+// The Helm chart (helm/omnigate/) ships in this same repo, one directory up from this stack's
+// Bicep. It has no independent version -- it travels with the aks-stack-vX.Y.Z release tag, same
+// as the OCI stack's chart travels inside its own release zip (see README's "Publishing a
+// release"). Default points at this repo's main branch tarball for local/dev testing; a tagged
+// release should override this to the matching aks-stack-vX.Y.Z tag's tarball so a deploy from
+// an old "Deploy to Azure" button link can't drift from a newer chart on main.
+param chartSourceUrl string = 'https://github.com/thinkingsense-ai/Docker/archive/refs/heads/main.tar.gz'
+
+resource deployIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: 'omnigate-aks-deploy-identity'
+  location: location
+}
+
+// `scope` on a roleAssignments resource needs an actual resource symbol (or a module/tenant
+// scope), not a resourceId() string -- `az bicep build` rejects the string form with BCP036.
+// Declaring the cluster as `existing` here (rather than passing its full resource through as a
+// module output) is what lets `scope:` bind to it.
+resource aksCluster 'Microsoft.ContainerService/managedClusters@2024-05-01' existing = {
+  name: clusterName
+}
+
+resource aksClusterAdminRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(resourceGroup().id, clusterName, deployIdentity.id, 'aks-cluster-admin')
+  scope: aksCluster
+  properties: {
+    // "Azure Kubernetes Service Cluster Admin Role" -- lets this identity pull an admin
+    // kubeconfig via `az aks get-credentials`, the direct analog of the OCI CLI's
+    // `oci ce cluster generate-token` exec plugin the OKE stack's helm/kubernetes providers use.
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '0ab0b1a8-8aac-4efd-b8c2-3ee1fb270be8')
+    principalId: deployIdentity.properties.principalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource helmInstall 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
+  name: 'omnigate-helm-install'
+  location: location
+  kind: 'AzureCLI'
+  dependsOn: [
+    aksClusterAdminRole
+  ]
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${deployIdentity.id}': {}
+    }
+  }
+  properties: {
+    azCliVersion: '2.63.0'
+    retentionInterval: 'P1D'
+    forceUpdateTag: forceUpdateTag
+    timeout: 'PT20M'
+    cleanupPreference: 'OnSuccess'
+    environmentVariables: [
+      { name: 'RESOURCE_GROUP', value: resourceGroup().name }
+      { name: 'CLUSTER_NAME', value: clusterName }
+      { name: 'IMAGE_REPOSITORY', value: imageRepository }
+      { name: 'IMAGE_TAG', value: imageTag }
+      { name: 'LLM_MODEL', value: llmModel }
+      { name: 'EXPOSE_WIRE_PROTOCOLS', value: string(exposeWireProtocols) }
+      { name: 'DATA_VOLUME_GB', value: string(dataVolumeGb) }
+      { name: 'POSTGRES_STORAGE_GB', value: string(postgresStorageGb) }
+      { name: 'APP_USERNAME', value: appUsername }
+      { name: 'CHART_SOURCE_URL', value: chartSourceUrl }
+      { name: 'ADMIN_USERNAME', value: adminUsername }
+      { name: 'ALLOWED_CLIENT_CIDRS', value: allowedClientCidrs }
+      { name: 'APP_PASSWORD', secureValue: appPassword }
+      { name: 'ADMIN_PASSWORD', secureValue: adminPassword }
+      { name: 'IMAGE_PULL_USERNAME', value: imagePullUsername }
+      { name: 'IMAGE_PULL_AUTH_TOKEN', secureValue: empty(imagePullAuthToken) ? 'none' : imagePullAuthToken }
+      { name: 'ADMIN_API_TOKEN', secureValue: empty(adminApiToken) ? 'none' : adminApiToken }
+      { name: 'LLM_API_KEY', secureValue: llmApiKey }
+    ]
+    scriptContent: '''
+      set -euo pipefail
+
+      # Confirmed live: the AzureCLI deploymentScripts container is Alpine-based (apk), not the
+      # Azure Linux (tdnf) image assumed here originally -- ships with neither curl nor a JRE nor
+      # openssl by default. The very first `curl` call in an earlier version of this script failed
+      # outright with "curl: command not found"; after adding curl+JRE, Helm's own install script
+      # then failed with "In order to verify checksum, openssl must first be installed." Install
+      # all three together, before anything else needs them. Falling back through tdnf/apt
+      # defensively in case this base image ever changes, same spirit as the GCP stack's
+      # Homebrew-keg-only fallback in password-hash.tf's build.
+      echo "== Installing curl, openssl, and a JRE =="
+      if command -v apk >/dev/null 2>&1; then
+        apk add --no-cache curl openssl ca-certificates openjdk17-jre-headless
+      elif command -v tdnf >/dev/null 2>&1; then
+        tdnf install -y curl openssl ca-certificates || true
+        tdnf install -y msopenjdk-17 || tdnf install -y java-17-openjdk-headless
+      elif command -v apt-get >/dev/null 2>&1; then
+        apt-get update -qq
+        apt-get install -y -qq curl openssl ca-certificates
+        apt-get install -y -qq default-jre-headless
+      else
+        echo "No supported package manager found for installing curl/openssl/a JRE" >&2
+        exit 1
+      fi
+      command -v curl >/dev/null 2>&1 || { echo "curl still not available after install attempt" >&2; exit 1; }
+      command -v openssl >/dev/null 2>&1 || { echo "openssl still not available after install attempt" >&2; exit 1; }
+      command -v java >/dev/null 2>&1 || { echo "java still not available after install attempt" >&2; exit 1; }
+
+      echo "== Installing Helm =="
+      curl -fsSL -o /tmp/get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+      chmod +x /tmp/get_helm.sh
+      /tmp/get_helm.sh
+
+      echo "== Fetching AKS credentials =="
+      az aks get-credentials --resource-group "$RESOURCE_GROUP" --name "$CLUSTER_NAME" --overwrite-existing --admin
+
+      # Confirmed live: `az aks get-credentials` only writes a kubeconfig file -- it does NOT
+      # install the kubectl binary itself, so the later `kubectl get svc` LB-IP-poll loop silently
+      # failed "kubectl: not found" every single iteration (masked by that loop's own `2>/dev/null
+      # || true`, which is there to tolerate "no IP yet", not "no kubectl") for the full 300s,
+      # always falling through to the "pending" fallback even when the LB already had a real IP.
+      # `az aks install-cli` is the Azure-blessed way to fetch a matching kubectl (+ kubelogin).
+      command -v kubectl >/dev/null 2>&1 || az aks install-cli --only-show-errors
+      command -v kubectl >/dev/null 2>&1 || { echo "kubectl still not available after az aks install-cli" >&2; exit 1; }
+
+      echo "== Fetching the Helm chart =="
+      curl -fsSL -o /tmp/chart.tar.gz "$CHART_SOURCE_URL"
+      mkdir -p /tmp/chart
+      tar -xzf /tmp/chart.tar.gz -C /tmp/chart --strip-components=1
+      CHART_DIR=$(find /tmp/chart -type d -path '*omnigateaksstack/helm/omnigate' | head -1)
+      if [ -z "$CHART_DIR" ]; then
+        echo "Could not locate helm/omnigate inside $CHART_SOURCE_URL" >&2
+        exit 1
+      fi
+
+      # Computes OMNIGATE_APP_USERS / OMNIGATE_AUTH_USERS with python3's hashlib: PBKDF2-HMAC-SHA256,
+      # 210000 iterations, 32-byte key, 16-byte salt, "saltB64:hashB64" -- the format of the app's own
+      # com.omnigate.http.auth.PasswordHash (pinned by PasswordHashTest in the Server repo).
+      # The salt is REUSED from the release already installed whenever it is the same user, so
+      # re-running this deployment with an unchanged password yields an identical hash, the Secret's
+      # checksum is unchanged and the pod is not restarted (issue #59). A first install, a new
+      # username or a missing release draws a fresh random salt.
+      echo "== Computing app login hash =="
+      PRIOR_VALUES=$(helm get values omnigate -o json 2>/dev/null || echo '{}')
+      HASHES=$(PRIOR_VALUES="$PRIOR_VALUES" python3 - <<'PYEOF'
+import base64, hashlib, json, os
+
+iterations = 210000  # = PasswordHash.ITERATIONS in the Server repo
+try:
+    prior = (json.loads(os.environ.get("PRIOR_VALUES") or "{}") or {}).get("omnigate") or {}
+except ValueError:
+    prior = {}
+
+
+def salt_of(entry, username):
+    parts = (entry or "").split(":")
+    if len(parts) >= 3 and parts[0] == username:
+        try:
+            base64.b64decode(parts[1], validate=True)
+            return parts[1]
+        except ValueError:
+            return None
+    return None
+
+
+def entry(password, salt_b64):
+    salt = base64.b64decode(salt_b64) if salt_b64 else os.urandom(16)
+    key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations, 32)
+    return base64.b64encode(salt).decode("ascii") + ":" + base64.b64encode(key).decode("ascii")
+
+
+print(entry(os.environ["APP_PASSWORD"], salt_of(prior.get("appUsers"), os.environ["APP_USERNAME"])))
+print(entry(os.environ["ADMIN_PASSWORD"], salt_of(prior.get("authUsers"), os.environ["ADMIN_USERNAME"])))
+PYEOF
+)
+      APP_HASH=$(printf '%s\n' "$HASHES" | sed -n 1p)
+      ADMIN_HASH=$(printf '%s\n' "$HASHES" | sed -n 2p)
+      # Local admin login for the admin console, admin API and /mcp ("user:salt:hash:admin"). Without
+      # it those are open to anyone who can reach the load balancer.
+      AUTH_USERS="${ADMIN_USERNAME}:${ADMIN_HASH}:admin"
+      # Optional source-address allow-list for the load balancer; blank = open.
+      CIDR_LIST=$(printf '%s' "$ALLOWED_CLIENT_CIDRS" | tr -d ' ')
+      # Confirmed live: AppAuthConfig.parse (com.omnigate.http.ask.auth.AppAuthConfig) requires
+      # exactly 5 colon-separated fields (username:salt:hash:roles:attrs) and silently SKIPS any
+      # entry that doesn't split into 5 -- omitting the trailing "::" for the empty roles/
+      # attributes fields left the user list empty and login silently disabled ("web UI
+      # business-user login disabled -- set OMNIGATE_APP_USERS"), no error, no crash, just an
+      # unusable login. The trailing "::" is not optional cosmetic formatting.
+      APP_USERS="${APP_USERNAME}:${APP_HASH}::"
+
+      # Commercial edition: the registry credential goes in through --set-file so an Auth Token containing commas, braces or other
+      # characters Helm's --set parser treats specially arrives byte for byte.
+      PULL_ARGS=""
+      if [ -n "$IMAGE_PULL_USERNAME" ] && [ "$IMAGE_PULL_AUTH_TOKEN" != none ]; then
+        printf '%s' "$IMAGE_PULL_AUTH_TOKEN" > /tmp/omnigate-pull-token
+        PULL_ARGS="--set-string image.pullUsername=$IMAGE_PULL_USERNAME --set-file image.pullAuthToken=/tmp/omnigate-pull-token"
+      fi
+      echo "== Installing the omnigate Helm release =="
+      helm upgrade --install omnigate "$CHART_DIR" \
+        --set image.repository="$IMAGE_REPOSITORY" \
+        --set image.tag="$IMAGE_TAG" \
+        --set omnigate.llmModel="$LLM_MODEL" \
+        --set omnigate.exposeWireProtocols="$EXPOSE_WIRE_PROTOCOLS" \
+        --set omnigate.dataVolumeSize="${DATA_VOLUME_GB}Gi" \
+        --set postgres.storageSize="${POSTGRES_STORAGE_GB}Gi" \
+        --set-string omnigate.appUsers="$APP_USERS" \
+        --set-string omnigate.authUsers="$AUTH_USERS" \
+        $PULL_ARGS \
+        --set-string omnigate.adminApiToken="$([ "$ADMIN_API_TOKEN" = none ] && echo '' || echo "$ADMIN_API_TOKEN")" \
+        --set "service.loadBalancerSourceRanges={${CIDR_LIST}}" \
+        --set-string omnigate.llmApiKey="$LLM_API_KEY" \
+        --timeout 10m0s \
+        --wait
+
+      # Redact secrets from this script's own process environment before it exits -- deploymentScripts
+      # persists stdout/stderr into the resource's execution logs, so anything echoed (deliberately
+      # or by a stray `set -x`) would otherwise leak. Mirrors the redaction discipline AWS's
+      # handler.py added after a real bug there leaked the *previous* password on every Update
+      # event (it originally redacted only the current ResourceProperties, not the old ones).
+      rm -f /tmp/omnigate-pull-token
+      unset IMAGE_PULL_AUTH_TOKEN APP_PASSWORD ADMIN_PASSWORD ADMIN_API_TOKEN LLM_API_KEY APP_USERS APP_HASH AUTH_USERS ADMIN_HASH
+
+      echo "== Waiting for the LoadBalancer IP =="
+      HTTP_IP=""
+      for i in $(seq 1 30); do
+        HTTP_IP=$(kubectl get svc omnigate-omnigate-http -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
+        [ -n "$HTTP_IP" ] && break
+        sleep 10
+      done
+
+      if [ -n "$HTTP_IP" ]; then
+        ASK_APP_URL="http://${HTTP_IP}:8080/"
+      else
+        ASK_APP_URL="pending -- run: kubectl get svc omnigate-omnigate-http"
+      fi
+      # Confirmed live: hand-escaped quotes inside a Bicep triple-quoted string
+      # (`\\"..\\"`) do not round-trip the way a plain bash script would expect -- the resulting
+      # scriptoutputs.json was malformed and ARM rejected the whole deployment with
+      # "DeploymentScriptInvalidOutputs", even though the Helm install itself had already
+      # succeeded. Building the JSON with python3's json.dumps (already a dependency via the
+      # jar-resolution step above) sidesteps shell/Bicep escaping entirely.
+      ASK_APP_URL="$ASK_APP_URL" python3 -c "
+import json, os
+json.dump({'askAppUrl': os.environ['ASK_APP_URL']}, open(os.environ['AZ_SCRIPTS_OUTPUT_PATH'], 'w'))
+"
+    '''
+  }
+}
+
+output askAppUrl string = helmInstall.properties.outputs.askAppUrl

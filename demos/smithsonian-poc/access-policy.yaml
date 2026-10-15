@@ -1,0 +1,21 @@
+# Real, working AccessPolicy config for the Phase E "public chat" surface -- enforced by the
+# existing AccessControlStage (com.omnigate.core.access), the same pipeline stage every other
+# OmniGate frontend already goes through. Loaded via OMNIGATE_ACCESS_POLICY_CONFIG (a file path)
+# or the admin console's PUT /api/config/access-policy.
+#
+# Mechanism (see AccessPolicy.RowFilter's own javadoc): filter_column = <the caller's own
+# attribute value> is injected into the WHERE clause. A "public" AppUser (OMNIGATE_APP_USERS,
+# no bypass role) gets cc0_filter=true and sensitive_filter=false bound in, restricting every
+# query against si_topics to real CC0-flagged, non-sensitive rows only. A "staff" AppUser (role
+# "staff", listed in bypass_roles below) skips both filters entirely and sees everything --
+# exactly the "public chat: CC0 + non-sensitive only" vs. "staff: everything" split the brief's
+# own use case 1 vs. use case 2 requires (§6).
+row_filters:
+  - table_pattern: "si_topics"
+    filter_column: "cc0"
+    required_attribute: "cc0_filter"
+    bypass_roles: ["staff"]
+  - table_pattern: "si_topics"
+    filter_column: "culturally_sensitive"
+    required_attribute: "sensitive_filter"
+    bypass_roles: ["staff"]

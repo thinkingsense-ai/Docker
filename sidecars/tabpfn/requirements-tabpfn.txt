@@ -1,0 +1,14 @@
+# Optional -- only needed when OMNIGATE_PROFILING_PREDICTOR_ENABLED=true. server.py itself has zero
+# dependencies (pure stdlib) and starts fine without this file ever being installed; the heuristic
+# pattern-match classifier is the default. See server.py's module docstring and tabpfn_classifier.py.
+#
+#   python3 -m venv .venv && .venv/bin/pip install -r requirements-tabpfn.txt
+#   OMNIGATE_PROFILING_PREDICTOR_ENABLED=true OMNIGATE_PROFILING_SERVER_PYTHON=.venv/bin/python \
+#       OMNIGATE_PROFILING_SERVER_SCRIPT=$(pwd)/server.py java -jar omnigate.jar
+#
+# Pinned to TabPFN v2 specifically -- 2.1+/2.5/2.6/3's weights are non-commercial-only (see
+# docs/design/data-driven-semantic-profiling.md's model survey). torch is pulled in transitively;
+# first classification run downloads the real ~29MB v2 checkpoint from Hugging Face and caches it
+# under the platform user-cache dir (tabpfn.base._user_cache_dir -- ~/Library/Caches/tabpfn on
+# macOS, ~/.cache/tabpfn on Linux; no override env var as of tabpfn==2.0.9) for every run after that.
+tabpfn==2.0.9

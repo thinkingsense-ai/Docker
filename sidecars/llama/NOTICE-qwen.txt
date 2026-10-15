@@ -1,0 +1,12 @@
+This image bundles Qwen2.5-3B-Instruct (quantized, GGUF format) as its local reasoning engine.
+
+Qwen is licensed under the Qwen RESEARCH LICENSE AGREEMENT, Copyright (c) Alibaba Cloud. All
+Rights Reserved.
+
+The Qwen RESEARCH LICENSE AGREEMENT grants use, reproduction, distribution, and modification
+rights FOR NON-COMMERCIAL PURPOSES ONLY (research or evaluation). This free/developer image is
+distributed for exactly that purpose. Commercial use of Qwen requires a separate license from
+Alibaba Cloud -- see https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/blob/main/LICENSE for
+the full agreement.
+
+Built with Qwen.

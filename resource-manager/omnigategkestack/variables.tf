@@ -1,0 +1,144 @@
+# Every variable here is meant to become a Cloud Shell tutorial prompt (see tutorial.md) the same
+# way the OCI stack's variables.tf feeds Resource Manager's schema.yaml -- there's no GCP
+# equivalent of that schema-driven Console form (see README's "Why no schema.yaml" section), so
+# grouping/help text live only here and in tutorial.md instead.
+
+variable "gcp_project_id" {
+  description = "GCP project to create the cluster, network, and node pool in. Must already exist and be linked to a billing account."
+  type        = string
+}
+
+variable "gcp_region" {
+  description = "GCP region for the whole stack, e.g. us-central1."
+  type        = string
+  default     = "us-central1"
+}
+
+variable "gcp_zone_suffix" {
+  description = "Zone suffix appended to gcp_region for the GKE cluster's location, e.g. \"a\" for us-central1-a. A zonal (not regional) cluster is deliberate -- see gke.tf."
+  type        = string
+  default     = "a"
+}
+
+# --- Application config -------------------------------------------------------------------
+
+variable "omnigate_llm_api_key" {
+  description = "Anthropic API key (console.anthropic.com) for NL2SQL -- required, since a stack applied without one deploys fine but can't answer any question."
+  type        = string
+  sensitive   = true
+}
+
+variable "omnigate_llm_model" {
+  description = "Anthropic model id used for NL2SQL."
+  type        = string
+  default     = "claude-sonnet-5"
+}
+
+variable "omnigate_app_username" {
+  description = "Ask-app login username. Required -- refusing to ship the repo's well-known demo/demo login on a public LoadBalancer."
+  type        = string
+  default     = "demo"
+}
+
+variable "omnigate_app_password" {
+  description = "Ask-app login password, plain text. Hashed automatically during apply (see password-hash.tf) using the same PasswordHash utility bundled in the deployed image -- no local Docker or manual hash generation needed."
+  type        = string
+  sensitive   = true
+}
+
+variable "omnigate_admin_username" {
+  description = "Login name for the admin console. The admin console, the admin API (/api/query and friends) and the /mcp endpoint require this login (or a token), so they are not open to the internet."
+  type        = string
+  default     = "admin"
+}
+
+variable "omnigate_admin_password" {
+  description = "Admin console password, plain text, hashed during apply like omnigate_app_password. Leave blank to use the Ask-app password for the admin login as well; set a different one if you will share the Ask-app login with other people."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "omnigate_admin_api_token" {
+  description = "Optional bearer token (any long random string) that grants admin-role access to the admin API, for scripts. Blank = none."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "allowed_client_cidrs" {
+  description = "Comma-separated CIDR ranges (for example 203.0.113.7/32) that may reach OmniGate's web port. Blank leaves it open to the internet, which is what a first try-out needs. Worth setting once real data is connected, as one more layer on top of the logins."
+  type        = string
+  default     = ""
+}
+
+variable "expose_wire_protocols" {
+  description = "Also expose the Oracle/Postgres/MySQL wire-protocol ports (1521/5433/3306) via a second public LoadBalancer, in addition to the HTTP admin console/Ask app on 8080. Off by default -- these protocols carry their own auth per connection, but there's no reason to expose them publicly unless you actually plan to connect a wire-protocol client from outside the cluster."
+  type        = bool
+  default     = false
+}
+
+# --- Image ----------------------------------------------------------------------------------
+
+variable "image_repository" {
+  description = "Fully-qualified Artifact Registry path for the omnigate image. Defaults to the publisher's own pre-built image -- deployers should not need to build anything themselves."
+  type        = string
+  default     = "us-docker.pkg.dev/thinkingsense/omnigate/omnigate"
+}
+
+variable "image_tag" {
+  description = "Image tag to deploy. Pinned to a specific release rather than \"latest\" -- the \"latest\" tag was deliberately removed from the Artifact Registry repo, so this must always name a real, currently-published tag (see the \"Image\" section in README.md for how to check what's actually there)."
+  type        = string
+  default     = "v0.10.5"
+}
+
+variable "image_pull_username" {
+  description = "Only for the commercial edition: the OCIR login (\"<namespace>/<user>\") for the private omnigate-commercial repository, given to you with your subscription. Leave blank for the public free image. See ../../scripts/switch-edition-gke.sh."
+  type        = string
+  default     = ""
+}
+
+variable "image_pull_auth_token" {
+  description = "Password half of image_pull_username: the OCIR Auth Token given to you with your subscription. Blank for the free image."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# --- Compute sizing ---------------------------------------------------------------------------
+# Unlike OCI's Always Free Ampere A1 allocation, GCP has no free compute shape generous enough to
+# actually run this (its free tier is one e2-micro, nowhere near the omnigate container's own 1
+# vCPU / 1Gi request). These defaults are a modest, real-money size, not a free one -- said
+# plainly rather than implied by an "Always Free"-style comment the way the OCI stack's has.
+
+variable "node_pool_size" {
+  description = "Number of worker nodes."
+  type        = number
+  default     = 1
+}
+
+variable "node_machine_type" {
+  description = "Machine type for the node pool. t2a-standard-2 (2 vCPU / 8GB, Ampere/arm64) -- confirmed live: the published omnigate image is arm64-only (no amd64 manifest), same reason the AWS stack deliberately runs Graviton/arm64 EKS nodes (see omnigateeksstack/README.md) instead of a default x86 node group. An e2-* (amd64) node pool here fails every pod with ErrImagePull/\"no match for platform in manifest\"."
+  type        = string
+  default     = "t2a-standard-2"
+}
+
+variable "node_boot_disk_gb" {
+  description = "Boot disk size (GB) per node. The omnigate image itself is a few GB (bundles a compiled llama-server + a local embedding model), so the default here is larger than a bare-minimum node."
+  type        = number
+  default     = 50
+}
+
+# --- Storage ---------------------------------------------------------------------------------
+
+variable "postgres_storage_gb" {
+  description = "Persistent Disk size for the seeded Postgres backend."
+  type        = number
+  default     = 5
+}
+
+variable "omnigate_data_storage_gb" {
+  description = "Persistent Disk size for OmniGate's own ConfigStore (admin-set config, e.g. an API key entered live in the UI -- this is what needs to survive a pod restart)."
+  type        = number
+  default     = 2
+}

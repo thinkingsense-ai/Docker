@@ -1,0 +1,175 @@
+{{- if .Values.omnigate.clusterEnabled }}
+{{- if not .Values.omnigate.configDb.external }}
+{{ fail "omnigate.configDb.external must be true when omnigate.clusterEnabled is true -- Ignite cluster mode (distributed cache/QoS) doesn't take over ConfigStore's own storage, so the admin-editable config still needs a real shared Postgres across replicas (see values.yaml's own configDb comment)." }}
+{{- end }}
+{{- end }}
+{{- if not .Values.omnigate.configDb.external }}
+# Only created/mounted for the default, single-replica setup -- see values.yaml's own
+# omnigate.configDb comment for why this PVC (ReadWriteOnce, single-attach) is exactly what makes
+# more than one replica unsafe until configDb.external moves this state into shared Postgres.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "omnigate.fullname" . }}-omnigate-data
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: {{ .Values.storageClassName }}
+  resources:
+    requests:
+      storage: {{ .Values.omnigate.dataVolumeSize }}
+---
+{{- end }}
+{{- if .Values.omnigate.clusterEnabled }}
+# Headless (clusterIP: None) purely for stable per-pod DNS -- Ignite's TcpDiscoveryVmIpFinder only
+# supports a static host:port list (see OMNIGATE_CLUSTER_SEED_NODES in configmap.yaml), not
+# Kubernetes-native pod discovery, so each StatefulSet pod needs a resolvable name of its own.
+# Not used for routing traffic (the LoadBalancer Services below still do that), so no port
+# requirement for correctness -- listed anyway for observability/Endpoints correctness.
+#
+# publishNotReadyAddresses: true is load-bearing, not optional -- confirmed live a genuine
+# deadlock without it: Kubernetes only adds a pod to a Service's Endpoints (and therefore its DNS
+# record, for a headless Service) once the pod is Ready, but these pods can't become Ready until
+# Ignite discovers its peers by that same DNS name. Every pod stuck at 0/1 Ready indefinitely,
+# reproduced live (readiness probe never passing, Endpoints list permanently empty even though
+# the Service's selector correctly matched the pods' labels). This flag is exactly what a headless
+# Service backing a StatefulSet needs whenever peers must find each other during startup, before
+# any of them are individually healthy yet -- the same reason Cassandra/Elasticsearch-style
+# Kubernetes deployments need it.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "omnigate.fullname" . }}-omnigate-headless
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: omnigate
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: omnigate
+  ports:
+    - name: ignite-disco
+      port: 47500
+    - name: ignite-comm
+      port: 47100
+---
+# Real, distributed Ignite cluster mode -- StatefulSet instead of the default Deployment so each
+# replica gets the stable, predictable pod name (omnigate-omnigate-0, -1, ...) the headless
+# Service above and OMNIGATE_CLUSTER_SEED_NODES both depend on. configDb.external is required (see
+# the `fail` guard above), so there's no per-pod PVC to make ordered rollout semantics matter for
+# data safety the way the default Deployment's `Recreate` strategy addresses -- RollingUpdate here
+# is safe and gives zero-downtime scaling/deploys.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "omnigate.fullname" . }}-omnigate
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: omnigate
+spec:
+  serviceName: {{ include "omnigate.fullname" . }}-omnigate-headless
+  replicas: {{ .Values.omnigate.replicaCount }}
+  # Parallel, not the default OrderedReady -- confirmed live this is a hard requirement, not an
+  # optimization: Ignite's embedded node blocks at startup trying to discover its
+  # OMNIGATE_CLUSTER_SEED_NODES peers, so with OrderedReady (pod N+1 only created once pod N is
+  # Ready) pod 0 can never become Ready waiting to discover pods 1/2, which can never be created
+  # to be discovered -- a real deadlock, reproduced live (pod 0 stuck at Ignite startup
+  # indefinitely, replicas 1/2 never even created). Same reasoning every other
+  # gossip/cluster-forming StatefulSet workload on Kubernetes (Cassandra, Elasticsearch) needs
+  # this for.
+  podManagementPolicy: Parallel
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: omnigate
+  template:
+    {{- include "omnigate.podTemplate" . | nindent 4 }}
+---
+{{- else }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "omnigate.fullname" . }}-omnigate
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: omnigate
+spec:
+  replicas: {{ .Values.omnigate.replicaCount }}
+  strategy:
+    # Recreate is required for the default single-pod-owns-the-PVC setup (a rolling update would
+    # try to start a second pod against the same ReadWriteOnce volume before the first exits).
+    # Once configDb.external moves that state to shared Postgres, there is no such conflict, so a
+    # real RollingUpdate (zero-downtime deploys/scaling) becomes safe.
+    type: {{ if .Values.omnigate.configDb.external }}RollingUpdate{{ else }}Recreate{{ end }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: omnigate
+  template:
+    {{- include "omnigate.podTemplate" . | nindent 4 }}
+---
+{{- end }}
+# HTTP only (Ask app + admin console) -- the LoadBalancer default. Deliberately not exposing the
+# DB wire ports here; see the wire-protocols Service below, which is opt-in.
+#
+# Uses OCI's Network Load Balancer (L4 passthrough), not the classic L7 "lb" default: confirmed
+# live that the classic Load Balancer buffers the Ask app's SSE (Server-Sent Events) streaming
+# responses -- a request would return 200 with only the first event and then hang indefinitely,
+# while the exact same request against the pod directly (bypassing the LB) streamed correctly and
+# fast. The NLB doesn't do HTTP-level buffering at all, since it's pure TCP passthrough.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "omnigate.fullname" . }}-omnigate-http
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: omnigate
+  annotations:
+    oci.oraclecloud.com/load-balancer-type: "nlb"
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: omnigate
+  ports:
+    - name: http
+      port: {{ .Values.service.httpPort }}
+      targetPort: 8080
+{{- if .Values.omnigate.exposeWireProtocols }}
+---
+# Wire protocols (Oracle/Postgres/MySQL/gRPC), only created when exposeWireProtocols=true.
+# NLB here too -- these are raw TCP wire protocols, not HTTP, so L4 passthrough is the correct
+# fit regardless of the SSE-buffering issue that motivated it for the HTTP Service above.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "omnigate.fullname" . }}-omnigate-wire
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: omnigate
+  annotations:
+    oci.oraclecloud.com/load-balancer-type: "nlb"
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: omnigate
+  ports:
+    - name: oracle-wire
+      port: 1521
+      targetPort: 1521
+    - name: pg-wire
+      port: 5433
+      targetPort: 5433
+    - name: mysql-wire
+      port: 3306
+      targetPort: 3306
+    - name: grpc
+      port: 7070
+      targetPort: 7070
+{{- end }}

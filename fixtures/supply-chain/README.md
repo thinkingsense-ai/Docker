@@ -52,7 +52,7 @@ shipments(shipment_id INT PK, po_id INT, carrier VARCHAR, eta_date DATE, status 
 `purchase_orders.po_id -> shipments.po_id`, `purchase_orders.(sku, warehouse_id) ->
 warehouse_inventory.(sku, warehouse_id)`.
 
-**Why Oracle uses a `procurement` user, not `system`**: both OmniGate's own `SchemaIntrospector`
+**Why Oracle uses a `procurement` user, not `system`**: both ThinkingSense's own `SchemaIntrospector`
 and Trino's own Oracle connector filter `SYSTEM` as a system schema (correctly — this is real,
 checked behavior, not a workaround for a bug). A table owned by `SYSTEM` is invisible to either.
 `seed-oracle-1-user.sql` creates a real, ordinary `procurement` application user for exactly this

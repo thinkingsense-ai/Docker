@@ -1,21 +1,20 @@
-# OmniGate — free-edition container image
+# ThinkingSense — free-edition container image
 
-This repo holds the build recipe for OmniGate's **free edition** — the edition with real scale
-caps baked in (`Edition.current()` reads a marker file this `Dockerfile` writes, which wins over
-any `OMNIGATE_EDITION` env var override — see [Free edition limits](#free-edition-limits) below
-for the full, current list). **Not feature-limited** — every capability (federation, Ontology,
-NL2SQL, MCP, admin console) is the same code path as the commercial edition; only scale is capped.
+Run ThinkingSense — ask plain-English questions across your databases, governed and explained —
+on your own machine or server with one command.
 
-**This repo is fully self-contained and public.** It builds the image by downloading a
-pre-compiled `omnigate.jar` and the pre-built web UI from this repo's own
-[GitHub Releases](https://github.com/thinkingsense-ai/Docker/releases) — no other repo, no source
-code, and no private access of any kind is needed. OmniGate's source lives in a separate, private
-repo; you're running the compiled artifact, the same way you'd run any closed-source product's
-Docker image.
+This is the **free edition**: scale-capped (100 concurrent connections, 3 named data sources, 1 question in flight at a time, 8 join worker threads, single node), not
+feature-limited. This repo is fully self-contained and public — it downloads a pre-compiled
+`omnigate.jar` and the pre-built web UI from this repo's own
+[GitHub Releases](https://github.com/thinkingsense-ai/Docker/releases). No source code and no
+private access of any kind is needed; you're running the compiled artifact, the same way you'd
+run any closed-source product's Docker image. (The internal package/env-var names still say
+`omnigate` in places — that's the product's original internal name, unrelated to anything you
+need to know to run it.)
 
-## The absolute minimum: one command, no config
+## Deploy it: one command
 
-You need [Docker](https://docs.docker.com/get-docker/) and nothing else:
+You need [Docker](https://docs.docker.com/get-docker/) and nothing else.
 
 ```bash
 git clone https://github.com/thinkingsense-ai/Docker.git
@@ -23,32 +22,35 @@ cd Docker
 docker compose up --build
 ```
 
-This starts OmniGate **and** a disposable, pre-seeded Postgres database (the classic `emp`/`dept`
-schema) — real, queryable data with zero setup, so you can see the whole product work before
-connecting anything of your own. Give it a minute the first time (it's downloading the jar/web UI
-and pulling the Postgres image).
+This starts ThinkingSense **and** a disposable, pre-seeded Postgres database — real, queryable
+data with zero setup, so you can see it work before connecting anything of your own. The first
+run takes a minute or two (downloading the jar/web UI, pulling the Postgres image).
+
+**Just want the image, no clone?** The same image is also published pre-built to GitHub Container
+Registry — `docker pull ghcr.io/thinkingsense-ai/server:0.80` (or `:latest`) — built from source
+by the `thinkingsense-ai/Server` repo's own Dockerfile rather than downloaded from a release.
+Point it at your own Postgres via `OMNIGATE_BACKENDS` (see the Server repo's README) instead of
+using this repo's `docker-compose.yml`.
 
 ### Where to go once it's running
 
 | | URL | Sign in with |
 |---|---|---|
 | 🛠️ **Admin console** | **http://localhost:8080/admin** | *(no login by default — see warning below)* |
-| 💬 **Ask app** (ask a question in English) | **http://localhost:8080/** | username `demo`, password `demo` |
+| 💬 **Ask** (ask a question in plain English) | **http://localhost:8080/** | username `demo`, password `demo` |
 
-That's it — two URLs, one on the same port by default. Open the Admin console to see your data
-sources and connect your own; open the Ask app and log in with `demo`/`demo` to actually ask it a
-question.
+Open the admin console to see your data sources and connect your own; open Ask and sign in with
+`demo`/`demo` to ask it a question.
 
-> **⚠️ Before you put this anywhere reachable by anyone but you**: the admin console above ships
-> **unauthenticated** in this quick-start config — anyone who can reach that URL can see and change
-> everything. Uncomment and set `OMNIGATE_AUTH_USERS`/`OMNIGATE_AUTH_API_TOKENS` in
-> `docker-compose.yml` first. Same idea for the Ask app's `demo`/`demo` account — change or remove
-> the `OMNIGATE_APP_USERS` line before this leaves your own machine.
+> **⚠️ Before this is reachable by anyone but you**: the admin console ships **unauthenticated**
+> in this quick-start config. Uncomment and set `OMNIGATE_AUTH_USERS`/`OMNIGATE_AUTH_API_TOKENS`
+> in `docker-compose.yml` first. Same for Ask's `demo`/`demo` account — change or remove the
+> `OMNIGATE_APP_USERS` line before this leaves your own machine.
 
-**One thing you'll want to add before asking a real question**: an Anthropic API key, so the Ask
-app can actually translate English into SQL. Get one at
-[console.anthropic.com](https://console.anthropic.com/), then either export it before starting the
-stack —
+### Add an API key so it can actually answer questions
+
+Get an Anthropic API key at [console.anthropic.com](https://console.anthropic.com/), then either
+export it before starting —
 
 ```bash
 export OMNIGATE_LLM_API_KEY=sk-ant-...
@@ -56,167 +58,205 @@ docker compose up --build
 ```
 
 — or put it in a `.env` file next to `docker-compose.yml` (`OMNIGATE_LLM_API_KEY=sk-ant-...`).
-Without it, the gateway still starts and the seeded Postgres is still there — you just can't ask
-it a question in English yet (raw SQL over any of the native wire protocols still works).
+Without it, ThinkingSense still starts and the seeded database is still there — you just can't
+ask a question in plain English yet. (There's also a real, fully private local-model mode with no
+external API at all — see [below](#a-fully-private-option-no-external-api-key-needed).)
 
-## Ask your first question — proving NL2SQL + the Ontology actually work
+## Try it
 
-The seeded database is deliberately not empty and not trivial: `emp` references `dept`, salaries
-vary, and nothing about that relationship is spelled out to the LLM by hand — the Ontology has to
-discover it. Log in to the Ask app (`http://localhost:8080/`, `demo`/`demo`) and try:
+With the seeded demo running, ask (at `http://localhost:8080/`, signed in as `demo`):
 
 ```
 Which employees have job SALESMAN in the Chicago department, ordered by salary descending?
 ```
 
-(Literal column-shaped phrasing like this, rather than a business synonym like "salespeople," is
-deliberate for this specific demo — the seed data has no glossary entry teaching the model that
-"salespeople" means `job = 'SALESMAN'`; that's exactly what OmniGate's Metrics registry is for on
-a real deployment, just not something a bare seed script provides for free.)
+You'll see the real steps as it answers — understanding the question, generating SQL, checking
+access policy, executing, writing the answer — then the exact SQL it generated (a real join it
+figured out on its own from the schema, no manual mapping) and a real result: Allen ($1,600),
+Turner ($1,500), then Ward and Martin tied at $1,250.
 
-That question only resolves correctly if three separate things this product advertises are
-actually true, and each is visible in the response:
+To see how it knew `emp` and `dept` relate, open **http://localhost:8080/admin → Ontology
+review** — that relationship was discovered automatically the moment the database was connected.
 
-1. **The live trace** shown while it runs — "understanding the question, generating SQL, checking
-   access policy, executing, writing the answer" — is a real step-by-step trace of the pipeline
-   running, not a spinner.
-2. **The collapsible "SQL" panel** on the answer shows the exact generated SQL — a real join the
-   Ontology's own foreign-key extraction made possible:
-   ```sql
-   SELECT e.empno, e.ename, e.job, e.sal FROM emp e JOIN dept d ON e.deptno = d.deptno
-   WHERE LOWER(e.job) = LOWER('SALESMAN') AND LOWER(d.loc) = LOWER('Chicago')
-   ORDER BY e.sal DESC
-   ```
-3. **The narrated answer + result table** should name four real rows from the seed data — Allen
-   ($1,600), Turner ($1,500), then Ward and Martin tied at $1,250 — not a hallucinated table or a
-   canned response.
+## Add your own database
 
-To see *why* that join was possible before you even ask a question, open
-`http://localhost:8080/admin` → **Ontology review** and look for the `emp.deptno → dept.deptno`
-relationship — either in the relationship list, or as an edge in the **Semantic Graph** panel on
-the same page (an interactive node graph of the same data; also fetchable directly at
-`GET /api/ontology.json`). That relationship was extracted automatically the moment the seeded
-backend was introspected at startup — zero manual mapping. It shows up already-accepted rather
-than sitting in a review queue because a plain declared foreign key is exactly the
-high-confidence, auto-acceptable case; a relationship inferred from data sampling instead of a
-declared FK would wait for a human to approve it.
+The seeded Postgres is a demo. Connect a real one two ways:
 
-## Ports — the simple version
+**A. Live, from the admin console (no restart)** — go to **Data sources → + add data source**,
+enter a name and connection string, click **Discover schemas** to test the connection, then
+**Save**. It connects immediately and starts learning the schema in the background.
 
-**By default there is exactly one port: `8080`.** Both apps live there, split only by URL path —
-`/admin` for the admin console, `/` for the Ask app (the table above). You never need to think
-about ports at all unless you want the advanced setup below.
-
-### Advanced: putting the Ask app on its own separate port
-
-Only do this if you specifically want to expose the Ask app to the public internet while keeping
-the admin console reachable only from inside your own network. Set `OMNIGATE_ASK_PORT` alongside
-the existing `OMNIGATE_HTTP_PORT`:
-
-```yaml
-environment:
-  OMNIGATE_HTTP_PORT: "8080"   # admin console + /api + /app only, once ASK_PORT is set
-  OMNIGATE_ASK_PORT: "8081"    # Ask app only
-ports:
-  - "8080:8080"
-  - "8081:8081"
-```
-
-**This is a hard split, not a mirror**: once `OMNIGATE_ASK_PORT` is set, port 8080 stops serving
-the Ask app's own routes (404s them) and port 8081 stops serving `/admin`/admin API routes (404s
-those). Leave `OMNIGATE_ASK_PORT` unset (the default in this repo's `docker-compose.yml`) to keep
-the original single-port behavior — nothing else changes either way.
-
-Every port this image can expose, and what each one is for:
-
-| Port | Protocol | Purpose |
-|---|---|---|
-| `8080` | HTTP | Admin console (`/admin`) + Ask app (`/`) + `/api/*` + `/app/*` + `/mcp*` — unless split, see above |
-| `8081` | HTTP | Ask app only, when `OMNIGATE_ASK_PORT` is set |
-| `8443` | HTTPS | Same as 8080, when TLS is configured (`OMNIGATE_TLS_*`) |
-| `5433` | Postgres wire | Query any registered backend using a plain `psql`/Postgres client |
-| `3306` | MySQL wire | Same, using a MySQL client |
-| `1521` | Oracle wire | Same, using an Oracle client |
-| `7070` | gRPC | Native JDBC driver, if you're using OmniGate's own driver rather than a wire-protocol client |
-| `2484` | TCP | Oracle TLS variant, when TLS is configured |
-
-## Free edition limits
-
-Real, enforced caps — not advertised limits that happen to not be checked anywhere. Each one is
-covered by an automated test in the source repo, and every one is baked into the image via the
-`/opt/omnigate/EDITION` marker file (not just an env var), so a plain `docker run -e
-OMNIGATE_EDITION=commercial` can't lift them.
-
-| Limit | Free edition | Commercial edition |
-|---|---|---|
-| Concurrent client connections | 100 (across every protocol combined) | Unlimited |
-| Named data sources (`OMNIGATE_BACKENDS` entries) | 3 — a 4th+ entry is silently dropped at startup, logged as a warning | Unlimited |
-| Questions in flight at once (Ask app / MCP / embed API) | 1 | Unlimited |
-| Parallel-join planner worker threads | 8 — a hard ceiling; setting `OMNIGATE_PARALLEL_JOIN_THREADS` higher has no effect | Unlimited (defaults to `min(8, cores)` unless set) |
-| Multi-node clustering | Not available — `OMNIGATE_CLUSTER_ENABLED=true` is accepted but ignored (logged as a warning, never a startup failure); every deployment runs single-node | Available, opt-in |
-
-A raw SQL statement over any native wire protocol (Postgres/MySQL/Oracle wire, gRPC) is
-**unaffected** by the questions-in-flight cap — that limit is specifically the LLM-mediated
-"ask a question in English" path (`/api/ask`, `/mcp/agent`, the group-scoped MCP's
-`ask_question` tool). Hitting the connection or question cap degrades to a clear rejection, not a
-crash or a silent hang.
-
-Check what a running container is actually capped at (rather than trusting this table) via the
-admin console's **Overview** page — the "About this deployment" card shows the real,
-live-computed values (`edition`, `maxBackends`, `maxConcurrentQuestions`,
-`maxParallelJoinThreads`, `clusterNodes`) straight from `GET /api/config`.
-
-## Add your own backend
-
-The seeded Postgres is a demo, not the point. Add a real backend one of two ways:
-
-**A. Live, via the admin console (no restart)** — go to **Data sources**, click
-**+ add data source**, and fill in a name and connection string (credentials support a
-`vault://`/`cyberark://` reference too, resolved at connect time). **Discover schemas** does a
-real dry-run connection before you save. Clicking **Save** hot-reloads the connection pool
-immediately — the three onboarding pipelines (metadata, data-driven sampling, statistics) kick off
-automatically, same as they did for the seeded Postgres, with their live progress shown right
-there on the page.
-
-**B. At container start, via `OMNIGATE_BACKENDS`** (format: `name=jdbcUrl|user|password`,
-`;`-separated for more than one). Edit the `OMNIGATE_BACKENDS` line already in
-`docker-compose.yml` and add your backend alongside the seeded `demo` one:
+**B. At startup, via an environment variable** — edit the `OMNIGATE_BACKENDS` line in
+`docker-compose.yml`:
 
 ```yaml
 OMNIGATE_BACKENDS: "demo=jdbc:postgresql://postgres:5432/postgres|postgres|postgres;crm=jdbc:postgresql://your-host:5432/crm|user|pass"
 ```
 
-then `docker compose up --build` again.
+(format: `name=jdbcUrl|user|password`, separate multiple with `;`), then `docker compose up
+--build` again.
 
-Either way, once a backend is registered you can ask questions that span it and the seeded demo
-data together — that's the federation story: one question, multiple real backends, one answer.
+Once connected, you can ask questions that span your database and the seeded demo data together —
+that's the point: one question, multiple real sources, one answer.
 
-## A bigger, real demo: the supply chain fixture
+## Sign in with your identity provider (SSO)
 
-Want to try a genuine multi-source federated question (real cross-database joins, not the
-single-table `emp`/`dept` demo above)? See [`fixtures/supply-chain/`](fixtures/supply-chain/) — a
-real supply-chain story with three infrastructure tiers to match what you have available: four
-real database engines (Postgres/MySQL/Oracle/SQL Server), a single-Postgres variant (just four
-schemas, zero extra infrastructure), or a mixed CSV/object-storage + Postgres variant. All three
-are live-verified to return the same correct answer to the same canonical question. See
-[`fixtures/supply-chain/DOCKER-USAGE.md`](fixtures/supply-chain/DOCKER-USAGE.md) for how to run
-each tier against this repo's own Docker image.
+Admins and business users can both sign in with Microsoft Entra ID, Okta, Auth0, Google Workspace, Keycloak or any standard OIDC provider, alongside local accounts. Add these to the container's environment (compose `environment:` block):
+
+| Variable | Meaning |
+|---|---|
+| `OMNIGATE_AUTH_OIDC_ISSUER`, `_CLIENT_ID`, `_CLIENT_SECRET` | Your provider's app registration. Register `https://<host>/auth/oidc/callback` and `https://<host>/app/oidc/callback` as redirect URIs. |
+| `OMNIGATE_AUTH_OIDC_ADMIN_USERS` | Comma-separated emails that become admins when they sign in through SSO. Everyone else is read-only. |
+| `OMNIGATE_AUTH_OIDC_ADMIN_GROUPS` | Groups whose members become admins. |
+| `OMNIGATE_AUTH_OIDC_ALLOWED_GROUPS` | If set, only members of these groups can sign in at all. |
+| `OMNIGATE_APP_OIDC_ISSUER`, `_CLIENT_ID`, `_CLIENT_SECRET`, `_SCOPES` | Optional separate registration for the Ask app; defaults to the admin one above. |
+| `OMNIGATE_OIDC_STATE_SECRET` | Any long random string. **Set the same value on every replica** when running more than one, so a sign-in can start on one replica and finish on another. Not needed for a single node. |
+| `OMNIGATE_APP_OIDC_GROUPS_CLAIM` | Claim that carries the provider's group names (default `groups`, e.g. `cognito:groups`). |
+
+The admin sign-in page then shows "Continue with <provider>" next to the local form — keep one local admin (`OMNIGATE_AUTH_USERS`) as a break-glass login. For business users, open **Settings → Users & access → Business users**, add the person, and choose *Single sign-on*; their provider email must match the username. See the [admin and Ask guide](https://thinkingsense-ai.github.io/guide.html#sso) for screenshots.
+
+**Workspaces from provider groups:** the groups in that claim become the user's roles at sign-in, so a workspace with `access: { roles: ["Sales-Analysts"] }` (Settings → Groups) admits everyone in that provider group. Member lists still work too.
+
+## Licence for the free image, and `/mcp/agent` access
+
+The free image can run as the commercial edition with a signed licence: set `OMNIGATE_LICENSE` to the token, or mount it at `/opt/omnigate/license`. It is verified offline and re-checked every minute; an expired or invalid licence leaves the server running on the free edition, and the Overview page and `GET /api/config` show why.
+
+When admin sign-in is on and no end-user identity provider is configured, `/mcp/agent` now requires an admin API token (`Authorization: Bearer <token>`). Set `OMNIGATE_AGENT_MCP_ALLOW_ANONYMOUS=true` to restore anonymous access, or `OMNIGATE_AGENT_MCP_ENABLED=false` to turn the endpoint off.
+
+## Ports
+
+**By default there is exactly one port: `8080`** — the admin console at `/admin`, Ask at `/`. You
+don't need to think about ports beyond this unless you want to expose Ask publicly while keeping
+the admin console private, in which case see
+[`docs/advanced-ports.md`](docs/advanced-ports.md) for the split-port setup and the full port
+reference table.
+
+## Features
+
+ThinkingSense is a federated NL2SQL gateway — ask a plain-English question, it figures out which
+of your connected data sources answer it, generates and governs the SQL, and explains itself. The
+free edition here is scale-capped, not feature-limited — everything below is real and included:
+
+- **Cross-database federation** — one question can join across Postgres, MySQL, Oracle, SQL
+  Server, and more real database engines in a single query, plus non-JDBC sources (S3/Parquet,
+  Iceberg, Delta Lake, MongoDB, Cassandra, DynamoDB, Kafka, and 19+ SaaS REST connectors like
+  Salesforce/HubSpot/Jira/GitHub via OAuth).
+- **Automatic ontology discovery** — foreign keys, naming conventions, sampled data, and even
+  documents are mined to learn what your tables mean and how they relate, with every suggestion
+  reviewed by an admin before it's trusted (see **Admin → Ontology review**).
+- **Governed, explainable answers** — every question goes through a visible pipeline (schema
+  fidelity checks, access-policy enforcement, execution) shown step-by-step, with the generated
+  SQL, a real execution plan, and a confidence score you can inspect.
+- **Question Bank & Rollups** — approve a question once and it's answered instantly from then on
+  with zero LLM cost; frequently-asked aggregate questions can be auto-detected and pre-computed.
+- **Proactive Insights** — approved questions are re-run on a schedule to catch material changes
+  or broken queries automatically, with alerts pushed to Slack.
+- **Dashboards, Skills, and a group-scoped MCP server** — save question collections as live
+  dashboards, create named shortcuts to common questions, and expose your data to Claude or any
+  MCP-compatible agent, scoped to exactly the groups/backends that caller is a member of.
+- **A tiered model architecture** — a small fast local model answers simple questions instantly, a
+  larger local model handles multi-step reasoning, a real tabular ML model (TabPFN) handles
+  predictive questions, and a frontier cloud model is the fallback for anything the others can't
+  handle — configurable independently, including a fully private, no-external-API mode.
+- **Real execution engine improvements** — SEMI/ANTI joins, window functions, set operations,
+  and LIMIT/OFFSET all execute natively (not just pushed down), verified against the full 22-query
+  TPC-H benchmark suite.
+- **Admin console** — data source management, live schema/ontology browsing, access-control
+  groups, cost & usage tracking, audit log, and a full review queue for every auto-suggested
+  change (never auto-applied without a human).
+
+## Multi-node deployment (high availability)
+
+The single-container quick-start above is for evaluation and small deployments. For production
+high-availability/horizontal-scale deployment behind a load balancer, three real, working
+Infrastructure-as-Code stacks are provided under [`resource-manager/`](resource-manager/):
+
+### Start with OCI (Oracle Cloud) — the most complete, sized for the Always-Free tier
+
+**[`resource-manager/omnigateokestack/`](resource-manager/omnigateokestack/)** deploys ThinkingSense
+onto a real Oracle Kubernetes Engine (OKE) cluster via Terraform + Helm, one-click deployable
+through the OCI Console's Resource Manager. It already includes:
+
+- A real **Network Load Balancer (NLB)** in front of ThinkingSense — chosen deliberately over a
+  classic Layer-7 load balancer, which was confirmed live to buffer/break the Ask app's streaming
+  (SSE) responses. The NLB is pure L4 TCP passthrough and doesn't.
+- **Multi-node / high-availability support**: set `omnigate_replica_count` (2–4) plus a real,
+  separately-provisioned shared Postgres for `omnigate_config_db_url`/`user`/`password`, and the
+  chart automatically switches from a single-pod local-disk config store to a shared one every
+  replica can safely read from, with the NLB load-balancing across however many replicas are
+  running — no additional networking configuration needed. See
+  [`resource-manager/omnigateokestack/README.md`](resource-manager/omnigateokestack/README.md#going-multi-node-high-availability--horizontal-scale)
+  for the exact console/CLI steps.
+
+```bash
+oci resource-manager stack create \
+  --compartment-id <ocid> --region <region> \
+  --config-source resource-manager/omnigateokestack \
+  --display-name thinkingsense-oke \
+  --variables '{"compartment_ocid":"<ocid>","region":"<region>","omnigate_app_password":"<password>","omnigate_llm_api_key":"<anthropic-key>","omnigate_replica_count":3,"omnigate_config_db_url":"jdbc:postgresql://<managed-db-host>:5432/omnigate_config","omnigate_config_db_user":"<user>","omnigate_config_db_password":"<password>"}'
+```
+
+### AWS and GCP — real stacks, not yet given the same multi-node treatment
+
+- **[`resource-manager/omnigateeksstack/`](resource-manager/omnigateeksstack/)** — AWS EKS,
+  Helm + CloudFormation.
+- **[`resource-manager/omnigategkestack/`](resource-manager/omnigategkestack/)** — GCP GKE,
+  Helm + Terraform.
+
+Both are real, working single-node deployments today. They have not yet received the
+`replicaCount`/external-shared-config-database enhancement the OKE stack above just got — that
+work is a natural next step (the underlying Helm chart mechanism is the same one to port), but is
+not yet done. If multi-node HA on AWS or GCP is a near-term need, start from the OKE stack's own
+`helm/omnigate/` chart as the reference implementation.
+
+## A bigger demo: real multi-database federation
+
+To see a genuine cross-database join (not the single-table demo above), see
+[`fixtures/supply-chain/`](fixtures/supply-chain/) — a real supply-chain scenario across four
+separate database engines (or a lighter single-Postgres/CSV variant if you don't want to run all
+four). See [`fixtures/supply-chain/DOCKER-USAGE.md`](fixtures/supply-chain/DOCKER-USAGE.md).
+
+## A real TPC-H dataset (~1GB), your own cloud storage or ours
+
+To try this against a real, substantial analytical dataset instead of the small demo above, see
+[`addons/tpch-demo/`](addons/tpch-demo/) — a separate, opt-in stack (never layered onto the main
+`docker-compose.yml` above) that generates a real ~1GB TPC-H dataset (the standard 8-table
+analytical benchmark: customer, orders, part, partsupp, supplier, nation, region, and the large
+LINEITEM fact table) and loads it either into its own bundled MinIO + Postgres containers, or into
+your own AWS S3 / OCI Object Storage / Azure Blob Storage / GCS bucket and your own Postgres
+database:
+
+```bash
+./scripts/enable-tpch-demo.sh bundled   # ships its own MinIO + Postgres, pre-loaded
+./scripts/enable-tpch-demo.sh byo       # bring your own object storage + database
+```
+
+See [`addons/tpch-demo/README.md`](addons/tpch-demo/README.md) for the full bundled-vs-bring-your-own
+comparison, per-provider `.env` templates, and disclosed scope limits (dimension tables load into
+Postgres only in this version; Azure Blob uses a different code path than the other three clouds).
+
+## A fully private option: no external API key needed
+
+This image also bundles a real local model — no data ever leaves the container, no API key, no
+internet access required for it to answer questions. Set `OMNIGATE_LLM_MODE=local-only`. See
+[`docs/local-model.md`](docs/local-model.md) for the license terms (research/non-commercial use
+for the bundled model — commercial alternatives are listed there) and memory requirements
+(give Docker at least 8GB).
 
 ## What's here
 
-- `Dockerfile` — downloads the pre-compiled `omnigate.jar` and web UI from this repo's own
-  [Releases](https://github.com/thinkingsense-ai/Docker/releases) (pinned to a specific tag via
-  the `OMNIGATE_RELEASE_TAG` build arg) and packages them into a slim JRE image with the
-  free-edition marker baked in. No build tools, no source, nothing beyond `curl` and a JRE.
-- `docker-compose.yml` — the local dev stack described above (OmniGate + a seeded Postgres).
-- `docker/init-scott.sql` — the seed data for that Postgres service. Deliberately seeded into the
-  default `public` schema, not a separate named schema — OmniGate's own schema introspection only
-  scans a connecting account's default schema, so anything in another schema is invisible to
-  NL2SQL/the Ontology with no error at all.
-- `.dockerignore`
+- `Dockerfile` — downloads the pre-built jar/web UI from this repo's
+  [Releases](https://github.com/thinkingsense-ai/Docker/releases) and packages a runnable image.
+  Pin a specific version with the `OMNIGATE_RELEASE_TAG` build arg.
+- `docker-compose.yml` — the local stack: seeded Postgres + local-model sidecars + ThinkingSense.
+- `docker/seed.sql` — the demo seed data.
+- `fixtures/` — the bigger multi-database demo (see above).
+- `addons/tpch-demo/` — the ~1GB TPC-H dataset add-on (see above).
+- `scripts/enable-tpch-demo.sh` — one-command entry point for the TPC-H add-on.
+- `NOTICE-qwen.txt` — license attribution for the bundled local model.
 
-## Picking up a newer release
+## Upgrading
 
-`docker build --build-arg OMNIGATE_RELEASE_TAG=v0.2.0 .` (or edit the `ARG` default in
-`Dockerfile`) points the build at a different published release without touching anything else in
-this repo.
+`docker build --build-arg OMNIGATE_RELEASE_TAG=v0.10.5 .` (or edit the `ARG` default in
+`Dockerfile`, which already points at the latest) picks a different published release. See
+[Releases](https://github.com/thinkingsense-ai/Docker/releases) for what's new in each one.
