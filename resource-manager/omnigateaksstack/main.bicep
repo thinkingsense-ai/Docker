@@ -78,7 +78,7 @@ param imagePullUsername string = ''
 param imagePullAuthToken string = ''
 
 @description('Image tag (advanced). Pinned to a specific free-edition release rather than "latest" -- confirmed live that "latest" had silently stopped tracking new app releases (frozen at v0.6.0\'s content for two releases, since v0.7.0/v0.8.0 were only ever published to a different registry this stack never pulled from), so a moving-target default was not actually keeping deployers current, just non-reproducible. The AWS/OCI/GCP stacks made the identical fix the same way -- bump this deliberately when a newer free-edition image is built and pushed, do not go back to "latest".')
-param imageTag string = 'v0.10.7'
+param imageTag string = 'v0.10.8'
 
 @description('Tarball URL containing this stack\'s Helm chart (advanced). Pinned to this release\'s own tag so a deploy from this exact "Deploy to Azure" button/azuredeploy.json can never drift from a newer chart on main -- bump this alongside the version tag on every release, see README\'s "Publishing a release".')
 param chartSourceUrl string = 'https://github.com/thinkingsense-ai/Docker/archive/refs/tags/aks-stack-v1.0.8.tar.gz'
