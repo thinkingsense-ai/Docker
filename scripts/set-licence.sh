@@ -55,11 +55,29 @@ if [ $RESTART = 1 ]; then
 fi
 if [ -n "$URL" ] && [ -n "$ATOK" ]; then
   echo "waiting for the app to read it (the mounted file refreshes within about two minutes) ..."
-  for _ in $(seq 1 24); do
+  # Wait for the app to report THIS licence (same expiry), not just any valid one: when one licence replaces another, the old one
+  # is still loaded for the first minute or two and would otherwise be mistaken for the new one.
+  WANT=$(python3 - "$TOKEN" <<'PY'
+import base64, json, sys, time
+p = json.loads(base64.urlsafe_b64decode(sys.argv[1].split(".")[1] + "=" * (-len(sys.argv[1].split(".")[1]) % 4)))
+exp = int(p.get("exp", 0))
+print(time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(exp)), "EXPIRED" if exp <= time.time() else "VALID")
+PY
+)
+  WANT_EXP=${WANT% *}; WANT_STATE=${WANT#* }
+  for _ in $(seq 1 30); do
     R=$(curl -s -m 10 -H "Authorization: Bearer $ATOK" "$URL/api/config" | python3 -c "
-import sys,json;e=json.load(sys.stdin)['edition'];print(e.get('licenseStatus','?'),e['edition'],e.get('licenseCustomer',''),e.get('licenseExpiresAt',''))" 2>/dev/null || true)
-    case $R in VALID*) echo "app reports: $R"; exit 0;; INVALID*|EXPIRED*) echo "app reports: $R -- the licence was not accepted" >&2; exit 1;; esac
+import sys,json;e=json.load(sys.stdin)['edition'];print(e.get('licenseStatus','?'),e['edition'],(e.get('licenseExpiresAt') or '')[:19],e.get('licenseCustomer',''))" 2>/dev/null || true)
+    set -- $R; STATE=${1:-}; EXP=${3:-}
+    if [ "$EXP" = "$WANT_EXP" ]; then
+      case $STATE in
+        VALID) echo "app reports: $R"; exit 0;;
+        GRACE) echo "app reports: $R -- in the grace period, still commercial; renew soon" >&2; exit 0;;
+        EXPIRED) echo "app reports: $R -- this licence is expired; the deployment is on the free edition" >&2; exit 1;;
+      esac
+    fi
+    [ "$STATE" = INVALID ] && { echo "app reports: $R -- the licence was not accepted" >&2; exit 1; }
     sleep 10
   done
-  echo "the app has not reported a valid licence yet (last: ${R:-no answer})" >&2; exit 1
+  echo "the app has not reported this licence yet (last: ${R:-no answer})" >&2; exit 1
 fi

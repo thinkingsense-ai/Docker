@@ -100,8 +100,22 @@ service stays down. Run the command above with `--to free` to recover.
 On 2026-10-12, on a free OKE stack: the licence file is mounted empty (`licenseStatus: NONE`); installing a licence with `set-licence.sh`
 was read by the running pod within about 70 seconds with no restart (a deliberately invalid test licence showed `INVALID` and the reason,
 and the edition stayed free); an apply with the setting blank kept the installed licence; setting `omnigate_license` on the stack replaced
-it; `--restart` rolled the pod. **Not yet verified:** a genuinely valid, signed licence lifting the limits (needs a licence from the vendor's private
-key).
+it; `--restart` rolled the pod.
+
+On 2026-10-15, with real signed licences issued with the vendor key, on a free-image AWS stack running app v0.10.7 (the licence mechanism
+is the same on every cloud):
+
+| Step | Result |
+|---|---|
+| No licence | FREE, limit 3 data sources, `licenseStatus: NONE` |
+| Install the valid licence (limit 10), no restart | within about 2 minutes: `VALID`, COMMERCIAL, customer and expiry shown, limit 10, the 60-day warning text shown; the pod did not restart |
+| Restart the pod | still `VALID`, limit 10 |
+| Add a 4th data source | accepted (the free edition holds 3) |
+| Install the expired licence | within about 30 seconds of the file loading: `EXPIRED`, FREE, limit 3, and the 4th data source listed as unavailable by name (`backendsUnavailable`); the three original sources kept answering; no restart, no crash |
+| Install the valid licence again (renewal) | after about 2 minutes: `VALID`, limit 10, the 4th data source back |
+
+A licence swap takes about two minutes to show up in the app (the mounted file refreshes, then the app re-reads it every minute), so
+`set-licence.sh --url ... --admin-token ...` waits for the app to report the licence you just installed, identified by its expiry date.
 
 Image swap, earlier:
 
