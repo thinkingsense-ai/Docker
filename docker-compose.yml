@@ -137,6 +137,10 @@ services:
       # looks structurally unusable. Set OMNIGATE_LLM_MODE=local-only for a hard "nothing ever
       # leaves this container" guarantee instead -- see the Server repo's LlmMode for all four.
       OMNIGATE_LLM_MODE: local-first
+      # Serve an approved question-bank entry's SQL directly when a new question matches it closely
+      # (no model call). Off by default: a false match would serve the wrong SQL with confidence, so
+      # check matches first with POST /api/question-bank/search, then set this to true in your .env.
+      OMNIGATE_QUESTION_BANK_RETRIEVAL_ENABLED: ${OMNIGATE_QUESTION_BANK_RETRIEVAL_ENABLED:-false}
       # Optional -- get a key at https://console.anthropic.com/ and put it in a .env file next to
       # this one (`OMNIGATE_LLM_API_KEY=sk-ant-...`), or export it before running `docker compose
       # up`, to let the agentic tier escalate to a cloud model when the local sidecar's answer
