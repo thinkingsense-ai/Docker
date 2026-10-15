@@ -416,7 +416,7 @@ variables:
     description: "Pinned to a specific release rather than \"latest\" (a moving target isn't
       reproducible). Keep this in step with the version in the stack's variables.tf; RELEASING.md
       in the repo root describes how it is bumped."
-    default: "v0.10.7"
+    default: "v0.10.8"
     required: false
 
   omnigate_license:
