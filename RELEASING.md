@@ -59,6 +59,28 @@ Stack releases (`oke-stack-v*` and the others) share the Releases list but are i
 And Settings > Actions > General > Workflow permissions: tick "Allow GitHub Actions to create and approve pull requests" so step 4 can open the PR.
 Prefer short-lived credentials later (OIDC federation to Google and Oracle) over long-lived keys.
 
+## The ghcr images **[today]**
+
+Besides the OCIR and Artifact Registry images above, each app release is also published as `ghcr.io/thinkingsense-ai/server`
+(the images the Server README and `docker-compose.yml` name). They are built from the Server repo's own Dockerfiles, on an arm64
+machine, and pushed by hand:
+
+```bash
+cd Server                      # at the release commit, with docs/releases/<version>.md written and AppVersion bumped
+docker build -f Dockerfile.commercial -t ghcr.io/thinkingsense-ai/server:0.10.8 -t ghcr.io/thinkingsense-ai/server:0.10 .
+docker build -f Dockerfile.free       -t ghcr.io/thinkingsense-ai/server:0.10.8-free .
+docker run --rm --entrypoint cat ghcr.io/thinkingsense-ai/server:0.10.8 /opt/omnigate/EDITION        # commercial
+docker run --rm --entrypoint cat ghcr.io/thinkingsense-ai/server:0.10.8-free /opt/omnigate/EDITION   # free
+docker push ghcr.io/thinkingsense-ai/server:0.10.8 && docker push ghcr.io/thinkingsense-ai/server:0.10 \
+  && docker push ghcr.io/thinkingsense-ai/server:0.10.8-free
+```
+
+Order of a release as done for v0.10.8: full `mvn test` (only environment errors allowed: the container-dependent connector tests),
+bump `AppVersion`, write the release notes, push the Server `main`; build the images and push them to ghcr; create the Server
+release (notes only) and the Docker release with `omnigate.jar` and `web-dist.tar.gz` (`tar -czf web-dist.tar.gz -C web/dist .`);
+the **Build images** workflow then pushes OCIR and Artifact Registry and opens the "Bump pins" PR; check `version-pins.py check`
+and merge it. The stack releases (below) are cut separately, after the clean-room checks.
+
 ## Promotion: candidate, tested, released **[proposed]**
 
 An image reaches deployers by being promoted, not by being the newest build.
@@ -130,9 +152,9 @@ docs site (`deploy-*.html`): the Launch Stack or Deploy buttons, the zip links a
 snippets. Each stack's README has its own "Publishing a release" section.
 
 **Always pass `--latest=false` for stack tags.** App releases and stack releases share one GitHub
-Releases list, and `password-hash.tf` resolves the app jar through `/releases/latest`. A stack
-release that becomes "latest" breaks every fresh deploy on all four clouds. Fix with
-`gh release edit <app-tag> --repo thinkingsense-ai/Docker --latest`.
+Releases list, and the app release should stay the repository's Latest. (Until v0.10.8 the stacks downloaded the app jar through `/releases/latest` to hash
+passwords, so a stack release that became "latest" broke fresh deploys; they no longer do. Fix with
+`gh release edit <app-tag> --repo thinkingsense-ai/Docker --latest`.)
 
 **[proposed]** The hash step should download the jar for the image's base version (strip any
 `-suffix`, so `v0.8.0-oracle-fix` uses `v0.8.0`) and fall back to latest only if no such release

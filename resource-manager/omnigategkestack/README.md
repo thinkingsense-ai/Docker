@@ -189,6 +189,10 @@ Since app v0.10.5 the Ask app's agent endpoint (`/mcp/agent`) needs the admin AP
 
 ## Publishing a release (maintainers)
 
+> **Update (v0.10.8, Docker #72):** the stacks no longer download the app's `omnigate.jar` to hash the login passwords (the hash is
+> now computed in the stack itself with a salt that stays the same between applies), so a stack release that becomes "latest" no longer
+> breaks a deploy. Keep passing `--latest=false` for stack tags anyway: the app release should stay the repository's Latest.
+
 Follow the same infra-stack release process as the AWS/OCI stacks (see this repo root's
 `CLAUDE.md`): tag as `gke-stack-vX.Y.Z`, and **always pass `--latest=false`** to
 `gh release create`/`gh release edit` for this tag — this repo's app releases (`vX.Y.Z`) and
