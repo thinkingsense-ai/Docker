@@ -117,6 +117,10 @@ resource "helm_release" "omnigate" {
     value = var.image_pull_auth_token
   }
   set_sensitive {
+    name  = "omnigate.license"
+    value = var.omnigate_license
+  }
+  set_sensitive {
     name  = "omnigate.authUsers"
     value = local.omnigate_auth_users_computed
   }
