@@ -41,6 +41,26 @@ resource "helm_release" "omnigate" {
     name  = "omnigate.llmModel"
     value = var.omnigate_llm_model
   }
+  set {
+    name  = "image.pullUsername"
+    value = var.image_pull_username
+  }
+  set_sensitive {
+    name  = "image.pullAuthToken"
+    value = var.image_pull_auth_token
+  }
+  set_sensitive {
+    name  = "omnigate.authUsers"
+    value = local.omnigate_auth_users_computed
+  }
+  set_sensitive {
+    name  = "omnigate.adminApiToken"
+    value = var.omnigate_admin_api_token
+  }
+  set {
+    name  = "service.loadBalancerSourceRanges"
+    value = "{${join(",", compact(split(",", replace(var.allowed_client_cidrs, " ", ""))))}}"
+  }
   set_sensitive {
     name  = "omnigate.appUsers"
     value = local.omnigate_app_users_computed

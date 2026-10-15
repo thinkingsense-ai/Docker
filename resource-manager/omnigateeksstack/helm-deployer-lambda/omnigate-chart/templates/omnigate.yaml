@@ -42,6 +42,10 @@ spec:
         checksum/secret: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
         checksum/configmap: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
+{{- if and .Values.image.pullUsername .Values.image.pullAuthToken }}
+      imagePullSecrets:
+        - name: {{ include "omnigate.fullname" . }}-omnigate-imagepull
+{{- end }}
       initContainers:
         - name: wait-for-postgres
           image: docker.io/library/postgres:16-alpine
@@ -109,6 +113,10 @@ metadata:
     service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
 spec:
   type: {{ .Values.service.type }}
+  {{- with compact .Values.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   selector:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: omnigate
@@ -134,6 +142,10 @@ metadata:
     service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
 spec:
   type: LoadBalancer
+  {{- with compact .Values.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   selector:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: omnigate

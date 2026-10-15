@@ -22,6 +22,18 @@ param appUsername string
 param appPassword string
 @secure()
 param llmApiKey string
+param adminUsername string
+@secure()
+param adminPassword string
+param allowedClientCidrs string
+// A new value on every deployment, so changing a setting and re-deploying really re-runs the install script
+// (Azure otherwise skips a deploymentScript whose resource looks unchanged).
+param forceUpdateTag string = utcNow()
+@secure()
+param adminApiToken string
+param imagePullUsername string
+@secure()
+param imagePullAuthToken string
 // The Helm chart (helm/omnigate/) ships in this same repo, one directory up from this stack's
 // Bicep. It has no independent version -- it travels with the aks-stack-vX.Y.Z release tag, same
 // as the OCI stack's chart travels inside its own release zip (see README's "Publishing a
@@ -72,6 +84,7 @@ resource helmInstall 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
   properties: {
     azCliVersion: '2.63.0'
     retentionInterval: 'P1D'
+    forceUpdateTag: forceUpdateTag
     timeout: 'PT20M'
     cleanupPreference: 'OnSuccess'
     environmentVariables: [
@@ -85,7 +98,13 @@ resource helmInstall 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
       { name: 'POSTGRES_STORAGE_GB', value: string(postgresStorageGb) }
       { name: 'APP_USERNAME', value: appUsername }
       { name: 'CHART_SOURCE_URL', value: chartSourceUrl }
+      { name: 'ADMIN_USERNAME', value: adminUsername }
+      { name: 'ALLOWED_CLIENT_CIDRS', value: allowedClientCidrs }
       { name: 'APP_PASSWORD', secureValue: appPassword }
+      { name: 'ADMIN_PASSWORD', secureValue: adminPassword }
+      { name: 'IMAGE_PULL_USERNAME', value: imagePullUsername }
+      { name: 'IMAGE_PULL_AUTH_TOKEN', secureValue: empty(imagePullAuthToken) ? 'none' : imagePullAuthToken }
+      { name: 'ADMIN_API_TOKEN', secureValue: empty(adminApiToken) ? 'none' : adminApiToken }
       { name: 'LLM_API_KEY', secureValue: llmApiKey }
     ]
     scriptContent: '''
@@ -144,32 +163,53 @@ resource helmInstall 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
         exit 1
       fi
 
-      # Computes OMNIGATE_APP_USERS server-side, the same algorithm as the AWS Lambda's
-      # resolve_jar_url()/compute_password_hash() and OCI's password-hash.tf `data "external"`:
-      # resolve the exact release jar matching $IMAGE_TAG (a literal version tag, or GitHub
-      # /releases/latest if the tag is the literal string "latest" -- the default OCI/ACR-style
-      # docker tag, not itself a GitHub release name), download it, and run its own bundled
-      # PasswordHash utility so the hash format always matches whatever image is actually
-      # deployed, rather than a separately-maintained reimplementation of the hash algorithm.
+      # Computes OMNIGATE_APP_USERS / OMNIGATE_AUTH_USERS with python3's hashlib: PBKDF2-HMAC-SHA256,
+      # 210000 iterations, 32-byte key, 16-byte salt, "saltB64:hashB64" -- the format of the app's own
+      # com.omnigate.http.auth.PasswordHash (pinned by PasswordHashTest in the Server repo).
+      # The salt is REUSED from the release already installed whenever it is the same user, so
+      # re-running this deployment with an unchanged password yields an identical hash, the Secret's
+      # checksum is unchanged and the pod is not restarted (issue #59). A first install, a new
+      # username or a missing release draws a fresh random salt.
       echo "== Computing app login hash =="
-      if [ "$IMAGE_TAG" = "latest" ]; then
-        JAR_URL=$(python3 -c "
-import json, urllib.request
-with urllib.request.urlopen('https://api.github.com/repos/thinkingsense-ai/Docker/releases/latest', timeout=15) as r:
-    release = json.load(r)
-for asset in release.get('assets', []):
-    if asset['name'] == 'omnigate.jar':
-        print(asset['browser_download_url'])
-        break
-else:
-    raise SystemExit('omnigate.jar asset not found on latest GitHub release')
-")
-      else
-        JAR_URL="https://github.com/thinkingsense-ai/Docker/releases/download/${IMAGE_TAG}/omnigate.jar"
-      fi
-      curl -fsSL -o /tmp/omnigate-hash-tool.jar "$JAR_URL"
-      APP_HASH=$(java -cp /tmp/omnigate-hash-tool.jar com.omnigate.http.auth.PasswordHash "$APP_PASSWORD")
-      rm -f /tmp/omnigate-hash-tool.jar
+      PRIOR_VALUES=$(helm get values omnigate -o json 2>/dev/null || echo '{}')
+      HASHES=$(PRIOR_VALUES="$PRIOR_VALUES" python3 - <<'PYEOF'
+import base64, hashlib, json, os
+
+iterations = 210000  # = PasswordHash.ITERATIONS in the Server repo
+try:
+    prior = (json.loads(os.environ.get("PRIOR_VALUES") or "{}") or {}).get("omnigate") or {}
+except ValueError:
+    prior = {}
+
+
+def salt_of(entry, username):
+    parts = (entry or "").split(":")
+    if len(parts) >= 3 and parts[0] == username:
+        try:
+            base64.b64decode(parts[1], validate=True)
+            return parts[1]
+        except ValueError:
+            return None
+    return None
+
+
+def entry(password, salt_b64):
+    salt = base64.b64decode(salt_b64) if salt_b64 else os.urandom(16)
+    key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations, 32)
+    return base64.b64encode(salt).decode("ascii") + ":" + base64.b64encode(key).decode("ascii")
+
+
+print(entry(os.environ["APP_PASSWORD"], salt_of(prior.get("appUsers"), os.environ["APP_USERNAME"])))
+print(entry(os.environ["ADMIN_PASSWORD"], salt_of(prior.get("authUsers"), os.environ["ADMIN_USERNAME"])))
+PYEOF
+)
+      APP_HASH=$(printf '%s\n' "$HASHES" | sed -n 1p)
+      ADMIN_HASH=$(printf '%s\n' "$HASHES" | sed -n 2p)
+      # Local admin login for the admin console, admin API and /mcp ("user:salt:hash:admin"). Without
+      # it those are open to anyone who can reach the load balancer.
+      AUTH_USERS="${ADMIN_USERNAME}:${ADMIN_HASH}:admin"
+      # Optional source-address allow-list for the load balancer; blank = open.
+      CIDR_LIST=$(printf '%s' "$ALLOWED_CLIENT_CIDRS" | tr -d ' ')
       # Confirmed live: AppAuthConfig.parse (com.omnigate.http.ask.auth.AppAuthConfig) requires
       # exactly 5 colon-separated fields (username:salt:hash:roles:attrs) and silently SKIPS any
       # entry that doesn't split into 5 -- omitting the trailing "::" for the empty roles/
@@ -178,6 +218,13 @@ else:
       # unusable login. The trailing "::" is not optional cosmetic formatting.
       APP_USERS="${APP_USERNAME}:${APP_HASH}::"
 
+      # Commercial edition: the registry credential goes in through --set-file so an Auth Token containing commas, braces or other
+      # characters Helm's --set parser treats specially arrives byte for byte.
+      PULL_ARGS=""
+      if [ -n "$IMAGE_PULL_USERNAME" ] && [ "$IMAGE_PULL_AUTH_TOKEN" != none ]; then
+        printf '%s' "$IMAGE_PULL_AUTH_TOKEN" > /tmp/omnigate-pull-token
+        PULL_ARGS="--set-string image.pullUsername=$IMAGE_PULL_USERNAME --set-file image.pullAuthToken=/tmp/omnigate-pull-token"
+      fi
       echo "== Installing the omnigate Helm release =="
       helm upgrade --install omnigate "$CHART_DIR" \
         --set image.repository="$IMAGE_REPOSITORY" \
@@ -187,6 +234,10 @@ else:
         --set omnigate.dataVolumeSize="${DATA_VOLUME_GB}Gi" \
         --set postgres.storageSize="${POSTGRES_STORAGE_GB}Gi" \
         --set-string omnigate.appUsers="$APP_USERS" \
+        --set-string omnigate.authUsers="$AUTH_USERS" \
+        $PULL_ARGS \
+        --set-string omnigate.adminApiToken="$([ "$ADMIN_API_TOKEN" = none ] && echo '' || echo "$ADMIN_API_TOKEN")" \
+        --set "service.loadBalancerSourceRanges={${CIDR_LIST}}" \
         --set-string omnigate.llmApiKey="$LLM_API_KEY" \
         --timeout 10m0s \
         --wait
@@ -196,7 +247,8 @@ else:
       # or by a stray `set -x`) would otherwise leak. Mirrors the redaction discipline AWS's
       # handler.py added after a real bug there leaked the *previous* password on every Update
       # event (it originally redacted only the current ResourceProperties, not the old ones).
-      unset APP_PASSWORD LLM_API_KEY APP_USERS APP_HASH
+      rm -f /tmp/omnigate-pull-token
+      unset IMAGE_PULL_AUTH_TOKEN APP_PASSWORD ADMIN_PASSWORD ADMIN_API_TOKEN LLM_API_KEY APP_USERS APP_HASH AUTH_USERS ADMIN_HASH
 
       echo "== Waiting for the LoadBalancer IP =="
       HTTP_IP=""

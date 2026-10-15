@@ -1,59 +1,63 @@
-# Computes OMNIGATE_APP_USERS server-side during apply, so deployers never need local Docker or
-# to hand-assemble a "username:saltB64:hashB64::" string themselves -- confirmed live to be the
-# single biggest source of confusion in this wizard. Verified the OCI Resource Manager job runner
-# has network egress, a JRE, and python3 already available (no Docker/Podman needed), so this
-# downloads the exact release jar matching var.image_tag and runs its own PasswordHash utility,
-# the same class the app itself uses to verify logins -- guaranteeing the hash format always
-# matches whatever's actually deployed, rather than a separately-maintained reimplementation of
-# the hashing algorithm risking a subtle mismatch.
+# Computes OMNIGATE_APP_USERS / OMNIGATE_AUTH_USERS during apply, so deployers never hand-assemble a
+# "username:saltB64:hashB64::" string.
 #
-# A "data" source, not a null_resource + local_file: that combination was the first version of
-# this file, and it broke on `destroy` -- confirmed live. Each Resource Manager job (plan, apply,
-# destroy) gets a fresh extraction of the config, so a file a local-exec provisioner wrote during
-# an earlier `apply` job simply doesn't exist when a later `destroy` job's `data.local_file` tries
-# to read it, and unlike a resource's provisioners, a data source is always read regardless of
-# operation. `data "external"` has no such gap: its program re-runs fresh on every plan/apply/
-# destroy and returns its result directly, with nothing written to disk to go stale. Password
-# is passed via `query` (JSON on stdin) and parsed with python3, not hand-rolled shell/sed
-# string extraction, so quotes/backslashes/unicode in a real password can't break the parse.
+# The hash is STABLE across applies (issue #59). It used to run the release jar's PasswordHash on
+# every plan, and that utility draws a fresh random salt each run -- so the Secret's hashes changed on
+# every apply, `checksum/secret` on the pod template followed them, and Kubernetes rolled the pod even
+# when the only change was unrelated (a licence, a debug flag, scale). Now the salts are `random_id`
+# resources, which live in Terraform state and never change, and the PBKDF2 is computed here with
+# python3's hashlib from (password, salt). Same password + same salt = the same hash, so the Secret
+# only changes when a password changes. It also means no jar download, no JRE and no network egress.
+#
+# FORMAT CONTRACT: this must reproduce com.omnigate.http.auth.PasswordHash exactly --
+# PBKDF2-HMAC-SHA256, 210000 iterations, 32-byte key, 16-byte salt, "saltB64:hashB64". The Server
+# repo pins that contract in PasswordHashTest.matchesTheTerraformStacksPythonImplementation; if
+# the iteration count ever changes there, change `iterations` below in the same release.
+#
+# Still a `data "external"` source, not a null_resource + local_file: a file written by an earlier
+# apply job does not exist when a later destroy job runs, and a data source is read in every
+# operation. The program is deterministic now, so re-running it on every plan changes nothing.
+# Passwords and salts arrive as JSON on stdin and are parsed with python3, so quotes, backslashes
+# or unicode in a real password cannot break the parse.
+resource "random_id" "app_password_salt" {
+  byte_length = 16
+}
+
+resource "random_id" "admin_password_salt" {
+  byte_length = 16
+}
+
 data "external" "app_password_hash" {
-  program = ["bash", "-c", <<-EOT
-    set -e
-    PASSWORD=$(python3 -c "import json,sys; print(json.load(sys.stdin)['password'], end='')")
-    # var.image_tag is the OCIR *docker* tag (default "latest"), which is not itself a GitHub
-    # release tag -- there is no release literally named "latest". Confirmed live: with the
-    # default, the plain releases/download/latest/omnigate.jar URL 404s, breaking every fresh
-    # deploy at Apply. When it's an actual version (e.g. "v0.6.0") matching a real release, use
-    # it directly; otherwise resolve the GitHub API's own "latest release" so the jar always
-    # matches whatever OCIR's :latest currently points at.
-    if [ "${var.image_tag}" = "latest" ]; then
-      JAR_URL=$(python3 -c "
-import json, urllib.request
-with urllib.request.urlopen('https://api.github.com/repos/thinkingsense-ai/Docker/releases/latest', timeout=15) as r:
-    release = json.load(r)
-for asset in release.get('assets', []):
-    if asset['name'] == 'omnigate.jar':
-        print(asset['browser_download_url'])
-        break
-else:
-    raise SystemExit('omnigate.jar asset not found on latest GitHub release')
-")
-    else
-      JAR_URL="https://github.com/thinkingsense-ai/Docker/releases/download/${var.image_tag}/omnigate.jar"
-    fi
-    curl -fsSL -o /tmp/omnigate-hash-tool.jar "$JAR_URL" 1>&2
-    HASH=$(java -cp /tmp/omnigate-hash-tool.jar com.omnigate.http.auth.PasswordHash "$PASSWORD")
-    rm -f /tmp/omnigate-hash-tool.jar
-    python3 -c "import json,sys; print(json.dumps({'hash': sys.argv[1]}))" "$HASH"
+  program = ["python3", "-c", <<-EOT
+import base64, hashlib, json, sys
+q = json.load(sys.stdin)
+iterations = 210000  # = PasswordHash.ITERATIONS in the Server repo
+
+
+def entry(password, salt_b64):
+    salt = base64.b64decode(salt_b64)
+    key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations, 32)
+    return salt_b64 + ":" + base64.b64encode(key).decode("ascii")
+
+
+print(json.dumps({"hash": entry(q["password"], q["salt"]), "admin_hash": entry(q["admin_password"], q["admin_salt"])}))
   EOT
   ]
 
   query = {
     password = var.omnigate_app_password
+    # Blank means "use the Ask-app password for the admin login too" (see omnigate_admin_password).
+    admin_password = var.omnigate_admin_password != "" ? var.omnigate_admin_password : var.omnigate_app_password
+    salt           = random_id.app_password_salt.b64_std
+    admin_salt     = random_id.admin_password_salt.b64_std
   }
 }
 
 locals {
   # "username:saltB64:hashB64::" -- the exact OMNIGATE_APP_USERS format the app expects.
   omnigate_app_users_computed = "${var.omnigate_app_username}:${data.external.app_password_hash.result.hash}::"
+
+  # "username:saltB64:hashB64:admin" -- OMNIGATE_AUTH_USERS. Setting it turns admin authentication ON, which is
+  # the point: without it the admin console, /api/query and /mcp are open to anyone who can reach the load balancer.
+  omnigate_auth_users_computed = "${var.omnigate_admin_username}:${data.external.app_password_hash.result.admin_hash}:admin"
 }

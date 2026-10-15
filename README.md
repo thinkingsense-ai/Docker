@@ -99,6 +99,30 @@ OMNIGATE_BACKENDS: "demo=jdbc:postgresql://postgres:5432/postgres|postgres|postg
 Once connected, you can ask questions that span your database and the seeded demo data together —
 that's the point: one question, multiple real sources, one answer.
 
+## Sign in with your identity provider (SSO)
+
+Admins and business users can both sign in with Microsoft Entra ID, Okta, Auth0, Google Workspace, Keycloak or any standard OIDC provider, alongside local accounts. Add these to the container's environment (compose `environment:` block):
+
+| Variable | Meaning |
+|---|---|
+| `OMNIGATE_AUTH_OIDC_ISSUER`, `_CLIENT_ID`, `_CLIENT_SECRET` | Your provider's app registration. Register `https://<host>/auth/oidc/callback` and `https://<host>/app/oidc/callback` as redirect URIs. |
+| `OMNIGATE_AUTH_OIDC_ADMIN_USERS` | Comma-separated emails that become admins when they sign in through SSO. Everyone else is read-only. |
+| `OMNIGATE_AUTH_OIDC_ADMIN_GROUPS` | Groups whose members become admins. |
+| `OMNIGATE_AUTH_OIDC_ALLOWED_GROUPS` | If set, only members of these groups can sign in at all. |
+| `OMNIGATE_APP_OIDC_ISSUER`, `_CLIENT_ID`, `_CLIENT_SECRET`, `_SCOPES` | Optional separate registration for the Ask app; defaults to the admin one above. |
+| `OMNIGATE_OIDC_STATE_SECRET` | Any long random string. **Set the same value on every replica** when running more than one, so a sign-in can start on one replica and finish on another. Not needed for a single node. |
+| `OMNIGATE_APP_OIDC_GROUPS_CLAIM` | Claim that carries the provider's group names (default `groups`, e.g. `cognito:groups`). |
+
+The admin sign-in page then shows "Continue with <provider>" next to the local form — keep one local admin (`OMNIGATE_AUTH_USERS`) as a break-glass login. For business users, open **Settings → Users & access → Business users**, add the person, and choose *Single sign-on*; their provider email must match the username. See the [admin and Ask guide](https://thinkingsense-ai.github.io/guide.html#sso) for screenshots.
+
+**Workspaces from provider groups:** the groups in that claim become the user's roles at sign-in, so a workspace with `access: { roles: ["Sales-Analysts"] }` (Settings → Groups) admits everyone in that provider group. Member lists still work too.
+
+## Licence for the free image, and `/mcp/agent` access
+
+The free image can run as the commercial edition with a signed licence: set `OMNIGATE_LICENSE` to the token, or mount it at `/opt/omnigate/license`. It is verified offline and re-checked every minute; an expired or invalid licence leaves the server running on the free edition, and the Overview page and `GET /api/config` show why.
+
+When admin sign-in is on and no end-user identity provider is configured, `/mcp/agent` now requires an admin API token (`Authorization: Bearer <token>`). Set `OMNIGATE_AGENT_MCP_ALLOW_ANONYMOUS=true` to restore anonymous access, or `OMNIGATE_AGENT_MCP_ENABLED=false` to turn the endpoint off.
+
 ## Ports
 
 **By default there is exactly one port: `8080`** — the admin console at `/admin`, Ask at `/`. You
@@ -192,6 +216,25 @@ To see a genuine cross-database join (not the single-table demo above), see
 separate database engines (or a lighter single-Postgres/CSV variant if you don't want to run all
 four). See [`fixtures/supply-chain/DOCKER-USAGE.md`](fixtures/supply-chain/DOCKER-USAGE.md).
 
+## A real TPC-H dataset (~1GB), your own cloud storage or ours
+
+To try this against a real, substantial analytical dataset instead of the small demo above, see
+[`addons/tpch-demo/`](addons/tpch-demo/) — a separate, opt-in stack (never layered onto the main
+`docker-compose.yml` above) that generates a real ~1GB TPC-H dataset (the standard 8-table
+analytical benchmark: customer, orders, part, partsupp, supplier, nation, region, and the large
+LINEITEM fact table) and loads it either into its own bundled MinIO + Postgres containers, or into
+your own AWS S3 / OCI Object Storage / Azure Blob Storage / GCS bucket and your own Postgres
+database:
+
+```bash
+./scripts/enable-tpch-demo.sh bundled   # ships its own MinIO + Postgres, pre-loaded
+./scripts/enable-tpch-demo.sh byo       # bring your own object storage + database
+```
+
+See [`addons/tpch-demo/README.md`](addons/tpch-demo/README.md) for the full bundled-vs-bring-your-own
+comparison, per-provider `.env` templates, and disclosed scope limits (dimension tables load into
+Postgres only in this version; Azure Blob uses a different code path than the other three clouds).
+
 ## A fully private option: no external API key needed
 
 This image also bundles a real local model — no data ever leaves the container, no API key, no
@@ -208,10 +251,12 @@ for the bundled model — commercial alternatives are listed there) and memory r
 - `docker-compose.yml` — the local stack: seeded Postgres + local-model sidecars + ThinkingSense.
 - `docker/seed.sql` — the demo seed data.
 - `fixtures/` — the bigger multi-database demo (see above).
+- `addons/tpch-demo/` — the ~1GB TPC-H dataset add-on (see above).
+- `scripts/enable-tpch-demo.sh` — one-command entry point for the TPC-H add-on.
 - `NOTICE-qwen.txt` — license attribution for the bundled local model.
 
 ## Upgrading
 
-`docker build --build-arg OMNIGATE_RELEASE_TAG=v0.8.0 .` (or edit the `ARG` default in
+`docker build --build-arg OMNIGATE_RELEASE_TAG=v0.10.5 .` (or edit the `ARG` default in
 `Dockerfile`, which already points at the latest) picks a different published release. See
 [Releases](https://github.com/thinkingsense-ai/Docker/releases) for what's new in each one.

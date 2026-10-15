@@ -4,6 +4,17 @@ This deploys OmniGate (NL2SQL gateway) with a seeded Postgres demo backend onto 
 Kubernetes Engine cluster. Everything below runs in this Cloud Shell session — nothing to install
 locally.
 
+**Before you continue:** you need a GCP project with billing already linked to it. The picker
+below can create a brand new project for you, but a newly-created project has **no billing
+account linked yet** — `setup.sh`'s billing check will stop you if you pick one of those. Easiest
+path: use an existing project you know has billing enabled, or create one now at
+[console.cloud.google.com/projectcreate](https://console.cloud.google.com/projectcreate) and link
+a billing account to it (Console → Billing → Link a billing account) before coming back here.
+
+Also note: what you need below is the project's **Project ID**, not its Project Name — GCP lets
+these be different strings (e.g. name "My Project", ID "my-project-42781"), and the ID is what
+`gcloud`/Terraform actually need. The picker shows both; double-check you're copying the ID.
+
 <walkthrough-project-setup></walkthrough-project-setup>
 
 ## 1. Run the guided setup
@@ -16,7 +27,8 @@ cd omnigategkestack
 It'll prompt you for your GCP project (defaulting to the one you just picked above), region,
 Ask-app login, and an Anthropic API key from
 [console.anthropic.com](https://console.anthropic.com) (required — the gateway deploys fine
-without one but can't answer any question). Then it enables the required APIs, writes
+without one but can't answer any question; the script checks it with Anthropic before
+provisioning anything, and you can change it later in the Admin console under Models). Then it enables the required APIs, writes
 `terraform.tfvars` for you, and runs `terraform init && terraform apply`.
 
 Type `yes` when `terraform apply` prompts for confirmation. Takes about 10-15 minutes — cluster

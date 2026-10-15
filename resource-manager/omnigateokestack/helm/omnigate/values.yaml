@@ -7,6 +7,18 @@ image:
   repository: ""
   tag: latest
   pullPolicy: IfNotPresent
+  # Only needed for a private image repository (e.g. a commercial-edition build, kept out of the
+  # public, anonymously-pullable OCIR repo the free image uses -- confirmed live that pushing a
+  # commercial image to that same public repo would make it just as freely pullable as the free
+  # one). Blank for the default public free-image path. pullUsername is OCIR's own
+  # "<tenancy-namespace>/<oci-username>" format; pullAuthToken is an OCI Auth Token (`oci iam
+  # auth-token create`), NOT your API signing key or console password -- generate one for
+  # whichever principal should have pull rights. When set, this chart creates a
+  # kubernetes.io/dockerconfigjson Secret and wires it into the pod's imagePullSecrets; the
+  # registry hostname is taken from image.repository itself (everything before the first "/"),
+  # not a separate setting.
+  pullUsername: ""
+  pullAuthToken: ""
 
 omnigate:
   # Multi-node / HA: >1 replica behind the NLB Service below is real and supported, but ONLY
@@ -16,6 +28,56 @@ omnigate:
   # replicaCount alone, with configDb.external left off, leaves every extra pod crash-looping on
   # a PVC only the first pod can bind.
   replicaCount: 1
+  # Real, distributed Ignite cluster mode (OMNIGATE_CLUSTER_ENABLED) -- commercial-edition only,
+  # see com.omnigate.cluster.OmniGateCluster#isAllowed. A FREE-edition image logs a warning and
+  # runs single-node anyway rather than failing, so leaving this true against a free image is
+  # harmless, just a no-op. Distinct from (and independent of) configDb.external above:
+  # clustering gives distributed cache/QoS coordination between replicas (Apache Ignite), while
+  # configDb.external is what makes the admin-editable config itself consistent across replicas
+  # -- cluster mode still requires configDb.external, since Ignite doesn't take over ConfigStore's
+  # own storage. When true, this chart deploys a StatefulSet + headless Service instead of the
+  # default Deployment, so each replica gets the stable per-pod DNS name Ignite's static
+  # TcpDiscoveryVmIpFinder needs (see OMNIGATE_CLUSTER_SEED_NODES in configmap.yaml) -- the app
+  # only supports a static host:port seed list, not Kubernetes-native pod discovery, so this
+  # chart is what computes that list from replicaCount.
+  clusterEnabled: false
+  remoteJoinEnabled: true
+  # JVM heap as a share of the container's memory limit. The JVM default is 25%, which leaves the
+  # 3Gi pods with a 768MB heap; the S3/Parquet connector reads a whole file onto the heap as objects,
+  # and even COUNT(*) on a 600,000-row table ran out of memory at that size (confirmed live). 65% gives
+  # about 2GB. It is a floor for modest tables, not a fix: very large Parquet tables need a bigger
+  # container or a database backend instead.
+  maxRamPercentage: 65
+  # Row count below which the parallel hash join is skipped (the app's default is 10000). Leave empty
+  # to keep the app default; lower it only to exercise the parallel path on small demo tables.
+  parallelJoinMinRows: ""
+  # Turns on debug logging for the federation package, which is where the planner explains why it did
+  # or did not use the parallel join engine (nothing is logged at info level when it declines).
+  debugFederation: false
+  # Shared by every replica so an SSO login started on one pod can finish on another (needs app
+  # v0.10.4+). The Terraform stack generates it; leave empty for a single replica with no SSO.
+  oidcStateSecret: ""
+  # Bearer token with admin rights for the admin API (OMNIGATE_AUTH_API_TOKENS). Setting it switches
+  # admin authentication on.
+  adminApiToken: ""
+  # Signed licence token (ts1.<payload>.<signature>) that lets the free image run as the commercial edition. Blank keeps any
+  # licence already in the cluster. See COMMERCIAL.md.
+  license: ""
+  # Admin console logins (OMNIGATE_AUTH_USERS: "user:saltB64:hashB64:admin[,...]"). Setting it turns admin
+  # authentication on. The Terraform stack always sets it; a bare `helm install` leaves the admin console open.
+  authUsers: ""
+  # Single sign-on (any OIDC provider). Everything is off until issuer is set. One registration serves
+  # both the admin console and the Ask app (the Ask app falls back to these when OMNIGATE_APP_OIDC_* is
+  # unset). Register the redirect URIs /auth/oidc/callback and /app/oidc/callback with the provider.
+  oidc:
+    issuer: ""
+    clientId: ""
+    clientSecret: ""
+    scopes: "openid profile email"
+    adminUsers: ""       # comma-separated emails who get the admin role
+    adminGroups: ""      # comma-separated group claim values who get the admin role
+    groupsClaim: ""      # defaults to "groups" in the app
+
   llmModel: claude-sonnet-5
   # Anthropic API key -- required, no default on purpose (NL2SQL simply won't work without it,
   # same as the local compose setup). Injected into a Secret, never a ConfigMap.
@@ -91,3 +153,27 @@ resources:
     limits:
       cpu: "1"
       memory: 1Gi
+
+# Opt-in TPC-H demo dataset: LINEITEM as Parquet in an in-cluster S3-compatible store, the other seven
+# tables in a `tpch` database in the existing Postgres. Adds two OMNIGATE_BACKENDS entries (postgres1,
+# lineitem), so on top of the three supply-chain demo backends this is five -- over the free edition's
+# cap of three. Meant for commercial-edition images; see templates/tpch.yaml.
+tpch:
+  enabled: false
+  # Keep false while thinkingsense-ai/Server#13 is open: the foreign keys become ontology relationships
+  # that cluster mode cannot serialize, which aborts startup on a clustered deployment.
+  foreignKeys: false
+  # Where LINEITEM lives. "postgres" (a second database) makes the big join database to database, the only
+  # shape OmniGate's parallel hash join can plan, and avoids the Parquet connector's whole-file-on-the-heap
+  # reads. "s3" keeps the Parquet-in-object-storage layout (joins including it never use the parallel engine).
+  lineitemStore: postgres
+  factDatabase: tpch_fact
+  scaleFactor: 1            # 1 == ~1GB of source data; keep postgres.storage large enough for the dims
+  database: tpch
+  bucket: tpch
+  storageSize: 10Gi
+  # SeaweedFS, pinned by digest (MinIO no longer publishes free images).
+  s3Image: docker.io/chrislusf/seaweedfs@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
+  loaderImage: docker.io/library/python:3.12-slim
+  loaderDuckdbMemory: 2GB
+  loaderMemoryLimit: 4Gi

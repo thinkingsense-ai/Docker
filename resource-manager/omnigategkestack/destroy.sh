@@ -12,6 +12,48 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 echo "== OmniGate on GKE -- guided teardown =="
 echo
 
+# Confirmed live: 7 unattached Persistent Disks (26GB, still billing) were found still sitting in
+# the project well after both `terraform destroy` and this script's own manual fallback had
+# already run, from every deploy cycle across this stack's testing. Root cause: the Postgres and
+# OmniGate data volumes are Kubernetes PersistentVolumeClaims the Helm chart creates *inside* the
+# cluster -- Terraform never creates or tracks them (helm_release just installs the chart; it has
+# no visibility into what the chart's own templates provision at runtime), so neither
+# `terraform destroy` (which only touches Terraform-managed resources) nor deleting the cluster
+# directly cleans up the GCE disks backing them. Deleting the cluster out from under live PVCs
+# orphans their disks rather than triggering the normal PVC-delete reclaim path.
+#
+# Fix: after the cluster's gone (either path below), sweep for any disk GKE's CSI driver labeled
+# with this cluster's name and delete them directly -- this label survives independently of
+# whether the cluster that created it still exists, so it works as a cleanup step regardless of
+# which teardown path was taken.
+cleanup_orphaned_disks() {
+  local project="$1"
+  echo
+  echo "Checking for orphaned Persistent Disks (Postgres/OmniGate data volumes the Helm chart"
+  echo "creates inside the cluster -- Terraform never tracks these, so nothing above this step"
+  echo "would have deleted them)..."
+  if ! command -v gcloud >/dev/null 2>&1; then
+    echo "gcloud not available -- skipping. Check manually:" >&2
+    echo "  gcloud compute disks list --project=$project --filter=\"labels.goog-k8s-cluster-name=omnigate-gke\"" >&2
+    return 0
+  fi
+  local disks
+  disks="$(gcloud compute disks list --project="$project" \
+    --filter="labels.goog-k8s-cluster-name=omnigate-gke" \
+    --format="value(name,zone.basename())" 2>/dev/null || true)"
+  if [ -z "$disks" ]; then
+    echo "None found."
+    return 0
+  fi
+  echo "Found:"
+  echo "$disks" | sed 's/^/  - /'
+  while IFS="$(printf '\t')" read -r disk_name disk_zone; do
+    [ -z "$disk_name" ] && continue
+    echo "Deleting disk $disk_name (zone $disk_zone)..."
+    gcloud compute disks delete "$disk_name" --zone="$disk_zone" --project="$project" --quiet || true
+  done <<< "$disks"
+}
+
 # ---- Is there real, usable Terraform state right here? ---------------------------------------
 # Checked before anything else: if this clone has no state, the whole terraform-prerequisites
 # song and dance below (real terraform, ADC) is pointless -- skip straight to the manual fallback.
@@ -63,6 +105,12 @@ if [ -n "$have_state" ]; then
 
   echo
   terraform destroy
+
+  tf_project_id="$(sed -n 's/^gcp_project_id[[:space:]]*=[[:space:]]*"\(.*\)"$/\1/p' terraform.tfvars 2>/dev/null | head -1)"
+  tf_project_id="${tf_project_id:-$(gcloud config get-value project 2>/dev/null || true)}"
+  if [ -n "$tf_project_id" ]; then
+    cleanup_orphaned_disks "$tf_project_id"
+  fi
   exit 0
 fi
 
@@ -130,6 +178,8 @@ echo "Deleting VPC network..."
 gcloud compute networks delete omnigate-gke --project="$project_id" --quiet
 
 set -e
+
+cleanup_orphaned_disks "$project_id"
 
 echo
 echo "== Done =="

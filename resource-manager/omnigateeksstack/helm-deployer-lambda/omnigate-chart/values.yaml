@@ -7,6 +7,12 @@ image:
   repository: ""
   tag: latest
   pullPolicy: IfNotPresent
+  # Only needed for a private image repository (the commercial edition's image). Blank for the default public free-image path.
+  # pullUsername is OCIR's "<tenancy-namespace>/<oci-username>"; pullAuthToken is an OCI Auth Token. When set, this chart creates a
+  # kubernetes.io/dockerconfigjson Secret and wires it into the pod's imagePullSecrets; the registry hostname comes from
+  # image.repository (everything before the first "/").
+  pullUsername: ""
+  pullAuthToken: ""
 
 omnigate:
   llmModel: claude-sonnet-5
@@ -18,6 +24,12 @@ omnigate:
   # No default: shipping the repo's well-known demo/demo credential on an internet-reachable
   # LoadBalancer would be a real exposure, so the chart intentionally requires this to be set.
   appUsers: ""
+  # Admin console logins (OMNIGATE_AUTH_USERS: "user:saltB64:hashB64:admin[,...]"). Setting it turns admin
+  # authentication on for the admin console, admin API and /mcp. The cloud stacks always set it; a bare
+  # `helm install` leaves the admin console open.
+  authUsers: ""
+  # Bearer token with admin rights for the admin API (OMNIGATE_AUTH_API_TOKENS), for scripts.
+  adminApiToken: ""
   # Storage for /var/lib/omnigate/data (the embedded ConfigStore -- admin-set config like an
   # API key entered live in the UI). This is exactly what bit us running locally under plain
   # `docker compose`: an anonymous volume that didn't survive a container recreate. A real PVC
@@ -41,6 +53,9 @@ storageClassName: oci-bv
 service:
   type: LoadBalancer
   httpPort: 8080
+  # Optional: CIDR ranges allowed to reach the load balancer (blank = open). The cloud stacks set this from
+  # their "allowed client CIDRs" setting.
+  loadBalancerSourceRanges: []
 
 resources:
   omnigate:

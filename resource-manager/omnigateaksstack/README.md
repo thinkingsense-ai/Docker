@@ -125,7 +125,7 @@ Use the "Deploy to Azure" button on the docs site, or manually:
 3. Follow the wizard (driven by `createUiDefinition.json`): an Ask-app login (plain text, hashed
    automatically during deployment) and an Anthropic API key — required, since a deployment
    without one comes up fine but can't answer any question. Get a free key from
-   [console.anthropic.com](https://console.anthropic.com) before you start.
+   [console.anthropic.com](https://console.anthropic.com) before you start. You can also change it later, live, in the app's Admin console under **Models** (`/admin/llm-settings`).
 4. Review + create. Takes roughly 15-20 minutes (AKS cluster creation dominates, plus the
    deployment script's Helm install).
 5. Once it succeeds, the deployment's **Outputs** tab has `askAppUrl` and `kubeconfigCommand`.
@@ -212,6 +212,21 @@ The default `imageRepository` is the GCP stack's own Artifact Registry mirror �
 > it live without a full redeploy: `helm upgrade omnigate ./helm/omnigate --reuse-values --set
 > image.repository=us-docker.pkg.dev/thinkingsense/omnigate/omnigate`.
 
+**No `:latest` tag** — deliberately removed from the registry, same fix applied to the AWS/OCI/GCP
+stacks (see this repo's `c09dd7c`/`cdf6630` commits). Confirmed live: `:latest` had silently
+stopped tracking new app releases — frozen at `v0.6.0`'s content for two releases (`v0.7.0`,
+`v0.8.0`), because those releases were only ever published to a different registry this stack
+never pulled from. Every deploy that trusted `:latest` was actually getting a two-releases-stale
+image without anyone noticing. `imageTag` now defaults to a pinned release (`v0.10.5` as of this
+writing) instead. Before assuming a tag exists, check what's actually published:
+
+```bash
+gcloud artifacts docker tags list us-docker.pkg.dev/thinkingsense/omnigate/omnigate --project=thinkingsense
+```
+
+Bump `imageTag`'s default deliberately (this stack and the others, kept symmetric) whenever a
+newer free-edition image is built and pushed — never point it back at `:latest`.
+
 ## Known unknowns (read before your first real deploy)
 
 Everything that was genuinely unconfirmed before the clean-room pass above is now either fixed or
@@ -227,6 +242,21 @@ confirmed working (see that section). One real, unfixable-by-this-stack constrai
   The bigger-lift alternative (out of scope for this stack) is getting a multi-arch amd64+arm64
   manifest published for the omnigate image and switching to a universally-available `Dsv5`/`Dsv4`
   SKU instead.
+
+## Commercial edition
+
+Customers with a commercial subscription switch a running stack to the commercial image in place, without rebuilding anything:
+see `COMMERCIAL.md`.
+
+## Signing in, and who can reach it
+
+There are two logins. The **Ask app** (business users) uses the username and password you set at deploy time. The **admin
+console** (`/admin`), the admin API (`/api/query` and the rest) and the `/mcp` endpoint need the **admin login** (`adminUsername / adminPassword / adminApiToken`;
+default user `admin`, and a blank password means the Ask-app password). Earlier versions left these open to anyone who
+could reach the load balancer; redeploying an older stack with this version turns the requirement on. Scripts send the admin API
+token as `Authorization: Bearer <token>`.
+
+Since app v0.10.5 the Ask app's agent endpoint (`/mcp/agent`) needs the admin API token like the rest of the admin surface. On v0.10.4 and earlier it answered without a login, so keep the address restriction below set on any stack still running those. To limit who can connect, set `allowedClientCidrs` to your address or network. Blank = open to the internet, which suits a first try-out.
 
 ## Publishing a release (maintainers)
 
@@ -330,11 +360,9 @@ az group delete --name <your-rg> --yes --no-wait
 
 **This only stays simple and safe if the resource group is dedicated to this stack** — nothing
 else in it. `createUiDefinition.json` sets `resourceGroup.allowExisting: false` for the Portal
-path, which per Azure's documented `createUiDefinition` schema should prevent the wizard from
-letting you pick an existing resource group at all — **not yet independently confirmed by actually
-clicking through the Portal UI** (that needs an interactive Azure login this environment doesn't
-have); if you try the Portal flow and it still lets you pick an existing resource group, that's a
-real gap in this fix, please report it. The CLI path has no such guardrail either way: `az
+path — **confirmed live**: a real user tried to target the pre-existing `NetworkWatcherRG` through
+the Portal wizard and it refused, forcing "Create new" instead. The CLI path has no such
+guardrail either way: `az
 deployment group create` can target any resource group you already have, including one you didn't
 create for this stack. **Always `az group create` a fresh one first** (see "Deploy via the CLI"
 above) — `destroy.sh`/`az group delete` will otherwise happily delete anything else living in

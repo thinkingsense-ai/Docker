@@ -59,7 +59,7 @@ resource "null_resource" "cleanup_pvcs" {
   }
 
   provisioner "local-exec" {
-    when    = destroy
+    when = destroy
     # `|| true` throughout: this is best-effort cleanup, not a required step -- a missing
     # kubectl binary or an already-gone cluster must never block the rest of the destroy.
     command = <<-EOT
@@ -67,6 +67,187 @@ resource "null_resource" "cleanup_pvcs" {
       KUBECONFIG=/tmp/omnigate-destroy-kubeconfig kubectl delete pvc --all --all-namespaces --wait=true --timeout=120s || true
       rm -f /tmp/omnigate-destroy-kubeconfig
     EOT
+  }
+}
+
+# Signs the OIDC login state/nonce cookie. Every replica must share the same value or a login that
+# starts on one pod cannot finish on another (thinkingsense-ai/Server#12, fixed in v0.10.4).
+# Generated once and kept in state, so it stays stable across applies and scale changes.
+resource "random_password" "oidc_state_secret" {
+  length  = 48
+  special = false
+}
+
+locals {
+  # The app builds its provider-discovery URL straight from the issuer, so a bare domain such as
+  # "dev-abc.us.auth0.com" (what a provider's dashboard shows as "Domain") makes every sign-in start
+  # return HTTP 500 (confirmed live). Add the scheme when it is missing.
+  oidc_issuer = var.oidc_issuer == "" ? "" : (startswith(var.oidc_issuer, "http") ? var.oidc_issuer : "https://${var.oidc_issuer}")
+}
+
+resource "helm_release" "omnigate" {
+  name  = "omnigate"
+  chart = "${path.module}/helm/omnigate"
+  # The omnigate pods wait for the optional TPC-H loader, which takes several minutes at scale factor 1.
+  timeout    = var.enable_tpch_demo ? 2400 : 600
+  depends_on = [null_resource.cleanup_pvcs, null_resource.adb_acl_add, null_resource.adb_acl_cleanup]
+
+  # The helm provider does not notice an edited local chart on its own: with `version:` unchanged in Chart.yaml,
+  # `terraform plan` reported "no changes" against a stale release (thinkingsense-ai/Docker#11). A hash of every
+  # file in the chart is passed as a value (no template reads it), so any template or values edit changes the
+  # release's inputs and the next apply upgrades it.
+  set {
+    name  = "chartContentHash"
+    value = sha1(join("", [for f in sort(fileset("${path.module}/helm/omnigate", "**")) : filesha1("${path.module}/helm/omnigate/${f}")]))
+  }
+  set {
+    name  = "image.repository"
+    value = var.image_repository
+  }
+  set {
+    name  = "image.tag"
+    value = var.image_tag
+  }
+  set {
+    name  = "image.pullUsername"
+    value = var.image_pull_username
+  }
+  set_sensitive {
+    name  = "image.pullAuthToken"
+    value = var.image_pull_auth_token
+  }
+  set_sensitive {
+    name  = "omnigate.license"
+    value = var.omnigate_license
+  }
+  set_sensitive {
+    name  = "omnigate.authUsers"
+    value = local.omnigate_auth_users_computed
+  }
+  set_sensitive {
+    name  = "omnigate.adminApiToken"
+    value = var.omnigate_admin_api_token
+  }
+  set {
+    name  = "omnigate.oidc.issuer"
+    value = local.oidc_issuer
+  }
+  set {
+    name  = "omnigate.oidc.clientId"
+    value = var.oidc_client_id
+  }
+  set_sensitive {
+    name  = "omnigate.oidc.clientSecret"
+    value = var.oidc_client_secret
+  }
+  set {
+    name  = "omnigate.oidc.scopes"
+    value = var.oidc_scopes
+  }
+  set {
+    name  = "omnigate.oidc.adminUsers"
+    value = var.oidc_admin_users
+  }
+  set {
+    name  = "omnigate.oidc.adminGroups"
+    value = var.oidc_admin_groups
+  }
+  set {
+    name  = "resources.omnigate.limits.memory"
+    value = "${var.omnigate_memory_limit_gb}Gi"
+  }
+  set {
+    name  = "omnigate.maxRamPercentage"
+    value = var.omnigate_max_ram_percentage
+  }
+  set {
+    name  = "omnigate.parallelJoinMinRows"
+    value = var.omnigate_parallel_join_min_rows
+  }
+  set {
+    name  = "omnigate.remoteJoinEnabled"
+    value = var.omnigate_remote_join_enabled
+  }
+  set {
+    name  = "omnigate.debugFederation"
+    value = var.omnigate_debug_federation
+  }
+  set {
+    name  = "tpch.enabled"
+    value = var.enable_tpch_demo
+  }
+  set {
+    name  = "tpch.lineitemStore"
+    value = var.tpch_lineitem_store
+  }
+  set {
+    name  = "tpch.scaleFactor"
+    value = var.tpch_scale_factor
+  }
+  set_sensitive {
+    name  = "omnigate.oidcStateSecret"
+    value = random_password.oidc_state_secret.result
+  }
+  set_sensitive {
+    name  = "omnigate.llmApiKey"
+    value = var.omnigate_llm_api_key
+  }
+  set {
+    name  = "omnigate.llmModel"
+    value = var.omnigate_llm_model
+  }
+  set_sensitive {
+    name  = "omnigate.appUsers"
+    value = local.omnigate_app_users_computed
+  }
+  set {
+    name  = "omnigate.exposeWireProtocols"
+    value = var.expose_wire_protocols
+  }
+  set {
+    name  = "omnigate.replicaCount"
+    value = var.omnigate_replica_count
+  }
+  # clusterEnabled is derived, not a separate variable, same convention configDb.external
+  # establishes right below: real Ignite cluster mode turns on automatically the moment more than
+  # one replica is requested, rather than needing a second setting kept in sync with the first.
+  # Safe regardless of which image is deployed -- a FREE-edition image logs a warning and runs
+  # single-node anyway (see com.omnigate.cluster.OmniGateCluster#isAllowed), so this only takes
+  # real effect once image_repository/image_tag point at a commercial build. That's deliberate:
+  # this stack's own public wizard never exposes an edition choice (see schema.yaml), so which
+  # image gets deployed -- and therefore whether this flag does anything -- is entirely an
+  # operator-controlled `image_repository`/`image_tag` override, not a stack-level "edition" field.
+  set {
+    name  = "omnigate.clusterEnabled"
+    value = var.omnigate_replica_count > 1
+  }
+  # configDb.external is derived, not a separate variable: true the moment a real config-DB URL
+  # is supplied, so a deployer setting omnigate_replica_count > 1 without also filling in the
+  # config-DB variables gets the chart's own real `required` validation error (see
+  # helm/omnigate/templates/secrets.yaml) instead of a silently-ignored setting.
+  set {
+    name  = "omnigate.configDb.external"
+    value = var.omnigate_config_db_url != ""
+  }
+  set {
+    name  = "omnigate.configDb.configDbUrl"
+    value = var.omnigate_config_db_url
+  }
+  set {
+    name  = "omnigate.configDb.configDbUser"
+    value = var.omnigate_config_db_user
+  }
+  set_sensitive {
+    name  = "omnigate.configDb.configDbPassword"
+    value = var.omnigate_config_db_password
+  }
+  set {
+    name  = "omnigate.dataVolumeSize"
+    value = "${var.omnigate_data_storage_gb}Gi"
+  }
+  set {
+    name  = "postgres.storageSize"
+    value = "${var.postgres_storage_gb}Gi"
   }
 }
 
@@ -130,69 +311,5 @@ for entry in ingress:
     region     = var.region
     server     = local.cluster_server
     ca_data    = local.cluster_ca
-  }
-}
-
-resource "helm_release" "omnigate" {
-  name       = "omnigate"
-  chart      = "${path.module}/helm/omnigate"
-  timeout    = 600
-  depends_on = [null_resource.cleanup_pvcs]
-
-  set {
-    name  = "image.repository"
-    value = var.image_repository
-  }
-  set {
-    name  = "image.tag"
-    value = var.image_tag
-  }
-  set_sensitive {
-    name  = "omnigate.llmApiKey"
-    value = var.omnigate_llm_api_key
-  }
-  set {
-    name  = "omnigate.llmModel"
-    value = var.omnigate_llm_model
-  }
-  set_sensitive {
-    name  = "omnigate.appUsers"
-    value = local.omnigate_app_users_computed
-  }
-  set {
-    name  = "omnigate.exposeWireProtocols"
-    value = var.expose_wire_protocols
-  }
-  set {
-    name  = "omnigate.replicaCount"
-    value = var.omnigate_replica_count
-  }
-  # configDb.external is derived, not a separate variable: true the moment a real config-DB URL
-  # is supplied, so a deployer setting omnigate_replica_count > 1 without also filling in the
-  # config-DB variables gets the chart's own real `required` validation error (see
-  # helm/omnigate/templates/secrets.yaml) instead of a silently-ignored setting.
-  set {
-    name  = "omnigate.configDb.external"
-    value = var.omnigate_config_db_url != ""
-  }
-  set {
-    name  = "omnigate.configDb.configDbUrl"
-    value = var.omnigate_config_db_url
-  }
-  set {
-    name  = "omnigate.configDb.configDbUser"
-    value = var.omnigate_config_db_user
-  }
-  set_sensitive {
-    name  = "omnigate.configDb.configDbPassword"
-    value = var.omnigate_config_db_password
-  }
-  set {
-    name  = "omnigate.dataVolumeSize"
-    value = "${var.omnigate_data_storage_gb}Gi"
-  }
-  set {
-    name  = "postgres.storageSize"
-    value = "${var.postgres_storage_gb}Gi"
   }
 }

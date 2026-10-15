@@ -15,8 +15,10 @@ expected answer).
 ![OmniGate on EKS — network architecture](architecture.svg)
 
 Deployers don't need to build or push the OmniGate app image itself — `ImageTag` defaults to
-this project's own public OCIR `:latest` image, pulled the same way `docker compose up` pulls
-from a registry. The one thing AWS *does* need built locally to your account is the small
+a specific pinned free-edition release (`v0.10.5`, not `:latest` -- see the parameter's own
+description for why) hosted in this project's own public OCIR repo, pulled the same way
+`docker compose up` pulls from a registry. The one thing AWS *does* need built locally to your
+account is the small
 Lambda that runs `helm install` against the new cluster — Lambda container images must live in
 an ECR repo in the same account and Region as the function, so this stack includes a CodeBuild
 project that builds and pushes that image automatically as part of the same one-click deploy.
@@ -30,7 +32,7 @@ Nothing to build or push by hand.
 2. Fill in the Ask-app login (`OmnigateAppUsername` / `OmnigateAppPassword` — plain text, hashed
    automatically during deploy) and an Anthropic API key -- required, since a stack created
    without one deploys fine but can't answer any question. Get a free key from
-   [console.anthropic.com](https://console.anthropic.com) before you start.
+   [console.anthropic.com](https://console.anthropic.com) before you start. You can also change it later, live, in the app's Admin console under **Models** (`/admin/llm-settings`).
 3. Acknowledge the IAM capability checkbox (the stack creates IAM roles) and create the stack.
    Takes ~15-20 minutes (cluster ~10 min, node group ~3 min, the CodeBuild image build ~2-3 min,
    the Helm release the rest).
@@ -49,6 +51,21 @@ aws cloudformation create-stack \
 
 Then poll with `aws cloudformation describe-stacks --stack-name omnigate-eks` until
 `StackStatus` is `CREATE_COMPLETE`.
+
+## Commercial edition
+
+Customers with a commercial subscription switch a running stack to the commercial image in place, without rebuilding anything:
+see `COMMERCIAL.md`.
+
+## Signing in, and who can reach it
+
+There are two logins. The **Ask app** (business users) uses the username and password you set at deploy time. The **admin
+console** (`/admin`), the admin API (`/api/query` and the rest) and the `/mcp` endpoint need the **admin login** (`OmnigateAdminUsername / OmnigateAdminPassword / OmnigateAdminApiToken`;
+default user `admin`, and a blank password means the Ask-app password). Earlier versions left these open to anyone who
+could reach the load balancer; redeploying an older stack with this version turns the requirement on. Scripts send the admin API
+token as `Authorization: Bearer <token>`.
+
+Since app v0.10.5 the Ask app's agent endpoint (`/mcp/agent`) needs the admin API token like the rest of the admin surface. On v0.10.4 and earlier it answered without a login, so keep the address restriction below set on any stack still running those. To limit who can connect, set `AllowedClientCidrs` to your address or network. Blank = open to the internet, which suits a first try-out.
 
 ## Publishing a release (maintainers)
 

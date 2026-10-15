@@ -20,8 +20,9 @@ off the per-pod volume and into a shared Postgres every replica reads/writes —
 `helm/omnigate/values.yaml`'s `configDb` block). The AWS/GCP/Azure stacks all hardcode 1 replica.
 
 Deployers don't need to build or push anything — `image_repository` defaults to this project's
-own public OCIR repo, so the stack pulls a pre-built image the same way `docker compose up`
-pulls from a registry.
+own public OCIR repo, and `image_tag` to a specific pinned free-edition release (`v0.10.5`, not
+`latest` -- see that variable's own description for why), so the stack pulls a pre-built image
+the same way `docker compose up` pulls from a registry.
 
 ## Deploy via the OCI Console
 
@@ -32,7 +33,7 @@ pulls from a registry.
    `omnigate_app_password` -- plain text, hashed automatically during Apply), and an Anthropic
    API key -- required, since a stack applied without one deploys fine but can't answer any
    question. Get a free key from [console.anthropic.com](https://console.anthropic.com) before
-   you start.
+   you start. You can also change it later, live, in the app's Admin console under **Models** (`/admin/llm-settings`).
 4. **Terraform Actions → Apply**. Takes ~12-15 minutes (cluster ~8 min, node pool ~3 min, Helm
    release the rest).
 5. Once it succeeds, the stack's **Outputs** tab has `ask_app_url` and `kubeconfig_command`.
@@ -62,6 +63,48 @@ oci resource-manager stack create \
 ```
 
 Then `oci resource-manager job create-apply-job --stack-id <id> --execution-plan-strategy AUTO_APPROVED`.
+
+## Signing in (admin console and API)
+
+There are two separate logins:
+
+- **Ask app** (the page business users open): the username and password you set in the wizard.
+- **Admin console** (`/admin`, where you add Ask-app users and change settings): the **Admin console username**
+  (default `admin`) and **Admin console password**. If you leave the password blank it is the same as the Ask-app
+  password; set a different one if you will share the Ask-app login with other people, because otherwise it also opens the admin console.
+
+The admin console, the admin API (`/api/query` and the rest) and the `/mcp` endpoint all require a login, so they are not open to
+anyone who can reach the load balancer's address. (Earlier stack versions left them open; re-applying an older stack with this
+version turns the requirement on.) Scripts that call the API need an **Admin API token** (`omnigate_admin_api_token`, any long
+random string) sent as `Authorization: Bearer <token>`. Single sign-on, if you set it up, signs in the same admin console.
+
+## Optional TPC-H demo dataset
+
+Set **Load the TPC-H demo dataset** (`enable_tpch_demo`) to add a realistic-size dataset on top of the
+supply-chain demo: LINEITEM as Parquet in an in-cluster S3-compatible store (SeaweedFS), and the other
+seven TPC-H tables in a `tpch` database in the existing Postgres. Any question that joins them is a real
+cross-backend federated join, and above `OMNIGATE_PARALLEL_JOIN_MIN_ROWS` (10,000 rows) it is eligible for
+the parallel join, which on a clustered deployment can be shared across replicas.
+
+- **Needs a commercial-edition image.** It adds two backends (five in total) and the free edition allows three.
+- **First deploy is slower.** A one-shot Job generates the data (DuckDB's real `tpch` generator) and loads it;
+  the OmniGate pods wait for it to finish. Scale factor 1 is about 1GB (6M lineitem rows, 1.5M orders) and takes
+  several minutes; 0.1 is a quick smoke-test size. Re-running or upgrading is a no-op once the data is present.
+- **Sizing.** The dimension tables are well under 1GB, so the default 5GB Postgres volume is enough at scale factor 1.
+- **The S3 store has no authentication.** It is ClusterIP-only and holds generated data; do not reuse the pattern for real data.
+- The store is SeaweedFS because MinIO no longer publishes free container images. The loader is the same one as
+  `addons/tpch-demo/loader`, copied into `helm/omnigate/files/tpch/` (keep the two in sync).
+
+## Maintainer notes: two Terraform gotchas
+
+- **Chart edits are detected by a content hash.** `helm-release.tf` passes `chartContentHash` (a SHA-1 of every file under
+  `helm/omnigate/`), so editing a template or `values.yaml` makes `terraform apply` upgrade the release even when
+  `Chart.yaml`'s `version` stays `0.1.0`. You no longer need to bump the chart version for that.
+- **`oci_core_security_list.nodes` ignores rule changes.** It has `lifecycle { ignore_changes = [ingress_security_rules] }`
+  because OKE's cloud-controller-manager adds and removes its own per-NodePort rules on that list. The consequence is that
+  an edit to its `ingress_security_rules` in Terraform is never applied by a later `apply`. Put any rule you manage in the
+  dedicated load-balancer security list in `network.tf` (it has no such block), or change the node list by hand.
+- **The helm provider is capped below 2.17** (see `versions.tf`) because 2.17.x crashed intermittently.
 
 ## Publishing a release (maintainers)
 
@@ -116,6 +159,25 @@ Also raise `node_pool_size` (up to this stack's own cap of 4) so replicas actual
 real, separate worker nodes rather than all landing on the one default node — a single node's own
 failure would otherwise still take every replica down with it.
 
+**What to expect (verified on OCI, commercial image v0.10.4 and v0.10.5, 2 replicas on 2 nodes, Oracle Autonomous Database as the shared config
+store, with `omnigate_config_db_adb_ocid` set so the stack opens the database to the worker nodes):**
+
+- **Multi-node needs the commercial image.** On the free image the extra replica logs a warning and runs single-node. Switch first
+  (see `COMMERCIAL.md`), then add replicas.
+- **Your existing configuration does not move to the shared database.** The single-node setup keeps users and admin-edited settings
+  on the pod's local volume; with a shared database the replicas read whatever that database already holds. Business users you added
+  before the move are not carried over (verified). Set the shared database up first, then create users and edit settings, or re-enter them.
+  Data sources defined by the stack itself (the demo and TPC-H backends) are unaffected.
+- **Business users added on one replica work on all of them.** On v0.10.4 they did not (added through pod 0, unknown to pod 1 until a
+  restart). On v0.10.5 a user created through one replica signs in on the other without a restart. One gap remains (Server#20): the
+  admin console's user list on the other replica can stay stale, so an admin whose request lands there may not see a user they just added.
+- The replicas form one cluster (the log shows "Topology snapshot ... servers=2", `/api/config` reports `clusterNodes: 2`), one pod per node.
+  Answers are identical to a single replica (the correctness harness passes on 2).
+- A cross-database join can run part of its work on the other replica: 11-18% of the CPU landed on the second replica for a
+  join-and-aggregate (`scripts/commercial-harness/measure-distribution.py`), and v0.10.5 runs that join about twice as fast as v0.10.4. Do not size on the assumption that two replicas halve a query.
+- Availability: deleting one pod while queries ran returned HTTP 200 for every query through the load balancer, and the pod rejoined
+  the cluster in about a minute.
+
 **Real, honest limitation, not glossed over**: this makes the OmniGate APPLICATION layer
 horizontally scalable and tolerant of a single pod (or node) failing. It does NOT, by itself,
 make your own connected data sources (`OMNIGATE_BACKENDS`) or the shared config Postgres highly
@@ -168,3 +230,17 @@ cluster is orphaned and safe to `oci bv volume delete --volume-id <id> --force`.
   StatefulSet, ConfigMap, Secret)
 - `variables.tf` / `schema.yaml` — Terraform variables and the Resource Manager wizard schema
 - `outputs.tf` — `ask_app_url`, `kubeconfig_command`
+
+## Commercial edition
+
+Customers with a commercial subscription switch a running stack to the commercial image in place, without rebuilding anything:
+see `COMMERCIAL.md` and `scripts/switch-edition-oke.sh`.
+
+## Restricting who can connect
+
+Set **Restrict access to these addresses** (`allowed_client_cidrs`, e.g. `203.0.113.7/32,198.51.100.0/24`) to limit who can reach the
+load balancers. Blank = open to the internet, which suits a first try-out; it is one more layer on top of the logins once real data is connected.
+(On app v0.10.4 and earlier the agent endpoint `/mcp/agent` answered without a login, so the restriction mattered more there; v0.10.5 closes it.)
+The stack enforces it in the load balancer subnet's security list; limiting the
+node ports or attaching a network security group to the Network Load Balancer does **not** narrow access (both tried, verified live).
+Check a deployment with `scripts/verify-secure-deploy.sh <url> <token>`.

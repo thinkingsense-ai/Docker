@@ -1,0 +1,122 @@
+# TPC-H demo add-on -- a completely separate, opt-in stack, not a layer on top of the root
+# docker-compose.yml. Its own OmniGate container, its own ports, its own network, so it never
+# touches or conflicts with the main supply-chain demo (see this add-on's own README.md for why a
+# Compose-file overlay onto the main stack's `omnigate` service was rejected: OMNIGATE_BACKENDS is
+# one flat string per service, and Compose's environment-merge across -f files replaces a key
+# entirely rather than appending to it, so layering would silently drop the main stack's own
+# backends).
+#
+# Two ways to run it, chosen by Compose profile:
+#
+#   Bundled (ships its own MinIO + Postgres, pre-loaded with ~1GB of real TPC-H data):
+#     cp .env.example .env            # edit if you want, defaults work as-is
+#     docker compose -f docker-compose.tpch.yml --profile tpch-bundled up
+#
+#   Bring-your-own (point LINEITEM at your own AWS/OCI/Azure/GCP bucket, and the other seven
+#   TPC-H tables at your own Postgres instance -- see .env.aws.example / .env.oci.example /
+#   .env.azure.example / .env.gcp.example for the exact values each provider needs):
+#     cp .env.aws.example .env        # or .env.oci.example / .env.azure.example / .env.gcp.example, then edit
+#     docker compose -f docker-compose.tpch.yml --profile tpch-byo up
+#
+# Either way, `tpch-loader` runs once, generates (or confirms it already generated) the dataset,
+# and exits -- see loader/generate_and_load.py's own module docstring for exactly what it does and
+# its idempotency check. `omnigate-tpch` only starts once the loader has finished.
+services:
+
+  # ---- Bundled-mode only (profile: tpch-bundled) ----------------------------------------------
+  minio:
+    profiles: ["tpch-bundled"]
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${TPCH_LINEITEM_ACCESS_KEY_ID:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${TPCH_LINEITEM_SECRET_ACCESS_KEY:-minioadmin}
+    ports:
+      - "19000:9000"   # S3 API
+      - "19001:9001"   # web console
+    volumes:
+      - tpch-minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # MinIO has no notion of a pre-existing bucket -- this one-shot sidecar creates the
+  # TPCH_LINEITEM_BUCKET before the loader tries to write to it.
+  minio-bucket-init:
+    profiles: ["tpch-bundled"]
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${TPCH_LINEITEM_ACCESS_KEY_ID:-minioadmin} ${TPCH_LINEITEM_SECRET_ACCESS_KEY:-minioadmin} &&
+      mc mb --ignore-existing local/${TPCH_LINEITEM_BUCKET:-tpch}
+      "
+
+  tpch-postgres:
+    profiles: ["tpch-bundled"]
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${TPCH_DIM_USER:-postgres}
+      POSTGRES_PASSWORD: ${TPCH_DIM_PASSWORD:-omnigate}
+      POSTGRES_DB: tpch
+    ports:
+      - "15433:5432"   # external 15433 to avoid clashing with the main stack's own Postgres (5442) or a host-local one
+    volumes:
+      - tpch-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${TPCH_DIM_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ---- Shared by both profiles -----------------------------------------------------------------
+  tpch-loader:
+    build:
+      context: ./loader
+    environment:
+      TPCH_SCALE_FACTOR: ${TPCH_SCALE_FACTOR:-1}
+      TPCH_FORCE_RELOAD: ${TPCH_FORCE_RELOAD:-false}
+      TPCH_DIM_JDBC_URL: ${TPCH_DIM_JDBC_URL:-jdbc:postgresql://tpch-postgres:5432/tpch}
+      TPCH_DIM_USER: ${TPCH_DIM_USER:-postgres}
+      TPCH_DIM_PASSWORD: ${TPCH_DIM_PASSWORD:-omnigate}
+      TPCH_LINEITEM_PROVIDER: ${TPCH_LINEITEM_PROVIDER:-s3}
+      TPCH_LINEITEM_BUCKET: ${TPCH_LINEITEM_BUCKET:-tpch}
+      TPCH_LINEITEM_ENDPOINT: ${TPCH_LINEITEM_ENDPOINT:-http://minio:9000}
+      TPCH_LINEITEM_REGION: ${TPCH_LINEITEM_REGION:-us-east-1}
+      TPCH_LINEITEM_PATH_STYLE: ${TPCH_LINEITEM_PATH_STYLE:-true}
+      TPCH_LINEITEM_ACCESS_KEY_ID: ${TPCH_LINEITEM_ACCESS_KEY_ID:-minioadmin}
+      TPCH_LINEITEM_SECRET_ACCESS_KEY: ${TPCH_LINEITEM_SECRET_ACCESS_KEY:-minioadmin}
+      TPCH_LINEITEM_AZURE_ACCOUNT_NAME: ${TPCH_LINEITEM_AZURE_ACCOUNT_NAME:-}
+      TPCH_LINEITEM_AZURE_ACCOUNT_KEY: ${TPCH_LINEITEM_AZURE_ACCOUNT_KEY:-}
+
+  omnigate-tpch:
+    build:
+      context: ../..           # Docker/ root -- same self-contained, pre-built-jar Dockerfile the main stack uses
+    depends_on:
+      tpch-loader:
+        condition: service_completed_successfully
+    environment:
+      # Same two-backend split (LINEITEM in object storage, the other seven tables in Postgres)
+      # this project's own TPC-H benchmark work already uses -- see TPCH.md. The lineitem entry's
+      # inline Calcite model JSON carries BOTH the S3-style keys and (harmlessly unused when
+      # TPCH_LINEITEM_PROVIDER=s3) the Azure-style keys, since S3SchemaFactory only ever reads the
+      # keys relevant to whichever "provider" value is actually set -- one template covers both.
+      OMNIGATE_BACKENDS: >-
+        postgres1=${TPCH_DIM_JDBC_URL:-jdbc:postgresql://tpch-postgres:5432/tpch}?currentSchema=public|${TPCH_DIM_USER:-postgres}|${TPCH_DIM_PASSWORD:-omnigate};lineitem=jdbc:calcite:model=inline:{"version":"1.0","schemas":[{"name":"lineitem","type":"custom","factory":"com.omnigate.calcite.s3.S3SchemaFactory","operand":{"provider":"${TPCH_LINEITEM_PROVIDER:-s3}","bucket":"${TPCH_LINEITEM_BUCKET:-tpch}","endpoint":"${TPCH_LINEITEM_ENDPOINT:-http://minio:9000}","pathStyleAccess":${TPCH_LINEITEM_PATH_STYLE:-true},"region":"${TPCH_LINEITEM_REGION:-us-east-1}","accessKeyId":"${TPCH_LINEITEM_ACCESS_KEY_ID:-minioadmin}","secretAccessKey":"${TPCH_LINEITEM_SECRET_ACCESS_KEY:-minioadmin}","accountName":"${TPCH_LINEITEM_AZURE_ACCOUNT_NAME:-}","accountKey":"${TPCH_LINEITEM_AZURE_ACCOUNT_KEY:-}","tables":{"lineitem":{"key":"lineitem.parquet","format":"parquet"}}}}]}|
+      OMNIGATE_ROUTER_SCHEMA_RULES: "public:postgres1,lineitem:lineitem"
+      OMNIGATE_LLM_MODE: ${OMNIGATE_LLM_MODE:-local-first}
+      OMNIGATE_LLM_API_KEY: ${OMNIGATE_LLM_API_KEY:-}
+      # Same demo login this project's other compose stacks use -- username "demo", password
+      # "demo". CHANGE OR REMOVE before exposing this beyond your own machine.
+      OMNIGATE_APP_USERS: "demo:lJX+xXgLcPmnjyXStA9VQQ==:HdoV/jHar1OSBbnTk8Iu8fbLcoBGFJ/Qe83zERd4Mac=::"
+    ports:
+      - "18080:8080"   # offset from the main stack's 8080 so both can run side by side
+      - "15434:5433"   # Postgres wire, offset from both the main stack (5433) and tpch-postgres (15433)
+
+volumes:
+  tpch-minio-data:
+  tpch-postgres-data:

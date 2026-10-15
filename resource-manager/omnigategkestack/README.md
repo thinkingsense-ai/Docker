@@ -69,7 +69,14 @@ First apply takes 10-15 minutes (GKE cluster creation dominates that).
 
 - `container.googleapis.com` and `compute.googleapis.com` enabled (`tutorial.md` step 1 does this
   for you; the CLI path needs it done manually — see the `gcloud services enable` command there).
-- A billing account linked to the project.
+- A billing account linked to the project. Confirmed live: a project created fresh via Cloud
+  Shell's own "pick a project" picker (the `<walkthrough-project-setup>` widget `tutorial.md`
+  uses) has no billing account linked by default — `setup.sh`'s billing check catches this and
+  stops you, but it's easy to hit on a first attempt. Link one before starting: Console →
+  Billing → Link a billing account.
+- The project's **Project ID**, not its Project Name — GCP allows these to differ (e.g. name
+  "My Project", ID "my-project-42781"), and every `gcloud project=<...>`/Terraform
+  `gcp_project_id` value in this stack needs the ID.
 - IAM permissions to create a VPC, GKE cluster, node pool, and firewall rules — the deploying
   principal needs broad-ish project access, not just GKE access.
 - curl, a JRE, and python3 on whatever machine runs `terraform apply` (for `password-hash.tf`) —
@@ -101,6 +108,11 @@ First apply takes 10-15 minutes (GKE cluster creation dominates that).
   "here's how to apt install this" advisory stub (exits 0, so a naive `command -v` check misses
   it entirely) — `setup.sh` checks the real output of `terraform version`, not just PATH
   presence, and installs the real thing via apt when running in Cloud Shell (`CLOUD_SHELL=true`).
+  It also checks the Anthropic API key before provisioning anything (`GET /v1/models`, no tokens
+  spent): an invalid/expired/revoked key (HTTP 401/403) is rejected up front with a re-enter
+  prompt instead of surfacing 15 minutes later as an Ask app that can't answer. A network or API
+  hiccup only warns and continues, so it never blocks a good key. The key can also be changed
+  later, live, in the Admin console under **Models** (`/admin/llm-settings`).
 - `destroy.sh` — guided teardown, the reverse of `setup.sh`: `terraform destroy` when this
   directory has real state, a confirm-gated fallback to deleting the known resources directly by
   name (see "Cleanup" below) when it doesn't.
@@ -109,10 +121,21 @@ First apply takes 10-15 minutes (GKE cluster creation dominates that).
 
 ## Image
 
-`us-docker.pkg.dev/thinkingsense/omnigate/omnigate:latest` is live and public
+`us-docker.pkg.dev/thinkingsense/omnigate/omnigate` is live and public
 (`roles/artifactregistry.reader` granted to `allUsers`). It's **arm64-only** (no amd64 manifest —
 confirmed with `docker manifest inspect`), same as the AWS stack's own Graviton/arm64 image — see
 the node-sizing note below for why that's not incidental.
+
+**No `:latest` tag** — deliberately removed. `image_tag` defaults to a pinned release (`v0.10.5` as
+of this writing; check `variables.tf` for the current default), built straight from that GitHub
+release's own published `omnigate.jar`/`web-dist.tar.gz` assets via
+`Docker/free-edition/Dockerfile` (`docker build --build-arg OMNIGATE_RELEASE_TAG=vX.Y.Z`), not
+from a local Maven build of whatever the `Server` checkout happens to have at build time. List
+what's actually published before assuming a tag exists:
+
+```bash
+gcloud artifacts docker tags list us-docker.pkg.dev/thinkingsense/omnigate/omnigate --project=thinkingsense
+```
 
 ## Clean-room validated on a real GCP project
 
@@ -148,6 +171,21 @@ fixed in this stack (not hypothetical caveats — actually hit):
 
 The zonal-cluster-fee-waiver claim and the `standard-rwo` StorageClass both worked as expected
 (PVCs for both the `omnigate` data volume and Postgres bound and mounted with no issues).
+
+## Commercial edition
+
+Customers with a commercial subscription switch a running stack to the commercial image in place, without rebuilding anything:
+see `COMMERCIAL.md`.
+
+## Signing in, and who can reach it
+
+There are two logins. The **Ask app** (business users) uses the username and password you set at deploy time. The **admin
+console** (`/admin`), the admin API (`/api/query` and the rest) and the `/mcp` endpoint need the **admin login** (`omnigate_admin_username / omnigate_admin_password / omnigate_admin_api_token`;
+default user `admin`, and a blank password means the Ask-app password). Earlier versions left these open to anyone who
+could reach the load balancer; redeploying an older stack with this version turns the requirement on. Scripts send the admin API
+token as `Authorization: Bearer <token>`.
+
+Since app v0.10.5 the Ask app's agent endpoint (`/mcp/agent`) needs the admin API token like the rest of the admin surface. On v0.10.4 and earlier it answered without a login, so keep the address restriction below set on any stack still running those. To limit who can connect, set `allowed_client_cidrs` to your address or network. Blank = open to the internet, which suits a first try-out.
 
 ## Publishing a release (maintainers)
 
@@ -238,6 +276,21 @@ gcloud container clusters delete omnigate-gke --zone <region>-a --project=<your-
 gcloud compute firewall-rules delete omnigate-gke-allow-internal omnigate-gke-allow-health-check omnigate-gke-allow-client-ingress --project=<your-project-id> --quiet
 gcloud compute networks subnets delete omnigate-gke-nodes --region=<region> --project=<your-project-id> --quiet
 gcloud compute networks delete omnigate-gke --project=<your-project-id> --quiet
+```
+
+**Both paths also sweep for orphaned Persistent Disks** — confirmed live, 7 unattached disks
+(26GB, still billing) were found sitting in the project well after both a real `terraform destroy`
+and this script's own manual fallback had already run, accumulated across this stack's own
+deploy/teardown testing cycles. Root cause: the Postgres and OmniGate data volumes are Kubernetes
+PVCs the Helm chart creates *inside* the cluster — `helm_release` only installs the chart,
+Terraform has no visibility into what the chart's own templates provision at runtime, so nothing
+above this point ever deletes the GCE disks backing them. `destroy.sh` deletes any disk GKE's CSI
+driver labeled with this cluster's name (`goog-k8s-cluster-name=omnigate-gke`) as a final step in
+both paths — that label survives independently of whether the cluster itself still exists. To
+check by hand:
+
+```bash
+gcloud compute disks list --project=<your-project-id> --filter="labels.goog-k8s-cluster-name=omnigate-gke"
 ```
 
 Either path leaves the Artifact Registry repo and image alone — those aren't part of this

@@ -50,6 +50,10 @@ spec:
           operator: "Equal"
           value: "arm64"
           effect: "NoSchedule"
+{{- if and .Values.image.pullUsername .Values.image.pullAuthToken }}
+      imagePullSecrets:
+        - name: {{ include "omnigate.fullname" . }}-omnigate-imagepull
+{{- end }}
       initContainers:
         - name: wait-for-postgres
           image: docker.io/library/postgres:16-alpine
@@ -110,6 +114,10 @@ metadata:
     app.kubernetes.io/component: omnigate
 spec:
   type: {{ .Values.service.type }}
+  {{- with compact .Values.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   selector:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: omnigate
@@ -131,6 +139,10 @@ metadata:
     app.kubernetes.io/component: omnigate
 spec:
   type: LoadBalancer
+  {{- with compact .Values.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   selector:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: omnigate

@@ -23,6 +23,22 @@ Metadata:
           - OmnigateAppUsername
           - OmnigateAppPassword
       - Label:
+          default: "Admin console login"
+        Parameters:
+          - OmnigateAdminUsername
+          - OmnigateAdminPassword
+          - OmnigateAdminApiToken
+      - Label:
+          default: "Commercial edition (subscribers only)"
+        Parameters:
+          - ImageRepository
+          - ImagePullUsername
+          - ImagePullAuthToken
+      - Label:
+          default: "Network access"
+        Parameters:
+          - AllowedClientCidrs
+      - Label:
           default: "NL2SQL (needed to use the Ask app)"
         Parameters:
           - OmnigateLlmApiKey
@@ -45,6 +61,20 @@ Metadata:
         default: "Ask-app username"
       OmnigateAppPassword:
         default: "Ask-app password"
+      OmnigateAdminUsername:
+        default: "Admin console username"
+      OmnigateAdminPassword:
+        default: "Admin console password (optional)"
+      OmnigateAdminApiToken:
+        default: "Admin API token (optional)"
+      ImageRepository:
+        default: "Image repository"
+      ImagePullUsername:
+        default: "Registry user (commercial only)"
+      ImagePullAuthToken:
+        default: "Registry token (commercial only)"
+      AllowedClientCidrs:
+        default: "Restrict access to these addresses (optional)"
       OmnigateLlmApiKey:
         default: "Anthropic API key"
       ClusterName:
@@ -85,7 +115,7 @@ Parameters:
     Default: 2
   SourceVersion:
     Type: String
-    Default: eks-stack-v1.0.5
+    Default: eks-stack-v1.0.10
     Description: >-
       Git tag/ref in thinkingsense-ai/Docker that CodeBuild checks out to build the
       helm-deployer Lambda image. Pinned to a release tag (not a branch) so the image built
@@ -97,15 +127,50 @@ Parameters:
     Type: String
     NoEcho: true
     Description: "Plain text -- hashed automatically during deploy using the app's own PasswordHash utility. No local Docker or manual hash generation needed."
+  OmnigateAdminUsername:
+    Type: String
+    Default: admin
+    Description: "Login name for the admin console. The admin console, admin API and /mcp endpoint require this login, so they are not open to the internet."
+  OmnigateAdminPassword:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: "Admin console password, plain text. Leave blank to use the Ask-app password for the admin login as well; set a different one if you will share the Ask-app login with other people."
+  OmnigateAdminApiToken:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: "Optional bearer token (any long random string) granting admin-role access to the admin API, for scripts. Blank = none."
+  AllowedClientCidrs:
+    Type: String
+    Default: ""
+    Description: "Optional. Comma-separated CIDR ranges (e.g. 203.0.113.7/32) allowed to reach OmniGate. Blank = open to the internet, fine for a first try-out. Worth setting once real data is connected, as one more layer on top of the logins."
   OmnigateLlmApiKey:
     Type: String
     NoEcho: true
     MinLength: 1
     Description: "Anthropic API key (console.anthropic.com) for NL2SQL -- required, since a stack created without one deploys fine but can't answer any question."
+  ImageRepository:
+    Type: String
+    Default: ocir.us-phoenix-1.oci.oraclecloud.com/ax8tpjdxhykk/omnigate
+    Description: "Image repository. Leave as the default (the public free edition). Commercial subscribers switch this to the private omnigate-commercial repository -- see scripts/switch-edition-eks.sh."
+  ImagePullUsername:
+    Type: String
+    Default: ""
+    Description: "Commercial edition only: the OCIR login (<namespace>/<user>) for the private repository, given to you with your subscription. Blank for the free edition."
+  ImagePullAuthToken:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: "Commercial edition only: the OCIR Auth Token that goes with ImagePullUsername. Blank for the free edition."
   ImageTag:
     Type: String
-    Default: latest
-    Description: "OCIR docker tag for the omnigate image. Defaults to the publisher's own pre-built :latest image."
+    Default: v0.10.5
+    Description: "OCIR docker tag for the omnigate image. Pinned to a specific free-edition
+      release rather than :latest -- confirmed live that :latest had silently stopped tracking
+      new app releases (frozen at v0.6.0's content for two releases), so a moving-target default
+      wasn't actually keeping deployers current anyway, just non-reproducible. Bump this
+      deliberately when a newer free-edition image is built and pushed to OCIR."
 
 Resources:
   # ============================== Networking ==============================
@@ -733,10 +798,16 @@ Resources:
       ReleaseName: omnigate
       Namespace: default
       HelmSetValues:
-        image.repository: ocir.us-phoenix-1.oci.oraclecloud.com/ax8tpjdxhykk/omnigate
+        image.repository: !Ref ImageRepository
         image.tag: !Ref ImageTag
       AppUsername: !Ref OmnigateAppUsername
       AppPassword: !Ref OmnigateAppPassword
+      ImagePullUsername: !Ref ImagePullUsername
+      ImagePullAuthToken: !Ref ImagePullAuthToken
+      AdminUsername: !Ref OmnigateAdminUsername
+      AdminPassword: !Ref OmnigateAdminPassword
+      AdminApiToken: !Ref OmnigateAdminApiToken
+      AllowedClientCidrs: !Ref AllowedClientCidrs
       LlmApiKey: !Ref OmnigateLlmApiKey
 
   # ============================== Final security-group sweep ==============================
