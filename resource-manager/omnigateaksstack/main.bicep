@@ -66,6 +66,10 @@ param omnigateDataStorageGb int = 2
 @description('Container image repository (advanced). Defaults to the publisher\'s GCP Artifact Registry mirror -- confirmed live that OCI\'s own OCIR registry rejects external pulls from a Free Tier tenancy (403 "Free tier account is not supported"), so pulling the AWS stack\'s documented OCIR path directly does not actually work cross-cloud; the GCP mirror does. Deployers should not need to build or push anything themselves.')
 param imageRepository string = 'us-docker.pkg.dev/thinkingsense/omnigate/omnigate'
 
+@description('Commercial subscribers: the signed licence token (starts with ts1.) we issued to you. It lets the free image run as the commercial edition, with no image swap. Blank keeps any licence already installed. See COMMERCIAL.md.')
+@secure()
+param omnigateLicense string = ''
+
 @description('Commercial edition only: the OCIR login (<namespace>/<user>) for the private omnigate-commercial repository, given to you with your subscription. Blank for the free edition. Set together with imageRepository and imagePullAuthToken -- see scripts/switch-edition-aks.sh.')
 param imagePullUsername string = ''
 
@@ -112,6 +116,7 @@ module helmInstall 'modules/deploymentScript.bicep' = {
     adminUsername: adminUsername
     adminPassword: empty(adminPassword) ? appPassword : adminPassword
     adminApiToken: adminApiToken
+    omnigateLicense: omnigateLicense
     imagePullUsername: imagePullUsername
     imagePullAuthToken: imagePullAuthToken
     allowedClientCidrs: allowedClientCidrs

@@ -1,10 +1,45 @@
 # Switching a running Azure (AKS) stack to the commercial edition
 
-For customers with a commercial subscription. The free and commercial editions are two images of the same application; the
-switch changes which image your existing stack runs. **Nothing is rebuilt:** the cluster, network, database, your saved
-OmniGate configuration and your URL stay as they are. The OmniGate pod restarts once on the new image.
+For customers with a commercial subscription. There are two ways, and the licence is the one to use:
 
-## What you get
+| | Licence (recommended) | Image swap |
+|---|---|---|
+| What changes | A small licence file is added; the image stays the free one | The pods run the private commercial image |
+| You need | The licence token we issue you | A registry user and token for our private repository |
+| Rebuild | No | No |
+| When it ends | After the 7-day grace period the app falls back to the free edition and keeps running | Pods fail to restart if the credential is revoked |
+
+Either way the cluster, network, databases, your saved OmniGate configuration and your URL stay as they are.
+
+## Install or renew a licence (recommended)
+
+You receive a licence token (it starts with `ts1.`) valid for the term you bought, plus a 7-day grace period after it.
+
+```bash
+az aks get-credentials -g <resource group> -n omnigate-aks
+scripts/set-licence.sh --token ts1.<...> --restart \
+  --url http://<your-load-balancer>:8080 --admin-token <your admin API token>
+```
+
+- The script reads the token first and refuses an expired one. Only the app can check the signature, so with `--url` and
+  `--admin-token` it waits until the app reports the licence is valid and tells you if it was not accepted.
+- **First activation: use `--restart`.** The data-source limit and clustering are decided when a pod starts, so the pods restart once
+  (about two minutes). **Renewals need no restart:** run the same command without `--restart` and the app picks the new licence up
+  within a couple of minutes.
+- To set it at deploy time instead, use the **Commercial licence** (`omnigateLicense`) field in the deployment form. Leaving it blank on a later update keeps the licence already
+  installed. Use the script for renewals: updating the stack also restarts the OmniGate pod (every update currently does,
+  thinkingsense-ai/Docker#59), the script does not.
+
+**Before a licence lapses.** Renew it. After the grace period the free limits apply: one question at a time at once, and on the next
+restart only 3 data sources and a single node. A deployment with more than 3 data sources or more than one replica should renew well
+before then; improving how that downgrade behaves is tracked in thinkingsense-ai/Server#21.
+
+**Check it:** the admin console Overview page, or `GET /api/config`, shows `licenseStatus` (`VALID`, `EXPIRED`, `INVALID` or `NONE`),
+the customer and the expiry date. An invalid or expired licence never stops the app; it stays on the free edition and says why.
+
+## Image swap (alternative)
+
+### What you get
 
 | | Free | Commercial |
 |---|---|---|
@@ -14,13 +49,13 @@ OmniGate configuration and your URL stay as they are. The OmniGate pod restarts 
 | Parallel-join threads | 8 | no cap |
 | Multiple replicas (clustering) | no | yes |
 
-## What you need
+### What you need
 
 - The resource group name, and `az`, `helm`, `kubectl` and `python3` (Azure Cloud Shell has them all).
 - The **pull user and token** we gave you: an OCIR login (`<namespace>/<user>`) and an Auth Token for the private
   `omnigate-commercial` repository. These are your entitlement; we revoke them when a subscription ends.
 
-## Switch
+### Switch
 
 ```bash
 scripts/switch-edition-aks.sh --resource-group omnigate-aks-rg --to commercial \
@@ -33,7 +68,7 @@ fetches the cluster credentials and runs `helm upgrade --reuse-values` with the 
 re-running the original Azure deployment later resets the image to whatever that deployment is given: pass the same image settings
 (`imageRepository`, `imagePullUsername`, `imagePullAuthToken`) again if you do.
 
-## Go back to the free edition
+### Go back to the free edition
 
 ```bash
 scripts/switch-edition-aks.sh --resource-group omnigate-aks-rg --to free
@@ -42,7 +77,7 @@ scripts/switch-edition-aks.sh --resource-group omnigate-aks-rg --to free
 Use this when a subscription lapses, or to compare. The extra data sources stay in your configuration but only the first
 three are served until you return to commercial.
 
-## When the credential is revoked
+### When the credential is revoked
 
 Pods already running keep working. The next restart (a node replacement, a redeploy) fails with `ImagePullBackOff` and the
 service stays down. Run the command above with `--to free` to recover.
@@ -51,7 +86,7 @@ service stays down. Run the command above with `--to free` to recover.
 
 - **Going multi-node.** More than one replica needs a shared configuration database; do it as a second step after the switch.
 
-## Verified
+### Verified (image swap)
 
 On 2026-10-11 a free stack on this cloud switched to the commercial image (edition FREE to COMMERCIAL, data-source cap 3 to unlimited)
 and back, each in a few minutes, replacing only the OmniGate pod.

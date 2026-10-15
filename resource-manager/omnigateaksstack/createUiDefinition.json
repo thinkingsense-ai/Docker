@@ -221,6 +221,21 @@
             }
           },
           {
+            "name": "omnigateLicense",
+            "type": "Microsoft.Common.PasswordBox",
+            "label": {
+              "password": "Commercial licence (subscribers)",
+              "confirmPassword": "Confirm licence"
+            },
+            "toolTip": "Paste the licence token we issued you (it starts with ts1.). It lifts the free edition's limits without changing the image. Leave blank for the free edition; a blank value keeps any licence already installed.",
+            "constraints": {
+              "required": false
+            },
+            "options": {
+              "hideConfirmation": true
+            }
+          },
+          {
             "name": "imagePullUsername",
             "type": "Microsoft.Common.TextBox",
             "label": "Registry user (commercial edition only)",
@@ -277,7 +292,8 @@
       "allowedClientCidrs": "[steps('application').allowedClientCidrs]",
       "adminApiToken": "[steps('application').adminApiToken]",
       "imagePullUsername": "[steps('advanced').imagePullUsername]",
-      "imagePullAuthToken": "[steps('advanced').imagePullAuthToken]"
+      "imagePullAuthToken": "[steps('advanced').imagePullAuthToken]",
+      "omnigateLicense": "[steps('advanced').omnigateLicense]"
     }
   }
 }

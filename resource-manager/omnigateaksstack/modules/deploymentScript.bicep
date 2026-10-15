@@ -33,6 +33,8 @@ param forceUpdateTag string = utcNow()
 param adminApiToken string
 param imagePullUsername string
 @secure()
+param omnigateLicense string
+@secure()
 param imagePullAuthToken string
 // The Helm chart (helm/omnigate/) ships in this same repo, one directory up from this stack's
 // Bicep. It has no independent version -- it travels with the aks-stack-vX.Y.Z release tag, same
@@ -102,6 +104,7 @@ resource helmInstall 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
       { name: 'ALLOWED_CLIENT_CIDRS', value: allowedClientCidrs }
       { name: 'APP_PASSWORD', secureValue: appPassword }
       { name: 'ADMIN_PASSWORD', secureValue: adminPassword }
+      { name: 'OMNIGATE_LICENSE', secureValue: empty(omnigateLicense) ? 'none' : omnigateLicense }
       { name: 'IMAGE_PULL_USERNAME', value: imagePullUsername }
       { name: 'IMAGE_PULL_AUTH_TOKEN', secureValue: empty(imagePullAuthToken) ? 'none' : imagePullAuthToken }
       { name: 'ADMIN_API_TOKEN', secureValue: empty(adminApiToken) ? 'none' : adminApiToken }
@@ -221,6 +224,11 @@ PYEOF
       # Commercial edition: the registry credential goes in through --set-file so an Auth Token containing commas, braces or other
       # characters Helm's --set parser treats specially arrives byte for byte.
       PULL_ARGS=""
+      if [ "$OMNIGATE_LICENSE" != none ]; then
+        # --set-file so the token arrives byte for byte; blank passes nothing and the chart keeps the licence already installed.
+        printf '%s' "$OMNIGATE_LICENSE" > /tmp/omnigate-license
+        PULL_ARGS="$PULL_ARGS --set-file omnigate.license=/tmp/omnigate-license"
+      fi
       if [ -n "$IMAGE_PULL_USERNAME" ] && [ "$IMAGE_PULL_AUTH_TOKEN" != none ]; then
         printf '%s' "$IMAGE_PULL_AUTH_TOKEN" > /tmp/omnigate-pull-token
         PULL_ARGS="--set-string image.pullUsername=$IMAGE_PULL_USERNAME --set-file image.pullAuthToken=/tmp/omnigate-pull-token"
@@ -247,8 +255,8 @@ PYEOF
       # or by a stray `set -x`) would otherwise leak. Mirrors the redaction discipline AWS's
       # handler.py added after a real bug there leaked the *previous* password on every Update
       # event (it originally redacted only the current ResourceProperties, not the old ones).
-      rm -f /tmp/omnigate-pull-token
-      unset IMAGE_PULL_AUTH_TOKEN APP_PASSWORD ADMIN_PASSWORD ADMIN_API_TOKEN LLM_API_KEY APP_USERS APP_HASH AUTH_USERS ADMIN_HASH
+      rm -f /tmp/omnigate-pull-token /tmp/omnigate-license
+      unset OMNIGATE_LICENSE IMAGE_PULL_AUTH_TOKEN APP_PASSWORD ADMIN_PASSWORD ADMIN_API_TOKEN LLM_API_KEY APP_USERS APP_HASH AUTH_USERS ADMIN_HASH
 
       echo "== Waiting for the LoadBalancer IP =="
       HTTP_IP=""

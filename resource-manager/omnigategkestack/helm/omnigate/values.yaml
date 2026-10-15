@@ -31,6 +31,9 @@ omnigate:
   authUsers: ""
   # Bearer token with admin rights for the admin API (OMNIGATE_AUTH_API_TOKENS), for scripts.
   adminApiToken: ""
+  # Signed licence token (ts1.<payload>.<signature>) that lets the free image run as the commercial edition. Blank keeps any
+  # licence already in the cluster. See COMMERCIAL.md.
+  license: ""
   # Storage for /var/lib/omnigate/data (the embedded ConfigStore -- admin-set config like an API
   # key entered live in the UI). A real PVC here means it survives pod rescheduling.
   dataVolumeSize: 2Gi

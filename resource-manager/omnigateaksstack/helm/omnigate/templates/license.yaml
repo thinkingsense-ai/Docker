@@ -1,0 +1,25 @@
+{{- $name := printf "%s-omnigate-license" (include "omnigate.fullname" .) }}
+{{- $existing := lookup "v1" "Secret" .Release.Namespace $name }}
+# The signed licence for the free image (thinkingsense-ai/Server#18). Its own template, and deliberately NOT part of the
+# checksum/secret annotation on the pods, so adding or renewing a licence does not restart anything: the app re-reads the
+# mounted file every minute.
+#
+# A blank omnigate.license keeps whatever licence is already in the cluster (set earlier by a stack apply or by
+# scripts/set-licence.sh), so an unrelated redeploy never wipes it. Set omnigate.license to replace it.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+type: Opaque
+{{- if .Values.omnigate.license }}
+stringData:
+  license: {{ .Values.omnigate.license | quote }}
+{{- else if and $existing $existing.data (hasKey $existing.data "license") }}
+data:
+  license: {{ index $existing.data "license" }}
+{{- else }}
+stringData:
+  license: ""
+{{- end }}

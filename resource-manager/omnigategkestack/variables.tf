@@ -80,6 +80,13 @@ variable "expose_wire_protocols" {
 
 # --- Image ----------------------------------------------------------------------------------
 
+variable "omnigate_license" {
+  description = "Commercial subscribers: the signed licence token (ts1.<payload>.<signature>) we issued to you. It lets the free image run as the commercial edition, with no image swap and no registry credential. Blank keeps any licence already in the cluster (set earlier here or with scripts/set-licence.sh), so an unrelated apply never removes it. See COMMERCIAL.md."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
 variable "image_repository" {
   description = "Fully-qualified Artifact Registry path for the omnigate image. Defaults to the publisher's own pre-built image -- deployers should not need to build anything themselves."
   type        = string
