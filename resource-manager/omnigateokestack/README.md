@@ -78,6 +78,13 @@ anyone who can reach the load balancer's address. (Earlier stack versions left t
 version turns the requirement on.) Scripts that call the API need an **Admin API token** (`omnigate_admin_api_token`, any long
 random string) sent as `Authorization: Bearer <token>`. Single sign-on, if you set it up, signs in the same admin console.
 
+## Trusted demo questions
+
+After install the stack approves five trusted questions for the seeded supply-chain data (`helm/omnigate/files/demo-questions.json`), so the
+Ask app's first screen shows questions that data can answer. Without them the app shows generic examples (sales by region, top products by
+revenue) that the supply-chain schema cannot answer. A post-install Job does it through the admin API using the admin login; it skips questions
+already present and never fails the deploy. To change the list, edit the JSON file.
+
 ## Optional TPC-H demo dataset
 
 Set **Load the TPC-H demo dataset** (`enable_tpch_demo`) to add a realistic-size dataset on top of the

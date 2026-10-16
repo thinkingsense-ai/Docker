@@ -154,6 +154,14 @@ resources:
       cpu: "1"
       memory: 1Gi
 
+# Approves a few trusted questions for the seeded supply-chain demo after install, so the Ask app's first
+# screen offers questions this data can answer (see templates/seed-questions.yaml). Needs the admin login
+# (or omnigate.adminApiToken). Best effort: it never fails the release.
+seedDemoQuestions:
+  enabled: false
+  adminUser: admin
+  adminPassword: ""
+
 # Opt-in TPC-H demo dataset: LINEITEM as Parquet in an in-cluster S3-compatible store, the other seven
 # tables in a `tpch` database in the existing Postgres. Adds two OMNIGATE_BACKENDS entries (postgres1,
 # lineitem), so on top of the three supply-chain demo backends this is five -- over the free edition's
