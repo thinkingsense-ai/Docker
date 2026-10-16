@@ -377,9 +377,13 @@ variables:
   enable_tpch_demo:
     type: boolean
     title: "Load the TPC-H demo dataset"
-    description: "Adds a TPC-H dataset (LINEITEM as Parquet in an in-cluster S3-compatible store, the other seven tables in Postgres) on top of the supply-chain demo, so questions can join across backends at a realistic size. Needs a commercial-edition image: it adds two backends, and the free edition allows three. The first deploy takes several minutes longer while the data loads."
+    description: "Adds a TPC-H dataset (LINEITEM as Parquet in an in-cluster S3-compatible store, the other seven tables in Postgres) on top of the supply-chain demo, so questions can join across backends at a realistic size. Commercial edition only: it adds two backends, and the free edition allows three. This option appears once you have entered a commercial licence below. The first deploy takes several minutes longer while the data loads."
     default: false
     required: false
+    visible:
+      or:
+        - ${omnigate_license}
+        - ${image_pull_username}
 
   tpch_lineitem_store:
     type: enum
@@ -390,7 +394,12 @@ variables:
       - s3
     default: postgres
     required: false
-    visible: ${enable_tpch_demo}
+    visible:
+      and:
+        - ${enable_tpch_demo}
+        - or:
+            - ${omnigate_license}
+            - ${image_pull_username}
 
   tpch_scale_factor:
     type: enum
@@ -401,7 +410,12 @@ variables:
       - 1
     default: 1
     required: false
-    visible: ${enable_tpch_demo}
+    visible:
+      and:
+        - ${enable_tpch_demo}
+        - or:
+            - ${omnigate_license}
+            - ${image_pull_username}
 
   image_repository:
     type: string

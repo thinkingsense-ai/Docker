@@ -93,7 +93,7 @@ seven TPC-H tables in a `tpch` database in the existing Postgres. Any question t
 cross-backend federated join, and above `OMNIGATE_PARALLEL_JOIN_MIN_ROWS` (10,000 rows) it is eligible for
 the parallel join, which on a clustered deployment can be shared across replicas.
 
-- **Needs a commercial-edition image.** It adds two backends (five in total) and the free edition allows three.
+- **Commercial edition only.** It adds two backends (five in total) and the free edition allows three. In the wizard the option appears once a commercial licence is entered, and Apply refuses it early on a free deployment.
 - **First deploy is slower.** A one-shot Job generates the data (DuckDB's real `tpch` generator) and loads it;
   the OmniGate pods wait for it to finish. Scale factor 1 is about 1GB (6M lineitem rows, 1.5M orders) and takes
   several minutes; 0.1 is a quick smoke-test size. Re-running or upgrading is a no-op once the data is present.

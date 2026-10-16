@@ -53,6 +53,12 @@ resource "oci_containerengine_cluster" "this" {
       condition     = length(local.node_images) > 0
       error_message = "Kubernetes ${local.kubernetes_version} has no Arm worker-node image in this region right now. Choose one of: ${join(", ", local.versions_with_arm_image)} (set kubernetes_version, or leave it blank for the newest)."
     }
+    # Fail in seconds, before the ~15-minute cluster build: the TPC-H add-on adds two backends and the free
+    # edition allows three, so on a free deployment the data would load but the app would drop the backends.
+    precondition {
+      condition     = !var.enable_tpch_demo || var.omnigate_license != "" || var.image_pull_username != ""
+      error_message = "The TPC-H demo dataset needs the commercial edition: it adds two backends and the free edition allows three. Paste your commercial licence (omnigate_license), or turn off enable_tpch_demo."
+    }
   }
   kubernetes_version = local.kubernetes_version
 
