@@ -98,6 +98,12 @@ spec:
         app.kubernetes.io/component: seed-questions
     spec:
       restartPolicy: Never
+      # GKE taints its arm64 nodes (kubernetes.io/arch=arm64:NoSchedule); without this the Job sits Pending until the hook times out.
+      tolerations:
+        - key: "kubernetes.io/arch"
+          operator: "Equal"
+          value: "arm64"
+          effect: "NoSchedule"
       containers:
         - name: seed
           image: {{ .Values.seedDemoQuestions.image }}
