@@ -233,6 +233,10 @@ PYEOF
         printf '%s' "$IMAGE_PULL_AUTH_TOKEN" > /tmp/omnigate-pull-token
         PULL_ARGS="--set-string image.pullUsername=$IMAGE_PULL_USERNAME --set-file image.pullAuthToken=/tmp/omnigate-pull-token"
       fi
+      # Approves the trusted demo questions after install (the chart's post-install hook logs in as the admin). --set-file so a
+      # password with commas or braces arrives byte for byte.
+      printf '%s' "$ADMIN_PASSWORD" > /tmp/omnigate-admin-password
+      PULL_ARGS="$PULL_ARGS --set seedDemoQuestions.enabled=true --set-string seedDemoQuestions.adminUser=$ADMIN_USERNAME --set-file seedDemoQuestions.adminPassword=/tmp/omnigate-admin-password"
       echo "== Installing the omnigate Helm release =="
       helm upgrade --install omnigate "$CHART_DIR" \
         --set image.repository="$IMAGE_REPOSITORY" \
@@ -255,7 +259,7 @@ PYEOF
       # or by a stray `set -x`) would otherwise leak. Mirrors the redaction discipline AWS's
       # handler.py added after a real bug there leaked the *previous* password on every Update
       # event (it originally redacted only the current ResourceProperties, not the old ones).
-      rm -f /tmp/omnigate-pull-token /tmp/omnigate-license
+      rm -f /tmp/omnigate-pull-token /tmp/omnigate-license /tmp/omnigate-admin-password
       unset OMNIGATE_LICENSE IMAGE_PULL_AUTH_TOKEN APP_PASSWORD ADMIN_PASSWORD ADMIN_API_TOKEN LLM_API_KEY APP_USERS APP_HASH AUTH_USERS ADMIN_HASH
 
       echo "== Waiting for the LoadBalancer IP =="

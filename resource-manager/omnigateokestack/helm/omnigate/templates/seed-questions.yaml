@@ -100,7 +100,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: seed
-          image: {{ .Values.tpch.loaderImage }}
+          image: {{ .Values.seedDemoQuestions.image }}
           command: ["python", "/seed/seed.py"]
           envFrom:
             - secretRef:

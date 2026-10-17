@@ -345,10 +345,19 @@ def lambda_handler(event, context):
                 os.chmod(pull_token_path, 0o600)
                 args += ["--set", f"image.pullUsername={props['ImagePullUsername']}",
                          "--set-file", f"image.pullAuthToken={pull_token_path}"]
+            # Approves the trusted demo questions after install (the chart's post-install hook logs in as the admin).
+            # --set-file so a password with commas or braces arrives byte for byte.
+            admin_pw_path = "/tmp/omnigate-admin-password"
+            with open(admin_pw_path, "w") as f:
+                f.write(admin_password)
+            os.chmod(admin_pw_path, 0o600)
+            args += ["--set", "seedDemoQuestions.enabled=true",
+                     "--set", f"seedDemoQuestions.adminUser={admin_username}",
+                     "--set-file", f"seedDemoQuestions.adminPassword={admin_pw_path}"]
             try:
                 run_helm(args)
             finally:
-                for leftover in (pull_token_path, license_path):
+                for leftover in (pull_token_path, license_path, admin_pw_path):
                     if leftover and os.path.exists(leftover):
                         os.remove(leftover)
             lb_host = get_lb_hostname(namespace, f"{release_name}-omnigate-http")
