@@ -248,6 +248,10 @@ confirmed working (see that section). One real, unfixable-by-this-stack constrai
 Customers with a commercial subscription switch a running stack to the commercial image in place, without rebuilding anything:
 see `COMMERCIAL.md`.
 
+## Trusted demo questions
+
+After install the stack approves five trusted questions for the seeded supply-chain data (`helm/omnigate/files/demo-questions.json`; in the EKS stack under `helm-deployer-lambda/omnigate-chart/files/`), so the Ask app's first screen shows questions that data can answer. Without them the app shows generic examples (sales by region, top products by revenue) that the supply-chain schema cannot answer. A post-install Helm hook Job does it through the admin API using the admin login; it skips questions already present and never fails the deploy.
+
 ## Signing in, and who can reach it
 
 There are two logins. The **Ask app** (business users) uses the username and password you set at deploy time. The **admin

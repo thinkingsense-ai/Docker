@@ -1,0 +1,115 @@
+{{- if .Values.seedDemoQuestions.enabled }}
+{{- $fullname := include "omnigate.fullname" . }}
+# Approves a few trusted questions for the seeded supply-chain demo (files/demo-questions.json), so the
+# Ask app's first screen offers questions that this data can answer. With an empty question bank the app
+# falls back to generic "Try a phrasing" examples (sales by region, top products by revenue) that the
+# supply-chain schema cannot answer.
+#
+# Runs after install/upgrade, once the app is up, through the admin API with the admin login. Safe to
+# re-run (skips questions already in the bank) and never fails the release: if the app is slow or the
+# login is refused it logs why and exits 0, and the Ask app just shows its generic examples.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $fullname }}-seed-questions
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+stringData:
+  ADMIN_USER: {{ .Values.seedDemoQuestions.adminUser | quote }}
+  ADMIN_PASSWORD: {{ .Values.seedDemoQuestions.adminPassword | quote }}
+  ADMIN_TOKEN: {{ .Values.omnigate.adminApiToken | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fullname }}-seed-questions
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+data:
+  questions.json: |
+{{ .Files.Get "files/demo-questions.json" | indent 4 }}
+  seed.py: |
+    import json, sys, time, os, urllib.request, urllib.parse, http.cookiejar
+    base = "http://{{ $fullname }}-omnigate-http:8080"
+    def log(m): print("seed-questions:", m, flush=True)
+    jar = http.cookiejar.CookieJar()
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, *a, **k): return None
+    op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar), NoRedirect)
+    token = os.environ.get("ADMIN_TOKEN", "")
+    def call(path, body=None, form=None):
+        data, headers = None, {}
+        if body is not None: data, headers = json.dumps(body).encode(), {"Content-Type": "application/json"}
+        if form is not None: data, headers = urllib.parse.urlencode(form).encode(), {"Content-Type": "application/x-www-form-urlencoded"}
+        if token: headers["Authorization"] = "Bearer " + token
+        try:
+            with op.open(urllib.request.Request(base + path, data=data, headers=headers), timeout=30) as r:
+                return r.status, r.read().decode()
+        except urllib.error.HTTPError as e:
+            return e.code, ""
+    try:
+        for _ in range(90):
+            try:
+                if call("/api/deployment-readiness")[0] == 200: break
+            except Exception: pass
+            time.sleep(5)
+        if not token:
+            code, _ = call("/admin/login", form={"username": os.environ["ADMIN_USER"], "password": os.environ["ADMIN_PASSWORD"]})
+            if code not in (200, 302, 303): log("admin login refused (%s); leaving the question bank alone" % code); sys.exit(0)
+        code, text = call("/api/question-bank")
+        if code != 200: log("cannot read the question bank (%s); leaving it alone" % code); sys.exit(0)
+        have = {e["question"] for e in json.loads(text).get("entries", [])}
+        for q in json.load(open("/seed/questions.json")):
+            if q["question"] in have: continue
+            code, text = call("/api/question-bank", body=q)
+            entry = json.loads(text)["entry"]
+            code, _ = call("/api/question-bank/status", body={"id": entry["id"], "status": "approved"})
+            log("%s -> %s" % (q["question"][:50], "approved" if code == 200 else "status %s" % code))
+    except Exception as e:
+        log("skipped: %r" % (e,))
+    sys.exit(0)
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $fullname }}-seed-questions
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: seed-questions
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: seed-questions
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: seed
+          image: {{ .Values.seedDemoQuestions.image }}
+          command: ["python", "/seed/seed.py"]
+          envFrom:
+            - secretRef:
+                name: {{ $fullname }}-seed-questions
+          volumeMounts:
+            - name: seed
+              mountPath: /seed
+      volumes:
+        - name: seed
+          configMap:
+            name: {{ $fullname }}-seed-questions
+{{- end }}

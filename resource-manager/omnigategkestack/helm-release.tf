@@ -57,6 +57,18 @@ resource "helm_release" "omnigate" {
     name  = "omnigate.authUsers"
     value = local.omnigate_auth_users_computed
   }
+  set {
+    name  = "seedDemoQuestions.enabled"
+    value = "true"
+  }
+  set {
+    name  = "seedDemoQuestions.adminUser"
+    value = var.omnigate_admin_username
+  }
+  set_sensitive {
+    name  = "seedDemoQuestions.adminPassword"
+    value = var.omnigate_admin_password != "" ? var.omnigate_admin_password : var.omnigate_app_password
+  }
   set_sensitive {
     name  = "omnigate.adminApiToken"
     value = var.omnigate_admin_api_token

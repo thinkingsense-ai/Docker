@@ -81,3 +81,12 @@ resources:
     limits:
       cpu: "1"
       memory: 1Gi
+
+# Approves a few trusted questions for the seeded supply-chain demo after install, so the Ask app's first
+# screen offers questions this data can answer (see templates/seed-questions.yaml). Needs the admin login
+# (or omnigate.adminApiToken). Best effort: it never fails the release.
+seedDemoQuestions:
+  enabled: false
+  adminUser: admin
+  adminPassword: ""
+  image: docker.io/library/python:3.12-slim   # runs the small seeding script (standard library only)
