@@ -133,8 +133,11 @@ resource "helm_release" "omnigate" {
     value = var.omnigate_admin_username
   }
   set_sensitive {
-    name  = "seedDemoQuestions.adminPassword"
-    value = var.omnigate_admin_password != "" ? var.omnigate_admin_password : var.omnigate_app_password
+    name = "seedDemoQuestions.adminPassword"
+    # The provider parses values like `helm --set`: a comma splits the value and a leading brace starts a list. Escape those
+    # (and the backslash itself) so the password goes in byte for byte.
+    type  = "string"
+    value = replace(replace(replace(replace(var.omnigate_admin_password != "" ? var.omnigate_admin_password : var.omnigate_app_password, "\\", "\\\\"), ",", "\\,"), "{", "\\{"), "}", "\\}")
   }
   set_sensitive {
     name  = "omnigate.adminApiToken"
