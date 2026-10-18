@@ -92,6 +92,23 @@ services:
       start_period: 60s
       retries: 15
 
+  # One-shot helper: once OmniGate is up, approves five trusted supply-chain questions so the Ask app's first screen offers
+  # questions this demo data can answer (otherwise it shows generic examples that it cannot). Exits when done; safe to re-run.
+  # If you turn admin authentication on (OMNIGATE_AUTH_USERS), put ADMIN_USER and ADMIN_PASSWORD in your .env.
+  seed-questions:
+    image: python:3.12-slim
+    depends_on:
+      - omnigate
+    restart: "no"
+    environment:
+      OMNIGATE_URL: http://omnigate:8080
+      ADMIN_USER: ${ADMIN_USER:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    volumes:
+      - ./docker/seed-questions.py:/seed/seed-questions.py:ro
+      - ./docker/demo-questions.json:/seed/demo-questions.json:ro
+    command: ["python", "/seed/seed-questions.py"]
+
   omnigate:
     # Self-contained build -- this repo's own Dockerfile downloads the pre-compiled jar/web UI
     # from this repo's GitHub Release at build time (see Dockerfile's own comment). No other repo

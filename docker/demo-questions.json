@@ -1,0 +1,27 @@
+[
+ {
+  "question": "Which suppliers do we hold the most stock from?",
+  "referenceSql": "SELECT s.name AS supplier, SUM(i.qty_on_hand) AS units_on_hand FROM suppliers.suppliers s JOIN inventory.warehouse_inventory i ON i.supplier_id = s.supplier_id GROUP BY s.name ORDER BY units_on_hand DESC",
+  "category": "supply-chain"
+ },
+ {
+  "question": "How many units are on order from suppliers in each region?",
+  "referenceSql": "SELECT s.region, COUNT(*) AS open_orders, SUM(p.qty_ordered) AS units_on_order FROM procurement.purchase_orders p JOIN suppliers.suppliers s ON s.supplier_id = p.supplier_id WHERE p.status = 'IN_TRANSIT' GROUP BY s.region ORDER BY units_on_order DESC",
+  "category": "supply-chain"
+ },
+ {
+  "question": "Which purchase orders are still in transit, and from which supplier and country?",
+  "referenceSql": "SELECT p.po_id, p.sku, p.qty_ordered, s.name AS supplier, s.country FROM procurement.purchase_orders p JOIN suppliers.suppliers s ON s.supplier_id = p.supplier_id WHERE p.status = 'IN_TRANSIT' ORDER BY p.po_id",
+  "category": "supply-chain"
+ },
+ {
+  "question": "How many shipments does each carrier have?",
+  "referenceSql": "SELECT carrier, COUNT(*) AS shipments FROM logistics.shipments GROUP BY carrier ORDER BY shipments DESC",
+  "category": "supply-chain"
+ },
+ {
+  "question": "How much stock is in each warehouse?",
+  "referenceSql": "SELECT warehouse_id, SUM(qty_on_hand) AS units FROM inventory.warehouse_inventory GROUP BY warehouse_id ORDER BY warehouse_id",
+  "category": "supply-chain"
+ }
+]

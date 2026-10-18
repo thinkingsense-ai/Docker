@@ -26,6 +26,11 @@ This starts ThinkingSense **and** a disposable, pre-seeded Postgres database —
 data with zero setup, so you can see it work before connecting anything of your own. The first
 run takes a minute or two (downloading the jar/web UI, pulling the Postgres image).
 
+When OmniGate is up, a small one-shot `seed-questions` container approves five trusted questions for the demo data, so the Ask app's first
+screen offers questions it can answer. It exits when done (you will see it as `Exited (0)`), skips questions already approved, and never
+blocks startup. If you turn on admin logins, put `ADMIN_USER` and `ADMIN_PASSWORD` in your `.env` so it can still sign in. The questions
+live in `docker/demo-questions.json`.
+
 **Just want the image, no clone?** The same image is also published pre-built to GitHub Container
 Registry — `docker pull ghcr.io/thinkingsense-ai/server:0.10.8` (or `:0.10` for the newest 0.10 patch; `:0.10.8-free` is the free edition) — built from source
 by the `thinkingsense-ai/Server` repo's own Dockerfile rather than downloaded from a release.
