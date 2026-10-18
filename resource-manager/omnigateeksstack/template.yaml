@@ -852,6 +852,17 @@ Resources:
                   - ec2:DescribeSecurityGroups
                   - ec2:DeleteSecurityGroup
                 Resource: "*"
+              # Backstop for the data volumes (thinkingsense-ai/Docker#83): the EBS CSI driver creates them for the chart's
+              # PersistentVolumeClaims and they can outlive the cluster. Deletion is limited to volumes the CSI driver created.
+              - Effect: Allow
+                Action: ec2:DescribeVolumes
+                Resource: "*"
+              - Effect: Allow
+                Action: ec2:DeleteVolume
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    "aws:ResourceTag/ebs.csi.aws.com/cluster": "true"
 
   SgCleanupFunction:
     Type: AWS::Lambda::Function
@@ -859,7 +870,7 @@ Resources:
       Runtime: python3.12
       Handler: index.handler
       Role: !GetAtt SgCleanupRole.Arn
-      Timeout: 600
+      Timeout: 900
       MemorySize: 256
       Code:
         ZipFile: |
@@ -915,6 +926,35 @@ Resources:
                       time.sleep(10)
               for sg_id in remaining:
                   print(f"WARNING: could not delete security group {sg_id} (still has dependencies)")
+
+              cleanup_volumes(ec2, cluster_name)
+
+
+          def cleanup_volumes(ec2, cluster_name):
+              # The chart's data volumes (Postgres, OmniGate) are PersistentVolumeClaims the EBS CSI driver turned into EBS
+              # volumes. When the in-cluster delete of the claims did not finish (helm uninstall can hang on the load
+              # balancer's finalizer), the volumes outlive the cluster and bill forever. The worker nodes are gone by now
+              # (NodeGroup is deleted before this runs), so these detach shortly; delete them once they do.
+              filters = [
+                  {"Name": "tag:kubernetes.io/cluster/" + cluster_name, "Values": ["owned"]},
+                  {"Name": "tag-key", "Values": ["kubernetes.io/created-for/pvc/name"]},
+              ]
+              deadline = time.time() + 240
+              while True:
+                  vols = ec2.describe_volumes(Filters=filters)["Volumes"]
+                  if not vols:
+                      return
+                  for v in vols:
+                      if v["State"] == "available":
+                          try:
+                              ec2.delete_volume(VolumeId=v["VolumeId"])
+                              print("deleted leftover data volume", v["VolumeId"])
+                          except Exception as e:
+                              print("could not delete volume", v["VolumeId"], e)
+                  if time.time() > deadline:
+                      print("WARNING: data volumes still present after 240s:", [v["VolumeId"] for v in vols])
+                      return
+                  time.sleep(10)
 
 
           def send(event, context, status, reason=""):

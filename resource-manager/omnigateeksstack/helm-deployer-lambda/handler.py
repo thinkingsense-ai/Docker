@@ -387,7 +387,7 @@ def lambda_handler(event, context):
                 # The PVC object disappears first; the EBS volume is deleted by the CSI controller just AFTER. Returning now
                 # lets CloudFormation tear down the node group, which kills the controller mid-delete and orphans the volume
                 # (thinkingsense-ai/Docker#83). Wait for the PersistentVolumes themselves to go.
-                run_cmd("kubectl", ["wait", "--for=delete", "pv", "--all", "--timeout=180s"], timeout=210)
+                run_cmd("kubectl", ["wait", "--for=delete", "pv", "--all", "--timeout=100s"], timeout=130)
             except Exception as e:
                 print("volume cleanup did not finish (continuing so stack deletion isn't blocked):", e)
             try:
