@@ -34,12 +34,15 @@ cleanup_orphaned_disks() {
   echo "would have deleted them)..."
   if ! command -v gcloud >/dev/null 2>&1; then
     echo "gcloud not available -- skipping. Check manually:" >&2
-    echo "  gcloud compute disks list --project=$project --filter=\"labels.goog-k8s-cluster-name=omnigate-gke\"" >&2
+    echo "  gcloud compute disks list --project=$project --filter=\"labels.reclaim-policy-gke-io:* AND -users:*\"" >&2
     return 0
   fi
+  # Confirmed live: disks that GKE's CSI driver creates for PersistentVolumeClaims carry the labels cluster-id-gke-io and
+  # reclaim-policy-gke-io (and a description naming the claim), NOT goog-k8s-cluster-name, which only the node boot disks
+  # carry. So match this stack's two claims by name, and only disks nothing is attached to.
   local disks
   disks="$(gcloud compute disks list --project="$project" \
-    --filter="labels.goog-k8s-cluster-name=omnigate-gke" \
+    --filter="labels.reclaim-policy-gke-io:* AND -users:* AND (description~data-omnigate-postgres-0 OR description~omnigate-omnigate-data)" \
     --format="value(name,zone.basename())" 2>/dev/null || true)"
   if [ -z "$disks" ]; then
     echo "None found."

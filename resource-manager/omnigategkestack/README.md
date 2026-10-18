@@ -293,12 +293,12 @@ deploy/teardown testing cycles. Root cause: the Postgres and OmniGate data volum
 PVCs the Helm chart creates *inside* the cluster — `helm_release` only installs the chart,
 Terraform has no visibility into what the chart's own templates provision at runtime, so nothing
 above this point ever deletes the GCE disks backing them. `destroy.sh` deletes any disk GKE's CSI
-driver labeled with this cluster's name (`goog-k8s-cluster-name=omnigate-gke`) as a final step in
+driver labeled `reclaim-policy-gke-io` whose description names this stack's two claims as a final step in
 both paths — that label survives independently of whether the cluster itself still exists. To
-check by hand:
+check by hand. (`terraform destroy` itself now deletes the claims and waits for their disks before the cluster goes, via the `cleanup_pvcs` step in `helm-release.tf`, the same approach as the OCI stack; the sweep above is the backstop for a destroy that failed part-way.)
 
 ```bash
-gcloud compute disks list --project=<your-project-id> --filter="labels.goog-k8s-cluster-name=omnigate-gke"
+gcloud compute disks list --project=<your-project-id> --filter="labels.reclaim-policy-gke-io:* AND -users:*"
 ```
 
 Either path leaves the Artifact Registry repo and image alone — those aren't part of this
