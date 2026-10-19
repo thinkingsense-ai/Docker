@@ -141,13 +141,25 @@ resource "oci_core_security_list" "lb" {
   # node-level lists never see the client's address (confirmed live), and a network security group on
   # the load balancer adds to this list rather than narrowing it.
   dynamic "ingress_security_rules" {
-    for_each = local.client_cidrs
+    for_each = local.http_open ? local.client_cidrs : []
     content {
       protocol = "6"
       source   = ingress_security_rules.value
       tcp_options {
         min = 8080
         max = 8080
+      }
+    }
+  }
+  # HTTPS: the NLB's listener on 443 (forwarding to the app's own TLS port) needs the same source restriction as 8080.
+  dynamic "ingress_security_rules" {
+    for_each = local.https_enabled ? local.client_cidrs : []
+    content {
+      protocol = "6"
+      source   = ingress_security_rules.value
+      tcp_options {
+        min = 443
+        max = 443
       }
     }
   }
@@ -215,4 +227,7 @@ resource "oci_core_subnet" "lb" {
 locals {
   cidr_list    = compact(split(",", replace(var.allowed_client_cidrs, " ", "")))
   client_cidrs = length(local.cidr_list) > 0 ? local.cidr_list : ["0.0.0.0/0"]
+  # HTTPS is on when a keystore is supplied (see variables.tf).
+  https_enabled = nonsensitive(var.tls_keystore_base64 != "")
+  http_open     = !(local.https_enabled && var.tls_https_only)
 }

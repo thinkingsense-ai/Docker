@@ -69,6 +69,13 @@ variableGroups:
       - tpch_lineitem_store
       - tpch_scale_factor
 
+  - title: "HTTPS (optional)"
+    visible: true
+    variables:
+      - tls_keystore_base64
+      - tls_keystore_password
+      - tls_https_only
+
   - title: "Tuning and diagnostics (optional)"
     visible: true
     variables:
@@ -96,6 +103,28 @@ variableGroups:
       - image_pull_auth_token
 
 variables:
+  tls_keystore_base64:
+    type: password
+    title: "TLS keystore (PKCS12, base64)"
+    description: "Optional. Turns on HTTPS: a PKCS12 file holding the certificate and private key for the address people will browse to, base64-encoded (for example: base64 -i keystore.p12). The app then also answers on HTTPS (port 443 on the load balancer). Leave blank for plain HTTP only."
+    default: ""
+    required: false
+
+  tls_https_only:
+    type: boolean
+    title: "HTTPS only"
+    description: "With a keystore above: also close plain HTTP (port 8080) on the load balancer, so nothing travels unencrypted."
+    default: false
+    required: false
+    visible: ${tls_keystore_base64}
+
+  tls_keystore_password:
+    type: password
+    title: "TLS keystore password"
+    description: "Password of the keystore above. Required when a keystore is given."
+    default: ""
+    required: false
+
   compartment_ocid:
     type: oci:identity:compartment:id
     title: "Compartment"

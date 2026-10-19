@@ -114,6 +114,25 @@ spec:
     {{- include "omnigate.podTemplate" . | nindent 4 }}
 ---
 {{- end }}
+# In-cluster only (ClusterIP): plain HTTP to the app for things running inside the cluster, such as the post-install question
+# seeding. Always present, so they keep working when the public Service drops plain HTTP (tls.httpsOnly).
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "omnigate.fullname" . }}-omnigate-internal
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: omnigate
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: omnigate
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
 # HTTP only (Ask app + admin console) -- the LoadBalancer default. Deliberately not exposing the
 # DB wire ports here; see the wire-protocols Service below, which is opt-in.
 #
@@ -137,9 +156,16 @@ spec:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: omnigate
   ports:
+{{- if not (and .Values.tls.enabled .Values.tls.httpsOnly) }}
     - name: http
       port: {{ .Values.service.httpPort }}
       targetPort: 8080
+{{- end }}
+{{- if .Values.tls.enabled }}
+    - name: https
+      port: {{ .Values.tls.port }}
+      targetPort: 8443
+{{- end }}
 {{- if .Values.omnigate.exposeWireProtocols }}
 ---
 # Wire protocols (Oracle/Postgres/MySQL/gRPC), only created when exposeWireProtocols=true.

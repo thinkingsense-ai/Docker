@@ -105,6 +105,28 @@ variable "allowed_client_cidrs" {
   }
 }
 
+# --- HTTPS (optional) -----------------------------------------------------------------------
+
+variable "tls_keystore_base64" {
+  description = "Optional: turns on HTTPS. A PKCS12 keystore (certificate plus private key), base64-encoded, for the address people will browse to. The app then also answers on HTTPS (port 443 on the load balancer). Leave blank for plain HTTP only."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "tls_keystore_password" {
+  description = "Password of the PKCS12 keystore above. Required when a keystore is given."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "tls_https_only" {
+  description = "With HTTPS on (a keystore given): also close plain HTTP on the load balancer (port 8080), so passwords and answers never travel unencrypted. Ignored without a keystore."
+  type        = bool
+  default     = false
+}
+
 # --- Admin API access (optional) -----------------------------------------------------------
 
 variable "omnigate_admin_api_token" {
