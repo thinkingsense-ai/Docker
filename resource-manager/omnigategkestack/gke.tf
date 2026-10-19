@@ -5,6 +5,13 @@
 # why this stack doesn't claim an OCI-style "Always Free" posture.
 
 resource "google_container_cluster" "this" {
+  lifecycle {
+    precondition {
+      condition     = var.tls_keystore_base64 == "" || var.tls_keystore_password != ""
+      error_message = "A TLS keystore was given without tls_keystore_password. Set both, or leave both blank for the automatic self-signed certificate."
+    }
+  }
+
   project  = var.gcp_project_id
   name     = "omnigate-gke"
   location = "${var.gcp_region}-${var.gcp_zone_suffix}"

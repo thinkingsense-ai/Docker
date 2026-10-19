@@ -72,6 +72,7 @@ variableGroups:
   - title: "HTTPS (optional)"
     visible: true
     variables:
+      - enable_https
       - tls_keystore_base64
       - tls_keystore_password
       - tls_https_only
@@ -103,25 +104,32 @@ variableGroups:
       - image_pull_auth_token
 
 variables:
+  enable_https:
+    type: boolean
+    title: "Serve HTTPS"
+    description: "On by default. With no certificate below, the app makes a self-signed one at first start: traffic is encrypted, but browsers show a 'not trusted' warning until you supply your own. Turn off only if something in front of OmniGate already provides HTTPS."
+    default: true
+    required: false
+
   tls_keystore_base64:
     type: password
-    title: "TLS keystore (PKCS12, base64)"
-    description: "Optional. Turns on HTTPS: a PKCS12 file holding the certificate and private key for the address people will browse to, base64-encoded (for example: base64 -i keystore.p12). The app then also answers on HTTPS (port 443 on the load balancer). Leave blank for plain HTTP only."
+    title: "Your own certificate (PKCS12, base64)"
+    description: "Optional. A PKCS12 file holding your certificate and private key for the address people will browse to, base64-encoded (for example: base64 -i keystore.p12). Leave blank to use the automatic self-signed certificate."
     default: ""
     required: false
 
   tls_https_only:
     type: boolean
     title: "HTTPS only"
-    description: "With a keystore above: also close plain HTTP (port 8080) on the load balancer, so nothing travels unencrypted."
-    default: false
+    description: "On by default: closes plain HTTP (port 8080) on the load balancer, so nothing travels unencrypted. Turn off to also allow plain HTTP."
+    default: true
     required: false
-    visible: ${tls_keystore_base64}
+    visible: ${enable_https}
 
   tls_keystore_password:
     type: password
-    title: "TLS keystore password"
-    description: "Password of the keystore above. Required when a keystore is given."
+    title: "Certificate password"
+    description: "Password of the certificate file above. Required when one is given."
     default: ""
     required: false
 

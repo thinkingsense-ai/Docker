@@ -40,13 +40,75 @@ spec:
         # content changes, which changes the pod template, which is what actually triggers the
         # rollout (this Deployment's own `strategy: Recreate` above then applies).
         checksum/secret: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
+{{- if include "omnigate.tlsCustom" . }}
+        # The keystore is read once at startup, so a new certificate must roll the pod.
+        checksum/tls: {{ include (print $.Template.BasePath "/tls.yaml") . | sha256sum }}
+{{- end }}
         checksum/configmap: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
+{{- if include "omnigate.tlsAuto" . }}
+      serviceAccountName: {{ include "omnigate.fullname" . }}-omnigate
+{{- end }}
 {{- if and .Values.image.pullUsername .Values.image.pullAuthToken }}
       imagePullSecrets:
         - name: {{ include "omnigate.fullname" . }}-omnigate-imagepull
 {{- end }}
       initContainers:
+{{- if include "omnigate.tlsAuto" . }}
+        # No certificate supplied: make a self-signed one for the load balancer's address, the first time (kept on the data volume, so it survives
+        # restarts; made again if the address changes). The app rejects an HTTPS request whose Host is not named in the certificate ("Invalid SNI"), so the
+        # address has to be in it: the first step reads it from the Service, the second makes the certificate with the image's own keytool. Browsers
+        # show a "not trusted" warning for it until you supply your own certificate (tls.keystore).
+        - name: tls-address
+          image: docker.io/library/python:3.12-slim
+          command:
+            - python
+            - -c
+            - |
+              import json, os, ssl, time, urllib.request
+              b = "/var/run/secrets/kubernetes.io/serviceaccount/"
+              tok = open(b + "token").read(); ns = open(b + "namespace").read()
+              ctx = ssl.create_default_context(cafile=b + "ca.crt")
+              url = "https://%s:%s/api/v1/namespaces/%s/services/{{ include "omnigate.fullname" . }}-omnigate-http" % (os.environ["KUBERNETES_SERVICE_HOST"], os.environ["KUBERNETES_SERVICE_PORT"], ns)
+              addrs = []
+              for _ in range(180):
+                  try:
+                      req = urllib.request.Request(url, headers={"Authorization": "Bearer " + tok})
+                      ing = json.load(urllib.request.urlopen(req, context=ctx, timeout=10)).get("status", {}).get("loadBalancer", {}).get("ingress", [])
+                      addrs = sorted(x.get("ip") or x.get("hostname") for x in ing if x.get("ip") or x.get("hostname"))
+                  except Exception as e:
+                      print("waiting for the load balancer address:", e)
+                  if addrs:
+                      break
+                  time.sleep(5)
+              open("/work/address", "w").write(" ".join(addrs))
+              print("load balancer address(es):", addrs or "none yet; the certificate will not name one")
+          volumeMounts:
+            - name: tls-work
+              mountPath: /work
+        - name: tls-init
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - |
+              D=/var/lib/omnigate/data/tls
+              mkdir -p $D
+              A=$(cat /work/address 2>/dev/null || true)
+              if [ -s $D/omnigate.p12 ] && [ "$(cat $D/address 2>/dev/null)" = "$A" ]; then exit 0; fi
+              rm -f $D/omnigate.p12
+              SAN="dns:omnigate,dns:localhost"
+              for a in $A; do case "$a" in *[a-zA-Z]*) SAN="$SAN,dns:$a";; *) SAN="$SAN,ip:$a";; esac; done
+              keytool -genkeypair -alias omnigate -keyalg RSA -keysize 2048 -validity 3650 -storetype PKCS12 -keystore $D/omnigate.p12 \
+                -storepass omnigate-selfsigned -keypass omnigate-selfsigned -dname "CN=omnigate" -ext "san=$SAN"
+              printf '%s' "$A" > $D/address
+          volumeMounts:
+            - name: tls-work
+              mountPath: /work
+            - name: data
+              mountPath: /var/lib/omnigate/data
+{{- end }}
         - name: wait-for-postgres
           image: docker.io/library/postgres:16-alpine
           command:
@@ -68,9 +130,27 @@ spec:
             # template (license.yaml), outside the checksum annotations, so changing it does not roll the pods.
             - name: OMNIGATE_LICENSE_FILE
               value: /etc/omnigate-license/license
+{{- if include "omnigate.tlsCustom" . }}
+            - name: OMNIGATE_TLS_KEYSTORE
+              value: /etc/omnigate-tls/omnigate.p12
+            - name: OMNIGATE_TLS_KEYSTORE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "omnigate.fullname" . }}-omnigate-tls
+                  key: password
+{{- else if include "omnigate.tlsAuto" . }}
+            - name: OMNIGATE_TLS_KEYSTORE
+              value: /var/lib/omnigate/data/tls/omnigate.p12
+            - name: OMNIGATE_TLS_KEYSTORE_PASSWORD
+              value: omnigate-selfsigned
+{{- end }}
           ports:
             - name: http
               containerPort: 8080
+{{- if .Values.tls.enabled }}
+            - name: https
+              containerPort: 8443
+{{- end }}
             - name: oracle-wire
               containerPort: 1521
             - name: pg-wire
@@ -83,6 +163,11 @@ spec:
             - name: license
               mountPath: /etc/omnigate-license
               readOnly: true
+{{- if include "omnigate.tlsCustom" . }}
+            - name: tls
+              mountPath: /etc/omnigate-tls
+              readOnly: true
+{{- end }}
             - name: data
               mountPath: /var/lib/omnigate/data
           readinessProbe:
@@ -94,13 +179,41 @@ spec:
           resources:
             {{- toYaml .Values.resources.omnigate | nindent 12 }}
       volumes:
+{{- if include "omnigate.tlsAuto" . }}
+        - name: tls-work
+          emptyDir: {}
+{{- end }}
         - name: license
           secret:
             secretName: {{ include "omnigate.fullname" . }}-omnigate-license
             optional: true
+{{- if include "omnigate.tlsCustom" . }}
+        - name: tls
+          secret:
+            secretName: {{ include "omnigate.fullname" . }}-omnigate-tls
+{{- end }}
         - name: data
           persistentVolumeClaim:
             claimName: {{ include "omnigate.fullname" . }}-omnigate-data
+---
+# In-cluster only (ClusterIP): plain HTTP to the app for things running inside the cluster, such as the post-install question
+# seeding. Always present, so they keep working when the public Service drops plain HTTP (tls.httpsOnly).
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "omnigate.fullname" . }}-omnigate-internal
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: omnigate
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: omnigate
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
 ---
 # HTTP only (Ask app + admin console) -- the LoadBalancer default. Deliberately not exposing the
 # DB wire ports here; see the wire-protocols Service below, which is opt-in.
@@ -134,9 +247,16 @@ spec:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: omnigate
   ports:
+{{- if not (and .Values.tls.enabled .Values.tls.httpsOnly) }}
     - name: http
       port: {{ .Values.service.httpPort }}
       targetPort: 8080
+{{- end }}
+{{- if .Values.tls.enabled }}
+    - name: https
+      port: {{ .Values.tls.port }}
+      targetPort: 8443
+{{- end }}
 {{- if .Values.omnigate.exposeWireProtocols }}
 ---
 # Wire protocols (Oracle/Postgres/MySQL/gRPC), only created when exposeWireProtocols=true.

@@ -4,7 +4,7 @@
 # directory has the commercial-image settings (image_pull_username / image_pull_auth_token).
 #
 #   switch-edition-gke.sh --to commercial --pull-user <ns/user> --pull-token <auth token> \
-#                         [--image-tag v0.10.4] [--url http://<lb>:8080 --admin-token <token>]
+#                         [--image-tag v0.10.4] [--url https://<lb> --admin-token <token>]
 #   switch-edition-gke.sh --to free
 #
 # Only the image changes; the cluster, network, database volumes and OmniGate's saved configuration stay, and the OmniGate pod restarts.

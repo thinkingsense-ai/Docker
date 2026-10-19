@@ -149,3 +149,31 @@ variable "omnigate_data_storage_gb" {
   type        = number
   default     = 2
 }
+
+# --- HTTPS (optional) -----------------------------------------------------------------------
+
+variable "enable_https" {
+  description = "Serve HTTPS (on by default). With no keystore below, the app makes a self-signed certificate at first start, which encrypts traffic but makes browsers show a \"not trusted\" warning until you supply your own certificate. Turn off only if something in front of OmniGate already provides HTTPS."
+  type        = bool
+  default     = true
+}
+
+variable "tls_keystore_base64" {
+  description = "Optional: your own certificate for HTTPS. A PKCS12 keystore (certificate plus private key), base64-encoded, for the address people will browse to. Leave blank to use the automatic self-signed certificate."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "tls_keystore_password" {
+  description = "Password of the PKCS12 keystore above. Required when a keystore is given."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "tls_https_only" {
+  description = "With HTTPS on: close plain HTTP on the load balancer (port 8080), so passwords and answers never travel unencrypted. On by default; turn off to also allow plain HTTP."
+  type        = bool
+  default     = true
+}

@@ -347,6 +347,20 @@ def lambda_handler(event, context):
                          "--set-file", f"image.pullAuthToken={pull_token_path}"]
             # Approves the trusted demo questions after install (the chart's post-install hook logs in as the admin).
             # --set-file so a password with commas or braces arrives byte for byte.
+            # HTTPS is on by default (a self-signed certificate is made at first start unless a PKCS12 is supplied). A supplied
+            # keystore and its password go in through --set-file so they arrive byte for byte.
+            https_on = str(props.get("EnableHttps", "true")).lower() == "true"
+            args += ["--set", f"tls.enabled={'true' if https_on else 'false'}",
+                     "--set", f"tls.httpsOnly={'true' if str(props.get('HttpsOnly', 'true')).lower() == 'true' else 'false'}"]
+            tls_paths = []
+            if https_on and props.get("TlsKeystoreBase64"):
+                for name, key in (("keystore", "TlsKeystoreBase64"), ("keystorePassword", "TlsKeystorePassword")):
+                    path = f"/tmp/omnigate-tls-{name}"
+                    with open(path, "w") as f:
+                        f.write(props.get(key, ""))
+                    os.chmod(path, 0o600)
+                    tls_paths.append(path)
+                    args += ["--set-file", f"tls.{name}={path}"]
             admin_pw_path = "/tmp/omnigate-admin-password"
             with open(admin_pw_path, "w") as f:
                 f.write(admin_password)
@@ -357,11 +371,11 @@ def lambda_handler(event, context):
             try:
                 run_helm(args)
             finally:
-                for leftover in (pull_token_path, license_path, admin_pw_path):
+                for leftover in (pull_token_path, license_path, admin_pw_path, *tls_paths):
                     if leftover and os.path.exists(leftover):
                         os.remove(leftover)
             lb_host = get_lb_hostname(namespace, f"{release_name}-omnigate-http")
-            ask_app_url = f"http://{lb_host}:8080/" if lb_host else ""
+            ask_app_url = (f"https://{lb_host}/" if https_on else f"http://{lb_host}:8080/") if lb_host else ""
             send_response(event, context, "SUCCESS", physical_resource_id=physical_id, data={"AskAppUrl": ask_app_url})
 
         elif request_type == "Delete":

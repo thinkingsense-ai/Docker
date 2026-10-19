@@ -1,0 +1,36 @@
+{{- if include "omnigate.tlsAuto" . }}
+# Lets the pod's first-start step read its own load balancer address from the Service, so the self-signed certificate can name it
+# (see the tls-address init container). Read-only, one Service, nothing else.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "omnigate.fullname" . }}-omnigate
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "omnigate.fullname" . }}-omnigate-read-service
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["services"]
+    resourceNames: ["{{ include "omnigate.fullname" . }}-omnigate-http"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "omnigate.fullname" . }}-omnigate-read-service
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "omnigate.fullname" . }}-omnigate
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "omnigate.fullname" . }}-omnigate-read-service
+{{- end }}

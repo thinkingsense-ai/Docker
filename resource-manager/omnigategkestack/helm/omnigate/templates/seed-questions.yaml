@@ -38,7 +38,7 @@ data:
 {{ .Files.Get "files/demo-questions.json" | indent 4 }}
   seed.py: |
     import json, sys, time, os, urllib.request, urllib.parse, http.cookiejar
-    base = "http://{{ $fullname }}-omnigate-http:8080"
+    base = "http://{{ $fullname }}-omnigate-internal:8080"
     def log(m): print("seed-questions:", m, flush=True)
     jar = http.cookiejar.CookieJar()
     class NoRedirect(urllib.request.HTTPRedirectHandler):

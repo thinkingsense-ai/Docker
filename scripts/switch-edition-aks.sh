@@ -2,7 +2,7 @@
 # Switch a running Azure (AKS) stack between the free and commercial OmniGate image without rebuilding the cluster.
 #
 #   switch-edition-aks.sh --resource-group omnigate-aks-rg --to commercial --pull-user <ns/user> --pull-token <auth token> \
-#                         [--image-tag v0.10.4] [--url http://<lb>:8080 --admin-token <token>]
+#                         [--image-tag v0.10.4] [--url https://<lb> --admin-token <token>]
 #   switch-edition-aks.sh --resource-group omnigate-aks-rg --to free
 #
 # Only the image changes: the script fetches cluster credentials and runs `helm upgrade --reuse-values` with the new image, so every

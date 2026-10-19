@@ -3,7 +3,7 @@
 #
 #   set-licence.sh --token ts1.<payload>.<signature>            # or: --file /path/to/licence
 #                  [--kubeconfig F] [--context C] [--namespace default] [--release omnigate]
-#                  [--restart] [--url http://<lb>:8080 --admin-token <token>] [--force]
+#                  [--restart] [--url https://<lb> --admin-token <token>] [--force]
 #
 # The licence goes into the deployment's licence Secret; the app re-reads it every minute, so a RENEWAL needs no restart.
 # The FIRST activation needs the OmniGate pods restarted once (--restart does a rolling restart): the data-source limit and
@@ -66,7 +66,7 @@ PY
 )
   WANT_EXP=${WANT% *}; WANT_STATE=${WANT#* }
   for _ in $(seq 1 30); do
-    R=$(curl -s -m 10 -H "Authorization: Bearer $ATOK" "$URL/api/config" | python3 -c "
+    R=$(curl -sk -m 10 -H "Authorization: Bearer $ATOK" "$URL/api/config" | python3 -c "
 import sys,json;e=json.load(sys.stdin)['edition'];print(e.get('licenseStatus','?'),e['edition'],(e.get('licenseExpiresAt') or '')[:19],e.get('licenseCustomer',''))" 2>/dev/null || true)
     set -- $R; STATE=${1:-}; EXP=${3:-}
     if [ "$EXP" = "$WANT_EXP" ]; then

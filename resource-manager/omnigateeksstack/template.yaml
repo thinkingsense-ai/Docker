@@ -28,6 +28,10 @@ Metadata:
           - OmnigateAdminUsername
           - OmnigateAdminPassword
           - OmnigateAdminApiToken
+          - EnableHttps
+          - HttpsOnly
+          - TlsKeystoreBase64
+          - TlsKeystorePassword
       - Label:
           default: "Commercial edition (subscribers only)"
         Parameters:
@@ -68,6 +72,14 @@ Metadata:
         default: "Admin console password (optional)"
       OmnigateAdminApiToken:
         default: "Admin API token (optional)"
+      EnableHttps:
+        default: "Serve HTTPS (recommended)"
+      HttpsOnly:
+        default: "HTTPS only (close plain HTTP on port 8080)"
+      TlsKeystoreBase64:
+        default: "Your own certificate (optional, PKCS12 base64)"
+      TlsKeystorePassword:
+        default: "Certificate password"
       OmnigateLicense:
         default: "Commercial licence"
       ImageRepository:
@@ -144,6 +156,26 @@ Parameters:
     NoEcho: true
     Default: ""
     Description: "Optional bearer token (any long random string) granting admin-role access to the admin API, for scripts. Blank = none."
+  EnableHttps:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+    Description: "Serve HTTPS (on by default). With no certificate below, the app makes a self-signed one at first start: traffic is encrypted, but browsers show a 'not trusted' warning until you supply your own certificate."
+  HttpsOnly:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+    Description: "With HTTPS on: close plain HTTP (port 8080) on the load balancer so nothing travels unencrypted."
+  TlsKeystoreBase64:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: "Optional: your own certificate, a PKCS12 file (certificate plus private key) base64-encoded (for example: base64 -i keystore.p12). Blank = the automatic self-signed certificate."
+  TlsKeystorePassword:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: "Password of the PKCS12 file above. Required when one is given."
   AllowedClientCidrs:
     Type: String
     Default: ""
@@ -816,6 +848,10 @@ Resources:
       AdminUsername: !Ref OmnigateAdminUsername
       AdminPassword: !Ref OmnigateAdminPassword
       AdminApiToken: !Ref OmnigateAdminApiToken
+      EnableHttps: !Ref EnableHttps
+      HttpsOnly: !Ref HttpsOnly
+      TlsKeystoreBase64: !Ref TlsKeystoreBase64
+      TlsKeystorePassword: !Ref TlsKeystorePassword
       AllowedClientCidrs: !Ref AllowedClientCidrs
       LlmApiKey: !Ref OmnigateLlmApiKey
 

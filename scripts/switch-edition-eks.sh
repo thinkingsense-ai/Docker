@@ -2,7 +2,7 @@
 # Switch a running AWS (EKS) stack between the free and commercial OmniGate image without rebuilding the cluster.
 #
 #   switch-edition-eks.sh --stack-name omnigate-eks --to commercial --pull-user <ns/user> --pull-token <auth token> \
-#                         [--region us-east-1] [--image-tag v0.10.4] [--url http://<lb>:8080 --admin-token <token>]
+#                         [--region us-east-1] [--image-tag v0.10.4] [--url https://<lb> --admin-token <token>]
 #   switch-edition-eks.sh --stack-name omnigate-eks --to free
 #
 # Only the image changes; the cluster, network, database volumes and OmniGate's saved configuration stay, and the OmniGate pod restarts.
