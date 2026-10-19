@@ -45,7 +45,7 @@ the same way `docker compose up` pulls from a registry.
    oci ce cluster create-kubeconfig --cluster-id <cluster_id> --region <region> --file $HOME/.kube/config --token-version 2.0.0 && \
    for i in $(seq 1 30); do
      IP=$(kubectl get svc omnigate-omnigate-http -n default -o json 2>/dev/null | jq -r '.status.loadBalancer.ingress[]?.ip' | grep -Ev '^(10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.)' | head -1)
-     [ -n "$IP" ] && echo "Ask app URL: http://$IP:8080/" && break
+     [ -n "$IP" ] && echo "Ask app URL: https://$IP/" && break
      sleep 10
    done
    ```
@@ -78,18 +78,24 @@ anyone who can reach the load balancer's address. (Earlier stack versions left t
 version turns the requirement on.) Scripts that call the API need an **Admin API token** (`omnigate_admin_api_token`, any long
 random string) sent as `Authorization: Bearer <token>`. Single sign-on, if you set it up, signs in the same admin console.
 
-## Optional HTTPS
+## HTTPS (on by default)
 
-By default the app answers on plain `http://<address>:8080`. To turn on HTTPS, give the stack a PKCS12 keystore (certificate and private key,
-base64-encoded) in **TLS keystore** (`tls_keystore_base64`) and its **TLS keystore password**. The app then also answers on port 443 of the load
-balancer (the load balancer is a plain TCP pass-through, so the certificate is the app's own). Set **HTTPS only** (`tls_https_only`) to close
-plain HTTP on 8080 entirely. Changing the keystore restarts the app. Plain HTTP has no encryption: set HTTPS only before you sign in with real
-passwords or connect real data.
+The app serves HTTPS itself (the load balancer is a plain TCP pass-through, so the certificate is the app's own), and plain HTTP on port 8080 is
+closed on the load balancer. Your address is `https://<load-balancer>/`.
 
-For internal testing, `scripts/enable-https-oke.sh --stack-id <stack ocid>` reads the load balancer's address, issues a certificate from a local
-test CA (`scripts/lib/local-ca.sh`, kept in `~/.thinkingsense-ca`), writes it into the stack's variables and applies. Trust the CA once on your
-Mac (the script prints the command) and the padlock is clean. A real deployment should use a certificate from a public authority or the
-customer's own. The certificate must name the address people browse to.
+- **No certificate supplied (the default):** the pod makes a self-signed certificate the first time it starts. It names the load balancer's address
+  (the app rejects an HTTPS request whose `Host` the certificate does not name), is kept on the data volume so it survives restarts, and is made
+  again if the address changes. Traffic is encrypted, but browsers show a "not trusted" warning until you supply your own certificate.
+- **Your own certificate:** give a PKCS12 file (certificate and private key, base64-encoded) and its password in the deploy form. It replaces the
+  automatic one; changing it restarts the app. It must name the address people browse to (a hostname you point at the load balancer is the usual
+  choice; with a certificate for a name, browse by that name).
+- **Switches:** **Serve HTTPS** (on) and **HTTPS only** (on, closes 8080). Turn HTTPS off only if something in front of OmniGate already provides it;
+  turn HTTPS only off to also allow plain HTTP on 8080.
+- **Scripts:** `verify-secure-deploy.sh` and the switch scripts accept the self-signed certificate (`curl -k`); `VERIFY_CA=<ca.pem>` verifies against a CA.
+- **Not covered yet:** certificate renewal (a supplied certificate needs replacing before it expires) and automatic certificates for a hostname (Let's Encrypt).
+
+For internal testing, `scripts/enable-https-oke.sh --stack-id <stack ocid>` swaps the automatic certificate for one from a local test CA
+(`scripts/lib/local-ca.sh`, kept in `~/.thinkingsense-ca`); trust that CA once on your Mac and the padlock is clean.
 
 ## Trusted demo questions
 

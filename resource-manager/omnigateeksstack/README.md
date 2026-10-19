@@ -57,6 +57,22 @@ Then poll with `aws cloudformation describe-stacks --stack-name omnigate-eks` un
 Customers with a commercial subscription switch a running stack to the commercial image in place, without rebuilding anything:
 see `COMMERCIAL.md`.
 
+## HTTPS (on by default)
+
+The app serves HTTPS itself (the load balancer is a plain TCP pass-through, so the certificate is the app's own), and plain HTTP on port 8080 is
+closed on the load balancer. Your address is `https://<load-balancer>/`.
+
+- **No certificate supplied (the default):** the pod makes a self-signed certificate the first time it starts. It names the load balancer's address
+  (the app rejects an HTTPS request whose `Host` the certificate does not name), is kept on the data volume so it survives restarts, and is made
+  again if the address changes. Traffic is encrypted, but browsers show a "not trusted" warning until you supply your own certificate.
+- **Your own certificate:** give a PKCS12 file (certificate and private key, base64-encoded) and its password in the deploy form. It replaces the
+  automatic one; changing it restarts the app. It must name the address people browse to (a hostname you point at the load balancer is the usual
+  choice; with a certificate for a name, browse by that name).
+- **Switches:** **Serve HTTPS** (on) and **HTTPS only** (on, closes 8080). Turn HTTPS off only if something in front of OmniGate already provides it;
+  turn HTTPS only off to also allow plain HTTP on 8080.
+- **Scripts:** `verify-secure-deploy.sh` and the switch scripts accept the self-signed certificate (`curl -k`); `VERIFY_CA=<ca.pem>` verifies against a CA.
+- **Not covered yet:** certificate renewal (a supplied certificate needs replacing before it expires) and automatic certificates for a hostname (Let's Encrypt).
+
 ## Trusted demo questions
 
 After install the stack approves five trusted questions for the seeded supply-chain data (`helm/omnigate/files/demo-questions.json`; in the EKS stack under `helm-deployer-lambda/omnigate-chart/files/`), so the Ask app's first screen shows questions that data can answer. Without them the app shows generic examples (sales by region, top products by revenue) that the supply-chain schema cannot answer. A post-install Helm hook Job does it through the admin API using the admin login; it skips questions already present and never fails the deploy.
