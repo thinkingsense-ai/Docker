@@ -186,3 +186,13 @@ tpch:
   loaderImage: docker.io/library/python:3.12-slim
   loaderDuckdbMemory: 2GB
   loaderMemoryLimit: 4Gi
+
+# HTTPS served by the app itself (PKCS12 keystore -> OMNIGATE_TLS_KEYSTORE; the app then listens on 8443). The load balancer is
+# a plain TCP pass-through, so the certificate is the app's, not the load balancer's. A keystore is required to switch it on.
+# Changing the keystore restarts the pods (the app reads it at startup).
+tls:
+  enabled: false
+  keystore: ""            # base64 of a PKCS12 file
+  keystorePassword: ""
+  port: 443               # the load balancer's HTTPS port (forwards to the app's 8443)
+  httpsOnly: false        # true: the load balancer no longer exposes plain HTTP (8080)

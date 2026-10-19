@@ -53,6 +53,10 @@ resource "oci_containerengine_cluster" "this" {
       condition     = length(local.node_images) > 0
       error_message = "Kubernetes ${local.kubernetes_version} has no Arm worker-node image in this region right now. Choose one of: ${join(", ", local.versions_with_arm_image)} (set kubernetes_version, or leave it blank for the newest)."
     }
+    precondition {
+      condition     = var.tls_keystore_base64 == "" || var.tls_keystore_password != ""
+      error_message = "A TLS keystore was given without tls_keystore_password. Set both, or leave both blank for plain HTTP."
+    }
     # Fail in seconds, before the ~15-minute cluster build: the TPC-H add-on adds two backends and the free
     # edition allows three, so on a free deployment the data would load but the app would drop the backends.
     precondition {

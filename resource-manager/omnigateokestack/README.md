@@ -78,6 +78,19 @@ anyone who can reach the load balancer's address. (Earlier stack versions left t
 version turns the requirement on.) Scripts that call the API need an **Admin API token** (`omnigate_admin_api_token`, any long
 random string) sent as `Authorization: Bearer <token>`. Single sign-on, if you set it up, signs in the same admin console.
 
+## Optional HTTPS
+
+By default the app answers on plain `http://<address>:8080`. To turn on HTTPS, give the stack a PKCS12 keystore (certificate and private key,
+base64-encoded) in **TLS keystore** (`tls_keystore_base64`) and its **TLS keystore password**. The app then also answers on port 443 of the load
+balancer (the load balancer is a plain TCP pass-through, so the certificate is the app's own). Set **HTTPS only** (`tls_https_only`) to close
+plain HTTP on 8080 entirely. Changing the keystore restarts the app. Plain HTTP has no encryption: set HTTPS only before you sign in with real
+passwords or connect real data.
+
+For internal testing, `scripts/enable-https-oke.sh --stack-id <stack ocid>` reads the load balancer's address, issues a certificate from a local
+test CA (`scripts/lib/local-ca.sh`, kept in `~/.thinkingsense-ca`), writes it into the stack's variables and applies. Trust the CA once on your
+Mac (the script prints the command) and the padlock is clean. A real deployment should use a certificate from a public authority or the
+customer's own. The certificate must name the address people browse to.
+
 ## Trusted demo questions
 
 After install the stack approves five trusted questions for the seeded supply-chain data (`helm/omnigate/files/demo-questions.json`), so the

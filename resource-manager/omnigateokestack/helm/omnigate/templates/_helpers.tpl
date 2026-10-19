@@ -28,6 +28,10 @@ metadata:
     # Secret/ConfigMap content changes -- e.g. a `terraform apply` that only changes
     # omnigate_llm_api_key or image.tag.
     checksum/secret: {{ include (print .Template.BasePath "/secrets.yaml") . | sha256sum }}
+{{- if .Values.tls.enabled }}
+    # The keystore is read once at startup, so a new certificate must roll the pods.
+    checksum/tls: {{ include (print .Template.BasePath "/tls.yaml") . | sha256sum }}
+{{- end }}
     checksum/configmap: {{ include (print .Template.BasePath "/configmap.yaml") . | sha256sum }}
 spec:
 {{- if and .Values.image.pullUsername .Values.image.pullAuthToken }}
@@ -74,9 +78,22 @@ spec:
         # annotation above, so changing it does not roll the pods.
         - name: OMNIGATE_LICENSE_FILE
           value: /etc/omnigate-license/license
+{{- if .Values.tls.enabled }}
+        - name: OMNIGATE_TLS_KEYSTORE
+          value: /etc/omnigate-tls/omnigate.p12
+        - name: OMNIGATE_TLS_KEYSTORE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "omnigate.fullname" . }}-omnigate-tls
+              key: password
+{{- end }}
       ports:
         - name: http
           containerPort: 8080
+{{- if .Values.tls.enabled }}
+        - name: https
+          containerPort: 8443
+{{- end }}
         - name: oracle-wire
           containerPort: 1521
         - name: pg-wire
@@ -95,6 +112,11 @@ spec:
         - name: license
           mountPath: /etc/omnigate-license
           readOnly: true
+{{- if .Values.tls.enabled }}
+        - name: tls
+          mountPath: /etc/omnigate-tls
+          readOnly: true
+{{- end }}
 {{- if not .Values.omnigate.configDb.external }}
         - name: data
           mountPath: /var/lib/omnigate/data
@@ -112,6 +134,11 @@ spec:
       secret:
         secretName: {{ include "omnigate.fullname" . }}-omnigate-license
         optional: true
+{{- if .Values.tls.enabled }}
+    - name: tls
+      secret:
+        secretName: {{ include "omnigate.fullname" . }}-omnigate-tls
+{{- end }}
 {{- if not .Values.omnigate.configDb.external }}
     - name: data
       persistentVolumeClaim:
