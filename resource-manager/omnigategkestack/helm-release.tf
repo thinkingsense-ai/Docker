@@ -19,11 +19,42 @@ provider "helm" {
   }
 }
 
+# Deletes the PersistentVolumeClaims (and waits for their disks to go) on `terraform destroy`, while the cluster is still alive.
+# The Postgres and OmniGate data volumes are PVCs the chart creates inside the cluster; Terraform does not track them, and
+# deleting the cluster with live PVCs orphans their Persistent Disks, which then bill forever (thinkingsense-ai/Docker#83).
+# helm_release depends on THIS resource so Helm is fully uninstalled first (deleting a PVC a live pod still uses hangs on
+# Kubernetes' pvc-protection finalizer). Mirrors the OCI stack's cleanup_pvcs. Best effort: a missing gcloud/kubectl or an
+# already-gone cluster must never block the rest of the destroy.
+resource "null_resource" "cleanup_pvcs" {
+  depends_on = [google_container_node_pool.this]
+
+  triggers = {
+    project  = var.gcp_project_id
+    cluster  = google_container_cluster.this.name
+    location = google_container_cluster.this.location
+  }
+
+  provisioner "local-exec" {
+    when = destroy
+    environment = {
+      KUBECONFIG                 = "/tmp/omnigate-destroy-kubeconfig"
+      USE_GKE_GCLOUD_AUTH_PLUGIN = "True"
+    }
+    command = <<-EOT
+      gcloud container clusters get-credentials ${self.triggers.cluster} --location ${self.triggers.location} --project ${self.triggers.project} >/dev/null 2>&1 || { echo "cleanup_pvcs: cluster not reachable, skipping"; exit 0; }
+      kubectl delete pvc --all --all-namespaces --wait=true --timeout=180s || true
+      # The PVC object disappears first; the disk is deleted by the CSI driver just after. Wait for the volumes themselves.
+      kubectl wait --for=delete pv --all --timeout=180s || true
+      rm -f /tmp/omnigate-destroy-kubeconfig
+    EOT
+  }
+}
+
 resource "helm_release" "omnigate" {
   name       = "omnigate"
   chart      = "${path.module}/helm/omnigate"
   timeout    = 600
-  depends_on = [google_container_node_pool.this]
+  depends_on = [null_resource.cleanup_pvcs]
 
   set {
     name  = "image.repository"
