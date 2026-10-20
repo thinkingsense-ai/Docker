@@ -2,8 +2,7 @@
 
 Nothing backs your ThinkingSense deployment up for you. Your data lives on the cluster's disks, and a destroyed stack deletes them. This page
 shows how to take a backup and how to bring a deployment back from one, with two scripts that work the same on OCI, AWS, Google Cloud and Azure.
-Both scripts were run end to end on a real OCI deployment (below); the clouds share the same chart, but the scripts have not yet been run on the
-other three.
+Both scripts were run end to end on real OCI, AWS and Azure deployments (below). Google Cloud uses the same chart and scripts but has not been run.
 
 ## What a backup contains
 
@@ -71,10 +70,21 @@ licence installed:
 5. A running copy taken *while the admin console was being written to* still restored to a working app, holding the entries written before the
    copy (14 of 40): an earlier point in time, not a corrupted one.
 
+The same test was then repeated on **AWS** (`eks-stack-v1.0.16`) and **Azure** (`aks-stack-v1.0.12`), each with a fresh deployment, with the same data and
+the same checks:
+
+| | Backup, running / consistent | Restore, consistent backup | Restore, running backup over damaged data | Result |
+|---|---|---|---|---|
+| OCI | 6 s / 15 s | 43 s | 38 s | identical to the original |
+| AWS | 7 s / 21 s | 39 s | 46 s | identical to the original |
+| Azure | 3 s / 12 s | 35 s | 35 s | identical to the original |
+
+"Identical" means the 100,000 rows had the same checksum, the demo-data change, all admin-console entries, the licence (commercial edition) and the
+logins were back. AWS and Azure were destroyed completely before the fresh deployment (AWS left no volumes behind).
+
 ## Not covered
 
-- **The other three clouds** use the same scripts and chart but were not run there. The procedure for each is the same; only getting `kubectl`
-  access differs (above).
+- **Google Cloud** uses the same scripts and chart but was not run there. The procedure is the same; only getting `kubectl` access differs (above).
 - **Several replicas with an external config database:** the settings are in the database, so the database dumps cover them. The scripts detect
   there is no data volume and say so. Not tested.
 - **Large data sets:** the 100,000-row test took seconds. A multi-gigabyte database (for example the TPC-H add-on) takes proportionally longer and

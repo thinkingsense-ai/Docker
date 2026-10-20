@@ -195,7 +195,7 @@ closed on the load balancer. Your address is `https://<load-balancer>/`.
 
 **Upgrading or rolling back a running deployment:** see [UPGRADING.md](https://github.com/thinkingsense-ai/Docker/blob/main/UPGRADING.md) (how to upgrade the stack and the app, what to back up first, and what to do if an upgrade fails).
 
-**Backing up and restoring:** see [BACKUP-AND-RESTORE.md](https://github.com/thinkingsense-ai/Docker/blob/main/BACKUP-AND-RESTORE.md) (two scripts, tested end to end on OCI).
+**Backing up and restoring:** see [BACKUP-AND-RESTORE.md](https://github.com/thinkingsense-ai/Docker/blob/main/BACKUP-AND-RESTORE.md) (two scripts, tested end to end on OCI, AWS and Azure).
 
 ## Trusted demo questions
 
