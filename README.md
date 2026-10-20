@@ -37,6 +37,8 @@ by the `thinkingsense-ai/Server` repo's own Dockerfile rather than downloaded fr
 Point it at your own Postgres via `OMNIGATE_BACKENDS` (see the Server repo's README) instead of
 using this repo's `docker-compose.yml`.
 
+**Upgrading a cloud deployment?** See [UPGRADING.md](UPGRADING.md).
+
 ### Where to go once it's running
 
 | | URL | Sign in with |
