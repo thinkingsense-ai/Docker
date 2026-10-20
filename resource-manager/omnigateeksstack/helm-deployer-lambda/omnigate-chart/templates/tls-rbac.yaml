@@ -1,6 +1,6 @@
-{{- if include "omnigate.tlsAuto" . }}
-# Lets the pod's first-start step read its own load balancer address from the Service, so the self-signed certificate can name it
-# (see the tls-address init container). Read-only, one Service, nothing else.
+# The pod's ServiceAccount. Always created, even when nothing needs it: Helm does not remove a serviceAccountName from a Deployment when a later
+# release stops setting it, so a conditional ServiceAccount left the pod pointing at one that no longer existed (switching HTTPS off, or from the
+# automatic certificate to your own, then made the pod impossible to create).
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -8,6 +8,9 @@ metadata:
   labels:
     {{- include "omnigate.labels" . | nindent 4 }}
 ---
+{{- if include "omnigate.tlsAuto" . }}
+# Lets the pod's first-start step read its own load balancer address from the Service, so the self-signed certificate can name it
+# (see the tls-address init container). Read-only, one Service, nothing else.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:

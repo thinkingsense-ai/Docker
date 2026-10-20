@@ -39,9 +39,7 @@ metadata:
 {{- end }}
     checksum/configmap: {{ include (print .Template.BasePath "/configmap.yaml") . | sha256sum }}
 spec:
-{{- if include "omnigate.tlsAuto" . }}
   serviceAccountName: {{ include "omnigate.fullname" . }}-omnigate
-{{- end }}
 {{- if and .Values.image.pullUsername .Values.image.pullAuthToken }}
   imagePullSecrets:
     - name: {{ include "omnigate.fullname" . }}-omnigate-imagepull

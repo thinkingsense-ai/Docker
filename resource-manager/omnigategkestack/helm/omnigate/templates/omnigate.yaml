@@ -43,9 +43,7 @@ spec:
 {{- end }}
         checksum/configmap: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
     spec:
-{{- if include "omnigate.tlsAuto" . }}
       serviceAccountName: {{ include "omnigate.fullname" . }}-omnigate
-{{- end }}
       # Confirmed live: GKE automatically taints every Arm (T2A) node pool with
       # kubernetes.io/arch=arm64:NoSchedule (undocumented in the AWS/OCI charts because neither
       # cloud's default node type does this -- EKS Graviton nodes and OKE's A1.Flex nodes don't
