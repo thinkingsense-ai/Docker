@@ -34,10 +34,14 @@ local_ca_issue_p12() {
     if [[ $a =~ ^[0-9.]+$ ]] || [[ $a == *:* ]]; then san="$san${san:+,}IP:$a"; else san="$san${san:+,}DNS:$a"; fi
   done
   openssl genrsa -out "$d/s.key" 2048 2>/dev/null
-  openssl req -new -key "$d/s.key" -subj "/O=ThinkingSense internal testing/CN=$first" -out "$d/s.csr"
+  # A common name is limited to 64 characters (an AWS load balancer name is longer); the real names are in the subjectAltName either way.
+  local cn=$first; [ ${#cn} -gt 64 ] && cn=omnigate
+  openssl req -new -key "$d/s.key" -subj "/O=ThinkingSense internal testing/CN=$cn" -out "$d/s.csr"
   printf 'basicConstraints=CA:FALSE\nkeyUsage=digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\nsubjectAltName=%s\n' "$san" > "$d/ext"
   openssl x509 -req -in "$d/s.csr" -CA "$LOCAL_CA_DIR/ca.pem" -CAkey "$LOCAL_CA_DIR/ca.key" -CAcreateserial -days 365 -sha256 \
     -extfile "$d/ext" -out "$d/s.pem" 2>/dev/null
-  openssl pkcs12 -export -inkey "$d/s.key" -in "$d/s.pem" -certfile "$LOCAL_CA_DIR/ca.pem" -name omnigate -passout "pass:$pass" -out "$out"
+  # LOCAL_CA_NO_CHAIN=1 leaves the CA certificate out of the keystore (smaller: AWS CloudFormation limits a parameter to 4096 characters).
+  local chain=(-certfile "$LOCAL_CA_DIR/ca.pem"); [ -n "${LOCAL_CA_NO_CHAIN:-}" ] && chain=()
+  openssl pkcs12 -export -inkey "$d/s.key" -in "$d/s.pem" ${chain[@]+"${chain[@]}"} -name omnigate -passout "pass:$pass" -out "$out"
   rm -rf "$d"
 }
