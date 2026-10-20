@@ -9,5 +9,5 @@ output "kubeconfig_command" {
 
 output "ask_app_url" {
   description = "Populated once the LoadBalancer gets a public IP -- may take a few minutes after apply finishes; check `kubectl get svc` if empty."
-  value       = "http://<pending-lb-ip>:8080/  (run `kubectl get svc omnigate-omnigate-http` to get the real IP once provisioned)"
+  value       = var.enable_https ? "https://<pending-lb-ip>/  (run `kubectl get svc omnigate-omnigate-http` to get the real IP once provisioned; the certificate is self-signed unless you supplied your own, so browsers warn)" : "http://<pending-lb-ip>:8080/  (run `kubectl get svc omnigate-omnigate-http` to get the real IP once provisioned)"
 }

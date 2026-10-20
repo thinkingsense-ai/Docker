@@ -1,4 +1,4 @@
-{{- if .Values.tls.enabled }}
+{{- if include "omnigate.tlsCustom" . }}
 # The HTTPS keystore for the app (see values.yaml `tls`). Separate from the main Secret so the keystore is mounted as a file,
 # not injected as an environment variable.
 apiVersion: v1

@@ -4,7 +4,7 @@
 # restarts once on the new image.
 #
 #   switch-edition-oke.sh --stack-id <stack ocid> --to commercial --pull-user <ns/user> --pull-token <auth token> \
-#                         [--image-tag v0.10.4] [--url http://<lb>:8080 --admin-token <token>]
+#                         [--image-tag v0.10.4] [--url https://<lb> --admin-token <token>]
 #   switch-edition-oke.sh --stack-id <stack ocid> --to free      # back to the public image (e.g. after a lapsed subscription)
 #
 # The pull user and token are the customer's own OCIR credential for the private commercial repository; they are what
@@ -71,7 +71,7 @@ while :; do S=$(oci resource-manager job get --job-id "$JOB" --query 'data."life
 echo "apply: $S"; [ "$S" = SUCCEEDED ] || exit 1
 if [ -n "$URL" ] && [ -n "$ATOK" ]; then
   for i in $(seq 1 40); do
-    E=$(curl -s -m 10 -H "Authorization: Bearer $ATOK" "$URL/api/config" | python3 -c "import sys,json;print(json.load(sys.stdin)['edition']['edition'])" 2>/dev/null || true)
+    E=$(curl -sk -m 10 -H "Authorization: Bearer $ATOK" "$URL/api/config" | python3 -c "import sys,json;print(json.load(sys.stdin)['edition']['edition'])" 2>/dev/null || true)
     [ -n "$E" ] && { echo "running edition: $E"; exit 0; }; sleep 15
   done
   echo "could not read the running edition from $URL/api/config" >&2; exit 1

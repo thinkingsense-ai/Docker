@@ -27,6 +27,20 @@ param adminPassword string = ''
 @secure()
 param adminApiToken string = ''
 
+@description('Serve HTTPS (on by default). With no certificate below, the app makes a self-signed one at first start: traffic is encrypted, but browsers show a "not trusted" warning until you supply your own certificate.')
+param enableHttps bool = true
+
+@description('With HTTPS on: close plain HTTP (port 8080) on the load balancer so nothing travels unencrypted. On by default.')
+param httpsOnly bool = true
+
+@description('Optional: your own certificate, a PKCS12 file (certificate plus private key) base64-encoded. Blank = the automatic self-signed certificate.')
+@secure()
+param tlsKeystoreBase64 string = ''
+
+@description('Password of the PKCS12 file above. Required when one is given.')
+@secure()
+param tlsKeystorePassword string = ''
+
 @description('Optional. Comma-separated CIDR ranges (e.g. 203.0.113.7/32) allowed to reach OmniGate. Blank = open to the internet, fine for a first try-out; worth setting once real data is connected, as one more layer on top of the logins.')
 param allowedClientCidrs string = ''
 
@@ -116,6 +130,10 @@ module helmInstall 'modules/deploymentScript.bicep' = {
     adminUsername: adminUsername
     adminPassword: empty(adminPassword) ? appPassword : adminPassword
     adminApiToken: adminApiToken
+    enableHttps: enableHttps
+    httpsOnly: httpsOnly
+    tlsKeystoreBase64: tlsKeystoreBase64
+    tlsKeystorePassword: tlsKeystorePassword
     omnigateLicense: omnigateLicense
     imagePullUsername: imagePullUsername
     imagePullAuthToken: imagePullAuthToken

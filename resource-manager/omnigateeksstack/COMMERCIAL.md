@@ -18,7 +18,7 @@ You receive a licence token (it starts with `ts1.`) valid for the term you bough
 ```bash
 aws eks update-kubeconfig --name omnigate-eks --region <region>
 scripts/set-licence.sh --token ts1.<...> --restart \
-  --url http://<your-load-balancer>:8080 --admin-token <your admin API token>
+  --url https://<your-load-balancer> --admin-token <your admin API token>
 ```
 
 - The script reads the token first and refuses an expired one. Only the app can check the signature, so with `--url` and
@@ -60,7 +60,7 @@ the customer and the expiry date. An invalid or expired licence never stops the 
 ```bash
 scripts/switch-edition-eks.sh --stack-name omnigate-eks --region us-east-1 --to commercial \
   --pull-user <namespace/user> --pull-token <auth token> \
-  --url http://<your-load-balancer>:8080 --admin-token <your admin API token>
+  --url https://<your-load-balancer> --admin-token <your admin API token>
 ```
 
 The script checks the credential and the image against the registry first and changes nothing if either is refused. It then

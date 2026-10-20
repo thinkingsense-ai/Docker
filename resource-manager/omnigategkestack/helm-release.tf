@@ -103,6 +103,22 @@ resource "helm_release" "omnigate" {
     type  = "string"
     value = replace(replace(replace(replace(var.omnigate_admin_password != "" ? var.omnigate_admin_password : var.omnigate_app_password, "\\", "\\\\"), ",", "\\,"), "{", "\\{"), "}", "\\}")
   }
+  set {
+    name  = "tls.enabled"
+    value = var.enable_https
+  }
+  set {
+    name  = "tls.httpsOnly"
+    value = var.tls_https_only
+  }
+  set_sensitive {
+    name  = "tls.keystore"
+    value = var.tls_keystore_base64
+  }
+  set_sensitive {
+    name  = "tls.keystorePassword"
+    value = var.tls_keystore_password
+  }
   set_sensitive {
     name  = "omnigate.adminApiToken"
     value = var.omnigate_admin_api_token

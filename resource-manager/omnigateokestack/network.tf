@@ -227,7 +227,7 @@ resource "oci_core_subnet" "lb" {
 locals {
   cidr_list    = compact(split(",", replace(var.allowed_client_cidrs, " ", "")))
   client_cidrs = length(local.cidr_list) > 0 ? local.cidr_list : ["0.0.0.0/0"]
-  # HTTPS is on when a keystore is supplied (see variables.tf).
-  https_enabled = nonsensitive(var.tls_keystore_base64 != "")
+  # HTTPS is on by default (see variables.tf).
+  https_enabled = var.enable_https
   http_open     = !(local.https_enabled && var.tls_https_only)
 }

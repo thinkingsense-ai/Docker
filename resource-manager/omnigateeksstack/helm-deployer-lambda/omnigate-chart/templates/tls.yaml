@@ -1,0 +1,14 @@
+{{- if include "omnigate.tlsCustom" . }}
+# The HTTPS keystore for the app (see values.yaml `tls`). Separate from the main Secret so the keystore is mounted as a file,
+# not injected as an environment variable.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "omnigate.fullname" . }}-omnigate-tls
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+type: Opaque
+data:
+  omnigate.p12: {{ required "tls.keystore (base64 PKCS12) is required when tls.enabled is true" .Values.tls.keystore | quote }}
+  password: {{ required "tls.keystorePassword is required when tls.enabled is true" .Values.tls.keystorePassword | b64enc | quote }}
+{{- end }}

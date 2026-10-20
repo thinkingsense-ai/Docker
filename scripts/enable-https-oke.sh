@@ -1,5 +1,6 @@
 #!/bin/bash
-# Turn on HTTPS for a running OKE stack, for INTERNAL TESTING with a local certificate authority (see lib/local-ca.sh).
+# Replace the automatic self-signed certificate of a running OKE stack with one from a LOCAL TEST CA, for INTERNAL TESTING (see
+# lib/local-ca.sh). HTTPS itself is on by default; this only swaps the certificate so browsers that trust the local CA show a clean padlock.
 # The certificate has to name the load balancer's address, which only exists after the first deploy, so this runs after it:
 # it reads the address, issues a certificate, writes it into the stack's variables and applies. The app restarts once.
 #

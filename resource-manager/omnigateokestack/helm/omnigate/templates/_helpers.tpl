@@ -6,6 +6,11 @@
 {{- printf "%s-postgres" (include "omnigate.fullname" .) -}}
 {{- end -}}
 
+{{- /* HTTPS modes: "custom" when a keystore is supplied, "auto" (a self-signed certificate made at first start) when HTTPS is on without one. */ -}}
+{{- define "omnigate.tlsCustom" -}}{{- if and .Values.tls.enabled .Values.tls.keystore }}true{{ end -}}{{- end -}}
+{{- define "omnigate.tlsAuto" -}}{{- if and .Values.tls.enabled (not .Values.tls.keystore) }}true{{ end -}}{{- end -}}
+{{- define "omnigate.tlsDir" -}}{{- if .Values.omnigate.configDb.external }}/etc/omnigate-tls{{ else }}/var/lib/omnigate/data/tls{{ end -}}{{- end -}}
+
 {{- define "omnigate.labels" -}}
 app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/part-of: omnigate
@@ -28,17 +33,80 @@ metadata:
     # Secret/ConfigMap content changes -- e.g. a `terraform apply` that only changes
     # omnigate_llm_api_key or image.tag.
     checksum/secret: {{ include (print .Template.BasePath "/secrets.yaml") . | sha256sum }}
-{{- if .Values.tls.enabled }}
+{{- if include "omnigate.tlsCustom" . }}
     # The keystore is read once at startup, so a new certificate must roll the pods.
     checksum/tls: {{ include (print .Template.BasePath "/tls.yaml") . | sha256sum }}
 {{- end }}
     checksum/configmap: {{ include (print .Template.BasePath "/configmap.yaml") . | sha256sum }}
 spec:
+{{- if include "omnigate.tlsAuto" . }}
+  serviceAccountName: {{ include "omnigate.fullname" . }}-omnigate
+{{- end }}
 {{- if and .Values.image.pullUsername .Values.image.pullAuthToken }}
   imagePullSecrets:
     - name: {{ include "omnigate.fullname" . }}-omnigate-imagepull
 {{- end }}
   initContainers:
+{{- if include "omnigate.tlsAuto" . }}
+    # No certificate supplied: make a self-signed one for the load balancer's address, the first time (kept on the data volume, so it survives
+    # restarts; made again if the address changes). The app rejects an HTTPS request whose Host is not named in the certificate ("Invalid SNI"), so the
+    # address has to be in it: the first step reads it from the Service, the second makes the certificate with the image's own keytool. Browsers
+    # show a "not trusted" warning for it until you supply your own certificate (tls.keystore).
+    - name: tls-address
+      image: docker.io/library/python:3.12-slim
+      command:
+        - python
+        - -c
+        - |
+          import json, os, ssl, time, urllib.request
+          b = "/var/run/secrets/kubernetes.io/serviceaccount/"
+          tok = open(b + "token").read(); ns = open(b + "namespace").read()
+          ctx = ssl.create_default_context(cafile=b + "ca.crt")
+          url = "https://%s:%s/api/v1/namespaces/%s/services/{{ include "omnigate.fullname" . }}-omnigate-http" % (os.environ["KUBERNETES_SERVICE_HOST"], os.environ["KUBERNETES_SERVICE_PORT"], ns)
+          addrs = []
+          for _ in range(180):
+              try:
+                  req = urllib.request.Request(url, headers={"Authorization": "Bearer " + tok})
+                  ing = json.load(urllib.request.urlopen(req, context=ctx, timeout=10)).get("status", {}).get("loadBalancer", {}).get("ingress", [])
+                  addrs = sorted(x.get("ip") or x.get("hostname") for x in ing if x.get("ip") or x.get("hostname"))
+              except Exception as e:
+                  print("waiting for the load balancer address:", e)
+              if addrs:
+                  break
+              time.sleep(5)
+          open("/work/address", "w").write(" ".join(addrs))
+          print("load balancer address(es):", addrs or "none yet; the certificate will not name one")
+      volumeMounts:
+        - name: tls-work
+          mountPath: /work
+    - name: tls-init
+      image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      command:
+        - sh
+        - -c
+        - |
+          D={{ include "omnigate.tlsDir" . }}
+          mkdir -p $D
+          A=$(cat /work/address 2>/dev/null || true)
+          if [ -s $D/omnigate.p12 ] && [ "$(cat $D/address 2>/dev/null)" = "$A" ]; then exit 0; fi
+          rm -f $D/omnigate.p12
+          SAN="dns:omnigate,dns:localhost"
+          for a in $A; do case "$a" in *[a-zA-Z]*) SAN="$SAN,dns:$a";; *) SAN="$SAN,ip:$a";; esac; done
+          keytool -genkeypair -alias omnigate -keyalg RSA -keysize 2048 -validity 3650 -storetype PKCS12 -keystore $D/omnigate.p12 \
+            -storepass omnigate-selfsigned -keypass omnigate-selfsigned -dname "CN=omnigate" -ext "san=$SAN"
+          printf '%s' "$A" > $D/address
+      volumeMounts:
+        - name: tls-work
+          mountPath: /work
+{{- if .Values.omnigate.configDb.external }}
+        - name: tls
+          mountPath: /etc/omnigate-tls
+{{- else }}
+        - name: data
+          mountPath: /var/lib/omnigate/data
+{{- end }}
+{{- end }}
     - name: wait-for-postgres
       image: docker.io/library/postgres:16-alpine
       command:
@@ -78,7 +146,7 @@ spec:
         # annotation above, so changing it does not roll the pods.
         - name: OMNIGATE_LICENSE_FILE
           value: /etc/omnigate-license/license
-{{- if .Values.tls.enabled }}
+{{- if include "omnigate.tlsCustom" . }}
         - name: OMNIGATE_TLS_KEYSTORE
           value: /etc/omnigate-tls/omnigate.p12
         - name: OMNIGATE_TLS_KEYSTORE_PASSWORD
@@ -86,6 +154,11 @@ spec:
             secretKeyRef:
               name: {{ include "omnigate.fullname" . }}-omnigate-tls
               key: password
+{{- else if include "omnigate.tlsAuto" . }}
+        - name: OMNIGATE_TLS_KEYSTORE
+          value: {{ include "omnigate.tlsDir" . }}/omnigate.p12
+        - name: OMNIGATE_TLS_KEYSTORE_PASSWORD
+          value: omnigate-selfsigned
 {{- end }}
       ports:
         - name: http
@@ -112,7 +185,11 @@ spec:
         - name: license
           mountPath: /etc/omnigate-license
           readOnly: true
-{{- if .Values.tls.enabled }}
+{{- if include "omnigate.tlsCustom" . }}
+        - name: tls
+          mountPath: /etc/omnigate-tls
+          readOnly: true
+{{- else if and (include "omnigate.tlsAuto" .) .Values.omnigate.configDb.external }}
         - name: tls
           mountPath: /etc/omnigate-tls
           readOnly: true
@@ -134,10 +211,17 @@ spec:
       secret:
         secretName: {{ include "omnigate.fullname" . }}-omnigate-license
         optional: true
-{{- if .Values.tls.enabled }}
+{{- if include "omnigate.tlsCustom" . }}
     - name: tls
       secret:
         secretName: {{ include "omnigate.fullname" . }}-omnigate-tls
+{{- else if and (include "omnigate.tlsAuto" .) .Values.omnigate.configDb.external }}
+    - name: tls
+      emptyDir: {}
+{{- end }}
+{{- if include "omnigate.tlsAuto" . }}
+    - name: tls-work
+      emptyDir: {}
 {{- end }}
 {{- if not .Values.omnigate.configDb.external }}
     - name: data

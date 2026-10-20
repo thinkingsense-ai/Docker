@@ -187,12 +187,12 @@ tpch:
   loaderDuckdbMemory: 2GB
   loaderMemoryLimit: 4Gi
 
-# HTTPS served by the app itself (PKCS12 keystore -> OMNIGATE_TLS_KEYSTORE; the app then listens on 8443). The load balancer is
-# a plain TCP pass-through, so the certificate is the app's, not the load balancer's. A keystore is required to switch it on.
-# Changing the keystore restarts the pods (the app reads it at startup).
+# HTTPS is on by default and plain HTTP is closed on the load balancer. The app serves HTTPS itself (the load balancer is a plain TCP
+# pass-through, so the certificate is the app's): with no keystore given, a self-signed certificate is made at first start (browsers warn
+# "not trusted" until you supply your own); a keystore (PKCS12, base64) replaces it, and changing it restarts the pods.
 tls:
-  enabled: false
-  keystore: ""            # base64 of a PKCS12 file
+  enabled: true
+  httpsOnly: true         # false: the load balancer also exposes plain HTTP on 8080
+  keystore: ""            # base64 of a PKCS12 file with your certificate and key
   keystorePassword: ""
   port: 443               # the load balancer's HTTPS port (forwards to the app's 8443)
-  httpsOnly: false        # true: the load balancer no longer exposes plain HTTP (8080)

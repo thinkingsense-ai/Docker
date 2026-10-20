@@ -92,6 +92,50 @@
             }
           },
           {
+            "name": "enableHttps",
+            "type": "Microsoft.Common.CheckBox",
+            "label": "Serve HTTPS (recommended)",
+            "defaultValue": true,
+            "toolTip": "On by default. With no certificate below the app makes a self-signed one at first start: traffic is encrypted, but browsers show a 'not trusted' warning until you supply your own."
+          },
+          {
+            "name": "httpsOnly",
+            "type": "Microsoft.Common.CheckBox",
+            "label": "HTTPS only (close plain HTTP on port 8080)",
+            "defaultValue": true,
+            "toolTip": "On by default, so nothing travels unencrypted. Turn off to also allow plain HTTP."
+          },
+          {
+            "name": "tlsKeystoreBase64",
+            "type": "Microsoft.Common.PasswordBox",
+            "label": {
+              "password": "Your own certificate (optional)",
+              "confirmPassword": "Confirm"
+            },
+            "toolTip": "A PKCS12 file with your certificate and private key, base64-encoded (for example: base64 -i keystore.p12). Leave blank to use the automatic self-signed certificate.",
+            "constraints": {
+              "required": false
+            },
+            "options": {
+              "hideConfirmation": true
+            }
+          },
+          {
+            "name": "tlsKeystorePassword",
+            "type": "Microsoft.Common.PasswordBox",
+            "label": {
+              "password": "Certificate password",
+              "confirmPassword": "Confirm password"
+            },
+            "toolTip": "Password of the certificate file above. Required when one is given.",
+            "constraints": {
+              "required": false
+            },
+            "options": {
+              "hideConfirmation": true
+            }
+          },
+          {
             "name": "allowedClientCidrs",
             "type": "Microsoft.Common.TextBox",
             "label": "Restrict access to these addresses (optional)",
@@ -293,7 +337,11 @@
       "adminApiToken": "[steps('application').adminApiToken]",
       "imagePullUsername": "[steps('advanced').imagePullUsername]",
       "imagePullAuthToken": "[steps('advanced').imagePullAuthToken]",
-      "omnigateLicense": "[steps('advanced').omnigateLicense]"
+      "omnigateLicense": "[steps('advanced').omnigateLicense]",
+      "enableHttps": "[steps('application').enableHttps]",
+      "httpsOnly": "[steps('application').httpsOnly]",
+      "tlsKeystoreBase64": "[steps('application').tlsKeystoreBase64]",
+      "tlsKeystorePassword": "[steps('application').tlsKeystorePassword]"
     }
   }
 }

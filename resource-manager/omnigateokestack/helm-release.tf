@@ -141,7 +141,7 @@ resource "helm_release" "omnigate" {
   }
   set {
     name  = "tls.enabled"
-    value = local.https_enabled
+    value = var.enable_https
   }
   set {
     name  = "tls.httpsOnly"

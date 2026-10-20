@@ -31,6 +31,12 @@ param allowedClientCidrs string
 param forceUpdateTag string = utcNow()
 @secure()
 param adminApiToken string
+param enableHttps bool
+param httpsOnly bool
+@secure()
+param tlsKeystoreBase64 string
+@secure()
+param tlsKeystorePassword string
 param imagePullUsername string
 @secure()
 param omnigateLicense string
@@ -108,6 +114,10 @@ resource helmInstall 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
       { name: 'IMAGE_PULL_USERNAME', value: imagePullUsername }
       { name: 'IMAGE_PULL_AUTH_TOKEN', secureValue: empty(imagePullAuthToken) ? 'none' : imagePullAuthToken }
       { name: 'ADMIN_API_TOKEN', secureValue: empty(adminApiToken) ? 'none' : adminApiToken }
+      { name: 'ENABLE_HTTPS', value: string(enableHttps) }
+      { name: 'TLS_HTTPS_ONLY', value: string(httpsOnly) }
+      { name: 'TLS_KEYSTORE', secureValue: empty(tlsKeystoreBase64) ? 'none' : tlsKeystoreBase64 }
+      { name: 'TLS_KEYSTORE_PASSWORD', secureValue: empty(tlsKeystorePassword) ? 'none' : tlsKeystorePassword }
       { name: 'LLM_API_KEY', secureValue: llmApiKey }
     ]
     scriptContent: '''
@@ -237,6 +247,14 @@ PYEOF
       # password with commas or braces arrives byte for byte.
       printf '%s' "$ADMIN_PASSWORD" > /tmp/omnigate-admin-password
       PULL_ARGS="$PULL_ARGS --set seedDemoQuestions.enabled=true --set-string seedDemoQuestions.adminUser=$ADMIN_USERNAME --set-file seedDemoQuestions.adminPassword=/tmp/omnigate-admin-password"
+      # HTTPS: on by default. Without a certificate of your own the app makes a self-signed one at first start. A supplied PKCS12 goes in
+      # through --set-file (and so does its password) so it arrives byte for byte.
+      PULL_ARGS="$PULL_ARGS --set tls.enabled=$ENABLE_HTTPS --set tls.httpsOnly=$TLS_HTTPS_ONLY"
+      if [ "$TLS_KEYSTORE" != none ]; then
+        printf '%s' "$TLS_KEYSTORE" > /tmp/omnigate-tls-keystore
+        printf '%s' "$TLS_KEYSTORE_PASSWORD" > /tmp/omnigate-tls-password
+        PULL_ARGS="$PULL_ARGS --set-file tls.keystore=/tmp/omnigate-tls-keystore --set-file tls.keystorePassword=/tmp/omnigate-tls-password"
+      fi
       echo "== Installing the omnigate Helm release =="
       helm upgrade --install omnigate "$CHART_DIR" \
         --set image.repository="$IMAGE_REPOSITORY" \
@@ -259,8 +277,8 @@ PYEOF
       # or by a stray `set -x`) would otherwise leak. Mirrors the redaction discipline AWS's
       # handler.py added after a real bug there leaked the *previous* password on every Update
       # event (it originally redacted only the current ResourceProperties, not the old ones).
-      rm -f /tmp/omnigate-pull-token /tmp/omnigate-license /tmp/omnigate-admin-password
-      unset OMNIGATE_LICENSE IMAGE_PULL_AUTH_TOKEN APP_PASSWORD ADMIN_PASSWORD ADMIN_API_TOKEN LLM_API_KEY APP_USERS APP_HASH AUTH_USERS ADMIN_HASH
+      rm -f /tmp/omnigate-pull-token /tmp/omnigate-license /tmp/omnigate-admin-password /tmp/omnigate-tls-keystore /tmp/omnigate-tls-password
+      unset TLS_KEYSTORE TLS_KEYSTORE_PASSWORD OMNIGATE_LICENSE IMAGE_PULL_AUTH_TOKEN APP_PASSWORD ADMIN_PASSWORD ADMIN_API_TOKEN LLM_API_KEY APP_USERS APP_HASH AUTH_USERS ADMIN_HASH
 
       echo "== Waiting for the LoadBalancer IP =="
       HTTP_IP=""
@@ -271,7 +289,7 @@ PYEOF
       done
 
       if [ -n "$HTTP_IP" ]; then
-        ASK_APP_URL="http://${HTTP_IP}:8080/"
+        if [ "$ENABLE_HTTPS" = true ] || [ "$ENABLE_HTTPS" = True ]; then ASK_APP_URL="https://${HTTP_IP}/"; else ASK_APP_URL="http://${HTTP_IP}:8080/"; fi
       else
         ASK_APP_URL="pending -- run: kubectl get svc omnigate-omnigate-http"
       fi
