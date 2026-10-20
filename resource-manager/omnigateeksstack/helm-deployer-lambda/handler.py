@@ -163,6 +163,14 @@ def ensure_lbc(cluster_name, region, vpc_id, role_arn):
     # list fix: a Classic LB buffers Server-Sent Events, breaking the Ask app's live streaming
     # trace. Installed idempotently on every deploy since it's cheap and this Lambda has no
     # persistent state to know if a previous deploy already did it.
+    # Already installed (an update of an existing stack): leave it alone. Re-running the chart regenerates its webhook certificate, and for
+    # a while afterwards every Service change fails with "failed calling webhook mservice.elbv2.k8s.aws" (seen on the first in-place stack update).
+    try:
+        run_cmd("helm", ["status", "aws-load-balancer-controller", "--namespace", "kube-system"], timeout=60)
+        print("aws-load-balancer-controller already installed; leaving it as is")
+        return
+    except Exception:
+        pass
     run_cmd("helm", ["repo", "add", "eks-charts", "https://aws.github.io/eks-charts"], timeout=60)
     run_cmd("helm", ["repo", "update"], timeout=60)
     run_cmd("helm", [
@@ -369,7 +377,16 @@ def lambda_handler(event, context):
                      "--set", f"seedDemoQuestions.adminUser={admin_username}",
                      "--set-file", f"seedDemoQuestions.adminPassword={admin_pw_path}"]
             try:
-                run_helm(args)
+                # The controller's webhook can be briefly unreachable while its pods settle; that fails any Service change. Retry that, and only that.
+                for attempt in range(5):
+                    try:
+                        run_helm(args)
+                        break
+                    except RuntimeError as e:
+                        if "failed calling webhook" not in str(e) or attempt == 4:
+                            raise
+                        print(f"load balancer controller webhook not ready (attempt {attempt + 1}); retrying in 30s")
+                        time.sleep(30)
             finally:
                 for leftover in (pull_token_path, license_path, admin_pw_path, *tls_paths):
                     if leftover and os.path.exists(leftover):

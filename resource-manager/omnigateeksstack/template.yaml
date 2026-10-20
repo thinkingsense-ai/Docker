@@ -60,7 +60,6 @@ Metadata:
           default: "Advanced"
         Parameters:
           - ImageTag
-          - SourceVersion
     ParameterLabels:
       OmnigateAppUsername:
         default: "Ask-app username"
@@ -106,8 +105,14 @@ Metadata:
         default: "Maximum nodes"
       ImageTag:
         default: "OmniGate image tag"
-      SourceVersion:
-        default: "Stack source version"
+
+Mappings:
+  # The stack release this template belongs to. CodeBuild checks this tag out of thinkingsense-ai/Docker to build the helm-deployer image, so
+  # the image always matches the template. It is NOT a parameter: a stack update that keeps previous parameter values would otherwise keep the
+  # OLD release and silently upgrade nothing. Updating the template is what moves the stack to a new release.
+  Release:
+    Current:
+      Tag: eks-stack-v1.0.15
 
 Parameters:
   ClusterName:
@@ -128,13 +133,6 @@ Parameters:
   NodeGroupMaxSize:
     Type: Number
     Default: 2
-  SourceVersion:
-    Type: String
-    Default: eks-stack-v1.0.15
-    Description: >-
-      Git tag/ref in thinkingsense-ai/Docker that CodeBuild checks out to build the
-      helm-deployer Lambda image. Pinned to a release tag (not a branch) so the image built
-      always matches this template's own version, regardless of later commits to the repo.
   OmnigateAppUsername:
     Type: String
     Default: demo
@@ -670,13 +668,14 @@ Resources:
         EnvironmentVariables:
           - Name: REPOSITORY_URI
             Value: !GetAtt HelmDeployerRepo.RepositoryUri
+          # One image tag per stack release, so a new release is a new image reference (the function below is updated, and re-run, when it changes).
           - Name: IMAGE_TAG
-            Value: latest
+            Value: !FindInMap [Release, Current, Tag]
       Source:
         Type: GITHUB
         Location: https://github.com/thinkingsense-ai/Docker.git
         BuildSpec: resource-manager/omnigateeksstack/helm-deployer-lambda/buildspec.yml
-      SourceVersion: !Ref SourceVersion
+      SourceVersion: !FindInMap [Release, Current, Tag]
 
   # Custom resource that kicks off the CodeBuild build and blocks until it finishes, so the
   # Lambda function resource (further below) isn't created until its image actually exists.
@@ -761,6 +760,8 @@ Resources:
     Properties:
       ServiceToken: !GetAtt BuildTriggerFunction.Arn
       ProjectName: !Ref HelmDeployerBuildProject
+      # Not read by the function: a new value makes this an Update, which starts a new build of the new release's deployer image.
+      SourceVersion: !FindInMap [Release, Current, Tag]
 
   # ============================== Helm-deploy Lambda ==============================
   HelmDeployerRole:
@@ -816,7 +817,10 @@ Resources:
     Properties:
       PackageType: Image
       Code:
-        ImageUri: !Sub "${HelmDeployerRepo.RepositoryUri}:latest"
+        ImageUri: !Sub
+          - "${Repo}:${Tag}"
+          - Repo: !GetAtt HelmDeployerRepo.RepositoryUri
+            Tag: !FindInMap [Release, Current, Tag]
       Role: !GetAtt HelmDeployerRole.Arn
       Timeout: 900
       MemorySize: 1536
@@ -837,6 +841,8 @@ Resources:
       LbcRoleArn: !GetAtt LbcRole.Arn
       ReleaseName: omnigate
       Namespace: default
+      # Not read by the function: a new stack release means a new deployer image (and chart), so this makes the Helm step run again.
+      SourceVersion: !FindInMap [Release, Current, Tag]
       HelmSetValues:
         image.repository: !Ref ImageRepository
         image.tag: !Ref ImageTag
