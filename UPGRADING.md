@@ -19,15 +19,9 @@ and an installed licence all stay.
 
 1. **Read the release notes** for anything that changes an address or a setting. Example: `oke-stack-v1.1.13` turned HTTPS on and closed plain HTTP, so
    `http://<address>:8080` stops working and `https://<address>/` is the new address. Bookmarks and scripts need the new URL.
-2. **Take a backup.** Nothing backs your data up for you today.
-   ```bash
-   # the demo database (and any data you added to it)
-   kubectl exec omnigate-postgres-0 -- pg_dump -U postgres postgres > omnigate-db.sql
-   # the admin console's settings (trusted questions, users, saved settings)
-   kubectl exec deploy/omnigate-omnigate -- tar czf - -C /var/lib/omnigate data > omnigate-config.tgz
-   ```
-   Both commands were run and produce a file. The settings copy is taken while the app runs, so a very recent change may not be in it. Restoring
-   from either has **not** been tested yet, so treat them as a safety net and not a proven recovery.
+2. **Take a backup.** Nothing backs your data up for you today. Run `scripts/backup-omnigate.sh --kubeconfig <file> --out <folder> --consistent`
+   (a few seconds; the app is stopped for about 12 of them). It saves your databases, the admin console's settings and the licence, and a restore
+   from it was tested end to end. Full instructions, including how to restore: [BACKUP-AND-RESTORE.md](BACKUP-AND-RESTORE.md).
 3. **Check what will change** before applying. On OCI use a *plan* first (Resource Manager: stack, then **Plan**). A normal upgrade shows `0 to add,
    0 to destroy` and only an in-place update of the Helm release (and, for a stack upgrade that touches the network, the load balancer's security
    list). If it wants to replace the cluster or the database, stop.
