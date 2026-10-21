@@ -6,6 +6,7 @@ import urllib.request
 import base64
 import hashlib
 import boto3
+import botocore.exceptions
 import botocore.session
 from botocore.signers import RequestSigner
 
@@ -365,14 +366,28 @@ def lambda_handler(event, context):
             if https_on and props.get("TlsKeystoreSecretArn"):
                 # The certificate is in Secrets Manager (a CloudFormation parameter holds at most 4096 characters): JSON with
                 # "keystore" (base64 PKCS12) and "password".
+                secret = None
+                for attempt in range(4):
+                    try:
+                        raw = boto3.client("secretsmanager", region_name=region).get_secret_value(SecretId=props["TlsKeystoreSecretArn"])["SecretString"]
+                        secret = json.loads(raw)
+                        break
+                    except botocore.exceptions.ClientError as e:
+                        code = e.response.get("Error", {}).get("Code", "ClientError")
+                        # A permission added in this same update can take a few seconds to take effect; retry that, nothing else.
+                        if code == "AccessDeniedException" and attempt < 3:
+                            print(f"secret not readable yet ({code}); retrying in 15s")
+                            time.sleep(15)
+                            continue
+                        raise RuntimeError(f"could not read the certificate secret named in TlsKeystoreSecretArn: {code}. Check the ARN, the region, "
+                                           "and that the secret uses the default AWS-managed key (aws/secretsmanager).")
+                    except ValueError:
+                        raise RuntimeError("the secret named in TlsKeystoreSecretArn is not JSON; it must be "
+                                           '{"keystore": "<base64 PKCS12>", "password": "<password>"}')
                 try:
-                    raw = boto3.client("secretsmanager", region_name=region).get_secret_value(SecretId=props["TlsKeystoreSecretArn"])["SecretString"]
-                    secret = json.loads(raw)
                     tls_values = {"keystore": secret["keystore"], "keystorePassword": secret["password"]}
-                except KeyError as e:
+                except (KeyError, TypeError) as e:
                     raise RuntimeError('the secret named in TlsKeystoreSecretArn must be JSON with "keystore" (base64 PKCS12) and "password"; missing %s' % e)
-                except Exception as e:
-                    raise RuntimeError("could not read the certificate from the secret named in TlsKeystoreSecretArn: %s" % type(e).__name__)
             elif https_on and props.get("TlsKeystoreBase64"):
                 tls_values = {"keystore": props["TlsKeystoreBase64"], "keystorePassword": props.get("TlsKeystorePassword", "")}
             for name, value in tls_values.items():
