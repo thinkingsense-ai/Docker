@@ -6,6 +6,7 @@ import urllib.request
 import base64
 import hashlib
 import boto3
+import botocore.exceptions
 import botocore.session
 from botocore.signers import RequestSigner
 
@@ -361,14 +362,41 @@ def lambda_handler(event, context):
             args += ["--set", f"tls.enabled={'true' if https_on else 'false'}",
                      "--set", f"tls.httpsOnly={'true' if str(props.get('HttpsOnly', 'true')).lower() == 'true' else 'false'}"]
             tls_paths = []
-            if https_on and props.get("TlsKeystoreBase64"):
-                for name, key in (("keystore", "TlsKeystoreBase64"), ("keystorePassword", "TlsKeystorePassword")):
-                    path = f"/tmp/omnigate-tls-{name}"
-                    with open(path, "w") as f:
-                        f.write(props.get(key, ""))
-                    os.chmod(path, 0o600)
-                    tls_paths.append(path)
-                    args += ["--set-file", f"tls.{name}={path}"]
+            tls_values = {}
+            if https_on and props.get("TlsKeystoreSecretArn"):
+                # The certificate is in Secrets Manager (a CloudFormation parameter holds at most 4096 characters): JSON with
+                # "keystore" (base64 PKCS12) and "password".
+                secret = None
+                for attempt in range(4):
+                    try:
+                        raw = boto3.client("secretsmanager", region_name=region).get_secret_value(SecretId=props["TlsKeystoreSecretArn"])["SecretString"]
+                        secret = json.loads(raw)
+                        break
+                    except botocore.exceptions.ClientError as e:
+                        code = e.response.get("Error", {}).get("Code", "ClientError")
+                        # A permission added in this same update can take a few seconds to take effect; retry that, nothing else.
+                        if code == "AccessDeniedException" and attempt < 3:
+                            print(f"secret not readable yet ({code}); retrying in 15s")
+                            time.sleep(15)
+                            continue
+                        raise RuntimeError(f"could not read the certificate secret named in TlsKeystoreSecretArn: {code}. Check the ARN, the region, "
+                                           "and that the secret uses the default AWS-managed key (aws/secretsmanager).")
+                    except ValueError:
+                        raise RuntimeError("the secret named in TlsKeystoreSecretArn is not JSON; it must be "
+                                           '{"keystore": "<base64 PKCS12>", "password": "<password>"}')
+                try:
+                    tls_values = {"keystore": secret["keystore"], "keystorePassword": secret["password"]}
+                except (KeyError, TypeError) as e:
+                    raise RuntimeError('the secret named in TlsKeystoreSecretArn must be JSON with "keystore" (base64 PKCS12) and "password"; missing %s' % e)
+            elif https_on and props.get("TlsKeystoreBase64"):
+                tls_values = {"keystore": props["TlsKeystoreBase64"], "keystorePassword": props.get("TlsKeystorePassword", "")}
+            for name, value in tls_values.items():
+                path = f"/tmp/omnigate-tls-{name}"
+                with open(path, "w") as f:
+                    f.write(value)
+                os.chmod(path, 0o600)
+                tls_paths.append(path)
+                args += ["--set-file", f"tls.{name}={path}"]
             admin_pw_path = "/tmp/omnigate-admin-password"
             with open(admin_pw_path, "w") as f:
                 f.write(admin_password)
