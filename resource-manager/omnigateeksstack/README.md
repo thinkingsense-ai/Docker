@@ -68,6 +68,16 @@ closed on the load balancer. Your address is `https://<load-balancer>/`.
 - **Your own certificate:** give a PKCS12 file (certificate and private key, base64-encoded) and its password in the deploy form. It replaces the
   automatic one; changing it restarts the app. It must name the address people browse to (a hostname you point at the load balancer is the usual
   choice; with a certificate for a name, browse by that name).
+- **A certificate too big for the form (AWS):** CloudFormation limits a parameter to 4096 characters, which a certificate chain can exceed. Put it in
+  AWS Secrets Manager instead (the default AWS-managed key; a customer-managed key needs `kms:Decrypt` added to the deployer role by hand) as a JSON
+  secret and give its ARN in **Your certificate in Secrets Manager** (`TlsKeystoreSecretArn`, from `eks-stack-v1.0.17`):
+  ```bash
+  aws secretsmanager create-secret --name omnigate-certificate --secret-string \
+    "$(python3 -c 'import json,base64,sys; print(json.dumps({"keystore": base64.b64encode(open(sys.argv[1],"rb").read()).decode(), "password": sys.argv[2]}))' keystore.p12 'the-password')"
+  ```
+  The secret takes precedence over the two form fields. The stack is given permission to read only that one secret. A wrong ARN or a secret in the
+  wrong format makes the update fail with a message saying which, and the stack rolls back with the app untouched. The certificate must name the
+  address people browse to, so create it after the first deploy (when the load balancer's name is known) and update the stack with the ARN.
 - **Switches:** **Serve HTTPS** (on) and **HTTPS only** (on, closes 8080). Turn HTTPS off only if something in front of OmniGate already provides it;
   turn HTTPS only off to also allow plain HTTP on 8080.
 - **Scripts:** `verify-secure-deploy.sh` and the switch scripts accept the self-signed certificate (`curl -k`); `VERIFY_CA=<ca.pem>` verifies against a CA.

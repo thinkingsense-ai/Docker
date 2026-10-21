@@ -88,9 +88,9 @@ retries with a growing delay), `kubectl rollout restart deploy/omnigate-omnigate
 
 ## AWS notes
 
-- **Your own certificate has to fit in one CloudFormation parameter (4096 characters).** A keystore (base64) that also carries the CA's certificate
-  was 5,900 characters; one with just the server certificate and key was already 4,028. Use RSA 2048, include only what the server needs, and
-  check the size before you deploy. If a real certificate chain does not fit, tell us; a way to supply it from AWS Secrets Manager is a known gap.
+- **Your own certificate:** the two form fields hold at most 4096 characters (a CloudFormation limit), and a keystore that also carries the CA's
+  certificate was 5,900, so a real chain may not fit. From `eks-stack-v1.0.17` you can put the certificate in AWS Secrets Manager instead and give the
+  stack the secret's ARN (**Your certificate in Secrets Manager**); see the AWS README. Tested with a 5,928-character keystore.
 - **Switching HTTPS settings** adds or removes a load balancer listener, which can take a minute or two to start answering after the stack
   reports success.
 
