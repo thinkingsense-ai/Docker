@@ -14,7 +14,7 @@ read access to the private `thinkingsense-ai/Server` repository on GitHub.
 ## Step 1. Install the tools (once)
 
 Copy this whole block into Terminal (you also need **Docker Desktop** installed and running: the demo's second data source, a CSV in
-object storage, runs in a small local S3-compatible container that stands in for Amazon S3):
+object storage, runs in a small local S3-compatible container (SeaweedFS) that stands in for Amazon S3):
 
 ```bash
 brew install openjdk@21 maven node llama.cpp postgresql@16
@@ -116,7 +116,7 @@ table layout and sometimes the result rows go to the cloud provider, so this is 
 
 **1. Admin: what is connected (2 min).** Sign in to the admin. Open **Data Sources**: there are **two**. `si` is the Smithsonian database in
 PostgreSQL: 31,185 subject rows over 7,792 records from five museums, straight from Open Access. `museums` is a **CSV file in object
-storage** (a small local S3-compatible store standing in for Amazon S3): the museum directory, with each unit's full name, department and web site. Say:
+storage** (a local S3-compatible server standing in for Amazon S3): the museum directory, with each unit's full name, department and web site. Say:
 "The records live in a database, the directory is just a file in a bucket. ThinkingSense reads both in place."
 
 **2. Admin: the subject vocabulary (3 min).** Open **Business Catalog**, then **Terms & ontology**, then the **Review Queue** tab. Say:

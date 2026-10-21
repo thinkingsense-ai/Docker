@@ -30,7 +30,7 @@ check() {
   need psql "install PostgreSQL client tools"
   need llama-server "brew install llama.cpp"
   need curl "install curl"
-  if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then say "  ok   docker (runs the local S3-compatible object storage)"; else say "  MISSING Docker running -- install and start Docker Desktop (the demo's second data source, a CSV in object storage, runs in a local MinIO)"; MISSING=1; fi
+  if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then say "  ok   docker (runs the local S3-compatible object store)"; else say "  MISSING Docker running -- install and start Docker Desktop (the demo's second data source, a CSV in object storage, runs in a local S3-compatible container)"; MISSING=1; fi
   need python3 "install Python 3"
   for f in "$AGENTIC_MODEL" "$FAST_MODEL" "$EMBED_MODEL"; do
     [ -f "$f" ] && say "  ok   $(basename "$f")" || { say "  MISSING model $f (see SETUP.md, 'Download the models')"; MISSING=1; }
@@ -78,7 +78,7 @@ wait_ready() {
 up() {
   check || return 1
   models || { say "A model server is not ready -- fix the lines above, then run ./demo.sh up again."; return 1; }
-  say "Loading the data: records into Postgres (database si_poc), the museum directory CSV into local S3-compatible object storage..."; ./load-data.sh || return 1
+  say "Loading the data: records into Postgres (database si_poc), the museum directory CSV into a local S3-compatible object store..."; ./load-data.sh || return 1
   say "Starting the demo on :$PORT..."; [ -f server.pid ] && kill "$(cat server.pid)" 2>/dev/null; sleep 2
   ./launch.sh >/dev/null; wait_ready || { say "The demo did not start; see server.log"; return 1; }
   rm -f "$COOKIE"; curl -s -c "$COOKIE" -o /dev/null -d "username=admin&password=$ADMIN_PASSWORD" "http://127.0.0.1:$PORT/admin/login"
@@ -104,7 +104,7 @@ status() {
 stop() {
   [ -f server.pid ] && kill "$(cat server.pid)" 2>/dev/null && say "  stopped the demo"; rm -f server.pid
   pkill -f "demo-smithsonian-poc/run.jar" 2>/dev/null
-  docker stop si-poc-minio >/dev/null 2>&1 && say "  stopped the local object storage"
+  docker stop si-poc-s3 si-poc-minio >/dev/null 2>&1 && say "  stopped the local object storage"
   [ -f /tmp/si-demo-models.pids ] && xargs kill < /tmp/si-demo-models.pids 2>/dev/null && say "  stopped the model servers this script started"; rm -f /tmp/si-demo-models.pids
 }
 
@@ -114,6 +114,6 @@ case "${1:-}" in
   up) up ;;
   status) status ;;
   stop) stop ;;
-  reset) stop; docker rm -f si-poc-minio >/dev/null 2>&1; rm -rf data audit.log server.log; say "  cleared the demo's saved settings" ;;
+  reset) stop; docker rm -f si-poc-s3 si-poc-minio >/dev/null 2>&1; rm -rf data audit.log server.log; say "  cleared the demo's saved settings" ;;
   *) sed -n 2,9p "$0" ;;
 esac

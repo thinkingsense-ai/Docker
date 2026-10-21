@@ -2,7 +2,7 @@
 
 **Start here: [SETUP.md](SETUP.md)** (install, `./bootstrap.sh`, `demo up`, and a 10-minute walkthrough). The notes below are the short version.
 
-Three people, one semantic layer, on the Smithsonian's own Open Access sample (31,185 rows, 7,792 records, 5 museums), across **two data sources**: the records in PostgreSQL and the museum directory as a CSV in object storage (a small local S3-compatible store that stands in for Amazon S3; needs Docker).
+Three people, one semantic layer, on the Smithsonian's own Open Access sample (31,185 rows, 7,792 records, 5 museums), across **two data sources**: the records in PostgreSQL and the museum directory as a CSV in object storage (a local S3-compatible server (SeaweedFS) that stands in for Amazon S3; needs Docker).
 Nothing leaves the machine: the models run locally; a cloud model is only used if `.env` supplies a key.
 
 | Person | Signs in at | Sees |
@@ -13,7 +13,7 @@ Nothing leaves the machine: the models run locally; a cloud model is only used i
 
 ## Set up
 The quickest way is `./bootstrap.sh` (once) and then `~/smithsonian-poc/demo up` (see SETUP.md). By hand:
-1. `demo-smithsonian-poc/load-data.sh` loads the data into Postgres database `si_poc` and puts `museums.csv` in a bucket (`si-poc`) of a local S3-compatible store (port 19110, Docker; SeaweedFS, because MinIO's image is no longer publicly downloadable).
+1. `demo-smithsonian-poc/load-data.sh` loads the data into Postgres database `si_poc` and puts `museums.csv` in a local S3-compatible bucket (SeaweedFS) (`si-poc`, port 19110, Docker).
 2. Start the local model servers (agentic `:18090`, fast `:8092`, nomic embeddings `:8120`) and run `demo-smithsonian-poc/launch.sh`.
 3. Build the vocabulary (admin session cookie needed):
    `curl -b cookies -H 'Content-Type: application/json' -d '{"backend":"si","table":"si_topics","labelColumn":"topic","unitColumn":"unit_code"}' http://localhost:8110/api/ontology/vocabulary/build`
