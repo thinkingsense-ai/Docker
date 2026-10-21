@@ -105,9 +105,13 @@ What to know:
 
 - **The failed upgrade still reports `context deadline exceeded`** after about 11 minutes, and nothing in that message points at the image. Look at the pods
   (`kubectl get pods`): the one that cannot start shows `ErrImagePull` or `ImagePullBackOff`.
-- **Nothing keeps the replicas on different nodes, and there is no disruption budget.** In this test the two replicas started on the same node, and after the
-  upgrade sat on different ones, by chance. A node going down (or being drained for maintenance) can take both replicas at once. This is a known gap in
-  the chart; it was not tested.
+- **Keeping replicas apart and protected during maintenance** (from the release after `oke-stack-v1.1.15`): with two or more replicas the chart now asks
+  Kubernetes to prefer different nodes for them and adds a disruption budget that allows only one replica to be down at a time. Tested on OCI with
+  a probe running, draining the node as a maintenance would: on the previous release both replicas shared a node, were evicted within 3 seconds, and the
+  app was down about 80 seconds (58% of readiness checks failed). With the change the replicas sat on different nodes, the drain evicted one, the app
+  stayed up (1 failed check in 175, no failed queries), and draining the other node at the same time was **refused** ("would violate the pod's disruption
+  budget") until the first replica was back. The preference is soft: with fewer nodes than replicas, replicas still start on a shared node. A drain
+  therefore waits instead of taking the app down; if one replica is stuck (for example a bad image tag), draining the other node waits until that is fixed.
 - **Tested on OCI only**, the one cloud whose stack supports more than one replica today. The same chart is in the other stacks but they deploy one replica.
 - The config database in this test was a second database inside the stack's own Postgres, to keep the test simple; a real deployment should use a
   separate managed Postgres.
