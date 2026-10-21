@@ -361,14 +361,27 @@ def lambda_handler(event, context):
             args += ["--set", f"tls.enabled={'true' if https_on else 'false'}",
                      "--set", f"tls.httpsOnly={'true' if str(props.get('HttpsOnly', 'true')).lower() == 'true' else 'false'}"]
             tls_paths = []
-            if https_on and props.get("TlsKeystoreBase64"):
-                for name, key in (("keystore", "TlsKeystoreBase64"), ("keystorePassword", "TlsKeystorePassword")):
-                    path = f"/tmp/omnigate-tls-{name}"
-                    with open(path, "w") as f:
-                        f.write(props.get(key, ""))
-                    os.chmod(path, 0o600)
-                    tls_paths.append(path)
-                    args += ["--set-file", f"tls.{name}={path}"]
+            tls_values = {}
+            if https_on and props.get("TlsKeystoreSecretArn"):
+                # The certificate is in Secrets Manager (a CloudFormation parameter holds at most 4096 characters): JSON with
+                # "keystore" (base64 PKCS12) and "password".
+                try:
+                    raw = boto3.client("secretsmanager", region_name=region).get_secret_value(SecretId=props["TlsKeystoreSecretArn"])["SecretString"]
+                    secret = json.loads(raw)
+                    tls_values = {"keystore": secret["keystore"], "keystorePassword": secret["password"]}
+                except KeyError as e:
+                    raise RuntimeError('the secret named in TlsKeystoreSecretArn must be JSON with "keystore" (base64 PKCS12) and "password"; missing %s' % e)
+                except Exception as e:
+                    raise RuntimeError("could not read the certificate from the secret named in TlsKeystoreSecretArn: %s" % type(e).__name__)
+            elif https_on and props.get("TlsKeystoreBase64"):
+                tls_values = {"keystore": props["TlsKeystoreBase64"], "keystorePassword": props.get("TlsKeystorePassword", "")}
+            for name, value in tls_values.items():
+                path = f"/tmp/omnigate-tls-{name}"
+                with open(path, "w") as f:
+                    f.write(value)
+                os.chmod(path, 0o600)
+                tls_paths.append(path)
+                args += ["--set-file", f"tls.{name}={path}"]
             admin_pw_path = "/tmp/omnigate-admin-password"
             with open(admin_pw_path, "w") as f:
                 f.write(admin_password)

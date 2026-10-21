@@ -32,6 +32,7 @@ Metadata:
           - HttpsOnly
           - TlsKeystoreBase64
           - TlsKeystorePassword
+          - TlsKeystoreSecretArn
       - Label:
           default: "Commercial edition (subscribers only)"
         Parameters:
@@ -79,6 +80,8 @@ Metadata:
         default: "Your own certificate (optional, PKCS12 base64)"
       TlsKeystorePassword:
         default: "Certificate password"
+      TlsKeystoreSecretArn:
+        default: "Your certificate in Secrets Manager (optional, for large certificates)"
       OmnigateLicense:
         default: "Commercial licence"
       ImageRepository:
@@ -174,6 +177,10 @@ Parameters:
     NoEcho: true
     Default: ""
     Description: "Password of the PKCS12 file above. Required when one is given."
+  TlsKeystoreSecretArn:
+    Type: String
+    Default: ""
+    Description: "Optional. The ARN of an AWS Secrets Manager secret that holds your certificate, for when the PKCS12 does not fit in the two fields above (a CloudFormation parameter is limited to 4096 characters). The secret value must be JSON: {\"keystore\": \"<base64 of the PKCS12 file>\", \"password\": \"<its password>\"}. It takes precedence over the two fields above. The stack is given permission to read only this secret. Use the default AWS-managed key (aws/secretsmanager) for the secret; a customer-managed key needs kms:Decrypt added to the deployer role by hand."
   AllowedClientCidrs:
     Type: String
     Default: ""
@@ -209,6 +216,9 @@ Parameters:
       new app releases (frozen at v0.6.0's content for two releases), so a moving-target default
       wasn't actually keeping deployers current anyway, just non-reproducible. Bump this
       deliberately when a newer free-edition image is built and pushed to OCIR."
+
+Conditions:
+  HasTlsSecret: !Not [!Equals [!Ref TlsKeystoreSecretArn, ""]]
 
 Resources:
   # ============================== Networking ==============================
@@ -777,6 +787,17 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Policies:
+        # Read only the one secret the customer names for their own certificate; absent when none is given.
+        - !If
+          - HasTlsSecret
+          - PolicyName: read-tls-secret
+            PolicyDocument:
+              Version: '2012-10-17'
+              Statement:
+                - Effect: Allow
+                  Action: secretsmanager:GetSecretValue
+                  Resource: !Ref TlsKeystoreSecretArn
+          - !Ref "AWS::NoValue"
         - PolicyName: eks-describe
           PolicyDocument:
             Version: '2012-10-17'
@@ -858,6 +879,7 @@ Resources:
       HttpsOnly: !Ref HttpsOnly
       TlsKeystoreBase64: !Ref TlsKeystoreBase64
       TlsKeystorePassword: !Ref TlsKeystorePassword
+      TlsKeystoreSecretArn: !Ref TlsKeystoreSecretArn
       AllowedClientCidrs: !Ref AllowedClientCidrs
       LlmApiKey: !Ref OmnigateLlmApiKey
 
