@@ -76,6 +76,42 @@ What happens next depends on the cloud:
 `kubectl get rs -l app.kubernetes.io/instance=omnigate` then `kubectl describe rs <name>`. If the cause is already fixed but nothing happens (Kubernetes
 retries with a growing delay), `kubectl rollout restart deploy/omnigate-omnigate` retries at once.
 
+## Zero-downtime upgrades (commercial edition, two or more replicas)
+
+With one replica every upgrade restarts the app and a bad image tag takes it down (above). With **two or more replicas** the app stays up through an
+upgrade, and through a bad one. This was tested on OCI (`oke-stack-v1.1.15`, commercial licence installed through the stack's licence field, 2 replicas on 2
+nodes, your own HTTPS certificate, the shared config database), with a probe running the whole time that checked, every half second, readiness, a
+logged-in Ask-app session and (every two seconds) a real query across the stack's databases:
+
+| What was done | Time | Requests during it | Failed |
+|---|---|---|---|
+| Steady state, nothing changing | 70 s | 240 | 0 |
+| **App upgrade** v0.10.8 to v0.10.9 (change the image tag, apply) | 162 s | 661 | 1 readiness check (a 4 s timeout) |
+| **Kill one replica** outright | replacement ready in 25 s | 177 | 0 |
+| **A bad image tag** (`v9.9.9`): one replica could not start | 11 minutes until the apply gave up | 2,196 | 1 query (a slow one at the moment the second replica was replaced) |
+| **Fix the tag** and apply again | 76 s | 253 | 0 |
+
+So a normal upgrade is, in practice, zero-downtime, and a failed upgrade leaves **one replica serving the whole time** (capacity halved, no outage) instead of
+the 9 to 19 minutes down measured with one replica. Putting the tag right and applying again brought the second replica back on its own.
+
+What you need for it:
+
+- **The commercial edition.** On the free edition the second replica runs single-node.
+- **A shared config database** (the stack requires it for more than one replica), and the replica count and node count set in the deploy form.
+- **Your own HTTPS certificate.** Each replica otherwise makes its own automatic certificate, so clients would see a different certificate depending on which
+  replica answers. (The probe ignored certificates, so this was not what was measured.)
+
+What to know:
+
+- **The failed upgrade still reports `context deadline exceeded`** after about 11 minutes, and nothing in that message points at the image. Look at the pods
+  (`kubectl get pods`): the one that cannot start shows `ErrImagePull` or `ImagePullBackOff`.
+- **Nothing keeps the replicas on different nodes, and there is no disruption budget.** In this test the two replicas started on the same node, and after the
+  upgrade sat on different ones, by chance. A node going down (or being drained for maintenance) can take both replicas at once. This is a known gap in
+  the chart; it was not tested.
+- **Tested on OCI only**, the one cloud whose stack supports more than one replica today. The same chart is in the other stacks but they deploy one replica.
+- The config database in this test was a second database inside the stack's own Postgres, to keep the test simple; a real deployment should use a
+  separate managed Postgres.
+
 ## Rolling back
 
 - **Rolling back the app** (older image tag): works, as above.
