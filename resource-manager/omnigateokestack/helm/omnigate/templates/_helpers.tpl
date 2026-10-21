@@ -40,6 +40,21 @@ metadata:
     checksum/configmap: {{ include (print .Template.BasePath "/configmap.yaml") . | sha256sum }}
 spec:
   serviceAccountName: {{ include "omnigate.fullname" . }}-omnigate
+{{- if gt (int .Values.omnigate.replicaCount) 1 }}
+  # More than one replica: prefer to put them on different nodes, so one node going down (or being drained for maintenance) does not take every
+  # replica with it. "Preferred", not "required": with fewer nodes than replicas the extra replicas still start (on a shared node) instead of
+  # sitting Pending. Together with the PodDisruptionBudget (pdb.yaml) this is what keeps the app up through a node drain.
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/instance: {{ .Release.Name }}
+                app.kubernetes.io/component: omnigate
+{{- end }}
 {{- if and .Values.image.pullUsername .Values.image.pullAuthToken }}
   imagePullSecrets:
     - name: {{ include "omnigate.fullname" . }}-omnigate-imagepull
