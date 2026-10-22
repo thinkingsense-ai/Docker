@@ -5,6 +5,12 @@ metadata:
   labels:
     {{- include "omnigate.labels" . | nindent 4 }}
 data:
+  # For the admin Infrastructure page (thinkingsense-ai/Server#31): how many replicas this release asked for (so a replica that never joined shows as
+  # "1 of 2"), and how to find this deployment's pods when the Kubernetes view is on (observability-rbac.yaml grants the read access).
+  OMNIGATE_EXPECTED_REPLICAS: "1"
+  OMNIGATE_KUBERNETES_VIEW: {{ .Values.observability.kubernetes.enabled | quote }}
+  OMNIGATE_KUBERNETES_NODES: {{ and .Values.observability.kubernetes.enabled .Values.observability.kubernetes.nodes | quote }}
+  OMNIGATE_KUBERNETES_SELECTOR: "app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=omnigate"
   # OMNIGATE_LLM_MODEL intentionally NOT set here. Setting it explicitly to "claude-sonnet-5"
   # (this chart's own values.yaml default) causes every Ask-app question to fail with a
   # NullPointerException in AnthropicLlmProvider.planSteps -- confirmed live on OKE, filed as

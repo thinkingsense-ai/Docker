@@ -1,0 +1,64 @@
+{{- if .Values.observability.kubernetes.enabled }}
+# Read-only view of this deployment for the app's admin Infrastructure page (thinkingsense-ai/Server#31). get/list/watch only, in this namespace:
+# no secrets, no config maps, no pod logs, no exec, nothing writable.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "omnigate.fullname" . }}-omnigate-observe
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "events", "persistentvolumeclaims", "services"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "omnigate.fullname" . }}-omnigate-observe
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "omnigate.fullname" . }}-omnigate
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "omnigate.fullname" . }}-omnigate-observe
+{{- if .Values.observability.kubernetes.nodes }}
+---
+# Nodes are not namespaced, so reading their ready state and zone needs a ClusterRole. Named per namespace so two releases never share one.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "omnigate.fullname" . }}-{{ .Release.Namespace }}-omnigate-observe-nodes
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "omnigate.fullname" . }}-{{ .Release.Namespace }}-omnigate-observe-nodes
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "omnigate.fullname" . }}-omnigate
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "omnigate.fullname" . }}-{{ .Release.Namespace }}-omnigate-observe-nodes
+{{- end }}
+{{- end }}
