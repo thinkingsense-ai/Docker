@@ -190,6 +190,17 @@ tpch:
 # HTTPS is on by default and plain HTTP is closed on the load balancer. The app serves HTTPS itself (the load balancer is a plain TCP
 # pass-through, so the certificate is the app's): with no keystore given, a self-signed certificate is made at first start (browsers warn
 # "not trusted" until you supply your own); a keystore (PKCS12, base64) replaces it, and changing it restarts the pods.
+# What the app may read about its own deployment, for the admin Infrastructure page (thinkingsense-ai/Server#31). The app only ever reads:
+# a namespace-scoped Role (pods, events, volume claims, services, workloads, disruption budgets) and, if "nodes" is on, a cluster-wide read of
+# nodes (their ready state and zone). No secrets, no config maps, no pod logs, no exec, and no write of any kind. Switching "enabled" off removes
+# the access entirely. Releases of the app before the Infrastructure page ignore all of this.
+observability:
+  kubernetes:
+    enabled: true
+    # Node readiness and zone need a ClusterRole (nodes are not namespaced). Turn off where policy forbids a cluster-wide read; the page then
+    # shows pods and placement by node name only.
+    nodes: true
+
 tls:
   enabled: true
   httpsOnly: true         # false: the load balancer also exposes plain HTTP on 8080
