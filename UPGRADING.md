@@ -116,6 +116,31 @@ What to know:
 - The config database in this test was a second database inside the stack's own Postgres, to keep the test simple; a real deployment should use a
   separate managed Postgres.
 
+### Watching it happen: the Infrastructure page (app v0.10.10 and later)
+
+From v0.10.10 the admin console has **Operations > Infrastructure**: replicas joined against replicas expected, each replica's version, the
+cluster's own state of each pod (and why one is not ready), the disruption budget, licence, certificate and data sources, with the reasons for
+anything amber or red at the top. It was checked live on OCI (the OKE stack as of Docker `main` on 23 October 2026, which has the replica spreading
+and the page's read-only cluster access; 2 replicas on 2 nodes, commercial licence, shared config database), with the same continuous probe as
+above running throughout:
+
+| What was done | What the page showed | Probe during it |
+|---|---|---|
+| **App upgrade** v0.10.9 to v0.10.10 (change the image tag, apply), 226 s | v0.10.9 has no page, so it first appears when the first v0.10.10 replica takes over. Then: "1 of 2 replicas have joined", the second pod's steps ("init step 1 of 3", "2 of 3", "running, not ready"), the disruption budget at 0, and finally green with 2 of 2 and the budget at 1. | 374 readiness checks, 1 failed (the moment the first new replica took over); 187 logged-in Ask-app checks, 0 failed; 93 queries, 1 failed (a slow one, 8.1 s, when the second replica became ready) |
+| **A bad image tag on one replica** (`v9.9.9`, set directly on the StatefulSet), left for about 2 minutes, then put back | "1 of 2 replicas have joined", "A rollout is in progress (1 of 2 replicas updated)", "Pod omnigate-omnigate-1 is not ready: Waiting: ErrImagePull (image tag v9.9.9)", the disruption budget closed. Green again after the tag was put back. | 186 readiness, 93 Ask-app and 46 query checks: **0 failed** (the healthy replica served throughout) |
+| **Draining the node** that held replica 0 | "All 2 replicas run on one node": the evicted replica was rescheduled onto the other node (the spreading is a preference, so it does not refuse). Green again after the node was uncordoned and the pod recreated. | 89 readiness, 44 Ask-app and 23 query checks: **0 failed** |
+| **Rolling back** v0.10.10 to v0.10.9 (change the tag back, apply), 152 s | While the first replica was still v0.10.10 it showed the other as "joined the cluster but could not run the check (IgniteException); it may be running an older version" (a replica that predates the page cannot answer it). Once every replica is v0.10.9 the page is gone again. | 215 readiness checks, 1 failed; 108 Ask-app, 0 failed; 54 queries, 2 failed (one slow, 8.5 s) |
+
+What to take from it:
+
+- During any of these the page is served by a replica that is up, so it can say what is wrong with the others. If **every** replica is down, or the
+  deployment runs one replica and its image cannot be pulled, there is no page to open: use `kubectl get pods` and `kubectl describe pod`.
+- A replica that has joined the cluster but is on an older release (one that predates the page) shows as "could not run the check ... may be
+  running an older version"; replicas that have the page show their version.
+- The Kubernetes part needs the chart's read-only access (on by default, `observability.kubernetes.enabled`); without it the page says so and
+  everything else still works. Its events, trend lines and counts are kept in memory and start again when a replica restarts.
+- It does not replace backups, alerts or your cloud's own monitoring: it shows the current state and the last few minutes.
+
 ## Rolling back
 
 - **Rolling back the app** (older image tag): works, as above.
