@@ -1,0 +1,17 @@
+{{- if gt (int .Values.omnigate.replicaCount) 1 }}
+# With more than one replica, never let a voluntary disruption (a node drain for maintenance or a node-pool upgrade) take more than one OmniGate
+# pod down at a time: the drain waits until the replacement is ready before it evicts the next. Only created for 2+ replicas: with a single replica
+# such a budget would make the node impossible to drain at all.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "omnigate.fullname" . }}-omnigate
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: omnigate
+{{- end }}

@@ -178,6 +178,10 @@ seeded demo Postgres this stack also creates, which stays a single, non-HA pod e
 only ever used for the supply-chain demo data, never for OmniGate's own config). Leave these
 blank for the default single-replica behavior.
 
+With two or more replicas the chart also prefers to place them on different nodes and adds a PodDisruptionBudget (at most one replica down at a
+time), so a node drain or node-pool upgrade keeps the app up; see [UPGRADING.md](https://github.com/thinkingsense-ai/Docker/blob/main/UPGRADING.md).
+Neither is created for a single replica (a budget there would make the node impossible to drain).
+
 **Via the CLI**, add to the `--variables` JSON:
 
 ```json
