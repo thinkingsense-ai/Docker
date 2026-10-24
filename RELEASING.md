@@ -151,6 +151,25 @@ Tag `eks-stack-vX.Y.Z`, `oke-stack-vX.Y.Z`, `gke-stack-vX.Y.Z` or `aks-stack-vX.
 docs site (`deploy-*.html`): the Launch Stack or Deploy buttons, the zip links and the CLI
 snippets. Each stack's README has its own "Publishing a release" section.
 
+**Order, per release** (a stack release is needed whenever a stack's chart, template or default image changed; an app release alone
+moves nothing until the pins are bumped and the stacks are re-released):
+
+1. Merge the pin PR ("Bump pins to vX.Y.Z", opened by the Build images workflow) after the clean-room checks.
+2. **Move the self-pins** to the stack release about to be cut, in one PR per stack, and merge it **before tagging**:
+   `scripts/version-pins.py bump-self eks vX.Y.Z` (the EKS template's `Release.Current.Tag`, which is what CodeBuild checks out to build the
+   deployer) and `scripts/version-pins.py bump-self aks vX.Y.Z` (`chartSourceUrl` in `main.bicep`, `azuredeploy.json` and
+   `createUiDefinition.json`; then `az bicep build` as the AKS README says). A stack release cut without this deploys the previous
+   release's code: `aks-stack-v1.0.13` named v1.0.12, and `eks-stack-v1.0.17` named v1.0.16 and had to be superseded. OKE and GKE have
+   no self-pin: they are tag-only (GKE also deploys straight from `main`).
+3. Tag at the merge commit and create the release with `--latest=false`, with the assets the previous release of that stack had:
+   OKE `omnigateokestack-vX.Y.Z.zip`; EKS `omnigateeksstack-vX.Y.Z.zip`, plus `template.yaml` uploaded to
+   `s3://thinkingsense-cfn-templates/eks-stack-vX.Y.Z/` (the Launch Stack link reads it there); AKS `azuredeploy.json` and
+   `omnigateaksstack-vX.Y.Z.zip`; GKE `omnigategkestack-vX.Y.Z.zip`. Zip from `resource-manager/` so the stack directory is at the top of the zip (that is the layout the OCI docs page's
+   `--working-directory omnigateokestack` expects): `cd resource-manager && zip -r omnigateokestack-vX.Y.Z.zip omnigateokestack`
+   (do it on a checkout of the tag, and exclude `.DS_Store`).
+4. `scripts/version-pins.py check --verify-tags` now passes (every self-pin names a tag that exists).
+5. Update the docs site and open that PR **after** the releases exist, so no page links to an asset that is not there yet.
+
 **Always pass `--latest=false` for stack tags.** App releases and stack releases share one GitHub
 Releases list, and the app release should stay the repository's Latest. (Until v0.10.8 the stacks downloaded the app jar through `/releases/latest` to hash
 passwords, so a stack release that became "latest" broke fresh deploys; they no longer do. Fix with
