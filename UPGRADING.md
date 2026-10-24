@@ -105,7 +105,7 @@ What to know:
 
 - **The failed upgrade still reports `context deadline exceeded`** after about 11 minutes, and nothing in that message points at the image. Look at the pods
   (`kubectl get pods`): the one that cannot start shows `ErrImagePull` or `ImagePullBackOff`.
-- **Keeping replicas apart and protected during maintenance** (from the release after `oke-stack-v1.1.15`): with two or more replicas the chart now asks
+- **Keeping replicas apart and protected during maintenance** (from `oke-stack-v1.1.16`): with two or more replicas the chart now asks
   Kubernetes to prefer different nodes for them and adds a disruption budget that allows only one replica to be down at a time. Tested on OCI with
   a probe running, draining the node as a maintenance would: on the previous release both replicas shared a node, were evicted within 3 seconds, and the
   app was down about 80 seconds (58% of readiness checks failed). With the change the replicas sat on different nodes, the drain evicted one, the app
