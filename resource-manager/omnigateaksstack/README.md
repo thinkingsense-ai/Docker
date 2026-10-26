@@ -144,9 +144,18 @@ az deployment group create \
 
 ## Prerequisites in your subscription
 
-- **Ampere Altra (arm64) VM quota** in your target region — check with
+- **Ampere Altra (arm64) VM availability and quota** in your target region. Availability: check with
   `az vm list-skus --size Standard_D2ps --location <region> -o table`; if that's empty, pick a
-  different region before deploying (see "Known unknowns").
+  different region before deploying (see "Known unknowns"). Quota: check with
+  `az vm list-usage --location <region> --query "[?name.value=='standardDPSv5Family']" -o table`;
+  the limit must be at least **4** (one 2-vCPU node, plus the extra node an upgrade adds). A new
+  subscription, including one just upgraded from the free trial, can start at **0 for every ARM VM
+  family**. The deployment then fails at Azure's pre-check, before it creates the cluster (only the
+  network exists), with `ErrCode_InsufficientVCPUQuota` ("requested 2, remaining 0 for
+  standardDPSv5Family"). Request the increase before deploying: in the portal, Subscriptions >
+  your subscription > Usage + quotas, filter for "DPSv5", choose the region and ask for 4. It is free;
+  if the portal says the request needs a support request, open one (it did on a new pay-as-you-go
+  subscription, 2026-10-24). After a failed attempt, delete the leftover resource group.
 - IAM permissions to create a VNet, AKS cluster, managed identity, role assignment, and
   deployment script in the target resource group.
 - No local build tooling needed — `main.bicep`'s `deploymentScripts` resource runs entirely
