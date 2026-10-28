@@ -44,6 +44,10 @@ and an installed licence all stay.
   cluster is not changed. *Tested.*
 - **Google Cloud:** `git pull` (the stack deploys from `main`), then `terraform plan` and `terraform apply`. *Not yet run.*
 
+**The database account changes on the first upgrade to a release with the read-only demo account.** The app's pod restarts once, an init container creates
+the SELECT-only account `omnigate_ro` in the demo Postgres, and the app reconnects as it. No data moves and there is nothing to do, but anything that wrote to
+the demo database through the app (the admin training-data generator, rollups) is now refused. See "The demo database account" in the stack's README.
+
 ## Upgrading the app
 
 Change the image tag (**Image tag**, under *Advanced* in the deploy form, `image_tag` in the variables) to the new version and apply. Going back

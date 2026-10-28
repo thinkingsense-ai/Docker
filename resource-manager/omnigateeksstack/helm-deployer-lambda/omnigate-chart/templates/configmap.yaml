@@ -37,7 +37,7 @@ data:
   OMNIGATE_PG_HOST: {{ include "omnigate.postgresHost" . | quote }}
   OMNIGATE_PG_PORT: "5432"
   OMNIGATE_PG_DATABASE: {{ .Values.postgres.database | quote }}
-  OMNIGATE_PG_USER: {{ .Values.postgres.user | quote }}
+  OMNIGATE_PG_USER: {{ .Values.postgres.readOnlyUser | quote }}
   # OMNIGATE_BACKENDS lives in secrets.yaml, not here -- it embeds the Postgres password, which
   # has no business sitting in a plaintext ConfigMap alongside a real Secret already carrying the
   # same value.

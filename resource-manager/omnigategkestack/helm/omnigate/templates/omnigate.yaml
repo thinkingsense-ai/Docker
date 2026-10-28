@@ -121,6 +121,7 @@ spec:
             - sh
             - -c
             - until pg_isready -h {{ include "omnigate.postgresHost" . }} -U {{ .Values.postgres.user }}; do sleep 2; done
+{{- include "omnigate.readOnlyRoleInit" . | nindent 8 }}
       containers:
         - name: omnigate
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"

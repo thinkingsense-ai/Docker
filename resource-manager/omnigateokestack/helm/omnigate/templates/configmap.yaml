@@ -37,7 +37,7 @@ data:
   OMNIGATE_PG_HOST: {{ include "omnigate.postgresHost" . | quote }}
   OMNIGATE_PG_PORT: "5432"
   OMNIGATE_PG_DATABASE: {{ .Values.postgres.database | quote }}
-  OMNIGATE_PG_USER: {{ .Values.postgres.user | quote }}
+  OMNIGATE_PG_USER: {{ .Values.postgres.readOnlyUser | quote }}
 {{- if .Values.omnigate.oidc.issuer }}
   # Single sign-on. The client secret is in secrets.yaml, not here.
   OMNIGATE_AUTH_OIDC_ISSUER: {{ .Values.omnigate.oidc.issuer | quote }}
