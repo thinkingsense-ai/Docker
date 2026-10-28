@@ -38,6 +38,8 @@ behavior, such as Ignite clustering, is gated at runtime on that marker.
 Publishing an app release (`vX.Y.Z`) runs `.github/workflows/build-images.yml`, which replaces building and pushing the images by hand:
 
 1. Checks the release has `omnigate.jar` and `web-dist.tar.gz` (the Dockerfile downloads them by tag).
+   Then checks that the web UI inside `web-dist.tar.gz` contains what `scripts/ui-bundle-expect.txt` lists (today: the Infrastructure page's
+   API call), and stops before building anything when it does not. The UI is built by hand, so it can be older than the jar.
 2. Builds the **free** and **commercial** images for arm64 on a native arm64 runner, and checks each image's edition marker.
 3. Pushes `omnigate:<tag>` (free, public) and `omnigate-commercial:<tag>` (private) to OCIR, and `omnigate:<tag>` to the Google Artifact
    Registry (GKE and AKS pull from there). A release candidate (`vX.Y.Z-rc.N`) goes to OCIR only.
@@ -77,7 +79,9 @@ docker push ghcr.io/thinkingsense-ai/server:0.10.9 && docker push ghcr.io/thinki
 
 Order of a release as done for v0.10.9: full `mvn test` (only environment errors allowed: the container-dependent connector tests),
 bump `AppVersion`, write the release notes, push the Server `main`; build the images and push them to ghcr; create the Server
-release (notes only) and the Docker release with `omnigate.jar` and `web-dist.tar.gz` (`tar -czf web-dist.tar.gz -C web/dist .`);
+release (notes only) and the Docker release with `omnigate.jar` and `web-dist.tar.gz`. **Build the UI fresh first** (`cd web && npm ci &&
+npm run build`, then `tar -czf web-dist.tar.gz -C web/dist .`) and run `scripts/check-ui-bundle.sh --dir web/dist` before uploading: v0.10.10
+went out with a `web/dist` from 15 October and no Infrastructure page. Add a line to `scripts/ui-bundle-expect.txt` for each new admin page;
 the **Build images** workflow then pushes OCIR and Artifact Registry and opens the "Bump pins" PR; check `version-pins.py check`
 and merge it. The stack releases (below) are cut separately, after the clean-room checks.
 

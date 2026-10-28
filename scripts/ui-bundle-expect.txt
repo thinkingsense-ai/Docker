@@ -1,0 +1,6 @@
+# Strings that must appear in the admin web UI's JavaScript bundle (web-dist.tar.gz) of every app release.
+# scripts/check-ui-bundle.sh fails the Build images workflow, and the clean-room check, when one is missing.
+# One string per line; lines starting with # are ignored. Add a line when a release adds an admin page or API the UI calls.
+#
+# v0.10.10 shipped a bundle built before the Infrastructure page existed (the page's source was in the release, the built UI was not).
+api/infrastructure

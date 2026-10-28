@@ -71,6 +71,15 @@ jobs:
               || { echo "::error::release $TAG has no asset $f"; exit 1; }
           done
 
+      - name: The web UI in the release has the pages the release ships
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.vars.outputs.tag }}
+        run: |
+          # The UI is built by hand and uploaded as web-dist.tar.gz, so it can be older than the jar (v0.10.10 shipped without the
+          # Infrastructure page). Add a line to scripts/ui-bundle-expect.txt when a release adds an admin page.
+          scripts/check-ui-bundle.sh --tag "$TAG" --repo "$GITHUB_REPOSITORY" || { echo "::error::the web UI in release $TAG is missing a page (see scripts/ui-bundle-expect.txt)"; exit 1; }
+
       - uses: docker/setup-buildx-action@v3
 
       - name: Build free and commercial (arm64)
