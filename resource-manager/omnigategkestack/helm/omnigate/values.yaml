@@ -48,6 +48,12 @@ postgres:
   image: docker.io/library/postgres:16-alpine
   user: postgres
   password: postgres
+  # The account the app itself connects as: SELECT-only, created (and its password set) by the ensure-readonly-role init
+  # container on every pod start, so it also appears on a stack that was installed before this existed. Leave
+  # readOnlyPassword blank to have one generated on first install and kept on every upgrade; set it only to choose your own.
+  # The postgres superuser above is still used to create it, by the TPC-H loader and by backups.
+  readOnlyUser: omnigate_ro
+  readOnlyPassword: ""
   database: postgres
   storageSize: 5Gi
 

@@ -91,6 +91,23 @@ closed on the load balancer. Your address is `https://<load-balancer>/`.
 
 After install the stack approves five trusted questions for the seeded supply-chain data (`helm/omnigate/files/demo-questions.json`; in the EKS stack under `helm-deployer-lambda/omnigate-chart/files/`), so the Ask app's first screen shows questions that data can answer. Without them the app shows generic examples (sales by region, top products by revenue) that the supply-chain schema cannot answer. A post-install Helm hook Job does it through the admin API using the admin login; it skips questions already present and never fails the deploy.
 
+## The demo database account
+
+The app reads the demo data as a **SELECT-only** database account, `omnigate_ro`, not as the `postgres` superuser. Questions are answered by SQL the
+model writes, so the account that runs it should not be able to change data or read files off the database server (thinkingsense-ai/Server#39 shows
+what a superuser account allows).
+
+- **Where it comes from.** An init container, `ensure-readonly-role`, creates the account on every pod start and grants it `SELECT` on every schema of the
+  demo database (and on tables added to those schemas later). It also works on a stack that was installed before this existed.
+- **Its password** is generated on first install, kept in the `<release>-postgres-ro-secret` Secret and kept on every upgrade. Set `postgres.readOnlyPassword`
+  in the chart values to choose your own.
+- **What it cannot do.** Every write is refused ("permission denied"), whatever SQL the model produces. Anything that needs to write to the demo
+  database (the admin training-data generator, rollups, the optional staging-table speed-up for very large federated joins, which falls back to the normal
+  path) is refused too. To let the app write somewhere, register that database as a data source with its own account.
+- **A schema an admin creates later** is readable after the next pod restart (new tables in existing schemas are readable at once).
+- **Still the superuser.** The init container, backups and the TPC-H loader use `postgres`; its password is still the chart default, so it is only as
+  private as the cluster network.
+
 ## Signing in, and who can reach it
 
 There are two logins. The **Ask app** (business users) uses the username and password you set at deploy time. The **admin

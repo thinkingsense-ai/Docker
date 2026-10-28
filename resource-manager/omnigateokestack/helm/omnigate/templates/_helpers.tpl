@@ -143,6 +143,7 @@ spec:
         - >-
           until [ "$(psql -h {{ include "omnigate.postgresHost" . }} -U {{ .Values.postgres.user }} -d {{ .Values.tpch.database }} -tAc 'SELECT count(*) FROM orders' 2>/dev/null || echo 0)" -ge {{ int (mulf 1500000 .Values.tpch.scaleFactor) }} ]; do sleep 5; done
 {{- end }}
+{{- include "omnigate.readOnlyRoleInit" . | nindent 4 }}
   containers:
     - name: omnigate
       image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -241,4 +242,56 @@ spec:
       persistentVolumeClaim:
         claimName: {{ include "omnigate.fullname" . }}-omnigate-data
 {{- end }}
+{{- end -}}
+
+{{- /*
+Init container that makes sure the app's SELECT-only database account exists and has exactly SELECT on everything in the demo
+database. Runs as the postgres superuser, on every pod start, so it works for a fresh stack (the database was just seeded) and
+for one upgraded from a release that connected as the superuser (the data is already there). Idempotent; retried because two
+replicas starting together can race on ALTER ROLE.
+*/ -}}
+{{- define "omnigate.readOnlyRoleInit" -}}
+- name: ensure-readonly-role
+  image: docker.io/library/postgres:16-alpine
+  env:
+    - name: PGHOST
+      value: {{ include "omnigate.postgresHost" . | quote }}
+    - name: PGDATABASE
+      value: {{ .Values.postgres.database | quote }}
+    - name: PGUSER
+      valueFrom:
+        secretKeyRef:
+          name: {{ include "omnigate.fullname" . }}-postgres-secret
+          key: POSTGRES_USER
+    - name: PGPASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: {{ include "omnigate.fullname" . }}-postgres-secret
+          key: POSTGRES_PASSWORD
+    - name: RO_USER
+      valueFrom:
+        secretKeyRef:
+          name: {{ include "omnigate.fullname" . }}-postgres-ro-secret
+          key: PG_RO_USER
+    - name: RO_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: {{ include "omnigate.fullname" . }}-postgres-ro-secret
+          key: PG_RO_PASSWORD
+  command:
+    - sh
+    - -c
+    - |
+      set -e
+      cat > /tmp/readonly-role.sql <<'SQL'
+      SELECT format('CREATE ROLE %I LOGIN', :'ro') WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'ro') \gexec
+      SELECT format('ALTER ROLE %I WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD %L', :'ro', :'pw') \gexec
+      SELECT format('ALTER ROLE %I SET default_transaction_read_only = on', :'ro') \gexec
+      SELECT format('GRANT CONNECT ON DATABASE %I TO %I', current_database(), :'ro') \gexec
+      SELECT format('GRANT USAGE ON SCHEMA %I TO %I', nspname, :'ro') FROM pg_namespace WHERE nspname !~ '^pg_' AND nspname <> 'information_schema' \gexec
+      SELECT format('GRANT SELECT ON ALL TABLES IN SCHEMA %I TO %I', nspname, :'ro') FROM pg_namespace WHERE nspname !~ '^pg_' AND nspname <> 'information_schema' \gexec
+      SELECT format('ALTER DEFAULT PRIVILEGES IN SCHEMA %I GRANT SELECT ON TABLES TO %I', nspname, :'ro') FROM pg_namespace WHERE nspname !~ '^pg_' AND nspname <> 'information_schema' \gexec
+      SQL
+      until pg_isready; do sleep 2; done
+      until psql -v ON_ERROR_STOP=1 -v ro="$RO_USER" -v pw="$RO_PASSWORD" -f /tmp/readonly-role.sql; do echo "retrying"; sleep 3; done
 {{- end -}}
