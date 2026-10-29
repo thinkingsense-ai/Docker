@@ -66,3 +66,44 @@ replicas starting together can race on ALTER ROLE.
       until pg_isready; do sleep 2; done
       until psql -v ON_ERROR_STOP=1 -v ro="$RO_USER" -v pw="$RO_PASSWORD" -f /tmp/readonly-role.sql; do echo "retrying"; sleep 3; done
 {{- end -}}
+
+{{- /*
+Adds the parts / bill of materials / supplier capability / quote tables to the three demo schemas (files/seed-manufacturing.sql).
+Not part of the one-time Postgres seed, because that only runs on an empty data volume and a stack upgraded in place would never get
+it (and would be offered trusted questions about tables that do not exist). Runs before ensure-readonly-role so its grants cover them.
+*/ -}}
+{{- define "omnigate.manufacturingDemoInit" -}}
+- name: ensure-manufacturing-demo
+  image: docker.io/library/postgres:16-alpine
+  env:
+    - name: PGHOST
+      value: {{ include "omnigate.postgresHost" . | quote }}
+    - name: PGDATABASE
+      value: {{ .Values.postgres.database | quote }}
+    - name: PGUSER
+      valueFrom:
+        secretKeyRef:
+          name: {{ include "omnigate.fullname" . }}-postgres-secret
+          key: POSTGRES_USER
+    - name: PGPASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: {{ include "omnigate.fullname" . }}-postgres-secret
+          key: POSTGRES_PASSWORD
+    - name: MFG_SQL
+      valueFrom:
+        configMapKeyRef:
+          name: {{ include "omnigate.fullname" . }}-seed-manufacturing
+          key: seed-manufacturing.sql
+  command:
+    - sh
+    - -c
+    - |
+      set -e
+      until pg_isready; do sleep 2; done
+      # Only when the tables are not there yet and the three demo schemas are (a database that was replaced is left alone).
+      todo=$(psql -tAc "SELECT to_regclass('inventory.parts') IS NULL AND to_regclass('suppliers.suppliers') IS NOT NULL AND to_regclass('inventory.warehouse_inventory') IS NOT NULL AND to_regclass('procurement.purchase_orders') IS NOT NULL")
+      if [ "$todo" = t ]; then
+        until printf '%s\n' "$MFG_SQL" | psql -v ON_ERROR_STOP=1 -1 -f -; do echo "retrying"; sleep 3; done
+      fi
+{{- end -}}

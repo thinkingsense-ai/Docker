@@ -101,9 +101,31 @@ For internal testing, `scripts/enable-https-oke.sh --stack-id <stack ocid>` swap
 
 **Backing up and restoring:** see [BACKUP-AND-RESTORE.md](https://github.com/thinkingsense-ai/Docker/blob/main/BACKUP-AND-RESTORE.md) (two scripts, tested end to end on OCI, AWS and Azure).
 
+## Parts and quotes demo data
+
+Besides the supply-chain tables, the demo database holds a small, invented robotics-hardware data set, so questions about *sourcing* have something
+to answer: two assemblies (a robot joint module `JM-200` and a gripper `GR-50`) with their bills of materials, 15 parts (custom and catalog), seven
+standard catalog items and how closely each part matches one, supplier capabilities and certifications, and nine requests for quote with 18 quotes.
+
+| Schema | New tables |
+| --- | --- |
+| `suppliers` | `supplier_capabilities`, `supplier_certifications` (and four more suppliers, ids 5 to 8) |
+| `inventory` | `parts`, `assemblies`, `bom_lines`, `catalog_items`, `part_equivalences` |
+| `procurement` | `rfqs`, `quotes` |
+
+- **Why not a fourth schema.** Each schema is one data source, and the free edition allows three, so the new tables live in the existing schemas and
+  questions still join across all three.
+- **How it gets there.** An init container, `ensure-manufacturing-demo`, runs on every pod start and creates the tables only when `inventory.parts` does
+  not exist yet, in one transaction. A new install and an upgraded stack end up the same, and a restart never touches the rows. It does nothing if the
+  three original demo tables are missing (a replaced demo database).
+- **Six more trusted questions** about it are approved with the five above (single-source parts, quotes that miss the need date, a supplier that cannot
+  hold a tolerance, custom parts a catalog item could replace, certification expiry, custom against catalog parts in a bill of materials).
+- **Turning it off.** Set `manufacturingDemo.enabled=false` in the chart values. That stops it being added and the extra questions being approved; tables
+  already created stay until you drop them.
+
 ## Trusted demo questions
 
-After install the stack approves five trusted questions for the seeded supply-chain data (`helm/omnigate/files/demo-questions.json`), so the
+After install the stack approves five trusted questions for the seeded supply-chain data (and six about the parts and quotes data below) (`helm/omnigate/files/demo-questions.json`), so the
 Ask app's first screen shows questions that data can answer. Without them the app shows generic examples (sales by region, top products by
 revenue) that the supply-chain schema cannot answer. A post-install Job does it through the admin API using the admin login; it skips questions
 already present and never fails the deploy. To change the list, edit the JSON file.

@@ -97,6 +97,12 @@ resources:
       cpu: "1"
       memory: 1Gi
 
+# Adds a small robotics-hardware data set to the three demo schemas (parts, bills of materials, a standard-parts catalog, supplier
+# capabilities and certifications, requests for quote and quotes) and six trusted questions about it. Applied by an init container on
+# every pod start, only when the tables are not there yet, so it also reaches a stack that was installed before it existed.
+manufacturingDemo:
+  enabled: true
+
 # Approves a few trusted questions for the seeded supply-chain demo after install, so the Ask app's first
 # screen offers questions this data can answer (see templates/seed-questions.yaml). Needs the admin login
 # (or omnigate.adminApiToken). Best effort: it never fails the release.

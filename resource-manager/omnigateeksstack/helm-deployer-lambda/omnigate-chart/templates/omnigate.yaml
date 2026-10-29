@@ -113,6 +113,9 @@ spec:
             - sh
             - -c
             - until pg_isready -h {{ include "omnigate.postgresHost" . }} -U {{ .Values.postgres.user }}; do sleep 2; done
+{{- if .Values.manufacturingDemo.enabled }}
+{{- include "omnigate.manufacturingDemoInit" . | nindent 8 }}
+{{- end }}
 {{- include "omnigate.readOnlyRoleInit" . | nindent 8 }}
       containers:
         - name: omnigate

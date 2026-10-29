@@ -1,5 +1,9 @@
 {{- if .Values.seedDemoQuestions.enabled }}
 {{- $fullname := include "omnigate.fullname" . }}
+{{- $questions := .Files.Get "files/demo-questions.json" | fromJsonArray }}
+{{- if .Values.manufacturingDemo.enabled }}
+{{- $questions = concat $questions (.Files.Get "files/demo-questions-manufacturing.json" | fromJsonArray) }}
+{{- end }}
 # Approves a few trusted questions for the seeded supply-chain demo (files/demo-questions.json), so the
 # Ask app's first screen offers questions that this data can answer. With an empty question bank the app
 # falls back to generic "Try a phrasing" examples (sales by region, top products by revenue) that the
@@ -35,7 +39,7 @@ metadata:
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 data:
   questions.json: |
-{{ .Files.Get "files/demo-questions.json" | indent 4 }}
+{{ toPrettyJson $questions | indent 4 }}
   seed.py: |
     import json, sys, time, os, urllib.request, urllib.parse, http.cookiejar
     base = "http://{{ $fullname }}-omnigate-internal:8080"

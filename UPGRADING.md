@@ -29,6 +29,10 @@ and an installed licence all stay.
 
 ## Upgrading the stack
 
+**The parts-and-quotes demo data is added on the first upgrade to a release that has it.** The app's pod restarts once, an init container adds nine tables to
+the demo database (existing rows are not touched) and six more trusted questions about them are approved. Set `manufacturingDemo.enabled=false` to skip it.
+See "Parts and quotes demo data" in the stack's README.
+
 - **OCI:** in the Resource Manager stack choose **Edit**, point it at the new release zip, then **Plan**, then **Apply**. From the command line:
   `oci resource-manager stack update --stack-id <id> --config-source <new zip> --working-directory omnigateokestack --force`, then
   `oci resource-manager job create-plan-job ...` and `create-apply-job`. *Tested.*

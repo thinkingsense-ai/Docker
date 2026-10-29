@@ -1,0 +1,32 @@
+[
+ {
+  "question": "Which parts in the JM-200 joint module are custom and which are catalog items?",
+  "referenceSql": "SELECT b.line_no, p.part_no, p.description, p.source_type, b.qty_per FROM inventory.bom_lines b JOIN inventory.parts p ON p.part_no = b.part_no WHERE b.assembly_no = 'JM-200' ORDER BY b.line_no",
+  "category": "manufacturing"
+ },
+ {
+  "question": "Which parts have only one supplier quote, and where is that supplier?",
+  "referenceSql": "SELECT r.part_no, p.description, MIN(s.name) AS supplier, MIN(s.country) AS country FROM procurement.rfqs r JOIN procurement.quotes q ON q.rfq_id = r.rfq_id JOIN suppliers.suppliers s ON s.supplier_id = q.supplier_id JOIN inventory.parts p ON p.part_no = r.part_no GROUP BY r.part_no, p.description HAVING COUNT(*) = 1 ORDER BY r.part_no",
+  "category": "manufacturing"
+ },
+ {
+  "question": "Which quotes would miss the need date if we ordered on the quote date?",
+  "referenceSql": "SELECT r.part_no, s.name AS supplier, q.lead_time_days, q.promise_date, r.need_date FROM procurement.quotes q JOIN procurement.rfqs r ON r.rfq_id = q.rfq_id JOIN suppliers.suppliers s ON s.supplier_id = q.supplier_id WHERE q.promise_date > r.need_date ORDER BY r.part_no",
+  "category": "manufacturing"
+ },
+ {
+  "question": "Which quotes come from a supplier that cannot hold the tolerance the part needs?",
+  "referenceSql": "SELECT r.part_no, p.tolerance_mm AS needed_mm, s.name AS supplier, c.min_tolerance_mm AS supplier_best_mm FROM procurement.quotes q JOIN procurement.rfqs r ON r.rfq_id = q.rfq_id JOIN inventory.parts p ON p.part_no = r.part_no JOIN suppliers.suppliers s ON s.supplier_id = q.supplier_id JOIN suppliers.supplier_capabilities c ON c.supplier_id = q.supplier_id AND c.process = p.process AND c.material = p.material WHERE c.min_tolerance_mm > p.tolerance_mm ORDER BY r.part_no",
+  "category": "manufacturing"
+ },
+ {
+  "question": "Which custom parts could be replaced by a catalog item, and what does each cost against the best quote?",
+  "referenceSql": "SELECT p.part_no, p.description, e.catalog_sku, e.match_confidence, c.unit_price_usd AS catalog_price, MIN(q.unit_price_usd) AS best_quote FROM inventory.parts p JOIN inventory.part_equivalences e ON e.part_no = p.part_no JOIN inventory.catalog_items c ON c.catalog_sku = e.catalog_sku JOIN procurement.rfqs r ON r.part_no = p.part_no JOIN procurement.quotes q ON q.rfq_id = r.rfq_id WHERE p.source_type = 'CUSTOM' GROUP BY p.part_no, p.description, e.catalog_sku, e.match_confidence, c.unit_price_usd ORDER BY e.match_confidence DESC",
+  "category": "manufacturing"
+ },
+ {
+  "question": "Which suppliers are AS9100 certified, and when does it expire?",
+  "referenceSql": "SELECT s.name AS supplier, c.expires_on FROM suppliers.suppliers s JOIN suppliers.supplier_certifications c ON c.supplier_id = s.supplier_id WHERE c.certification = 'AS9100' ORDER BY c.expires_on",
+  "category": "manufacturing"
+ }
+]
