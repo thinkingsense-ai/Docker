@@ -219,3 +219,8 @@ tls:
   keystore: ""            # base64 of a PKCS12 file with your certificate and key
   keystorePassword: ""
   port: 443               # the load balancer's HTTPS port (forwards to the app's 8443)
+
+# Restricts who may open a connection to the database pod (and, on OKE, the TPC-H object store) to the pods that need
+# it. Enforced only where the cluster's network plugin enforces NetworkPolicy; see the stack README. Harmless elsewhere.
+networkPolicy:
+  enabled: true

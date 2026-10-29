@@ -48,6 +48,10 @@ See "Parts and quotes demo data" in the stack's README.
   cluster is not changed. *Tested.*
 - **Google Cloud:** `git pull` (the stack deploys from `main`), then `terraform plan` and `terraform apply`. *Not yet run.*
 
+**A `NetworkPolicy` for the database is added on the first upgrade to a release that has one.** It lets only the app's pods connect to the demo Postgres. It
+changes nothing on a cluster whose network plugin does not enforce policies (none of the four stacks turns enforcement on yet); where it is enforced, anything
+else that connects to the database from another pod is refused. Set `networkPolicy.enabled=false` to leave it out. See "Network policy" in the stack's README.
+
 **The database account changes on the first upgrade to a release with the read-only demo account.** The app's pod restarts once, an init container creates
 the SELECT-only account `omnigate_ro` in the demo Postgres, and the app reconnects as it. No data moves and there is nothing to do, but anything that wrote to
 the demo database through the app (the admin training-data generator, rollups) is now refused. See "The demo database account" in the stack's README.

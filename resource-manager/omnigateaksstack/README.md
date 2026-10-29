@@ -303,6 +303,20 @@ standard catalog items and how closely each part matches one, supplier capabilit
 
 After install the stack approves five trusted questions for the seeded supply-chain data (and six about the parts and quotes data below) (`helm/omnigate/files/demo-questions.json`; in the EKS stack under `helm-deployer-lambda/omnigate-chart/files/`), so the Ask app's first screen shows questions that data can answer. Without them the app shows generic examples (sales by region, top products by revenue) that the supply-chain schema cannot answer. A post-install Helm hook Job does it through the admin API using the admin login; it skips questions already present and never fails the deploy.
 
+## Network policy
+
+The chart adds a `NetworkPolicy` that lets only the app's pods open a connection to the demo Postgres (port 5432), so another workload in the cluster
+cannot try the database logins. The app's own port is left open, because the load balancer and its clients come from any address (use "allowed client
+addresses" to narrow that), and there is no egress rule. Set `networkPolicy.enabled=false` in the chart values to leave it out; add your own
+`NetworkPolicy` if something else (a BI tool in another pod, say) must reach the database, since policies add up.
+
+**Kubernetes accepts these objects on every cluster, but only enforces them where the network plugin does.** This stack's AKS cluster uses the Azure CNI plugin with no network policy engine selected (`networkPlugin: azure`, no `networkPolicy`), which does not enforce `NetworkPolicy`. AKS offers Azure Network Policy Manager, Calico and Cilium as engines; the stack sets none.
+So today the policy is in place but does nothing on a stack created from this template. Enforcement is a cluster setting, not something the chart can turn on.
+
+Tested on a local k3s cluster (which enforces policies) with the real chart: the app's init containers and pod reached Postgres; a pod without the app's
+labels, and a pod in another namespace wearing the app's labels, could not; with the policy deleted the unlabelled pod could. A newly started pod can be
+refused for a few seconds before the plugin learns its labels, which the app's retrying init containers ride out. Not tested on AKS.
+
 ## The demo database account
 
 The app reads the demo data as a **SELECT-only** database account, `omnigate_ro`, not as the `postgres` superuser. Questions are answered by SQL the

@@ -1,0 +1,34 @@
+{{- if .Values.networkPolicy.enabled }}
+# Only the pods that need the database may reach it. Without this, any pod in the cluster (a compromised
+# workload in another namespace, a debug pod) can open a connection to Postgres and try the superuser login.
+# Kubernetes accepts these objects on every cluster, but only enforces them where the cluster's network plugin
+# does -- see "Network policy" in the stack README for which plugin each cloud needs. Where it is not
+# enforced this is harmless and does nothing.
+#
+# The app's own port is left open on purpose (the load balancer and the clients it fronts can come from any
+# address; use the "allowed client addresses" setting to narrow that), and no egress rule is set (the app
+# needs DNS, the Kubernetes API, the model provider and the customer's own databases).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "omnigate.fullname" . }}-postgres
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ .Release.Name }}
+              app.kubernetes.io/component: omnigate
+      ports:
+        - protocol: TCP
+          port: 5432
+{{- end }}
