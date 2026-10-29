@@ -331,8 +331,11 @@ what a superuser account allows).
   database (the admin training-data generator, rollups, the optional staging-table speed-up for very large federated joins, which falls back to the normal
   path) is refused too. To let the app write somewhere, register that database as a data source with its own account.
 - **A schema an admin creates later** is readable after the next pod restart (new tables in existing schemas are readable at once).
-- **Still the superuser.** The init container, backups and the TPC-H loader use `postgres`; its password is still the chart default, so it is only as
-  private as the cluster network.
+- **The superuser.** The init container, backups and the TPC-H loader use `postgres`. Its password is generated on first install and kept in the
+  `<release>-postgres-secret` Secret; the app's own container never receives it. `helm uninstall` leaves that Secret behind on purpose, so a reinstall
+  onto the database volume the old release left works (delete the Secret together with the volume to start clean). A stack installed before this keeps
+  the password it has, which was `postgres`; to change it, run `ALTER ROLE postgres PASSWORD '<new>'` in the database pod and patch `POSTGRES_PASSWORD` in
+  that Secret to match (upgrades read the stored value back, they do not replace it).
 
 ## Signing in, and who can reach it
 

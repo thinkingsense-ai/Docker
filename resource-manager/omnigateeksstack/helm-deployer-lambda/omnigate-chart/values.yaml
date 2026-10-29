@@ -47,7 +47,10 @@ postgres:
   # is rejected as an ambiguous image reference (confirmed live: "short name mode is enforcing").
   image: docker.io/library/postgres:16-alpine
   user: postgres
-  password: postgres
+  # The superuser's password. Blank (the default): generated on first install and kept on every upgrade (read back from the
+  # existing -postgres-secret Secret); a stack installed before this keeps the password it already has, which was "postgres".
+  # The app's own container never receives it (it connects as readOnlyUser below), apart from the optional TPC-H backends.
+  password: ""
   # The account the app itself connects as: SELECT-only, created (and its password set) by the ensure-readonly-role init
   # container on every pod start, so it also appears on a stack that was installed before this existed. Leave
   # readOnlyPassword blank to have one generated on first install and kept on every upgrade; set it only to choose your own.

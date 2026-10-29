@@ -56,6 +56,10 @@ else that connects to the database from another pod is refused. Set `networkPoli
 the SELECT-only account `omnigate_ro` in the demo Postgres, and the app reconnects as it. No data moves and there is nothing to do, but anything that wrote to
 the demo database through the app (the admin training-data generator, rollups) is now refused. See "The demo database account" in the stack's README.
 
+**New installs get a random database superuser password; an existing stack keeps `postgres`.** The upgrade reads the password already stored in the
+`<release>-postgres-secret` Secret and keeps it, because the database volume was initialised with it. To change it on an existing stack, see "The demo
+database account" in the stack's README. Also new: that Secret is left behind by `helm uninstall`, so a reinstall onto the old volume still works.
+
 ## Upgrading the app
 
 Change the image tag (**Image tag**, under *Advanced* in the deploy form, `image_tag` in the variables) to the new version and apply. Going back
