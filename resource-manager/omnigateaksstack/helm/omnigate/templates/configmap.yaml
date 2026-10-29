@@ -52,3 +52,15 @@ metadata:
 data:
   seed-supply-chain.sql: |
 {{ .Files.Get "files/seed-supply-chain.sql" | indent 4 }}
+---
+{{- if .Values.manufacturingDemo.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "omnigate.fullname" . }}-seed-manufacturing
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+data:
+  seed-manufacturing.sql: |
+{{ .Files.Get "files/seed-manufacturing.sql" | indent 4 }}
+{{- end }}
