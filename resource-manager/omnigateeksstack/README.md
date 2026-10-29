@@ -98,12 +98,16 @@ cannot try the database logins. The app's own port is left open, because the loa
 addresses" to narrow that), and there is no egress rule. Set `networkPolicy.enabled=false` in the chart values to leave it out; add your own
 `NetworkPolicy` if something else (a BI tool in another pod, say) must reach the database, since policies add up.
 
-**Kubernetes accepts these objects on every cluster, but only enforces them where the network plugin does.** This stack's EKS cluster uses the Amazon VPC CNI with its network policy agent left off, which does not enforce `NetworkPolicy`. It is an opt-in setting of the `vpc-cni` add-on (`enableNetworkPolicy`); the stack does not turn it on.
-So today the policy is in place but does nothing on a stack created from this template. Enforcement is a cluster setting, not something the chart can turn on.
+**Kubernetes accepts these objects on every cluster, but only enforces them where the network plugin does.** This stack turns enforcement on: the
+template installs the Amazon VPC CNI as a managed `vpc-cni` add-on with `enableNetworkPolicy` set to `true` (the stock `aws-node` ships with its network
+policy agent off), and the Helm release waits for it, so the policy exists only once something enforces it. It needs a node kernel of 5.10 or newer (the
+Graviton AL2023 nodes run 6.1). Updating an existing stack adds the add-on in place: the cluster and nodes are not replaced, and the app's pod restarts once.
 
-Tested on a local k3s cluster (which enforces policies) with the real chart: the app's init containers and pod reached Postgres; a pod without the app's
-labels, and a pod in another namespace wearing the app's labels, could not; with the policy deleted the unlabelled pod could. A newly started pod can be
-refused for a few seconds before the plugin learns its labels, which the app's retrying init containers ride out. Not tested on EKS.
+Tested live on EKS (Kubernetes 1.36, VPC CNI v1.22.4): on a stack created from `eks-stack-v1.0.19` a policy applied by hand was ignored (a pod
+without the app's labels still connected to Postgres); after updating that stack in place to this template, the same kind of pod, and a pod in another
+namespace wearing the app's labels, were refused, a pod with the app's labels was allowed, and the app kept answering queries (as `omnigate_ro`, including
+the three-schema join) through its load balancer. The database pod was not restarted. Enforcement on the other clouds is still a cluster setting those
+stacks do not turn on.
 
 ## The demo database account
 
