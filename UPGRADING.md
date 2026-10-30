@@ -66,6 +66,13 @@ Change the image tag (**Image tag**, under *Advanced* in the deploy form, `image
 to an older app version the same way also worked: the settings written by the newer version were still readable. *Tested v0.10.7 to v0.10.8 and
 back.*
 
+**Volume ownership (app v0.10.11 and later images that run as a non-root user).** The app's own images (`ghcr.io/thinkingsense-ai/server`) run as uid 10001
+from v0.10.11, and a cloud volume is created owned by root. The charts therefore set the pod's `fsGroup` to `10001` (with `fsGroupChangePolicy:
+OnRootMismatch`), so Kubernetes gives the data volume that group, including a volume an earlier release created as root: no manual `chown` on Kubernetes. The
+images these stacks pull (OCIR and Artifact Registry, built from this repository's `Dockerfile`) still run as root today, for which `fsGroup` changes
+nothing; it is there so those images can drop root without another chart release. On plain Docker a volume made by an older image needs
+`docker run --rm -v <volume>:/data busybox chown -R 10001:10001 /data` once (see the app's 0.10.11 release notes).
+
 ## If an upgrade fails
 
 **A bad image tag takes the app down.** With one replica the old pod is removed before the new one can start (the data volume can only be used by
