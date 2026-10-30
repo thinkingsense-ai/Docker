@@ -40,6 +40,13 @@ metadata:
     checksum/configmap: {{ include (print .Template.BasePath "/configmap.yaml") . | sha256sum }}
 spec:
   serviceAccountName: {{ include "omnigate.fullname" . }}-omnigate
+  # The image runs as uid 10001 (since 0.10.11) and a cloud volume is owned by root, so without fsGroup the pod could not write
+  # /var/lib/omnigate/data and the app would stop at startup. Kubernetes gives the volume this group (and group write), including a
+  # volume an earlier release created as root, so an upgrade needs no manual chown. OnRootMismatch skips the recursive change on
+  # a large volume that is already right.
+  securityContext:
+    fsGroup: 10001
+    fsGroupChangePolicy: OnRootMismatch
 {{- if gt (int .Values.omnigate.replicaCount) 1 }}
   # More than one replica: prefer to put them on different nodes, so one node going down (or being drained for maintenance) does not take every
   # replica with it. "Preferred", not "required": with fewer nodes than replicas the extra replicas still start (on a shared node) instead of
