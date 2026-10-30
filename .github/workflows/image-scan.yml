@@ -10,32 +10,24 @@ on:
 permissions:
   contents: read
 
+env:
+  TRIVY_VERSION: v0.71.1
+  # a new CVE in a third-party package should not block an unrelated pull request; the weekly run fails so it gets seen
+  EXIT_CODE: ${{ github.event_name == 'schedule' && '1' || '0' }}
+
 jobs:
   scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install Trivy
+        run: curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/$TRIVY_VERSION/contrib/install.sh | sh -s -- -b "$RUNNER_TEMP/bin" $TRIVY_VERSION
       - name: Scan the Dockerfile and configuration
-        uses: aquasecurity/trivy-action@v0.28.0
-        with:
-          scan-type: config
-          scan-ref: .
-          severity: HIGH,CRITICAL
-          exit-code: '0'
+        run: '"$RUNNER_TEMP/bin/trivy" config --severity HIGH,CRITICAL --exit-code 0 .'
       - name: Scan the published server image
-        uses: aquasecurity/trivy-action@v0.28.0
-        with:
-          image-ref: ghcr.io/thinkingsense-ai/server:latest
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          # a new CVE in a third-party package should not block an unrelated pull request; the weekly run fails so it gets seen
-          exit-code: ${{ github.event_name == 'schedule' && '1' || '0' }}
+        run: '"$RUNNER_TEMP/bin/trivy" image --severity HIGH,CRITICAL --ignore-unfixed --exit-code "$EXIT_CODE" ghcr.io/thinkingsense-ai/server:latest'
       - name: Software bill of materials for the published image
-        uses: aquasecurity/trivy-action@v0.28.0
-        with:
-          image-ref: ghcr.io/thinkingsense-ai/server:latest
-          format: cyclonedx
-          output: server-image-sbom.json
+        run: '"$RUNNER_TEMP/bin/trivy" image --format cyclonedx --output server-image-sbom.json ghcr.io/thinkingsense-ai/server:latest'
       - uses: actions/upload-artifact@v4
         with:
           name: server-image-sbom
