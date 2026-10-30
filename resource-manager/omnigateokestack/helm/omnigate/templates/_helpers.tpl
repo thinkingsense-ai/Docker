@@ -159,12 +159,13 @@ spec:
       image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
       imagePullPolicy: {{ .Values.image.pullPolicy }}
       # Least privilege for the app container only (the init containers, such as the database one, have their own needs): the image runs as 10001 since
-      # 0.10.11, so say so, and drop everything it does not need. The root filesystem stays writable (the JVM and DuckDB write under /tmp).
+      # 0.10.11, so say so, and drop everything it does not need. The root filesystem is read-only; the JVM and DuckDB write under /tmp, which is a scratch volume.
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
         runAsGroup: 10001
         allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
         capabilities:
           drop: ["ALL"]
         seccompProfile:
@@ -232,6 +233,8 @@ spec:
 {{- if not .Values.omnigate.configDb.external }}
         - name: data
           mountPath: /var/lib/omnigate/data
+        - name: tmp
+          mountPath: /tmp
 {{- end }}
       readinessProbe:
         httpGet:
@@ -262,6 +265,8 @@ spec:
     - name: data
       persistentVolumeClaim:
         claimName: {{ include "omnigate.fullname" . }}-omnigate-data
+    - name: tmp
+      emptyDir: {}
 {{- end }}
 {{- end -}}
 
