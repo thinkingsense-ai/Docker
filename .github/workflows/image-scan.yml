@@ -16,21 +16,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Scan the Dockerfile and configuration
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           scan-type: config
           scan-ref: .
           severity: HIGH,CRITICAL
           exit-code: '0'
       - name: Scan the published server image
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           image-ref: ghcr.io/thinkingsense-ai/server:latest
           severity: HIGH,CRITICAL
           ignore-unfixed: true
-          exit-code: '1'
+          # a new CVE in a third-party package should not block an unrelated pull request; the weekly run fails so it gets seen
+          exit-code: ${{ github.event_name == 'schedule' && '1' || '0' }}
       - name: Software bill of materials for the published image
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.28.0
         with:
           image-ref: ghcr.io/thinkingsense-ai/server:latest
           format: cyclonedx

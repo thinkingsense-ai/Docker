@@ -132,7 +132,7 @@ jobs:
           TAG: ${{ steps.vars.outputs.tag }}
           GH_TOKEN: ${{ github.token }}
         run: |
-          curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/v0.57.1/contrib/install.sh | sh -s -- -b "$RUNNER_TEMP/bin" v0.57.1
+          curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/v0.71.1/contrib/install.sh | sh -s -- -b "$RUNNER_TEMP/bin" v0.71.1
           for image in omnigate omnigate-commercial; do
             "$RUNNER_TEMP/bin/trivy" image --format cyclonedx --output "$image-$TAG.sbom.cdx.json" "$OCIR/$image:$TAG"
           done
