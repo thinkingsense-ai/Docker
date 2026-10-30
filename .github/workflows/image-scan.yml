@@ -1,0 +1,41 @@
+name: Image scan
+
+on:
+  pull_request:
+    paths: ['Dockerfile', 'docker/**', 'sidecars/**']
+  schedule:
+    - cron: '41 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan the Dockerfile and configuration
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: config
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: '0'
+      - name: Scan the published server image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ghcr.io/thinkingsense-ai/server:latest
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Software bill of materials for the published image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ghcr.io/thinkingsense-ai/server:latest
+          format: cyclonedx
+          output: server-image-sbom.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-image-sbom
+          path: server-image-sbom.json

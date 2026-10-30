@@ -169,6 +169,9 @@ services:
       OMNIGATE_APP_USERS: "demo:lJX+xXgLcPmnjyXStA9VQQ==:HdoV/jHar1OSBbnTk8Iu8fbLcoBGFJ/Qe83zERd4Mac=::"
       # Admin console/API (see OmniGateHttpServer) is UNAUTHENTICATED unless one of these is set —
       # uncomment and change before exposing this compose stack beyond localhost:
+      # Newer app versions refuse to start with no admin sign-in unless this is set: it keeps this local quick-start working and makes the choice
+      # visible. Remove it once one of the OMNIGATE_AUTH_* settings below is on, and before this stack is reachable beyond your own machine.
+      OMNIGATE_INSECURE: "true"
       # OMNIGATE_AUTH_USERS: "admin:<saltB64>:<hashB64>:admin"  # generate via PasswordHash, see ARCHITECTURE.md
       # OMNIGATE_AUTH_API_TOKENS: "changeme-token:admin"
       # Uncomment to try dual execution against a real Oracle instance too:

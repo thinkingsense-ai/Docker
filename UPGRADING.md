@@ -188,3 +188,13 @@ In the first HTTPS release, turning **Serve HTTPS** off, or replacing the automa
 the stack was re-applied (the pod referenced a service account that the chart no longer created). Releases after `oke-stack-v1.1.13`,
 `eks-stack-v1.0.14` and `aks-stack-v1.0.11` always create it, so all three certificate modes (automatic, your own, HTTPS off) can be switched freely;
 each switch took 75 to 96 seconds with nothing lost. If you are on those releases, upgrade the stack before changing the certificate settings.
+
+**Images built from this repository run as a non-root user.** The `Dockerfile` here now creates uid/gid 10001 (as the app's own images do) and ends with
+`USER 10001:10001`, so the OCIR and Artifact Registry images the stacks deploy no longer start as root. The charts set `fsGroup`, so a cloud volume that an
+earlier image created as root needs nothing. A Docker volume or bind mount that you created yourself is still owned by root: run
+`docker run --rm -v <volume>:/data busybox chown -R 10001:10001 /data` once. The charts also set `runAsNonRoot`, `allowPrivilegeEscalation: false`, drop all
+capabilities and use the runtime default seccomp profile on the app container.
+
+**No sign-in means the app refuses to start (app versions after 0.10.11).** With none of `OMNIGATE_AUTH_USERS`, `OMNIGATE_AUTH_API_TOKENS` or
+`OMNIGATE_AUTH_OIDC_*` set, the server stops at start unless `OMNIGATE_INSECURE=true` is set. The two Compose quick-starts set it explicitly; the cloud stacks
+already configure sign-in. A custom Compose file or demo that ran open needs either a sign-in setting or `OMNIGATE_INSECURE=true`.
