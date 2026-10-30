@@ -308,7 +308,7 @@
             "name": "chartSourceUrl",
             "type": "Microsoft.Common.TextBox",
             "label": "Helm chart source tarball URL",
-            "defaultValue": "https://github.com/thinkingsense-ai/Docker/archive/refs/tags/aks-stack-v1.0.15.tar.gz",
+            "defaultValue": "https://github.com/thinkingsense-ai/Docker/archive/refs/tags/aks-stack-v1.0.16.tar.gz",
             "toolTip": "Advanced -- override only if pointing at a fork or a different aks-stack-vX.Y.Z release tarball.",
             "constraints": {
               "required": false
