@@ -1,0 +1,43 @@
+name: Image scan
+
+on:
+  pull_request:
+    paths: ['Dockerfile', 'docker/**', 'sidecars/**']
+  schedule:
+    - cron: '41 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  TRIVY_VERSION: v0.71.1
+  # a new CVE in a third-party package should not block an unrelated pull request; the weekly run fails so it gets seen
+  EXIT_CODE: ${{ github.event_name == 'schedule' && '1' || '0' }}
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Trivy
+        run: curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/$TRIVY_VERSION/contrib/install.sh | sh -s -- -b "$RUNNER_TEMP/bin" $TRIVY_VERSION
+      - name: Scan the Dockerfile and configuration
+        run: '"$RUNNER_TEMP/bin/trivy" config --severity HIGH,CRITICAL --exit-code 0 .'
+      - name: Scan the published server image and write its software bill of materials
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          IMAGE=ghcr.io/thinkingsense-ai/server:latest
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin || true
+          if docker pull "$IMAGE"; then
+            "$RUNNER_TEMP/bin/trivy" image --format cyclonedx --output server-image-sbom.json "$IMAGE"
+            "$RUNNER_TEMP/bin/trivy" image --severity HIGH,CRITICAL --ignore-unfixed --exit-code "$EXIT_CODE" "$IMAGE"
+          else
+            echo "::warning::cannot pull $IMAGE (the package is private to another repository); the image was not scanned"
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-image-sbom
+          path: server-image-sbom.json
+          if-no-files-found: ignore

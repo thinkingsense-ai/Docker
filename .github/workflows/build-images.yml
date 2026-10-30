@@ -33,6 +33,9 @@ env:
 
 jobs:
   build:
+    # contents: write only so the SBOMs can be attached to the release.
+    permissions:
+      contents: write
     # Only app releases. Stack releases share the same Releases list, so filter by tag shape.
     if: github.event_name == 'workflow_dispatch' || (startsWith(github.event.release.tag_name, 'v') && !contains(github.event.release.tag_name, 'stack'))
     # Native arm64 runner: the images are arm64-only (OKE A1, EKS Graviton, GKE T2A, AKS Ampere), so no emulation.
@@ -122,6 +125,39 @@ jobs:
             printf '%s' "$GAR_KEY" | docker login us-docker.pkg.dev -u _json_key --password-stdin
             docker push "$GAR/omnigate:$TAG"
           fi
+
+      - name: Software bill of materials for each image (skipped on a dry run)
+        if: steps.vars.outputs.push == 'true'
+        env:
+          TAG: ${{ steps.vars.outputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/v0.71.1/contrib/install.sh | sh -s -- -b "$RUNNER_TEMP/bin" v0.71.1
+          for image in omnigate omnigate-commercial; do
+            "$RUNNER_TEMP/bin/trivy" image --format cyclonedx --output "$image-$TAG.sbom.cdx.json" "$OCIR/$image:$TAG"
+          done
+          # An SBOM is attached to the release it describes, so a customer's security review can fetch it with the release.
+          gh release upload "$TAG" omnigate-"$TAG".sbom.cdx.json omnigate-commercial-"$TAG".sbom.cdx.json --clobber --repo "$GITHUB_REPOSITORY"
+
+      - name: Sign the pushed images (skipped on a dry run, or when no signing key is set)
+        if: steps.vars.outputs.push == 'true'
+        env:
+          TAG: ${{ steps.vars.outputs.tag }}
+          CANDIDATE: ${{ steps.vars.outputs.candidate }}
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+        run: |
+          if [ -z "$COSIGN_PRIVATE_KEY" ]; then
+            echo "::warning::COSIGN_PRIVATE_KEY is not set, so the images are not signed"
+            exit 0
+          fi
+          curl -sSfL -o "$RUNNER_TEMP/cosign" https://github.com/sigstore/cosign/releases/download/v2.4.1/cosign-linux-arm64
+          chmod +x "$RUNNER_TEMP/cosign"
+          # Sign by digest, not tag, so the signature belongs to exactly the bytes that were pushed.
+          for ref in "$OCIR/omnigate:$TAG" "$OCIR/omnigate-commercial:$TAG" $( [ "$CANDIDATE" = false ] && echo "$GAR/omnigate:$TAG" ); do
+            digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$ref")
+            "$RUNNER_TEMP/cosign" sign --yes --key env://COSIGN_PRIVATE_KEY "$digest"
+          done
 
   bump-pins:
     # After a real (non-candidate) release has been pushed: open a PR with every stack pin moved to the new tag. Merging it is

@@ -58,7 +58,13 @@ RUN mkdir -p /opt/omnigate && printf '%s' "$OMNIGATE_EDITION" > /opt/omnigate/ED
 # volume here to persist config across container restarts; without one, config still works for the
 # container's lifetime, just doesn't survive a `docker rm`.
 ENV OMNIGATE_DATA_DIR=/var/lib/omnigate/data
-RUN mkdir -p /var/lib/omnigate/data
+# Run as a fixed non-root user (uid/gid 10001, the same as the images the Server repository publishes) so a container escape or a bug in the server
+# does not start as root, and so runAsUser/fsGroup 10001 in the charts means the same thing everywhere. A volume that an earlier (root) image created is
+# still owned by root: chown it to 10001 once, or the server stops at start with a message naming the directory (see UPGRADING.md).
+RUN groupadd --system --gid 10001 omnigate \
+ && useradd --system --uid 10001 --gid 10001 --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin omnigate \
+ && mkdir -p /var/lib/omnigate/data \
+ && chown -R omnigate:omnigate /var/lib/omnigate
 VOLUME ["/var/lib/omnigate/data"]
 
 # Oracle wire, Postgres wire, MySQL wire, native gRPC driver, TCPS (TLS), HTTP admin console/API,
@@ -74,5 +80,7 @@ EXPOSE 1521 5433 3306 7070 2484 8080 8443
 # internal JDK APIs (e.g. java.nio.Buffer.address) that JDK 17's module system blocks by default;
 # a harmless no-op for every other deployment that never sets OMNIGATE_CLUSTER_ENABLED.
 ENV JDK_JAVA_OPTIONS="--add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/jdk.internal.access=ALL-UNNAMED --add-opens=java.base/jdk.internal.misc=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/sun.util.calendar=ALL-UNNAMED --add-opens=java.management/com.sun.jmx.mbeanserver=ALL-UNNAMED --add-opens=jdk.internal.jvmstat/sun.jvmstat.monitor=ALL-UNNAMED --add-opens=java.base/sun.reflect.generics.reflectiveObjects=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.locks=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED"
+
+USER 10001:10001
 
 ENTRYPOINT ["java", "-jar", "omnigate.jar"]
