@@ -146,6 +146,15 @@ spec:
             - secretRef:
                 name: {{ include "omnigate.fullname" . }}-omnigate-secret
           env:
+            # The app's strict security profile (app versions after 0.10.11; ignored by older ones): deny unlisted tables and verify columns when a
+            # policy is set, enforce the content security policy, and never run without sign-in.
+            - name: OMNIGATE_SECURITY_PROFILE
+              value: strict
+{{- if include "omnigate.tlsCustom" . }}
+            # A certificate the operator supplied is one browsers trust, so HSTS is safe to turn on (six months). With the self-signed default it is not.
+            - name: OMNIGATE_HSTS_MAX_AGE_SECONDS
+              value: "15552000"
+{{- end }}
             # Signed licence that lets the free image run as the commercial edition (thinkingsense-ai/Server#18). The app re-reads
             # this file every minute. Whole-directory Secret mount (not subPath, which never updates); the Secret is its own
             # template (license.yaml), outside the checksum annotations, so changing it does not roll the pods.
