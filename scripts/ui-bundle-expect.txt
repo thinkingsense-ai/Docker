@@ -4,3 +4,4 @@
 #
 # v0.10.10 shipped a bundle built before the Infrastructure page existed (the page's source was in the release, the built UI was not).
 api/infrastructure
+api/column-tags
