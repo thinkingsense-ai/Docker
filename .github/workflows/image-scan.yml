@@ -24,11 +24,20 @@ jobs:
         run: curl -sSfL https://raw.githubusercontent.com/aquasecurity/trivy/$TRIVY_VERSION/contrib/install.sh | sh -s -- -b "$RUNNER_TEMP/bin" $TRIVY_VERSION
       - name: Scan the Dockerfile and configuration
         run: '"$RUNNER_TEMP/bin/trivy" config --severity HIGH,CRITICAL --exit-code 0 .'
-      - name: Scan the published server image
-        run: '"$RUNNER_TEMP/bin/trivy" image --severity HIGH,CRITICAL --ignore-unfixed --exit-code "$EXIT_CODE" ghcr.io/thinkingsense-ai/server:latest'
-      - name: Software bill of materials for the published image
-        run: '"$RUNNER_TEMP/bin/trivy" image --format cyclonedx --output server-image-sbom.json ghcr.io/thinkingsense-ai/server:latest'
+      - name: Scan the published server image and write its software bill of materials
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          IMAGE=ghcr.io/thinkingsense-ai/server:latest
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin || true
+          if docker pull "$IMAGE"; then
+            "$RUNNER_TEMP/bin/trivy" image --format cyclonedx --output server-image-sbom.json "$IMAGE"
+            "$RUNNER_TEMP/bin/trivy" image --severity HIGH,CRITICAL --ignore-unfixed --exit-code "$EXIT_CODE" "$IMAGE"
+          else
+            echo "::warning::cannot pull $IMAGE (the package is private to another repository); the image was not scanned"
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: server-image-sbom
           path: server-image-sbom.json
+          if-no-files-found: ignore
