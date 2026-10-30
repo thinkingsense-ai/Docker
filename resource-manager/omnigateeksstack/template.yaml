@@ -210,7 +210,7 @@ Parameters:
     Description: "Commercial edition only: the OCIR Auth Token that goes with ImagePullUsername. Blank for the free edition."
   ImageTag:
     Type: String
-    Default: v0.10.10
+    Default: v0.10.11
     Description: "OCIR docker tag for the omnigate image. Pinned to a specific free-edition
       release rather than :latest -- confirmed live that :latest had silently stopped tracking
       new app releases (frozen at v0.6.0's content for two releases), so a moving-target default
