@@ -46,11 +46,18 @@ See "Parts and quotes demo data" in the stack's README.
   --template-file azuredeploy.json --parameters @params.json`). About 5 to 6 minutes (the install script runs again). `az deployment group what-if`
   lists the cluster as "Modify" with many property "deletes"; that is Azure's usual noise about properties the template does not set, and the
   cluster is not changed. *Tested.*
-- **Google Cloud:** `git pull` (the stack deploys from `main`), then `terraform plan` and `terraform apply`. *Not yet run.*
+- **Google Cloud:** `git pull` (the stack deploys from `main`), then `terraform plan` and `terraform apply`. The plan should show `helm_release.omnigate` changing in place; if it
+  says nothing changed after a pull that edited the chart, you are on a checkout from before the chart-files hash was added to `helm-release.tf` (the provider does not
+  notice a changed template by itself), and the first apply on a newer checkout does the upgrade. *Tested* (one in-place upgrade of a running stack, the app's pod restarted once).
 
 **A `NetworkPolicy` for the database is added on the first upgrade to a release that has one.** It lets only the app's pods connect to the demo Postgres. It
 changes nothing on a cluster whose network plugin does not enforce policies (none of the four stacks turns enforcement on yet); where it is enforced, anything
 else that connects to the database from another pod is refused. Set `networkPolicy.enabled=false` to leave it out. See "Network policy" in the stack's README.
+
+**Stored settings become encrypted on the first upgrade to a release that sets the encryption key.** The app's pod restarts once; at that start the app
+encrypts the settings it already holds (source passwords, tokens, the model key) under a new key generated into the Secret `<release>-config-key`, which
+`helm uninstall` keeps. Nothing to do. Keep that Secret with the data volume (settings encrypted under a lost key cannot be read), and do not roll the app back
+to an image older than 0.10.12 afterwards. Set `configEncryption.enabled=false` to leave it off. See "Stored settings are encrypted" in the stack's README.
 
 **The database account changes on the first upgrade to a release with the read-only demo account.** The app's pod restarts once, an init container creates
 the SELECT-only account `omnigate_ro` in the demo Postgres, and the app reconnects as it. No data moves and there is nothing to do, but anything that wrote to

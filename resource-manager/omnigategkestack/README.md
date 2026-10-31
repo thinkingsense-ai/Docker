@@ -237,6 +237,16 @@ Tested on a local k3s cluster (which enforces policies) with the real chart: the
 labels, and a pod in another namespace wearing the app's labels, could not; with the policy deleted the unlabelled pod could. A newly started pod can be
 refused for a few seconds before the plugin learns its labels, which the app's retrying init containers ride out. Not tested on GKE.
 
+## Stored settings are encrypted
+
+The app keeps the settings you enter in its console (source passwords, tokens, the model key) in a configuration store on its data volume. The chart sets
+`OMNIGATE_CONFIG_ENCRYPTION_KEY`, so these are encrypted at rest with AES-GCM; without it the app's deployment check reports a critical problem and does not
+call the installation production ready. The key is generated on the first install and kept on every upgrade, in its own Secret (`<release>-config-key`), which
+`helm uninstall` leaves in place. Set `configEncryption.key` (base64, 16, 24 or 32 bytes) to choose your own, or `configEncryption.enabled=false` to leave it off.
+
+**Do not delete that Secret while the data volume remains**: settings encrypted under a key that is lost cannot be read back. Back it up with the data
+volume. An app image older than 0.10.12 cannot read encrypted settings, so do not roll back to one once this has run.
+
 ## The demo database account
 
 The app reads the demo data as a **SELECT-only** database account, `omnigate_ro`, not as the `postgres` superuser. Questions are answered by SQL the

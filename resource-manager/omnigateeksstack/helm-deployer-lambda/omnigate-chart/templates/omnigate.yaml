@@ -150,6 +150,14 @@ spec:
             # policy is set, enforce the content security policy, and never run without sign-in.
             - name: OMNIGATE_SECURITY_PROFILE
               value: strict
+            # Encrypts the app's stored settings at rest (source passwords, tokens, the model key); the key lives in its own Secret, see secrets.yaml.
+{{- if .Values.configEncryption.enabled }}
+            - name: OMNIGATE_CONFIG_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "omnigate.fullname" . }}-config-key
+                  key: OMNIGATE_CONFIG_ENCRYPTION_KEY
+{{- end }}
 {{- if include "omnigate.tlsCustom" . }}
             # A certificate the operator supplied is one browsers trust, so HSTS is safe to turn on (six months). With the self-signed default it is not.
             - name: OMNIGATE_HSTS_MAX_AGE_SECONDS
