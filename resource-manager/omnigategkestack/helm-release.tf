@@ -56,6 +56,14 @@ resource "helm_release" "omnigate" {
   timeout    = 600
   depends_on = [null_resource.cleanup_pvcs]
 
+  # The helm provider redeploys when a value or the chart's version changes, not when a template does, and this chart's version never moves.
+  # Without this, a `git pull` that only edits the chart applies as "0 changed" and the cluster keeps the old templates. The value follows the
+  # chart's files; the chart itself ignores it.
+  set {
+    name  = "chartFilesHash"
+    value = sha1(join("", [for f in sort(fileset("${path.module}/helm/omnigate", "**")) : filesha1("${path.module}/helm/omnigate/${f}")]))
+  }
+
   set {
     name  = "image.repository"
     value = var.image_repository

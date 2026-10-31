@@ -227,3 +227,12 @@ tls:
 # it. Enforced only where the cluster's network plugin enforces NetworkPolicy; see the stack README. Harmless elsewhere.
 networkPolicy:
   enabled: true
+
+# Encrypts the settings the app stores (source passwords, tokens, the model key) at rest with AES-GCM. On by default: the app's deployment check
+# calls an installation without it "not production ready". The key is generated on first install and kept on every upgrade (read back from the
+# -config-key Secret, which `helm uninstall` leaves in place); set key (a base64 string of 16, 24 or 32 bytes) only to choose your own. Settings saved
+# earlier are encrypted at the next start. Do not delete that Secret while the data volume remains, or the stored settings cannot be read; and an app
+# image older than 0.10.12 cannot read encrypted settings, so do not roll back to one after this has run.
+configEncryption:
+  enabled: true
+  key: ""
