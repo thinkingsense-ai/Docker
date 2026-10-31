@@ -1,6 +1,6 @@
 #!/bin/bash
 # Checks a fresh free-edition deploy on any of the four clouds: the admin surfaces refuse anonymous callers,
-# the admin token works, a wrong token does not, and the Ask app is up.
+# the admin token works, a wrong token does not, the Ask app is up, and the app's own deployment check reports nothing critical.
 #   verify-secure-deploy.sh [--legacy-agent] https://<load-balancer> <admin-api-token>     (or http://<lb>:8080 if HTTPS is off)
 # HTTPS deployments use a self-signed certificate unless one was supplied, so the checks do not verify the certificate (curl -k);
 # set VERIFY_CA=<ca.pem> to verify it against a CA instead.
@@ -12,7 +12,13 @@ CURL_TLS=(-k); [ -n "${VERIFY_CA:-}" ] && CURL_TLS=(--cacert "$VERIFY_CA")
 code() { curl -s "${CURL_TLS[@]}" -o /dev/null -m 15 -w '%{http_code}' "$@"; }
 check() { # name expected actual
   if [ "$2" = "$3" ]; then printf 'PASS  %-46s %s\n' "$1" "$3"; else printf 'FAIL  %-46s want %s got %s\n' "$1" "$2" "$3"; fail=1; fi; }
-check "readiness is public"                 200 "$(code "$BASE/api/deployment-readiness")"
+# App 0.10.13 and later answer the deployment check only to a signed-in reader (it now says what is switched on); earlier ones answered anyone.
+check "readiness answers the admin token"   200 "$(code -H "Authorization: Bearer $TOKEN" "$BASE/api/deployment-readiness")"
+ready=$(curl -s "${CURL_TLS[@]}" -m 30 -H "Authorization: Bearer $TOKEN" "$BASE/api/deployment-readiness")
+crit=$(printf '%s' "$ready" | python3 -c 'import json,sys
+try: print(",".join(c["id"] for c in json.load(sys.stdin)["checks"] if c.get("severity") == "CRITICAL") or "none")
+except Exception: print("unreadable")')
+check "deployment check has no critical problem"  none "$crit"
 check "Ask app page is up"                  200 "$(code "$BASE/")"
 for p in /api/config /metrics /mcp/; do check "anonymous $p refused" 401 "$(code "$BASE$p")"; done
 check "anonymous /api/query refused"        401 "$(code -X POST -H 'Content-Type: application/json' -d '{"sql":"select 1"}' "$BASE/api/query")"
