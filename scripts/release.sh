@@ -192,6 +192,12 @@ phase_docs() {
       echo "    EKS template v$eks is not readable in S3: leaving deploy-aws.html where it is"
     fi
     rm -f ./*.bak
+    if git diff --quiet; then
+      say "the deploy pages already name oke v$oke, aks v$aks and image v$version: nothing to change, no PR opened"
+      git checkout -q main
+      git branch -D "deploy-$version" -q
+      return 0
+    fi
     git commit -qam "Deploy pages: OKE stack v$oke, AKS stack v$aks, ARM image v$version"
   fi
   run git push -q origin "deploy-$version"
