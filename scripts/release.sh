@@ -58,8 +58,13 @@ phase_app() {
   say "release $version on top of $prev"
 
   if [ $skip_tests = 0 ]; then
-    say "full test suite (start scripts/test-infra.sh up first for a green run)"
-    run bash -c "cd '$SERVER_DIR' && mvn -B test"
+    if [ -x "$SERVER_DIR/scripts/test-infra.sh" ]; then
+      say "full test suite, with the test services started and stopped around it (scripts/test-infra.sh test)"
+      run "$SERVER_DIR/scripts/test-infra.sh" test
+    else
+      say "full test suite (no scripts/test-infra.sh here, so the container-dependent tests need their services already running)"
+      run bash -c "cd '$SERVER_DIR' && mvn -B test"
+    fi
   fi
 
   say "bump the version ($prev -> $version) in AppVersion, docker-compose.yml, README.md"
@@ -73,13 +78,13 @@ s = s.replace(f"server:{prev}", f"server:{new}").replace(f":{prev}-free", f":{ne
 s = s.replace(f"start with [{prev}](docs/releases/{prev}.md)", f"start with [{new}](docs/releases/{new}.md) (patch: see the notes), then [{prev}](docs/releases/{prev}.md)", 1)
 open(p, "w", encoding="utf-8").write(s)
 PY
-    git -C "$SERVER_DIR" add -A
+    git -C "$SERVER_DIR" add src/main/java/com/omnigate/core/AppVersion.java docker-compose.yml README.md
     git -C "$SERVER_DIR" commit -q -m "Release $version: version bump and upgrade notes"
   fi
   run git -C "$SERVER_DIR" push -q "$SERVER_REMOTE" main
   run git -C "$SERVER_DIR" tag "$tag"
   run git -C "$SERVER_DIR" push -q "$SERVER_REMOTE" "$tag"
-  run gh release create "$tag" --repo $SERVER_REPO --title "$version" --notes-file "$notes" --latest=false
+  run gh release create "$tag" --repo $SERVER_REPO --title "$version" --notes-file "$notes" --latest
 
   say "build the jar and a fresh UI bundle, and check the bundle"
   local out; out=$(mktemp -d /tmp/release-$version.XXXXXX)
