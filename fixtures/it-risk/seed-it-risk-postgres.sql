@@ -1,17 +1,18 @@
--- IT & operational risk demo data (a mid-size financial firm). Invented; no real firm's data.
--- Three schemas, one data source each, like the supply-chain demo:
---   governance  risk register, risk appetite, controls and their tests, key risk indicators, audit issues
---   operations  business services (with recovery objectives), applications, outages
---   security    third-party vendors, vulnerabilities
+-- IT & operational risk demo data (a mid-size financial firm), Postgres half. Invented; no real firm's data.
+-- Two data sources, so the demo also shows a question answered across two different databases:
+--   risk      (this file, Postgres)  business services with recovery objectives, applications, outages,
+--                                    risk register, risk appetite, controls and their tests, key risk
+--                                    indicators, audit issues
+--   security  (seed-it-risk-mariadb.sql, MariaDB)  third-party vendors, vulnerabilities
+-- Each source is registered under the same name as its schema/database ("risk", "security"); the federation
+-- planner needs that. applications.vendor_id and vulnerabilities.app_id point across the two.
 -- Dates are relative to the day this script runs (CURRENT_DATE), so "overdue", "last 12 months" and "not tested
--- recently" stay meaningful for a demo run soon after install. One transaction: all or nothing.
+-- recently" stay meaningful for a demo run soon after install.
 
-CREATE SCHEMA IF NOT EXISTS governance;
-CREATE SCHEMA IF NOT EXISTS operations;
-CREATE SCHEMA IF NOT EXISTS security;
+CREATE SCHEMA IF NOT EXISTS risk;
 
 -- ------------------------------------------------------------------ operations
-CREATE TABLE operations.business_services (
+CREATE TABLE risk.business_services (
   service_id INT PRIMARY KEY,
   name VARCHAR(60),
   tier INT,                    -- 1 = most critical
@@ -20,7 +21,7 @@ CREATE TABLE operations.business_services (
   rpo_minutes INT,             -- recovery point objective: longest acceptable data loss
   revenue_per_hour_usd INT
 );
-INSERT INTO operations.business_services VALUES
+INSERT INTO risk.business_services VALUES
  (1, 'Payments Processing',     1, 'Dana Whitfield',   30,   5, 480000),
  (2, 'Trading Platform',        1, 'Marcus Oyelaran',  15,   1, 650000),
  (3, 'Online Banking',          1, 'Priya Raman',      60,  15, 210000),
@@ -30,14 +31,14 @@ INSERT INTO operations.business_services VALUES
  (7, 'Internal HR Portal',      3, 'Grace Lindqvist', 1440, 480,   1500),
  (8, 'Document Management',     3, 'Ravi Menon',      960, 240,   3000);
 
-CREATE TABLE operations.applications (
+CREATE TABLE risk.applications (
   app_id INT PRIMARY KEY,
   name VARCHAR(60),
   service_id INT,
   hosting VARCHAR(20),
-  vendor_id INT                -- security.vendors; NULL for in-house systems
+  vendor_id INT                -- security.vendors (MariaDB); NULL for in-house systems
 );
-INSERT INTO operations.applications VALUES
+INSERT INTO risk.applications VALUES
  ( 1, 'Payment Gateway',          1, 'On-prem', NULL),
  ( 2, 'Card Switch',              1, 'On-prem', 3),
  ( 3, 'Fraud Scoring Engine',     1, 'AWS',     5),
@@ -55,7 +56,7 @@ INSERT INTO operations.applications VALUES
  (15, 'Records Archive',          8, 'On-prem', 8),
  (16, 'Collaboration Suite',      8, 'Azure',   1);
 
-CREATE TABLE operations.incidents (
+CREATE TABLE risk.incidents (
   incident_id INT PRIMARY KEY,
   app_id INT,
   started_on DATE,
@@ -63,7 +64,7 @@ CREATE TABLE operations.incidents (
   severity VARCHAR(10),        -- SEV1 worst
   root_cause VARCHAR(30)
 );
-INSERT INTO operations.incidents VALUES
+INSERT INTO risk.incidents VALUES
  ( 1,  1, CURRENT_DATE - 14,  52, 'SEV1', 'Change failure'),
  ( 2,  1, CURRENT_DATE - 160, 18, 'SEV2', 'Capacity'),
  ( 3,  2, CURRENT_DATE - 40,  95, 'SEV1', 'Vendor outage'),
@@ -89,66 +90,19 @@ INSERT INTO operations.incidents VALUES
  (23,  1, CURRENT_DATE - 400, 40,  'SEV2', 'Change failure'),
  (24,  4, CURRENT_DATE - 450, 66,  'SEV1', 'Software defect');
 
--- ------------------------------------------------------------------ security
-CREATE TABLE security.vendors (
-  vendor_id INT PRIMARY KEY,
-  name VARCHAR(60),
-  tier INT,                    -- 1 = critical third party
-  country VARCHAR(30),
-  last_assessed DATE,
-  assessment_rating VARCHAR(10)
-);
-INSERT INTO security.vendors VALUES
- (1, 'Northwind Cloud Services',   1, 'USA',     CURRENT_DATE - 120, 'Medium'),
- (2, 'Meridian Market Data',       1, 'UK',      CURRENT_DATE - 410, 'Medium'),
- (3, 'Atlas Card Networks',        1, 'USA',     CURRENT_DATE - 200, 'Low'),
- (4, 'Helix Treasury Software',    1, 'Germany', CURRENT_DATE - 520, 'High'),
- (5, 'Sentinel Fraud Analytics',   2, 'Israel',  CURRENT_DATE - 90,  'Low'),
- (6, 'Veritas Identity Checks',    2, 'USA',     CURRENT_DATE - 380, 'Medium'),
- (7, 'PeopleWorks HRIS',           3, 'USA',     CURRENT_DATE - 300, 'Low'),
- (8, 'Archivia Storage',           3, 'Ireland', CURRENT_DATE - 600, 'Medium');
-
-CREATE TABLE security.vulnerabilities (
-  vuln_id INT PRIMARY KEY,
-  app_id INT,
-  cve VARCHAR(20),
-  cvss NUMERIC(3,1),
-  severity VARCHAR(10),
-  found_on DATE,
-  patch_due DATE,
-  patched_on DATE              -- NULL = still open
-);
-INSERT INTO security.vulnerabilities VALUES
- ( 1,  1, 'CVE-2026-1101', 9.8, 'Critical', CURRENT_DATE - 45, CURRENT_DATE - 31, NULL),
- ( 2,  2, 'CVE-2026-1177', 9.1, 'Critical', CURRENT_DATE - 20, CURRENT_DATE - 6,  NULL),
- ( 3,  4, 'CVE-2026-0988', 8.8, 'High',     CURRENT_DATE - 30, CURRENT_DATE + 0,  NULL),
- ( 4,  6, 'CVE-2026-1204', 9.6, 'Critical', CURRENT_DATE - 12, CURRENT_DATE + 2,  NULL),
- ( 5,  8, 'CVE-2026-1230', 9.4, 'Critical', CURRENT_DATE - 38, CURRENT_DATE - 24, CURRENT_DATE - 20),
- ( 6, 12, 'CVE-2026-0871', 9.9, 'Critical', CURRENT_DATE - 70, CURRENT_DATE - 56, NULL),
- ( 7, 12, 'CVE-2026-0872', 7.5, 'High',     CURRENT_DATE - 70, CURRENT_DATE - 40, NULL),
- ( 8,  3, 'CVE-2026-1190', 8.1, 'High',     CURRENT_DATE - 22, CURRENT_DATE + 8,  NULL),
- ( 9,  7, 'CVE-2026-1215', 7.2, 'High',     CURRENT_DATE - 50, CURRENT_DATE - 20, CURRENT_DATE - 25),
- (10,  9, 'CVE-2026-1066', 9.2, 'Critical', CURRENT_DATE - 33, CURRENT_DATE - 19, NULL),
- (11, 11, 'CVE-2026-0755', 6.5, 'Medium',   CURRENT_DATE - 90, CURRENT_DATE - 30, NULL),
- (12, 14, 'CVE-2026-1099', 9.0, 'Critical', CURRENT_DATE - 25, CURRENT_DATE - 11, NULL),
- (13, 15, 'CVE-2026-0604', 5.3, 'Medium',   CURRENT_DATE - 120,CURRENT_DATE - 60, CURRENT_DATE - 70),
- (14, 16, 'CVE-2026-1188', 8.4, 'High',     CURRENT_DATE - 10, CURRENT_DATE + 20, NULL),
- (15,  5, 'CVE-2026-1122', 7.8, 'High',     CURRENT_DATE - 28, CURRENT_DATE - 1,  NULL),
- (16, 13, 'CVE-2026-1143', 6.1, 'Medium',   CURRENT_DATE - 15, CURRENT_DATE + 45, NULL);
-
 -- ------------------------------------------------------------------ governance
-CREATE TABLE governance.risk_appetite (
+CREATE TABLE risk.risk_appetite (
   category VARCHAR(30) PRIMARY KEY,
   max_residual_score INT      -- the board's tolerance: a residual score above this is outside appetite
 );
-INSERT INTO governance.risk_appetite VALUES
+INSERT INTO risk.risk_appetite VALUES
  ('Technology', 12), ('Cyber', 9), ('Third party', 12), ('Operational resilience', 10), ('Compliance', 8);
 
-CREATE TABLE governance.risk_register (
+CREATE TABLE risk.risk_register (
   risk_id INT PRIMARY KEY,
   title VARCHAR(90),
   category VARCHAR(30),
-  service_id INT,             -- operations.business_services
+  service_id INT,             -- risk.business_services
   owner VARCHAR(40),
   likelihood INT,             -- 1-5
   impact INT,                 -- 1-5
@@ -156,7 +110,7 @@ CREATE TABLE governance.risk_register (
   residual_score INT,         -- after controls (likelihood x impact, as assessed)
   status VARCHAR(15)
 );
-INSERT INTO governance.risk_register VALUES
+INSERT INTO risk.risk_register VALUES
  ( 1, 'Card switch vendor outage halts card payments',            'Third party',            1, 'Dana Whitfield',   3, 5, 20, 15, 'Mitigating'),
  ( 2, 'Ransomware encrypts trading order data',                    'Cyber',                  2, 'Marcus Oyelaran',  3, 5, 25, 15, 'Mitigating'),
  ( 3, 'Unpatched critical flaws on payment systems',               'Cyber',                  1, 'Dana Whitfield',   4, 4, 20, 16, 'Open'),
@@ -172,7 +126,7 @@ INSERT INTO governance.risk_register VALUES
  (13, 'Cloud region outage affects online banking',                'Technology',             3, 'Priya Raman',      2, 4, 12, 8,  'Mitigating'),
  (14, 'Insider misuse of treasury payment approvals',              'Operational resilience', 6, 'Aisha Bello',      2, 5, 15, 10, 'Mitigating');
 
-CREATE TABLE governance.controls (
+CREATE TABLE risk.controls (
   control_id INT PRIMARY KEY,
   title VARCHAR(90),
   control_type VARCHAR(15),   -- Preventive / Detective / Corrective
@@ -182,7 +136,7 @@ CREATE TABLE governance.controls (
   last_tested DATE,
   last_result VARCHAR(20)     -- Effective / Partially effective / Ineffective
 );
-INSERT INTO governance.controls VALUES
+INSERT INTO risk.controls VALUES
  ( 1, 'Warm standby for card switch',                  'Corrective', 1, 'Dana Whitfield',   180, CURRENT_DATE - 90,  'Effective'),
  ( 2, 'Dual-vendor routing for card payments',         'Preventive', 1, 'Dana Whitfield',   365, CURRENT_DATE - 410, 'Partially effective'),
  ( 3, 'Immutable backups of order data',               'Corrective', 2, 'Marcus Oyelaran',  90,  CURRENT_DATE - 60,  'Effective'),
@@ -200,7 +154,7 @@ INSERT INTO governance.controls VALUES
  (15, 'Dual approval on treasury payments',            'Preventive', 14,'Aisha Bello',      180, CURRENT_DATE - 60,  'Effective'),
  (16, 'Quarterly access recertification',             'Detective',  14,'Aisha Bello',      90,  CURRENT_DATE - 190, 'Partially effective');
 
-CREATE TABLE governance.key_risk_indicators (
+CREATE TABLE risk.key_risk_indicators (
   kri_id INT PRIMARY KEY,
   name VARCHAR(70),
   category VARCHAR(30),
@@ -208,7 +162,7 @@ CREATE TABLE governance.key_risk_indicators (
   red_at NUMERIC(8,2),        -- ... and red
   higher_is_worse BOOLEAN
 );
-INSERT INTO governance.key_risk_indicators VALUES
+INSERT INTO risk.key_risk_indicators VALUES
  (1, 'Critical vulnerabilities past patch deadline',       'Cyber',                  2,    4,    TRUE),
  (2, 'Tier-1 outage minutes in the last 90 days',           'Operational resilience', 100,  200,  TRUE),
  (3, 'Tier-1 and tier-2 vendors not assessed in 12 months',  'Third party',            1,    3,    TRUE),
@@ -217,13 +171,13 @@ INSERT INTO governance.key_risk_indicators VALUES
  (6, 'Change failure rate (percent)',                        'Technology',             10,   15,   TRUE),
  (7, 'Backup restore success rate (percent)',                'Operational resilience', 98,   95,   FALSE);
 
-CREATE TABLE governance.kri_readings (
+CREATE TABLE risk.kri_readings (
   kri_id INT,
   month_start DATE,
   reading NUMERIC(8,2),
   PRIMARY KEY (kri_id, month_start)
 );
-INSERT INTO governance.kri_readings
+INSERT INTO risk.kri_readings
 SELECT k, (date_trunc('month', CURRENT_DATE) - (m || ' months')::interval)::date, v
 FROM (VALUES
  (1, 0, 5),(1, 1, 3),(1, 2, 2),
@@ -235,7 +189,7 @@ FROM (VALUES
  (7, 0, 97),(7, 1, 99),(7, 2, 99)
 ) AS t(k, m, v);
 
-CREATE TABLE governance.audit_issues (
+CREATE TABLE risk.audit_issues (
   issue_id INT PRIMARY KEY,
   risk_id INT,
   title VARCHAR(90),
@@ -245,7 +199,7 @@ CREATE TABLE governance.audit_issues (
   status VARCHAR(10),         -- Open / Closed
   owner VARCHAR(40)
 );
-INSERT INTO governance.audit_issues VALUES
+INSERT INTO risk.audit_issues VALUES
  (1, 3,  'Critical patches not applied within policy',            'High',   CURRENT_DATE - 200, CURRENT_DATE - 40, 'Open',   'Dana Whitfield'),
  (2, 6,  'Treasury vendor assessment overdue',                    'High',   CURRENT_DATE - 150, CURRENT_DATE - 20, 'Open',   'Aisha Bello'),
  (3, 1,  'Dual-vendor routing never tested end to end',           'Medium', CURRENT_DATE - 120, CURRENT_DATE + 30, 'Open',   'Dana Whitfield'),

@@ -6,8 +6,19 @@ A demo data set and a list of trusted questions for a mid-size financial firm's 
 
 ## Files
 
-- `seed-it-risk.sql` creates three schemas, one data source each: `governance` (risk register, risk appetite, controls, key risk indicators and their monthly readings, audit issues), `operations` (business services with recovery objectives, applications, outages) and `security` (third-party vendors, vulnerabilities).
-- `demo-questions-it-risk.json` has twelve trusted questions with the reference SQL that defines the right answer, in the same format as `demo-questions-manufacturing.json`.
+- `seed-it-risk-postgres.sql` creates one Postgres schema, `risk`: business services with recovery objectives, applications, outages, risk register, risk appetite, controls and their tests, key risk indicators and their monthly readings, audit issues.
+- `seed-it-risk-mariadb.sql` creates one MariaDB database, `security`: third-party vendors and vulnerabilities.
+- `demo-questions-it-risk.json` has twelve trusted questions with the reference SQL that defines the right answer, in the same format as `demo-questions-manufacturing.json`. Four of them (patch deadlines by service, unassessed critical third parties by service, vendors behind the most tier-1 services, tier-1 services with an open critical vulnerability and an outage) join across the two databases; the rest stay inside one.
+
+## Two data sources, on purpose
+
+The free edition allows three data sources (connectors). This pack uses two, one Postgres and one MariaDB, so the demo also shows federation. A live test on a GKE stack (2026-11) found three constraints, which is why the layout looks like this:
+
+- Register each source under the same name as its schema or database (`risk`, `security`). For MariaDB the app qualifies tables with the source's name, so any other name produces SQL that fails.
+- A cross-database join only sees a source's default schema, so each source holds a single schema. Several Postgres schemas behind one source work for questions inside that source, but not in a join to another source.
+- Register with `OMNIGATE_BACKENDS` entries `risk=jdbc:postgresql://...?currentSchema=risk|...` and `security=jdbc:mariadb://.../security|...`, and `OMNIGATE_ROUTER_SCHEMA_RULES=risk:risk,security:security`.
+
+Another pack side by side needs its own Postgres source, which leaves no room for more than that on the free edition; it is not decided how to fit the insurance pack.
 
 Dates are relative to the day the script runs, so "overdue" and "last 12 months" stay meaningful soon after install and drift as the data ages. The key risk indicator readings for the current month are typed in to agree with the data on the day of writing (7 controls overdue, 4 overdue audit issues, 5 critical vulnerabilities past deadline, 549 tier-1 outage minutes in 90 days, 3 vendors unassessed); they do not recompute.
 
@@ -20,4 +31,5 @@ Business service with a tier and recovery time/point objectives (RTO/RPO); risk 
 1. Check the vocabulary and the twelve questions against the JPMC conversation.
 2. Wire into the four charts the way `manufacturingDemo` is (init container, `demo-questions` seeding, a `demoDataset` setting).
 3. Run the accuracy script against it (needs `questions.json` for this pack) after Server#43 is fixed.
-4. Ask-app pack selector (Server issue), and the data-source count: three packs side by side need more than the free edition's three sources.
+4. Ask-app pack selector (Server issue), and the data-source count (see above).
+5. The reference SQL is checked on Postgres only (both halves loaded into one database). The MariaDB half has not been run against the reference SQL through the federation planner outside the live test.
