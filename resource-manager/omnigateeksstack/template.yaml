@@ -429,6 +429,20 @@ Resources:
       ResolveConflicts: OVERWRITE
     DependsOn: NodeGroup
 
+  # Amazon VPC CNI as a managed add-on, with its network policy agent switched on. Kubernetes accepts a NetworkPolicy on any cluster but
+  # only the network plugin enforces it, and the default aws-node ships with the agent off, so without this the chart's database policy
+  # is silently ignored. The helm release below waits for this, so the policy exists only once something enforces it. OVERWRITE takes
+  # over the self-managed aws-node that EKS installs on every cluster (an update of an existing stack does the same). Needs the
+  # AmazonEKS_CNI_Policy on the node role (attached above) and a node kernel of 5.10 or newer (AL2023 is 6.1).
+  VpcCniAddon:
+    Type: AWS::EKS::Addon
+    Properties:
+      ClusterName: !Ref EKSCluster
+      AddonName: vpc-cni
+      ConfigurationValues: '{"enableNetworkPolicy": "true"}'
+      ResolveConflicts: OVERWRITE
+    DependsOn: NodeGroup
+
   # --- AWS Load Balancer Controller: without it, Service type=LoadBalancer falls back to the
   # deprecated in-tree provisioner, which only creates Classic ELBs.
   LbcPolicy:
@@ -834,6 +848,7 @@ Resources:
     DependsOn:
       - HelmDeployerAccessEntry
       - EbsCsiAddon
+      - VpcCniAddon
       - BuildTrigger
     Properties:
       PackageType: Image

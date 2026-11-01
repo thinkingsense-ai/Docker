@@ -51,8 +51,8 @@ See "Parts and quotes demo data" in the stack's README.
   notice a changed template by itself), and the first apply on a newer checkout does the upgrade. *Tested* (one in-place upgrade of a running stack, the app's pod restarted once).
 
 **A `NetworkPolicy` for the database is added on the first upgrade to a release that has one.** It lets only the app's pods connect to the demo Postgres. It
-changes nothing on a cluster whose network plugin does not enforce policies (none of the four stacks turns enforcement on yet); where it is enforced, anything
-else that connects to the database from another pod is refused. Set `networkPolicy.enabled=false` to leave it out. See "Network policy" in the stack's README.
+changes nothing on a cluster whose network plugin does not enforce policies (only the EKS stack turns enforcement on; an EKS update adds the `vpc-cni` add-on in place);
+where it is enforced, anything else that connects to the database from another pod is refused. Set `networkPolicy.enabled=false` to leave it out. See "Network policy" in the stack's README.
 
 **Stored settings become encrypted on the first upgrade to a release that sets the encryption key.** The app's pod restarts once; at that start the app
 encrypts the settings it already holds (source passwords, tokens, the model key) under a new key generated into the Secret `<release>-config-key`, which
