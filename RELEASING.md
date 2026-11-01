@@ -85,6 +85,22 @@ went out with a `web/dist` from 15 October and no Infrastructure page. Add a lin
 the **Build images** workflow then pushes OCIR and Artifact Registry and opens the "Bump pins" PR; check `version-pins.py check`
 and merge it. The stack releases (below) are cut separately, after the clean-room checks.
 
+### Scripted **[today]**
+
+`scripts/release.sh` runs the steps above, one phase at a time, and stops on the first failure (`--dry-run` prints without changing anything):
+
+```bash
+scripts/release.sh app    0.10.15                       # tests, version bump, Server release, ghcr images, Docker release
+scripts/release.sh pins   0.10.15                       # waits for Build images, merges the "Bump pins" PR, checks the pins
+scripts/release.sh stacks 0.10.15 --notes stack-notes.md   # self-pin PR, then the four stack releases at the merge commit
+scripts/release.sh docs   0.10.15                       # deploy-page PR in the Landing repo (--merge to merge it)
+```
+
+Write `Server/docs/releases/<version>.md` before `app`. `pins` and `stacks` are separate so the clean-room checks sit between them. The `stacks`
+phase uploads the EKS template with `scripts/upload-eks-template.sh` when AWS credentials are present, and says so when they are not; the docs
+phase leaves the AWS page alone until that template is readable. `scripts/test-infra.sh` (in the Server repo) starts the services the
+container-dependent tests need, so the suite in the first step can run green.
+
 ## Promotion: candidate, tested, released **[proposed]**
 
 An image reaches deployers by being promoted, not by being the newest build.
