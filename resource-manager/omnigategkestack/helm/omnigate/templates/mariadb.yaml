@@ -1,0 +1,86 @@
+{{- if eq .Values.demoDataset "it-risk" }}
+# The MariaDB half of the IT & operational risk pack: the `security` database (third-party vendors and vulnerabilities). A second,
+# different database next to Postgres, so a question that joins the two is answered by federation. Seeded on an empty volume by the
+# official image from /docker-entrypoint-initdb.d; the app's account is made SELECT-only by 02-readonly.sql.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "omnigate.mariadbHost" . }}
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mariadb
+spec:
+  serviceName: {{ include "omnigate.mariadbHost" . }}
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: mariadb
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: mariadb
+    spec:
+      # Same GKE Arm-node taint as postgres.yaml. docker.io/library/mariadb is a multi-arch image (amd64 + arm64).
+      tolerations:
+        - key: "kubernetes.io/arch"
+          operator: "Equal"
+          value: "arm64"
+          effect: "NoSchedule"
+      containers:
+        - name: mariadb
+          image: {{ .Values.mariadb.image }}
+          env:
+            - name: MARIADB_DATABASE
+              value: security
+          envFrom:
+            - secretRef:
+                name: {{ include "omnigate.fullname" . }}-mariadb-secret
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/mysql
+              # A clean subdirectory: cloud block volumes leave a lost+found at the mount root, which the image's first-time setup trips over.
+              subPath: mariadb
+            - name: seed
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "mariadb-admin ping -h 127.0.0.1 -uroot -p\"$MARIADB_ROOT_PASSWORD\" --silent"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.mariadb.resources | nindent 12 }}
+      volumes:
+        - name: seed
+          configMap:
+            name: {{ include "omnigate.fullname" . }}-seed-it-risk-mariadb
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: {{ .Values.storageClassName }}
+        resources:
+          requests:
+            storage: {{ .Values.mariadb.storageSize }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "omnigate.mariadbHost" . }}
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mariadb
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: mariadb
+  ports:
+    - port: 3306
+      targetPort: 3306
+{{- end }}

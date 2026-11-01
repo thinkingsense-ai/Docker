@@ -150,7 +150,10 @@ spec:
         - >-
           until [ "$(psql -h {{ include "omnigate.postgresHost" . }} -U {{ .Values.postgres.user }} -d {{ .Values.tpch.database }} -tAc 'SELECT count(*) FROM orders' 2>/dev/null || echo 0)" -ge {{ int (mulf 1500000 .Values.tpch.scaleFactor) }} ]; do sleep 5; done
 {{- end }}
-{{- if .Values.manufacturingDemo.enabled }}
+{{- if (eq .Values.demoDataset "it-risk") }}
+{{- include "omnigate.mariadbWaitInit" . | nindent 4 }}
+{{- end }}
+{{- if and .Values.manufacturingDemo.enabled (ne .Values.demoDataset "it-risk") }}
 {{- include "omnigate.manufacturingDemoInit" . | nindent 4 }}
 {{- end }}
 {{- include "omnigate.readOnlyRoleInit" . | nindent 4 }}
@@ -378,4 +381,22 @@ it (and would be offered trusted questions about tables that do not exist). Runs
       if [ "$todo" = t ]; then
         until printf '%s\n' "$MFG_SQL" | psql -v ON_ERROR_STOP=1 -1 -f -; do echo "retrying"; sleep 3; done
       fi
+{{- end -}}
+
+{{- define "omnigate.mariadbHost" -}}
+{{- printf "%s-mariadb" (include "omnigate.fullname" .) -}}
+{{- end -}}
+
+{{- /*
+Waits for the MariaDB half of the IT & operational risk pack. The app registers its data sources at startup, so it must not start before
+the database accepts connections. `mariadb-admin ping` exits 0 whenever the server answers, even if it refuses the login, and a server
+still running its first-time setup only listens on a local socket, so a TCP answer means the real server is up.
+*/ -}}
+{{- define "omnigate.mariadbWaitInit" -}}
+- name: wait-for-mariadb
+  image: {{ .Values.mariadb.image }}
+  command:
+    - sh
+    - -c
+    - until mariadb-admin ping -h {{ include "omnigate.mariadbHost" . }} --silent; do sleep 2; done
 {{- end -}}
