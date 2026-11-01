@@ -136,7 +136,8 @@ class App:
         self.opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar), urllib.request.HTTPSHandler(context=ctx))
 
     def _post(self, path, body, headers=None, timeout=None):
-        h = {"Content-Type": "application/json"}
+        # The app refuses a state-changing request that carries a session cookie unless it also sends X-Requested-With.
+        h = {"Content-Type": "application/json", "X-Requested-With": "accuracy-test"}
         h.update(headers or {})
         req = urllib.request.Request(self.url + path, data=json.dumps(body).encode(), headers=h)
         return self.opener.open(req, timeout=timeout or self.timeout)
