@@ -182,11 +182,12 @@ phase_docs() {
   run git pull -q origin main
   run git checkout -q -b "deploy-$version"
   if [ $dry = 0 ]; then
-    sed -i.bak -E "s/oke-stack-v[0-9.]+/oke-stack-v$oke/g; s/omnigateokestack-v[0-9.]+/omnigateokestack-v$oke/g" deploy-oci.html
-    sed -i.bak -E "s/aks-stack-v[0-9.]+/aks-stack-v$aks/g" deploy-azure.html
-    sed -i.bak -E "s#omnigate:v[0-9.]+#omnigate:v$version#" deploy-docker.html
+    sed -i.bak -E "s/oke-stack-v[0-9]+\.[0-9]+\.[0-9]+/oke-stack-v$oke/g; s/omnigateokestack-v[0-9]+\.[0-9]+\.[0-9]+/omnigateokestack-v$oke/g" deploy-oci.html
+    sed -i.bak -E "s/aks-stack-v[0-9]+\.[0-9]+\.[0-9]+/aks-stack-v$aks/g" deploy-azure.html
+    sed -i.bak -E "s#omnigate:v[0-9]+\.[0-9]+\.[0-9]+#omnigate:v$version#" deploy-docker.html
     if curl -sfI "https://thinkingsense-cfn-templates.s3.amazonaws.com/eks-stack-v$eks/template.yaml" >/dev/null; then
-      sed -i.bak -E "s/eks-stack-v[0-9.]+/eks-stack-v$eks/g" deploy-aws.html
+      # lines that name a minimum or an older affected release are history, not the current release
+      sed -i.bak -E "/older release than|or later/! s/eks-stack-v[0-9]+\.[0-9]+\.[0-9]+/eks-stack-v$eks/g" deploy-aws.html
     else
       echo "    EKS template v$eks is not readable in S3: leaving deploy-aws.html where it is"
     fi
