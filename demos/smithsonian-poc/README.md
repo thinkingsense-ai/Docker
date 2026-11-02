@@ -35,9 +35,12 @@ and the same three logins, on the app image from this repository's release (`OMN
 (admin / `Admin-SI-1`). The five demo questions are approved on first start. The app reads Postgres as a SELECT-only account.
 
 It replaces the supply-chain demo's data sources for the run (the free edition allows three), and the model sidecars in the base file still
-start. Differences from the Mac demo: no embedding model, so the subject-vocabulary build and its review queue are not available (the finished
-`concept` column is loaded from `vocabulary-concepts.csv`), and the approved questions are not matched by meaning. Set `OMNIGATE_LLM_API_KEY`
-and `SI_LLM_MODE=cloud-first` in `.env` to answer with a cloud model instead of the local sidecars.
+start. A small embedding model (nomic-embed-text, about 140 MB) runs as its own container, so the app matches a question to an approved one by
+meaning and answers it from the saved SQL. Without it the five demo questions are not served from the bank, and two of them are refused as
+"I don't have data about ..." because their words (portraits, Civil War) are data values, not column names. Not available in this setup: the
+subject-vocabulary build and its review queue, because the app's vocabulary route ignores the embedding sidecar's host (the `concept` column
+is loaded from `vocabulary-concepts.csv` instead). Set `OMNIGATE_LLM_API_KEY` and `SI_LLM_MODE=cloud-first` in `.env` to answer with a cloud
+model instead of the local sidecars.
 
 ## Notes
 - The subject vocabulary needs a real embedding model (nomic-embed-text). A chat model used for embeddings merges unrelated labels.

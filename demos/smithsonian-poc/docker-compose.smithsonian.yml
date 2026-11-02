@@ -24,6 +24,16 @@ services:
     image: docker.io/chrislusf/seaweedfs@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
     command: ["server", "-dir=/data", "-s3", "-s3.port=9000", "-master.volumeSizeLimitMB=1024", "-volume.max=0"]
 
+  embed-model:
+    # The embedding model (nomic-embed-text, Apache-2.0, about 140 MB) the app uses to match a question to an approved one by meaning, so an
+    # approved question is answered from its saved SQL, and to build the subject vocabulary. The same llama.cpp image as the model sidecars,
+    # started in embeddings mode (what the Mac demo's demo.sh does).
+    build:
+      context: sidecars/llama
+      args:
+        MODEL_URL: https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF/resolve/main/nomic-embed-text-v1.5.Q4_K_M.gguf
+    entrypoint: ["./llama/llama-server", "-m", "/opt/model.gguf", "--port", "8090", "--host", "0.0.0.0", "--embeddings", "-c", "2048", "-ngl", "0"]
+
   load-museums:
     image: python:3.12-slim
     depends_on:
@@ -45,6 +55,8 @@ services:
     depends_on:
       load-museums:
         condition: service_completed_successfully
+      embed-model:
+        condition: service_healthy
     volumes:
       - ./demos/smithsonian-poc/access-policy.yaml:/app/access-policy.yaml:ro
     environment:
@@ -62,5 +74,7 @@ services:
       OMNIGATE_AUTH_USERS: "admin:iJZrK4sybaSbtK0YIYcjTg==:kL2m6rNCnLwpfitbhe2+bAaK9GdfApB53J4uHhUd160=:ADMIN"
       OMNIGATE_APP_USERS: "curator:FWpGgbhhJGIzH6L2LzDgxA==:3DGHpcuM7Wm4qFb51Kraqshrb0cIJquigmGiM9waIw4=:staff:role=staff;public:095i6OACFonQSBaYZ34ahg==:0hJlOfamKLS2t+cnZjJaEcKyr6GH1CLbW+aKbJzToOk=::cc0_filter=true|sensitive_filter=false"
       OMNIGATE_APP_BANNER: "Unofficial prototype. Closed demo. Open Access records only (CC0). Not affiliated with or endorsed by any museum."
+      OMNIGATE_EMBEDDING_REMOTE_HOST: embed-model
+      OMNIGATE_EMBEDDING_REMOTE_PORT: "8090"
       OMNIGATE_QUESTION_BANK_RETRIEVAL_ENABLED: "true"
       OMNIGATE_LLM_MODE: ${SI_LLM_MODE:-local-first}
