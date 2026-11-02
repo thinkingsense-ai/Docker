@@ -1,0 +1,66 @@
+# The Smithsonian demo on the container setup: the same two data sources as the Mac demo (SETUP.md), with no Homebrew, no source build and
+# no local model servers to install. It REPLACES the supply-chain demo's data sources for this run (the free edition allows three).
+#
+#   docker compose -f docker-compose.yml -f demos/smithsonian-poc/docker-compose.smithsonian.yml up --build
+#
+# Run it from the repository root. Then:
+#   Ask    http://localhost:8080   curator / Curator-SI-1 (everything)   public / Public-SI-1 (Open Access / CC0 records only)
+#   Admin  http://localhost:8080/admin   admin / Admin-SI-1
+# These are fixed demo logins in a public repo: change them (and see the base file's notes on OMNIGATE_AUTH_USERS / OMNIGATE_APP_USERS) before
+# this is reachable beyond your own machine.
+#
+# Data source 1, "si": the Open Access sample (31,185 rows, 7,792 records, 5 museums) in Postgres database si_poc.
+# Data source 2, "museums": the museum directory, a CSV in an S3-compatible bucket (SeaweedFS stands in for Amazon S3), queried as museums.museums.
+services:
+  postgres:
+    volumes:
+      - ./demos/smithsonian-poc/compose/init-si.sql:/docker-entrypoint-initdb.d/02-si.sql:ro
+      - ./demos/smithsonian-poc/data-src/si_open_access_sample.csv:/si-data/si_open_access_sample.csv:ro
+      - ./demos/smithsonian-poc/vocabulary-concepts.csv:/si-data/vocabulary-concepts.csv:ro
+
+  s3:
+    # SeaweedFS in S3 mode, pinned by digest (the same image the cloud stacks use for their S3 demo data). With no identities configured it
+    # accepts any credentials: fine for a demo store on the compose network, not for real data.
+    image: docker.io/chrislusf/seaweedfs@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
+    command: ["server", "-dir=/data", "-s3", "-s3.port=9000", "-master.volumeSizeLimitMB=1024", "-volume.max=0"]
+
+  load-museums:
+    image: python:3.12-slim
+    depends_on:
+      - s3
+    restart: "no"
+    volumes:
+      - ./demos/smithsonian-poc/compose/load-museums.py:/load/load-museums.py:ro
+      - ./demos/smithsonian-poc/data-src/si_museums.csv:/si-data/si_museums.csv:ro
+    command: ["python", "/load/load-museums.py"]
+
+  seed-questions:
+    environment:
+      ADMIN_USER: admin
+      ADMIN_PASSWORD: Admin-SI-1
+    volumes:
+      - ./demos/smithsonian-poc/compose/demo-questions-smithsonian.json:/seed/demo-questions.json:ro
+
+  omnigate:
+    depends_on:
+      load-museums:
+        condition: service_completed_successfully
+    volumes:
+      - ./demos/smithsonian-poc/access-policy.yaml:/app/access-policy.yaml:ro
+    environment:
+      OMNIGATE_BACKENDS: >-
+        si=jdbc:postgresql://postgres:5432/si_poc?currentSchema=public|omnigate_ro|omnigate_ro;museums=jdbc:calcite:model=inline:{"version":"1.0","schemas":[{"name":"museums","type":"custom","factory":"com.omnigate.calcite.s3.S3SchemaFactory","operand":{"provider":"s3","bucket":"si-poc","endpoint":"http://s3:9000","pathStyleAccess":true,"accessKeyId":"minioadmin","secretAccessKey":"minioadmin","region":"us-east-1","tables":{"museums":{"key":"museums.csv","format":"csv"}}}}]}|
+      OMNIGATE_ROUTER_SCHEMA_RULES: "public:si,museums:museums"
+      OMNIGATE_FEDERATION_SYNONYM_ADDRESSING: "true"
+      OMNIGATE_PG_DATABASE: si_poc
+      OMNIGATE_PG_USER: omnigate_ro
+      OMNIGATE_PG_PASSWORD: omnigate_ro
+      OMNIGATE_ACCESS_POLICY_CONFIG: /app/access-policy.yaml
+      # The admin console needs a login here (the base file leaves it open), and the Ask app has the curator (role staff, sees everything) and
+      # a public visitor (CC0, non-sensitive rows only, enforced by access-policy.yaml).
+      OMNIGATE_INSECURE: "false"
+      OMNIGATE_AUTH_USERS: "admin:iJZrK4sybaSbtK0YIYcjTg==:kL2m6rNCnLwpfitbhe2+bAaK9GdfApB53J4uHhUd160=:ADMIN"
+      OMNIGATE_APP_USERS: "curator:FWpGgbhhJGIzH6L2LzDgxA==:3DGHpcuM7Wm4qFb51Kraqshrb0cIJquigmGiM9waIw4=:staff:role=staff;public:095i6OACFonQSBaYZ34ahg==:0hJlOfamKLS2t+cnZjJaEcKyr6GH1CLbW+aKbJzToOk=::cc0_filter=true|sensitive_filter=false"
+      OMNIGATE_APP_BANNER: "Unofficial prototype. Closed demo. Open Access records only (CC0). Not affiliated with or endorsed by any museum."
+      OMNIGATE_QUESTION_BANK_RETRIEVAL_ENABLED: "true"
+      OMNIGATE_LLM_MODE: ${SI_LLM_MODE:-local-first}
