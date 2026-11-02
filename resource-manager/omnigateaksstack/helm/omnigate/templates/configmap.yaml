@@ -22,7 +22,7 @@ data:
   # Routes each schema-qualified table reference to the backend name that owns it (see
   # OMNIGATE_BACKENDS in secrets.yaml) -- three schemas, three natural-named backends, no
   # merging needed (stays within the free edition's 3-backend cap).
-  OMNIGATE_ROUTER_SCHEMA_RULES: "suppliers:suppliers,inventory:inventory,procurement:procurement"
+  OMNIGATE_ROUTER_SCHEMA_RULES: {{ ternary "risk:risk,security:security" "suppliers:suppliers,inventory:inventory,procurement:procurement" (eq .Values.demoDataset "it-risk") | quote }}
   # OMNIGATE_PG_HOST/PORT/DATABASE/USER are the wire-proxy surface's own single connection
   # target, distinct from OMNIGATE_BACKENDS (which populates the backend registry the Ask
   # app/NL2SQL actually queries against) -- but confirmed live on OCI/AWS these must ALWAYS be
@@ -43,6 +43,7 @@ data:
   # has no business sitting in a plaintext ConfigMap alongside a real Secret already carrying the
   # same value.
 ---
+{{- if (ne .Values.demoDataset "it-risk") }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -53,7 +54,8 @@ data:
   seed-supply-chain.sql: |
 {{ .Files.Get "files/seed-supply-chain.sql" | indent 4 }}
 ---
-{{- if .Values.manufacturingDemo.enabled }}
+{{- end }}
+{{- if and .Values.manufacturingDemo.enabled (ne .Values.demoDataset "it-risk") }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -63,4 +65,32 @@ metadata:
 data:
   seed-manufacturing.sql: |
 {{ .Files.Get "files/seed-manufacturing.sql" | indent 4 }}
+{{- end }}
+
+{{- if eq .Values.demoDataset "it-risk" }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "omnigate.fullname" . }}-seed-it-risk-postgres
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+data:
+  seed-it-risk-postgres.sql: |
+{{ .Files.Get "files/seed-it-risk-postgres.sql" | indent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "omnigate.fullname" . }}-seed-it-risk-mariadb
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+data:
+  01-seed-it-risk.sql: |
+{{ .Files.Get "files/seed-it-risk-mariadb.sql" | indent 4 }}
+  # The image grants the account it creates (MARIADB_USER) everything on the database; narrow that to SELECT.
+  02-readonly.sql: |
+    REVOKE ALL PRIVILEGES ON security.* FROM '{{ .Values.mariadb.readOnlyUser }}'@'%';
+    GRANT SELECT ON security.* TO '{{ .Values.mariadb.readOnlyUser }}'@'%';
+    FLUSH PRIVILEGES;
 {{- end }}

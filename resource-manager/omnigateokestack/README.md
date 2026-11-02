@@ -123,6 +123,16 @@ standard catalog items and how closely each part matches one, supplier capabilit
 - **Turning it off.** Set `manufacturingDemo.enabled=false` in the chart values. That stops it being added and the extra questions being approved; tables
   already created stay until you drop them.
 
+## IT & operational risk demo data (draft)
+
+An alternative demo data set for customer conversations about technology and operational risk at a financial firm: business services with recovery objectives, applications, outages, a risk register against the board's appetite, controls and their tests, key risk indicators, audit issues, third-party vendors and vulnerabilities. Everything in it is invented. It is not on the deploy form; choose it with the chart value `demoDataset=it-risk` (default `supply-chain`) on a **fresh install**.
+
+- **Two data sources, two databases.** The Postgres half is one schema, `risk`; a MariaDB container (`<release>-mariadb`, official `mariadb:11` image, its own volume) holds the `security` database. Questions that join the two are answered by federation. The free edition allows three data sources and the supply-chain set already uses all three, so this set **replaces** the supply-chain, manufacturing and TPC-H data rather than adding to it; see thinkingsense-ai/Server#45.
+- **Twelve trusted questions** are approved in place of the supply-chain ones (`files/demo-questions-it-risk.json`; same source as `fixtures/it-risk/`).
+- **Accounts.** The app reads Postgres and MariaDB through SELECT-only accounts. MariaDB passwords are generated on first install and kept on upgrade (`<release>-mariadb-secret`, kept on uninstall like the Postgres one); the NetworkPolicy lets only the app's pods connect.
+- **Not reseeded.** The data is loaded when the database volume is empty. Setting `demoDataset` on an existing release does not switch it; install a new one.
+- **Accuracy.** Not yet measured through the Ask app. On the current app version multi-table questions often fail (thinkingsense-ai/Server#43), so treat this as a draft until that is fixed.
+
 ## Trusted demo questions
 
 After install the stack approves five trusted questions for the seeded supply-chain data (and six about the parts and quotes data below) (`helm/omnigate/files/demo-questions.json`), so the

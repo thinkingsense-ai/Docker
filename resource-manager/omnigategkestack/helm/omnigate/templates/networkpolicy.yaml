@@ -31,4 +31,32 @@ spec:
       ports:
         - protocol: TCP
           port: 5432
+
+{{- if eq .Values.demoDataset "it-risk" }}
+---
+# The MariaDB half of the IT & operational risk pack: only the app's pods may connect.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "omnigate.fullname" . }}-mariadb
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mariadb
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: mariadb
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ .Release.Name }}
+              app.kubernetes.io/component: omnigate
+      ports:
+        - protocol: TCP
+          port: 3306
+{{- end }}
 {{- end }}

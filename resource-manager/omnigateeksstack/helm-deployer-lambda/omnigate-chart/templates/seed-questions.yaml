@@ -1,8 +1,11 @@
 {{- if .Values.seedDemoQuestions.enabled }}
 {{- $fullname := include "omnigate.fullname" . }}
 {{- $questions := .Files.Get "files/demo-questions.json" | fromJsonArray }}
-{{- if .Values.manufacturingDemo.enabled }}
+{{- if and .Values.manufacturingDemo.enabled (ne .Values.demoDataset "it-risk") }}
 {{- $questions = concat $questions (.Files.Get "files/demo-questions-manufacturing.json" | fromJsonArray) }}
+{{- end }}
+{{- if (eq .Values.demoDataset "it-risk") }}
+{{- $questions = .Files.Get "files/demo-questions-it-risk.json" | fromJsonArray }}
 {{- end }}
 # Approves a few trusted questions for the seeded supply-chain demo (files/demo-questions.json), so the
 # Ask app's first screen offers questions that this data can answer. With an empty question bank the app

@@ -107,3 +107,21 @@ it (and would be offered trusted questions about tables that do not exist). Runs
         until printf '%s\n' "$MFG_SQL" | psql -v ON_ERROR_STOP=1 -1 -f -; do echo "retrying"; sleep 3; done
       fi
 {{- end -}}
+
+{{- define "omnigate.mariadbHost" -}}
+{{- printf "%s-mariadb" (include "omnigate.fullname" .) -}}
+{{- end -}}
+
+{{- /*
+Waits for the MariaDB half of the IT & operational risk pack. The app registers its data sources at startup, so it must not start before
+the database accepts connections. `mariadb-admin ping` exits 0 whenever the server answers, even if it refuses the login, and a server
+still running its first-time setup only listens on a local socket, so a TCP answer means the real server is up.
+*/ -}}
+{{- define "omnigate.mariadbWaitInit" -}}
+- name: wait-for-mariadb
+  image: {{ .Values.mariadb.image }}
+  command:
+    - sh
+    - -c
+    - until mariadb-admin ping -h {{ include "omnigate.mariadbHost" . }} --silent; do sleep 2; done
+{{- end -}}

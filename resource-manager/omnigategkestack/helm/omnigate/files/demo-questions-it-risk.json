@@ -1,0 +1,62 @@
+[
+ {
+  "question": "Which business services had an outage longer than their recovery time objective in the last 12 months?",
+  "referenceSql": "SELECT s.name AS service, s.tier, i.started_on, i.duration_minutes, s.rto_minutes FROM risk.incidents i JOIN risk.applications a ON a.app_id = i.app_id JOIN risk.business_services s ON s.service_id = a.service_id WHERE i.duration_minutes > s.rto_minutes AND i.started_on >= CURRENT_DATE - 365 ORDER BY s.tier, i.duration_minutes DESC",
+  "category": "it-risk"
+ },
+ {
+  "question": "How many minutes of downtime did each business service have in the last 12 months?",
+  "referenceSql": "SELECT s.name AS service, s.tier, SUM(i.duration_minutes) AS downtime_minutes, COUNT(*) AS outages FROM risk.incidents i JOIN risk.applications a ON a.app_id = i.app_id JOIN risk.business_services s ON s.service_id = a.service_id WHERE i.started_on >= CURRENT_DATE - 365 GROUP BY s.name, s.tier ORDER BY downtime_minutes DESC",
+  "category": "it-risk"
+ },
+ {
+  "question": "What are the leading root causes of outages, by total downtime?",
+  "referenceSql": "SELECT root_cause, COUNT(*) AS outages, SUM(duration_minutes) AS downtime_minutes FROM risk.incidents WHERE started_on >= CURRENT_DATE - 365 GROUP BY root_cause ORDER BY downtime_minutes DESC",
+  "category": "it-risk"
+ },
+ {
+  "question": "Which risks are above the board's risk appetite for their category?",
+  "referenceSql": "SELECT r.title, r.category, r.owner, r.residual_score, a.max_residual_score AS appetite FROM risk.risk_register r JOIN risk.risk_appetite a ON a.category = r.category WHERE r.residual_score > a.max_residual_score AND r.status <> 'Closed' ORDER BY r.residual_score - a.max_residual_score DESC, r.title",
+  "category": "it-risk"
+ },
+ {
+  "question": "Which risks are above appetite and have a control that is overdue for testing or rated ineffective?",
+  "referenceSql": "SELECT DISTINCT r.title, r.residual_score, c.title AS control, c.last_result, c.last_tested FROM risk.risk_register r JOIN risk.risk_appetite a ON a.category = r.category JOIN risk.controls c ON c.risk_id = r.risk_id WHERE r.residual_score > a.max_residual_score AND (c.last_result = 'Ineffective' OR c.last_tested < CURRENT_DATE - c.test_every_days) ORDER BY r.residual_score DESC, r.title",
+  "category": "it-risk"
+ },
+ {
+  "question": "Which critical vulnerabilities are past their patch deadline, and which business service does each affect?",
+  "referenceSql": "SELECT v.cve, v.cvss, a.name AS application, s.name AS service, s.tier, CURRENT_DATE - v.patch_due AS days_overdue FROM security.vulnerabilities v JOIN risk.applications a ON a.app_id = v.app_id JOIN risk.business_services s ON s.service_id = a.service_id WHERE v.severity = 'Critical' AND v.patched_on IS NULL AND v.patch_due < CURRENT_DATE ORDER BY days_overdue DESC",
+  "category": "it-risk"
+ },
+ {
+  "question": "Which key risk indicators are in red, and what is their latest reading?",
+  "referenceSql": "SELECT k.name, k.category, r.reading AS latest_reading, k.red_at FROM risk.key_risk_indicators k JOIN risk.kri_readings r ON r.kri_id = k.kri_id WHERE r.month_start = (SELECT MAX(month_start) FROM risk.kri_readings x WHERE x.kri_id = k.kri_id) AND ((k.higher_is_worse AND r.reading >= k.red_at) OR (NOT k.higher_is_worse AND r.reading <= k.red_at)) ORDER BY k.name",
+  "category": "it-risk"
+ },
+ {
+  "question": "Which critical third parties have not been assessed in the last 12 months, and which services do they support?",
+  "referenceSql": "SELECT v.name AS vendor, v.last_assessed, v.assessment_rating, s.name AS service, s.tier FROM security.vendors v JOIN risk.applications a ON a.vendor_id = v.vendor_id JOIN risk.business_services s ON s.service_id = a.service_id WHERE v.tier = 1 AND v.last_assessed < CURRENT_DATE - 365 ORDER BY v.name, s.name",
+  "category": "it-risk"
+ },
+ {
+  "question": "Which vendors support the most tier-1 services?",
+  "referenceSql": "SELECT v.name AS vendor, v.tier, COUNT(DISTINCT s.service_id) AS tier1_services, COUNT(DISTINCT a.app_id) AS applications FROM security.vendors v JOIN risk.applications a ON a.vendor_id = v.vendor_id JOIN risk.business_services s ON s.service_id = a.service_id WHERE s.tier = 1 GROUP BY v.name, v.tier ORDER BY tier1_services DESC, v.name",
+  "category": "it-risk"
+ },
+ {
+  "question": "Which audit issues are overdue, and which risk does each relate to?",
+  "referenceSql": "SELECT i.title AS issue, i.severity, i.due_on, CURRENT_DATE - i.due_on AS days_overdue, r.title AS risk, i.owner FROM risk.audit_issues i JOIN risk.risk_register r ON r.risk_id = i.risk_id WHERE i.status = 'Open' AND i.due_on < CURRENT_DATE ORDER BY days_overdue DESC",
+  "category": "it-risk"
+ },
+ {
+  "question": "Which tier-1 services have both an open critical vulnerability and an outage in the last 90 days?",
+  "referenceSql": "SELECT s.name AS service, v.open_critical_vulns, o.outage_minutes FROM risk.business_services s JOIN (SELECT a.service_id, COUNT(*) AS open_critical_vulns FROM security.vulnerabilities x JOIN risk.applications a ON a.app_id = x.app_id WHERE x.severity = 'Critical' AND x.patched_on IS NULL GROUP BY a.service_id) v ON v.service_id = s.service_id JOIN (SELECT a.service_id, SUM(i.duration_minutes) AS outage_minutes FROM risk.incidents i JOIN risk.applications a ON a.app_id = i.app_id WHERE i.started_on >= CURRENT_DATE - 90 GROUP BY a.service_id) o ON o.service_id = s.service_id WHERE s.tier = 1 ORDER BY s.name",
+  "category": "it-risk"
+ },
+ {
+  "question": "How much revenue was at risk from outages in the last 12 months, by business service?",
+  "referenceSql": "SELECT s.name AS service, ROUND(SUM(i.duration_minutes) / 60.0 * s.revenue_per_hour_usd) AS revenue_at_risk_usd FROM risk.incidents i JOIN risk.applications a ON a.app_id = i.app_id JOIN risk.business_services s ON s.service_id = a.service_id WHERE i.started_on >= CURRENT_DATE - 365 GROUP BY s.name, s.revenue_per_hour_usd ORDER BY revenue_at_risk_usd DESC",
+  "category": "it-risk"
+ }
+]
