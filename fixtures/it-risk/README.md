@@ -2,7 +2,7 @@
 
 A demo data set and a list of trusted questions for a mid-size financial firm's technology and operational risk. Everything is invented. It is the first of two risk packs (the second is insurance risk); the shape follows the manufacturing demo.
 
-**Status: draft for review. Wired into the four stack charts as `demoDataset=it-risk` (not on the deploy forms; not yet deployed live).** The questions are checked only in the sense that each reference query runs and returns rows on a local Postgres; nobody has asked them through the Ask app. On app v0.10.14 the Ask app answers most multi-table questions wrongly or not at all (thinkingsense-ai/Server#43), so these questions will not work in a demo until that is fixed.
+**Status: draft for review. Wired into the four stack charts as `demoDataset=it-risk` (not on the deploy forms; deployed once on GKE, 2026-11-02: it installs and seeds, 4 of 12 questions answered correctly through Ask).** The questions are checked only in the sense that each reference query runs and returns rows on a local Postgres; nobody has asked them through the Ask app. On app v0.10.14 the Ask app answers most multi-table questions wrongly or not at all (thinkingsense-ai/Server#43), so these questions will not work in a demo until that is fixed.
 
 ## Files
 
@@ -29,7 +29,7 @@ Business service with a tier and recovery time/point objectives (RTO/RPO); risk 
 ## To do before this ships
 
 1. Check the vocabulary and the twelve questions against the JPMC conversation.
-2. Run a live clean-room deploy of `demoDataset=it-risk` (rendering, lint and a local MariaDB seed/grant test pass; no cluster has run it yet). Add the setting to the deploy forms if we want customers to choose it.
+2. Add `demoDataset` to the deploy forms if we want customers to choose it. A GKE deploy (2026-11-02) found and fixed two chart bugs (the MariaDB wait, the question seeding); the other three clouds have not run it live.
 3. Run the accuracy script against it (needs `questions.json` for this pack) after Server#43 is fixed.
 4. Ask-app pack selector (Server issue), and the data-source count (see above).
 5. The reference SQL is checked on Postgres only (both halves loaded into one database). The MariaDB half has not been run against the reference SQL through the federation planner outside the live test.

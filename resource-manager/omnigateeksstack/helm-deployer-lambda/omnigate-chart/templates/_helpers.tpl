@@ -115,7 +115,9 @@ it (and would be offered trusted questions about tables that do not exist). Runs
 {{- /*
 Waits for the MariaDB half of the IT & operational risk pack. The app registers its data sources at startup, so it must not start before
 the database accepts connections. `mariadb-admin ping` exits 0 whenever the server answers, even if it refuses the login, and a server
-still running its first-time setup only listens on a local socket, so a TCP answer means the real server is up.
+still running its first-time setup only listens on a local socket, so a TCP answer means the real server is up. `--skip-ssl`
+is needed: the 11.x client checks the server's certificate by default and the image's is self-signed, so without it the
+command exits 1 and this container waits forever (found in the first live deploy).
 */ -}}
 {{- define "omnigate.mariadbWaitInit" -}}
 - name: wait-for-mariadb
@@ -123,5 +125,5 @@ still running its first-time setup only listens on a local socket, so a TCP answ
   command:
     - sh
     - -c
-    - until mariadb-admin ping -h {{ include "omnigate.mariadbHost" . }} --silent; do sleep 2; done
+    - until mariadb-admin ping -h {{ include "omnigate.mariadbHost" . }} --silent --skip-ssl; do sleep 2; done
 {{- end -}}
