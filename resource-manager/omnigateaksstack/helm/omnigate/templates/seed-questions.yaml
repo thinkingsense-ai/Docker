@@ -57,6 +57,7 @@ data:
         if body is not None: data, headers = json.dumps(body).encode(), {"Content-Type": "application/json"}
         if form is not None: data, headers = urllib.parse.urlencode(form).encode(), {"Content-Type": "application/x-www-form-urlencoded"}
         if token: headers["Authorization"] = "Bearer " + token
+        headers["X-Requested-With"] = "seed-questions"  # the app refuses a cookie-authenticated POST without it (since 0.10.14)
         try:
             with op.open(urllib.request.Request(base + path, data=data, headers=headers), timeout=30) as r:
                 return r.status, r.read().decode()
