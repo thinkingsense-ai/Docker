@@ -33,6 +33,7 @@ def call(path, body=None, form=None):
         data, headers = urllib.parse.urlencode(form).encode(), {"Content-Type": "application/x-www-form-urlencoded"}
     if token:
         headers["Authorization"] = "Bearer " + token
+    headers["X-Requested-With"] = "seed-questions"  # the app refuses a cookie-authenticated POST without it (since 0.10.14)
     try:
         with op.open(urllib.request.Request(base + path, data=data, headers=headers), timeout=30) as r:
             return r.status, r.read().decode()
@@ -43,7 +44,7 @@ def call(path, body=None, form=None):
 try:
     for _ in range(120):
         try:
-            if call("/api/deployment-readiness")[0] == 200:
+            if call("/api/deployment-readiness")[0] in (200, 401, 403):  # 401/403: up, but the admin console needs a login
                 break
         except Exception:
             pass

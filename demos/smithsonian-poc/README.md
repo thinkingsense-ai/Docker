@@ -21,6 +21,24 @@ The quickest way is `./bootstrap.sh` (once) and then `~/smithsonian-poc/demo up`
    Today's numbers: 3,509 labels, 53 auto-accepted concepts, 433 merges for a curator to review, 3.1% coverage.
 4. `approve-demo-questions.sh` approves the five demo questions.
 
+## Run it in containers (no Homebrew, no source build)
+
+From the repository root, with Docker running:
+
+```bash
+docker compose -f docker-compose.yml -f demos/smithsonian-poc/docker-compose.smithsonian.yml up --build
+```
+
+This starts the same two data sources (the records in Postgres database `si_poc`, the museum directory CSV in a local S3-compatible bucket)
+and the same three logins, on the app image from this repository's release (`OMNIGATE_RELEASE_TAG` in `docker-compose.yml`). Ask is at
+`http://localhost:8080` (curator / `Curator-SI-1`, public / `Public-SI-1`), the admin console at `http://localhost:8080/admin`
+(admin / `Admin-SI-1`). The five demo questions are approved on first start. The app reads Postgres as a SELECT-only account.
+
+It replaces the supply-chain demo's data sources for the run (the free edition allows three), and the model sidecars in the base file still
+start. Differences from the Mac demo: no embedding model, so the subject-vocabulary build and its review queue are not available (the finished
+`concept` column is loaded from `vocabulary-concepts.csv`), and the approved questions are not matched by meaning. Set `OMNIGATE_LLM_API_KEY`
+and `SI_LLM_MODE=cloud-first` in `.env` to answer with a cloud model instead of the local sidecars.
+
 ## Notes
 - The subject vocabulary needs a real embedding model (nomic-embed-text). A chat model used for embeddings merges unrelated labels.
 - Every record in the sample is already CC0, so the public/staff difference appears once staff-only records are loaded.
