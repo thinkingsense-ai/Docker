@@ -38,7 +38,7 @@ It replaces the supply-chain demo's data sources for the run (the free edition a
 start. A small embedding model (nomic-embed-text, about 140 MB) runs as its own container, so the app matches a question to an approved one by
 meaning and answers it from the saved SQL. Without it the five demo questions are not served from the bank, and two of them are refused as
 "I don't have data about ..." because their words (portraits, Civil War) are data values, not column names. Not available in this setup: the
-subject-vocabulary build and its review queue, because the app's vocabulary route ignores the embedding sidecar's host (the `concept` column
+subject-vocabulary build and its review queue, because the app ignores the embedding sidecar's host there, thinkingsense-ai/Server#50 (the `concept` column
 is loaded from `vocabulary-concepts.csv` instead). Set `OMNIGATE_LLM_API_KEY` and `SI_LLM_MODE=cloud-first` in `.env` to answer with a cloud
 model instead of the local sidecars.
 
