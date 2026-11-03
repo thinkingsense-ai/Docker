@@ -127,3 +127,46 @@ command exits 1 and this container waits forever (found in the first live deploy
     - -c
     - until mariadb-admin ping -h {{ include "omnigate.mariadbHost" . }} --silent --skip-ssl; do sleep 2; done
 {{- end -}}
+
+{{- /* The all-packs demo set: every demo pack at once (supply chain, manufacturing, IT & operational risk, Smithsonian). */ -}}
+{{- define "omnigate.packs" -}}{{- if eq .Values.demoDataset "all-packs" }}true{{ end -}}{{- end -}}
+{{- /* The MariaDB database (`security`) is part of the IT & operational risk pack, on its own or inside all-packs. */ -}}
+{{- define "omnigate.hasMariadb" -}}{{- if or (eq .Values.demoDataset "it-risk") (eq .Values.demoDataset "all-packs") }}true{{ end -}}{{- end -}}
+{{- define "omnigate.embedHost" -}}
+{{- printf "%s-packs-embed" (include "omnigate.fullname" .) -}}
+{{- end -}}
+{{- define "omnigate.s3Host" -}}
+{{- printf "%s-packs-s3" (include "omnigate.fullname" .) -}}
+{{- end -}}
+
+{{- /*
+Waits for the all-packs demo's two loads: the Smithsonian table in Postgres (created in one transaction by the packs-loader Job, so its
+existence means every row is in) and the museum directory in the object store. The app registers its data sources at startup, so it
+must not start before both are there. Runs before ensure-readonly-role so that role's SELECT grants cover the smithsonian schema.
+*/ -}}
+{{- define "omnigate.packsWaitInit" -}}
+- name: wait-for-packs-data
+  image: docker.io/library/postgres:16-alpine
+  env:
+    - name: PGHOST
+      value: {{ include "omnigate.postgresHost" . | quote }}
+    - name: PGDATABASE
+      value: {{ .Values.postgres.database | quote }}
+    - name: PGUSER
+      valueFrom:
+        secretKeyRef:
+          name: {{ include "omnigate.fullname" . }}-postgres-secret
+          key: POSTGRES_USER
+    - name: PGPASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: {{ include "omnigate.fullname" . }}-postgres-secret
+          key: POSTGRES_PASSWORD
+  command:
+    - sh
+    - -c
+    - |
+      until [ "$(psql -tAc "SELECT to_regclass('smithsonian.si_topics') IS NOT NULL" 2>/dev/null)" = t ]; do echo "waiting for the Smithsonian table"; sleep 3; done
+      until wget -q -O /dev/null http://{{ include "omnigate.s3Host" . }}:9000/{{ .Values.packs.bucket }}/museums.csv; do echo "waiting for the museum directory"; sleep 3; done
+      until wget -q -O /dev/null http://{{ include "omnigate.embedHost" . }}:8090/health; do echo "waiting for the embedding model"; sleep 3; done
+{{- end -}}

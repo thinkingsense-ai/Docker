@@ -204,6 +204,10 @@ resource "helm_release" "omnigate" {
     value = var.omnigate_debug_federation
   }
   set {
+    name  = "demoDataset"
+    value = var.demo_dataset
+  }
+  set {
     name  = "tpch.enabled"
     value = var.enable_tpch_demo
   }

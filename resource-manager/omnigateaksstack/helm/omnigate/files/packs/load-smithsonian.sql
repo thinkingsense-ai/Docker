@@ -1,0 +1,14 @@
+-- Loads the Smithsonian Open Access sample as the `smithsonian` schema (all-packs demo). Run by the packs-loader Job as the postgres
+-- superuser in ONE transaction (psql -1), so the table only exists once every row and the concept column are in: the app's init container
+-- waits on the table. Expects the sample at /tmp/si.csv and the subject-vocabulary mapping at /load/vocabulary-concepts.csv.
+CREATE SCHEMA IF NOT EXISTS smithsonian;
+CREATE TABLE smithsonian.si_topics (record_id text, title text, unit_code text, topic text, cc0 boolean, image_url text, record_link text, culturally_sensitive boolean DEFAULT false);
+\copy smithsonian.si_topics(record_id,title,unit_code,topic,cc0,image_url,record_link) FROM '/tmp/si.csv' CSV HEADER
+UPDATE smithsonian.si_topics SET image_url = NULL WHERE image_url = '';
+CREATE INDEX ON smithsonian.si_topics(unit_code);
+CREATE INDEX ON smithsonian.si_topics(topic);
+
+CREATE TEMP TABLE cm(canonical_concept text, member_label text, source_units text, occurrence_count int, confidence float, status text);
+\copy cm FROM '/load/vocabulary-concepts.csv' CSV HEADER
+ALTER TABLE smithsonian.si_topics ADD COLUMN concept text;
+UPDATE smithsonian.si_topics t SET concept = COALESCE((SELECT canonical_concept FROM cm WHERE member_label = t.topic AND status = 'AUTO_ACCEPTED' LIMIT 1), t.topic);
