@@ -136,6 +136,18 @@ variable "node_boot_disk_gb" {
   default     = 50
 }
 
+# --- Demo data -------------------------------------------------------------------------------
+
+variable "demo_dataset" {
+  description = "Which demo data a new install gets: supply-chain (the default), it-risk, or all-packs (every demo pack at once; see \"All demo packs at once\" in README.md). Read on a fresh install only: changing it on an existing release does not reseed."
+  type        = string
+  default     = "supply-chain"
+  validation {
+    condition     = contains(["supply-chain", "it-risk", "all-packs"], var.demo_dataset)
+    error_message = "demo_dataset must be supply-chain, it-risk or all-packs."
+  }
+}
+
 # --- Storage ---------------------------------------------------------------------------------
 
 variable "postgres_storage_gb" {
