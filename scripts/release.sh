@@ -159,7 +159,19 @@ phase_stacks() {
       [ $dry = 1 ] || git show "$sha:resource-manager/$1/template.yaml" > "$out/template.yaml"
       extra=("$out/template.yaml")
     fi
+    if [ "$1" = omnigateaksstack ]; then
+      # The CLI path (az deployment group create --template-uri) and the docs page read these as release assets.
+      if [ $dry = 0 ]; then
+        git show "$sha:resource-manager/$1/azuredeploy.json" > "$out/azuredeploy.json"
+        git show "$sha:resource-manager/$1/createUiDefinition.json" > "$out/createUiDefinition.json"
+      fi
+      extra=("$out/azuredeploy.json" "$out/createUiDefinition.json")
+    fi
     run gh release create "$3" --repo $DOCKER_REPO --target "$sha" --title "$4 stack v$2" --notes-file "$notes_file" --latest=false "$z" ${extra[@]+"${extra[@]}"}
+    if [ "$1" = omnigateaksstack ] && [ $dry = 0 ]; then
+      gh release view "$3" --repo $DOCKER_REPO --json assets --jq '.assets[].name' | grep -qx azuredeploy.json \
+        || { echo "$3 has no azuredeploy.json asset: the docs page's CLI link would 404" >&2; exit 1; }
+    fi
   }
   rel omnigateokestack "$oke" "oke-stack-v$oke" OKE
   rel omnigateeksstack "$eks" "eks-stack-v$eks" EKS
