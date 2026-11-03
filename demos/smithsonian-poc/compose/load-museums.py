@@ -6,8 +6,13 @@ s3 = "http://s3:9000"
 
 def put(path, data=b""):
     req = urllib.request.Request(s3 + path, data=data, method="PUT")
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return r.status
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return r.status
+    except urllib.error.HTTPError as e:
+        if e.code == 409:  # the bucket is already there from an earlier run
+            return e.code
+        raise
 
 
 for _ in range(60):

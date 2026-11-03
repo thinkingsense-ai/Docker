@@ -1,0 +1,96 @@
+# Every demo pack in one stack: supply chain, manufacturing, IT & operational risk and the Smithsonian Open Access sample, behind
+# the free edition's three data sources (one Postgres connector, one MariaDB connector, one object-store CSV), with schema auto-discovery
+# on so every schema of a connection is queryable. The Ask app offers the packs as a picker (each pack's approved questions carry its
+# own category).
+#
+#   docker compose -f docker-compose.yml -f demos/all-packs/docker-compose.packs.yml up --build
+#
+# Run it from the repository root. Then:
+#   Ask    http://localhost:8080   curator / Curator-SI-1 (everything)   public / Public-SI-1 (Smithsonian: Open Access records only)
+#   Admin  http://localhost:8080/admin   admin / Admin-SI-1
+# These are fixed demo logins in a public repo: change them before this is reachable beyond your own machine.
+#
+# Tables are addressed connector.schema.table, e.g. pg.risk.incidents, mdb.security.vendors, pg.smithsonian.si_topics.
+services:
+  postgres:
+    volumes: !override
+      - ./resource-manager/omnigategkestack/helm/omnigate/files/seed-supply-chain.sql:/docker-entrypoint-initdb.d/01-supply-chain.sql:ro
+      - ./resource-manager/omnigategkestack/helm/omnigate/files/seed-manufacturing.sql:/docker-entrypoint-initdb.d/02-manufacturing.sql:ro
+      - ./resource-manager/omnigategkestack/helm/omnigate/files/seed-it-risk-postgres.sql:/docker-entrypoint-initdb.d/03-it-risk.sql:ro
+      - ./demos/all-packs/init-smithsonian-and-readonly.sql:/docker-entrypoint-initdb.d/04-smithsonian.sql:ro
+      - ./demos/smithsonian-poc/data-src/si_open_access_sample.csv:/si-data/si_open_access_sample.csv:ro
+      - ./demos/smithsonian-poc/vocabulary-concepts.csv:/si-data/vocabulary-concepts.csv:ro
+
+  mariadb:
+    image: docker.io/library/mariadb:11
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: security
+      MARIADB_USER: omnigate_ro
+      MARIADB_PASSWORD: omnigate_ro
+    volumes:
+      - ./resource-manager/omnigategkestack/helm/omnigate/files/seed-it-risk-mariadb.sql:/docker-entrypoint-initdb.d/01-seed.sql:ro
+      - ./demos/all-packs/mariadb-readonly.sql:/docker-entrypoint-initdb.d/02-readonly.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -proot --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  s3:
+    image: docker.io/chrislusf/seaweedfs@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
+    command: ["server", "-dir=/data", "-s3", "-s3.port=9000", "-master.volumeSizeLimitMB=1024", "-volume.max=0"]
+
+  embed-model:
+    build:
+      context: sidecars/llama
+      args:
+        MODEL_URL: https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF/resolve/main/nomic-embed-text-v1.5.Q4_K_M.gguf
+    entrypoint: ["./llama/llama-server", "-m", "/opt/model.gguf", "--port", "8090", "--host", "0.0.0.0", "--embeddings", "-c", "2048", "-ngl", "0"]
+
+  load-museums:
+    image: python:3.12-slim
+    depends_on:
+      - s3
+    restart: "no"
+    volumes:
+      - ./demos/smithsonian-poc/compose/load-museums.py:/load/load-museums.py:ro
+      - ./demos/smithsonian-poc/data-src/si_museums.csv:/si-data/si_museums.csv:ro
+    command: ["python", "/load/load-museums.py"]
+
+  seed-questions:
+    environment:
+      ADMIN_USER: admin
+      ADMIN_PASSWORD: Admin-SI-1
+    volumes:
+      - ./demos/all-packs/demo-questions-all-packs.json:/seed/demo-questions.json:ro
+
+  omnigate:
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      load-museums:
+        condition: service_completed_successfully
+      embed-model:
+        condition: service_healthy
+    volumes:
+      - ./demos/smithsonian-poc/access-policy.yaml:/app/access-policy.yaml:ro
+    environment:
+      OMNIGATE_BACKENDS: >-
+        pg=jdbc:postgresql://postgres:5432/postgres|omnigate_ro|omnigate_ro;mdb=jdbc:mariadb://mariadb:3306/|omnigate_ro|omnigate_ro;files=jdbc:calcite:model=inline:{"version":"1.0","schemas":[{"name":"museums","type":"custom","factory":"com.omnigate.calcite.s3.S3SchemaFactory","operand":{"provider":"s3","bucket":"si-poc","endpoint":"http://s3:9000","pathStyleAccess":true,"accessKeyId":"minioadmin","secretAccessKey":"minioadmin","region":"us-east-1","tables":{"museums":{"key":"museums.csv","format":"csv"}}}}]}|
+      # Blank on purpose: the base file maps schema names to the old per-schema backends, and the discovery names (connector.schema.table) replace that.
+      OMNIGATE_ROUTER_SCHEMA_RULES: ""
+      OMNIGATE_FEDERATION_AUTO_DISCOVER_SCHEMAS: "true"
+      OMNIGATE_FEDERATION_SCHEMA_INCLUDE: "suppliers,inventory,procurement,risk,smithsonian,security,museums"
+      OMNIGATE_PG_DATABASE: postgres
+      OMNIGATE_PG_USER: omnigate_ro
+      OMNIGATE_PG_PASSWORD: omnigate_ro
+      OMNIGATE_ACCESS_POLICY_CONFIG: /app/access-policy.yaml
+      OMNIGATE_INSECURE: "false"
+      OMNIGATE_AUTH_USERS: "admin:iJZrK4sybaSbtK0YIYcjTg==:kL2m6rNCnLwpfitbhe2+bAaK9GdfApB53J4uHhUd160=:ADMIN"
+      OMNIGATE_APP_USERS: "curator:FWpGgbhhJGIzH6L2LzDgxA==:3DGHpcuM7Wm4qFb51Kraqshrb0cIJquigmGiM9waIw4=:staff:role=staff;public:095i6OACFonQSBaYZ34ahg==:0hJlOfamKLS2t+cnZjJaEcKyr6GH1CLbW+aKbJzToOk=::cc0_filter=true|sensitive_filter=false"
+      OMNIGATE_APP_BANNER: "Demo packs. Invented data except the Smithsonian Open Access sample (CC0). Not affiliated with or endorsed by any museum."
+      OMNIGATE_EMBEDDING_REMOTE_HOST: embed-model
+      OMNIGATE_EMBEDDING_REMOTE_PORT: "8090"
+      OMNIGATE_QUESTION_BANK_RETRIEVAL_ENABLED: "true"
+      OMNIGATE_LLM_MODE: ${SI_LLM_MODE:-local-first}

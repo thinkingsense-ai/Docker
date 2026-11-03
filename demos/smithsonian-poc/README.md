@@ -37,9 +37,9 @@ and the same three logins, on the app image from this repository's release (`OMN
 It replaces the supply-chain demo's data sources for the run (the free edition allows three), and the model sidecars in the base file still
 start. A small embedding model (nomic-embed-text, about 140 MB) runs as its own container, so the app matches a question to an approved one by
 meaning and answers it from the saved SQL. Without it the five demo questions are not served from the bank, and two of them are refused as
-"I don't have data about ..." because their words (portraits, Civil War) are data values, not column names. Not available in this setup: the
-subject-vocabulary build and its review queue, because the app ignores the embedding sidecar's host there, thinkingsense-ai/Server#50 (the `concept` column
-is loaded from `vocabulary-concepts.csv` instead). Set `OMNIGATE_LLM_API_KEY` and `SI_LLM_MODE=cloud-first` in `.env` to answer with a cloud
+"I don't have data about ..." because their words (portraits, Civil War) are data values, not column names. The subject-vocabulary build and its review queue
+work against that sidecar from app 0.10.16 (earlier releases ignored the sidecar's host, thinkingsense-ai/Server#50); the `concept` column is still
+preloaded from `vocabulary-concepts.csv` so the demo does not depend on running the build. Set `OMNIGATE_LLM_API_KEY` and `SI_LLM_MODE=cloud-first` in `.env` to answer with a cloud
 model instead of the local sidecars.
 
 ## Notes
