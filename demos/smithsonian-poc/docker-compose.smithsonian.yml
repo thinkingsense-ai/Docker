@@ -32,7 +32,7 @@ services:
       context: sidecars/llama
       args:
         MODEL_URL: https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF/resolve/main/nomic-embed-text-v1.5.Q4_K_M.gguf
-    entrypoint: ["./llama/llama-server", "-m", "/opt/model.gguf", "--port", "8090", "--host", "0.0.0.0", "--embeddings", "-c", "2048", "-ngl", "0"]
+    entrypoint: ["./llama/llama-server", "-m", "/opt/model.gguf", "--port", "8090", "--host", "0.0.0.0", "--embeddings", "-c", "2048", "-b", "2048", "-ub", "2048", "-ngl", "0"]
 
   load-museums:
     image: python:3.12-slim
