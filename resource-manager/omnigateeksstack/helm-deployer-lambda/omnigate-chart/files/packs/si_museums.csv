@@ -1,0 +1,6 @@
+unit_code,museum_name,department,city,collection_focus,website
+NPG,National Portrait Gallery,,Washington DC,Portraits of people who shaped American history,https://npg.si.edu
+SAAM,Smithsonian American Art Museum,,Washington DC,American art from the colonial period to today,https://americanart.si.edu
+SIL,Smithsonian Libraries and Archives,,Washington DC,Books and manuscripts on science art and history,https://library.si.edu
+NMNHANTHRO,National Museum of Natural History,Department of Anthropology,Washington DC,Human cultures and the archaeology of the world,https://naturalhistory.si.edu/research/anthropology
+NMNHBOTANY,National Museum of Natural History,Department of Botany,Washington DC,Plant specimens and the history of botany,https://naturalhistory.si.edu/research/botany

@@ -13,6 +13,7 @@ param location string
 param clusterName string
 param imageRepository string
 param imageTag string
+param demoDataset string
 param llmModel string
 param exposeWireProtocols bool
 param dataVolumeGb int
@@ -100,6 +101,7 @@ resource helmInstall 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
       { name: 'CLUSTER_NAME', value: clusterName }
       { name: 'IMAGE_REPOSITORY', value: imageRepository }
       { name: 'IMAGE_TAG', value: imageTag }
+      { name: 'DEMO_DATASET', value: demoDataset }
       { name: 'LLM_MODEL', value: llmModel }
       { name: 'EXPOSE_WIRE_PROTOCOLS', value: string(exposeWireProtocols) }
       { name: 'DATA_VOLUME_GB', value: string(dataVolumeGb) }
@@ -259,6 +261,7 @@ PYEOF
       helm upgrade --install omnigate "$CHART_DIR" \
         --set image.repository="$IMAGE_REPOSITORY" \
         --set image.tag="$IMAGE_TAG" \
+        --set demoDataset="$DEMO_DATASET" \
         --set omnigate.llmModel="$LLM_MODEL" \
         --set omnigate.exposeWireProtocols="$EXPOSE_WIRE_PROTOCOLS" \
         --set omnigate.dataVolumeSize="${DATA_VOLUME_GB}Gi" \

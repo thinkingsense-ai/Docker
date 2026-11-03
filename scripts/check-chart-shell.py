@@ -19,7 +19,19 @@ try:
 except ImportError:
     sys.exit("needs PyYAML: pip install pyyaml")
 
-CHART = Path(__file__).resolve().parent.parent / "resource-manager" / "omnigateokestack" / "helm" / "omnigate"
+ROOT = Path(__file__).resolve().parent.parent / "resource-manager"
+CHART = ROOT / "omnigateokestack" / "helm" / "omnigate"
+# The other three stacks' charts share the demo templates; they are checked with the demo data sets only.
+OTHER_CHARTS = {
+    "eks": ROOT / "omnigateeksstack" / "helm-deployer-lambda" / "omnigate-chart",
+    "aks": ROOT / "omnigateaksstack" / "helm" / "omnigate",
+    "gke": ROOT / "omnigategkestack" / "helm" / "omnigate",
+}
+DEMO_CONFIGS = {
+    "default": [],
+    "it-risk": ["--set", "demoDataset=it-risk"],
+    "all-packs": ["--set", "demoDataset=all-packs"],
+}
 BASE = ["--set", "omnigate.appUsers=x", "--set", "omnigate.llmApiKey=x"]
 CLUSTER = ["--set", "omnigate.clusterEnabled=true", "--set", "omnigate.replicaCount=2",
            "--set", "omnigate.configDb.external=true", "--set", "omnigate.configDb.configDbUrl=jdbc:x",
@@ -27,6 +39,9 @@ CLUSTER = ["--set", "omnigate.clusterEnabled=true", "--set", "omnigate.replicaCo
 CONFIGS = {
     "default": [],
     "tpch (postgres fact table)": ["--set", "tpch.enabled=true"],
+    "it-risk": ["--set", "demoDataset=it-risk"],
+    "all-packs": ["--set", "demoDataset=all-packs"],
+    "all-packs + cluster": CLUSTER + ["--set", "demoDataset=all-packs"],
     "tpch (s3 fact table)": ["--set", "tpch.enabled=true", "--set", "tpch.lineitemStore=s3"],
     "cluster + tpch + sso": CLUSTER + ["--set", "tpch.enabled=true", "--set", "omnigate.oidc.issuer=https://x",
                                        "--set", "omnigate.oidc.clientId=c", "--set", "omnigate.oidc.clientSecret=s"],
@@ -42,8 +57,11 @@ def containers(doc):
 
 def main():
     bad = checked = 0
-    for name, extra in CONFIGS.items():
-        out = subprocess.run(["helm", "template", "t", str(CHART)] + BASE + extra, capture_output=True, text=True)
+    runs = [("oke " + n, CHART, e) for n, e in CONFIGS.items()]
+    for stack, chart in OTHER_CHARTS.items():
+        runs += [(f"{stack} {n}", chart, e) for n, e in DEMO_CONFIGS.items()]
+    for name, chart, extra in runs:
+        out = subprocess.run(["helm", "template", "t", str(chart)] + BASE + extra, capture_output=True, text=True)
         if out.returncode != 0:
             print(f"[{name}] helm template failed: {out.stderr.strip()[:200]}")
             bad += 1
@@ -60,7 +78,7 @@ def main():
                         bad += 1
                         print(f"[{name}] {doc['kind']}/{doc['metadata']['name']} container {c['name']}: {r.stderr.strip()}")
                         print("    script:", repr(cmd[2])[:300])
-    print(f"checked {checked} shell command(s) across {len(CONFIGS)} configurations: {bad} problem(s)")
+    print(f"checked {checked} shell command(s) across {len(runs)} configurations: {bad} problem(s)")
     sys.exit(1 if bad else 0)
 
 

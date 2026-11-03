@@ -112,6 +112,11 @@ manufacturingDemo:
 # sources and the supply-chain set already uses all three. It is read on a fresh install only (the database is seeded when its volume
 # is empty); changing it on an existing release does not reseed. See fixtures/it-risk/README.md.
 demoDataset: supply-chain
+# "all-packs" loads every demo pack at once -- supply chain, manufacturing, IT & operational risk and the Smithsonian Open Access sample -- behind
+# the free edition's three data sources: one Postgres source (`pg`, five schemas), one MariaDB source (`mdb`, the `security` database) and the
+# museum directory CSV in an in-cluster object store (`files`). Schema auto-discovery is on, tables are addressed connector.schema.table, and the
+# Ask app offers the packs as a picker. 28 trusted questions are approved, each checked to run (demos/all-packs/README.md has the rules they follow).
+# Like it-risk it is chosen on a fresh install only and is not on the deploy form.
 
 # The MariaDB half of the IT & operational risk pack (only rendered when demoDataset is it-risk).
 mariadb:
@@ -138,6 +143,26 @@ seedDemoQuestions:
   adminUser: admin
   adminPassword: ""
   image: docker.io/library/python:3.12-slim   # runs the small seeding script (standard library only)
+
+# Only read when demoDataset is all-packs: the object store for the museum directory and the Smithsonian sample the loader Job downloads.
+packs:
+  bucket: si-poc
+  storageSize: 1Gi
+  # SeaweedFS, pinned by digest (MinIO no longer publishes free images); the same image the OKE stack's TPC-H store uses.
+  s3Image: docker.io/chrislusf/seaweedfs@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
+  loaderImage: docker.io/library/python:3.12-slim
+  # The embedding model the app uses to match a question to an approved one by meaning, and to build the subject vocabulary. The app image
+  # carries no model of its own, so this runs as a separate Deployment: the official llama.cpp server (build b10795, pinned by digest; any
+  # newer :server build answers "does not support embeddings") serving nomic-embed-text-v1.5 (Apache-2.0, 84 MB), which an init container
+  # downloads from Hugging Face and checks against its SHA-256 before the server starts.
+  embedImage: ghcr.io/ggml-org/llama.cpp@sha256:fcca4dac388066ca93db561751e8caf5fc7d46d9df5f00a7422026db68468e31
+  embedDownloadImage: docker.io/curlimages/curl@sha256:c1fe1679c34d9784c1b0d1e5f62ac0a79fca01fb6377cdd33e90473c6f9f9a69
+  embedModelUrl: https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF/resolve/main/nomic-embed-text-v1.5.Q4_K_M.gguf
+  embedModelSha256: d4e388894e09cf3816e8b0896d81d265b55e7a9fff9ab03fe8bf4ef5e11295ac
+  # The Smithsonian sample (5.4 MB) is too large for a ConfigMap, so the loader downloads it from a pinned commit of the public Docker repo and
+  # refuses a file whose SHA-256 differs. Change the URL and the checksum together.
+  smithsonianDataUrl: https://raw.githubusercontent.com/thinkingsense-ai/Docker/e2ba5b5eb6ce85fbc1a1a5c4ed3cddb88eb35dea/demos/smithsonian-poc/data-src/si_open_access_sample.csv
+  smithsonianDataSha256: c5a3599e2cf294608bceca86bbcfb95eb21bfd591b5b7344874830ed55cb1a85
 
 # HTTPS is on by default and plain HTTP is closed on the load balancer. The app serves HTTPS itself (the load balancer is a plain TCP
 # pass-through, so the certificate is the app's): with no keystore given, a self-signed certificate is made at first start (browsers warn

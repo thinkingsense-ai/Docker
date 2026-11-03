@@ -255,6 +255,21 @@
             }
           },
           {
+            "name": "demoDataset",
+            "type": "Microsoft.Common.DropDown",
+            "label": "Demo data",
+            "defaultValue": "Supply chain",
+            "toolTip": "Which demo data a new install gets. All packs loads supply chain, manufacturing, IT risk and the Smithsonian sample together (adds an object store and an embedding model; needs outbound access to raw.githubusercontent.com and huggingface.co). Read on a fresh install only.",
+            "constraints": {
+              "allowedValues": [
+                { "label": "Supply chain", "value": "supply-chain" },
+                { "label": "IT and operational risk", "value": "it-risk" },
+                { "label": "All packs", "value": "all-packs" }
+              ],
+              "required": true
+            }
+          },
+          {
             "name": "imageTag",
             "type": "Microsoft.Common.TextBox",
             "label": "Image tag",
@@ -329,6 +344,7 @@
       "postgresStorageGb": "[steps('storage').postgresStorageGb]",
       "omnigateDataStorageGb": "[steps('storage').omnigateDataStorageGb]",
       "imageRepository": "[steps('advanced').imageRepository]",
+      "demoDataset": "[steps('advanced').demoDataset]",
       "imageTag": "[steps('advanced').imageTag]",
       "chartSourceUrl": "[steps('advanced').chartSourceUrl]",
       "adminUsername": "[steps('application').adminUsername]",

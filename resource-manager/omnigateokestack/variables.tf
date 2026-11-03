@@ -218,6 +218,16 @@ variable "omnigate_debug_federation" {
 
 # --- Optional demo dataset ------------------------------------------------------------------
 
+variable "demo_dataset" {
+  description = "Which demo data a new install gets: supply-chain (the default), it-risk (IT and operational risk at a financial firm), or all-packs (supply chain, manufacturing, IT risk and the Smithsonian sample together, with a pack picker in the Ask app; adds an object store and an embedding model, and needs outbound access to raw.githubusercontent.com and huggingface.co). Read on a fresh install only: changing it on an existing stack does not reseed."
+  type        = string
+  default     = "supply-chain"
+  validation {
+    condition     = contains(["supply-chain", "it-risk", "all-packs"], var.demo_dataset)
+    error_message = "demo_dataset must be supply-chain, it-risk or all-packs."
+  }
+}
+
 variable "enable_tpch_demo" {
   description = "Also load a TPC-H demo dataset: LINEITEM as Parquet in an in-cluster S3-compatible store, the other seven tables in a `tpch` database in the existing Postgres. Adds two data backends on top of the three supply-chain ones, so it needs a commercial-edition image (the free edition caps at three). The loader runs on first deploy and takes several minutes at scale factor 1; the OmniGate pods wait for it."
   type        = bool

@@ -28,11 +28,17 @@ spec:
             matchLabels:
               app.kubernetes.io/instance: {{ .Release.Name }}
               app.kubernetes.io/component: omnigate
+{{- if include "omnigate.packs" . }}
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ .Release.Name }}
+              app.kubernetes.io/component: packs-loader
+{{- end }}
       ports:
         - protocol: TCP
           port: 5432
 
-{{- if eq .Values.demoDataset "it-risk" }}
+{{- if include "omnigate.hasMariadb" . }}
 ---
 # The MariaDB half of the IT & operational risk pack: only the app's pods may connect.
 apiVersion: networking.k8s.io/v1
