@@ -148,6 +148,10 @@ resource "helm_release" "omnigate" {
     value = "${var.omnigate_data_storage_gb}Gi"
   }
   set {
+    name  = "demoDataset"
+    value = var.demo_dataset
+  }
+  set {
     name  = "postgres.storageSize"
     value = "${var.postgres_storage_gb}Gi"
   }

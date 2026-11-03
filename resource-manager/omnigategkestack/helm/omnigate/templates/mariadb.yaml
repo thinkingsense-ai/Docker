@@ -1,4 +1,4 @@
-{{- if eq .Values.demoDataset "it-risk" }}
+{{- if include "omnigate.hasMariadb" . }}
 # The MariaDB half of the IT & operational risk pack: the `security` database (third-party vendors and vulnerabilities). A second,
 # different database next to Postgres, so a question that joins the two is answered by federation. Seeded on an empty volume by the
 # official image from /docker-entrypoint-initdb.d; the app's account is made SELECT-only by 02-readonly.sql.

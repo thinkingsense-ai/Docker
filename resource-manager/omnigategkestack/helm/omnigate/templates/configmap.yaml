@@ -19,7 +19,19 @@ data:
   # Routes each schema-qualified table reference to the backend name that owns it (see
   # OMNIGATE_BACKENDS in secrets.yaml) -- three schemas, three natural-named backends, no
   # merging needed (stays within the free edition's 3-backend cap, same as the other two clouds).
+{{- if include "omnigate.packs" . }}
+  # all-packs: no schema-to-source rules. Every schema of each source is discovered and addressed connector.schema.table (pg.risk.incidents,
+  # mdb.security.vendors, files.museums); a rule here would rewrite the schema part to the source name and break cross-source questions.
+  OMNIGATE_FEDERATION_AUTO_DISCOVER_SCHEMAS: "true"
+  OMNIGATE_FEDERATION_SCHEMA_INCLUDE: "suppliers,inventory,procurement,risk,smithsonian,security,museums"
+  # Serve an approved question's saved SQL when a new question matches it closely (the packs' questions are checked to run).
+  OMNIGATE_QUESTION_BANK_RETRIEVAL_ENABLED: "true"
+  # The embedding model runs as its own Deployment (packs.yaml): question matching, the subject vocabulary and vector search call it there.
+  OMNIGATE_EMBEDDING_REMOTE_HOST: {{ include "omnigate.embedHost" . | quote }}
+  OMNIGATE_EMBEDDING_REMOTE_PORT: "8090"
+{{- else }}
   OMNIGATE_ROUTER_SCHEMA_RULES: {{ ternary "risk:risk,security:security" "suppliers:suppliers,inventory:inventory,procurement:procurement" (eq .Values.demoDataset "it-risk") | quote }}
+{{- end }}
   # OMNIGATE_PG_HOST/PORT/DATABASE/USER are the wire-proxy surface's own single connection target,
   # distinct from OMNIGATE_BACKENDS (which populates the backend registry the Ask app/NL2SQL
   # actually queries against) -- must ALWAYS be set, not just when wire protocols are exposed: see
@@ -37,7 +49,7 @@ data:
   # has no business sitting in a plaintext ConfigMap alongside a real Secret already carrying the
   # same value.
 ---
-{{- if (ne .Values.demoDataset "it-risk") }}
+{{- if and (ne .Values.demoDataset "it-risk") (not (include "omnigate.packs" .)) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -61,6 +73,24 @@ data:
 {{ .Files.Get "files/seed-manufacturing.sql" | indent 4 }}
 {{- end }}
 
+{{- if include "omnigate.packs" . }}
+---
+# The Postgres half of all-packs, run by the image's first-start entrypoint in file-name order on an empty volume: the supply-chain
+# schemas, then the risk schema. Manufacturing is added by the ensure-manufacturing-demo init container, Smithsonian by the packs-loader Job.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "omnigate.fullname" . }}-seed-packs-postgres
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+data:
+  01-seed-supply-chain.sql: |
+{{ .Files.Get "files/seed-supply-chain.sql" | indent 4 }}
+  02-seed-it-risk-postgres.sql: |
+{{ .Files.Get "files/seed-it-risk-postgres.sql" | indent 4 }}
+{{- end }}
+
+{{- if include "omnigate.hasMariadb" . }}
 {{- if eq .Values.demoDataset "it-risk" }}
 ---
 apiVersion: v1
@@ -72,6 +102,7 @@ metadata:
 data:
   seed-it-risk-postgres.sql: |
 {{ .Files.Get "files/seed-it-risk-postgres.sql" | indent 4 }}
+{{- end }}
 ---
 apiVersion: v1
 kind: ConfigMap

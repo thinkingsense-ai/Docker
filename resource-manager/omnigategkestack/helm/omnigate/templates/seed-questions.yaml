@@ -7,6 +7,9 @@
 {{- if (eq .Values.demoDataset "it-risk") }}
 {{- $questions = .Files.Get "files/demo-questions-it-risk.json" | fromJsonArray }}
 {{- end }}
+{{- if include "omnigate.packs" . }}
+{{- $questions = .Files.Get "files/demo-questions-all-packs.json" | fromJsonArray }}
+{{- end }}
 # Approves a few trusted questions for the seeded supply-chain demo (files/demo-questions.json), so the
 # Ask app's first screen offers questions that this data can answer. With an empty question bank the app
 # falls back to generic "Try a phrasing" examples (sales by region, top products by revenue) that the
@@ -66,7 +69,7 @@ data:
     try:
         for _ in range(90):
             try:
-                if call("/api/deployment-readiness")[0] == 200: break
+                if call("/api/deployment-readiness")[0] in (200, 401, 403): break  # 401/403: up, but the admin console needs a login
             except Exception: pass
             time.sleep(5)
         if not token:

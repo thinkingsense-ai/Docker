@@ -1,0 +1,321 @@
+{{- if include "omnigate.packs" . }}
+{{- $fullname := include "omnigate.fullname" . }}
+{{- $pgHost := include "omnigate.postgresHost" . }}
+{{- $s3Host := include "omnigate.s3Host" . }}
+# The all-packs demo's two extra pieces (demoDataset=all-packs): an in-cluster S3-compatible store holding the museum directory CSV (the third
+# data source), and a Job that loads the Smithsonian Open Access sample into Postgres (schema `smithsonian`) and the CSV into the bucket.
+#
+# SeaweedFS rather than MinIO (MinIO no longer publishes free container images). It runs with no identities configured, so it accepts any
+# credentials: fine for a ClusterIP-only demo store holding a public directory, not for real data.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $s3Host }}
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: {{ .Values.storageClassName }}
+  resources:
+    requests:
+      storage: {{ .Values.packs.storageSize }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $s3Host }}
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: packs-s3
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: packs-s3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: packs-s3
+    spec:
+      # Same GKE Arm-node taint as omnigate.yaml; the SeaweedFS image is multi-arch.
+      tolerations:
+        - key: "kubernetes.io/arch"
+          operator: "Equal"
+          value: "arm64"
+          effect: "NoSchedule"
+      containers:
+        - name: s3
+          image: {{ .Values.packs.s3Image }}
+          # Small volumes so a modest PVC works: the default 30GB volume size limit would make the master refuse to grow volumes on a small disk.
+          args: ["server", "-dir=/data", "-s3", "-s3.port=9000", "-master.volumeSizeLimitMB=1024", "-volume.max=0"]
+          ports:
+            - containerPort: 9000
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 9000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ $s3Host }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $s3Host }}
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+spec:
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: packs-s3
+  ports:
+    - name: s3
+      port: 9000
+      targetPort: 9000
+---
+# The embedding model (see values.yaml, packs.embedImage). No PVC: the 84 MB model is downloaded to a scratch volume on every start.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "omnigate.embedHost" . }}
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: packs-embed
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: packs-embed
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: packs-embed
+    spec:
+      tolerations:
+        - key: "kubernetes.io/arch"
+          operator: "Equal"
+          value: "arm64"
+          effect: "NoSchedule"
+      initContainers:
+        - name: fetch-model
+          image: {{ .Values.packs.embedDownloadImage }}
+          env:
+            - name: MODEL_URL
+              value: {{ .Values.packs.embedModelUrl | quote }}
+            - name: MODEL_SHA256
+              value: {{ .Values.packs.embedModelSha256 | quote }}
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              if [ ! -s /models/nomic.gguf ]; then curl -fsSL --retry 5 --retry-delay 3 -o /models/nomic.gguf "$MODEL_URL"; fi
+              echo "$MODEL_SHA256  /models/nomic.gguf" | sha256sum -c -
+          volumeMounts:
+            - name: models
+              mountPath: /models
+      containers:
+        - name: embed
+          image: {{ .Values.packs.embedImage }}
+          # -b/-ub 2048: the server's default physical batch of 512 tokens rejects the longer schema descriptions the app embeds (HTTP 500).
+          args: ["-m", "/models/nomic.gguf", "--port", "8090", "--host", "0.0.0.0", "--embeddings", "-c", "2048", "-b", "2048", "-ub", "2048", "-ngl", "0"]
+          ports:
+            - containerPort: 8090
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8090
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              memory: 1Gi
+          volumeMounts:
+            - name: models
+              mountPath: /models
+              readOnly: true
+      volumes:
+        - name: models
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "omnigate.embedHost" . }}
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+spec:
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: packs-embed
+  ports:
+    - name: http
+      port: 8090
+      targetPort: 8090
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fullname }}-packs-loader
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+binaryData:
+  # Kept out of `data` only because of its size; the app reads none of these.
+  vocabulary-concepts.csv: {{ .Files.Get "files/packs/vocabulary-concepts.csv" | b64enc }}
+data:
+  load-smithsonian.sql: |
+{{ .Files.Get "files/packs/load-smithsonian.sql" | indent 4 }}
+  si_museums.csv: |
+{{ .Files.Get "files/packs/si_museums.csv" | indent 4 }}
+  load-museums.py: |
+{{ .Files.Get "files/packs/load-museums.py" | indent 4 }}
+---
+# Loads the Smithsonian sample (downloaded from a pinned commit of the public Docker repo and checked against its SHA-256) into Postgres in
+# one transaction, then puts the museum directory in the bucket. Idempotent: it does nothing when the table is already there, and the
+# upload tolerates an existing bucket. The app's pods wait for both (wait-for-packs-data). The name carries the release revision because a
+# Job's pod template cannot change in place, so every upgrade runs a fresh (instantly finished) one.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $fullname }}-packs-loader-{{ .Release.Revision }}
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: packs-loader
+spec:
+  backoffLimit: 8
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: packs-loader
+    spec:
+      restartPolicy: OnFailure
+      tolerations:
+        - key: "kubernetes.io/arch"
+          operator: "Equal"
+          value: "arm64"
+          effect: "NoSchedule"
+      initContainers:
+        - name: load-smithsonian
+          image: docker.io/library/postgres:16-alpine
+          env:
+            - name: PGHOST
+              value: {{ $pgHost | quote }}
+            - name: PGDATABASE
+              value: {{ .Values.postgres.database | quote }}
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $fullname }}-postgres-secret
+                  key: POSTGRES_USER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $fullname }}-postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: SI_URL
+              value: {{ .Values.packs.smithsonianDataUrl | quote }}
+            - name: SI_SHA256
+              value: {{ .Values.packs.smithsonianDataSha256 | quote }}
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              until pg_isready; do sleep 2; done
+              if [ "$(psql -tAc "SELECT to_regclass('smithsonian.si_topics') IS NOT NULL")" = t ]; then echo "Smithsonian sample already loaded"; exit 0; fi
+              wget -q -O /tmp/si.csv "$SI_URL"
+              echo "$SI_SHA256  /tmp/si.csv" | sha256sum -c -
+              psql -v ON_ERROR_STOP=1 -1 -f /load/load-smithsonian.sql
+          volumeMounts:
+            - name: loader
+              mountPath: /load
+      containers:
+        - name: load-museums
+          image: {{ .Values.packs.loaderImage }}
+          env:
+            - name: S3_ENDPOINT
+              value: "http://{{ $s3Host }}:9000"
+            - name: S3_BUCKET
+              value: {{ .Values.packs.bucket | quote }}
+          command: ["python", "/load/load-museums.py"]
+          volumeMounts:
+            - name: loader
+              mountPath: /load
+      volumes:
+        - name: loader
+          configMap:
+            name: {{ $fullname }}-packs-loader
+{{- if .Values.networkPolicy.enabled }}
+---
+# Only the app's pods and the loader may reach the object store.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $s3Host }}
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: packs-s3
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: packs-s3
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ .Release.Name }}
+              app.kubernetes.io/component: omnigate
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ .Release.Name }}
+              app.kubernetes.io/component: packs-loader
+      ports:
+        - protocol: TCP
+          port: 9000
+---
+# Only the app's pods may call the embedding model.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "omnigate.embedHost" . }}
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: packs-embed
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: packs-embed
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ .Release.Name }}
+              app.kubernetes.io/component: omnigate
+      ports:
+        - protocol: TCP
+          port: 8090
+{{- end }}
+{{- end }}
