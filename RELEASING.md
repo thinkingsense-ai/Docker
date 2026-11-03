@@ -183,8 +183,8 @@ moves nothing until the pins are bumped and the stacks are re-released):
    no self-pin: they are tag-only (GKE also deploys straight from `main`).
 3. Tag at the merge commit and create the release with `--latest=false`, with the assets the previous release of that stack had:
    OKE `omnigateokestack-vX.Y.Z.zip`; EKS `omnigateeksstack-vX.Y.Z.zip`, plus `template.yaml` uploaded to
-   `s3://thinkingsense-cfn-templates/eks-stack-vX.Y.Z/` (the Launch Stack link reads it there); AKS `azuredeploy.json` and
-   `omnigateaksstack-vX.Y.Z.zip`; GKE `omnigategkestack-vX.Y.Z.zip`. Zip from `resource-manager/` so the stack directory is at the top of the zip (that is the layout the OCI docs page's
+   `s3://thinkingsense-cfn-templates/eks-stack-vX.Y.Z/` (the Launch Stack link reads it there); AKS `azuredeploy.json`, `createUiDefinition.json` and
+   `omnigateaksstack-vX.Y.Z.zip` (`scripts/release.sh stacks` attaches all three); GKE `omnigategkestack-vX.Y.Z.zip`. Zip from `resource-manager/` so the stack directory is at the top of the zip (that is the layout the OCI docs page's
    `--working-directory omnigateokestack` expects): `cd resource-manager && zip -r omnigateokestack-vX.Y.Z.zip omnigateokestack`
    (do it on a checkout of the tag, and exclude `.DS_Store`).
 4. `scripts/version-pins.py check --verify-tags` now passes (every self-pin names a tag that exists).
