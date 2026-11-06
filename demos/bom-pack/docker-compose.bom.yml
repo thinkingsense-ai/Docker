@@ -1,0 +1,92 @@
+# The BOM / sourcing demo pack on its own: one Postgres holding the invented `bom` schema (24 tables of parts, bills of materials,
+# quotes, facilities, certificates, quality and supply events), and ThinkingSense reading it through one SELECT-only connection.
+# No local model containers: questions are answered by Claude through your own Anthropic key.
+#
+#   export OMNIGATE_LLM_API_KEY=sk-ant-...        # required; without it the app starts but cannot answer in plain English
+#   docker compose --project-directory . -f demos/bom-pack/docker-compose.bom.yml up --build
+#
+# Run it from the repository root. Ask is at http://localhost:8080 (demo / demo). The admin console is open on localhost only
+# (OMNIGATE_INSECURE): change both before this is reachable beyond your own machine.
+# Tables are addressed schema.table, e.g. bom.parts.
+name: bom-pack
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - ./demos/bom-pack/seed-bom.sql:/docker-entrypoint-initdb.d/01-bom.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Small embedding model (nomic-embed-text, ~80 MB): matches a new question to the approved ones, so a question the team has already
+  # checked is answered with its saved, verified SQL instead of being written from scratch.
+  embed-model:
+    build:
+      context: sidecars/llama
+      args:
+        MODEL_URL: https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF/resolve/main/nomic-embed-text-v1.5.Q4_K_M.gguf
+    entrypoint: ["./llama/llama-server", "-m", "/opt/model.gguf", "--port", "8090", "--host", "0.0.0.0", "--embeddings", "-c", "2048", "-b", "2048", "-ub", "2048", "-ngl", "0"]
+
+  seed-questions:
+    image: python:3.12-slim
+    depends_on:
+      - omnigate
+    restart: "no"
+    environment:
+      OMNIGATE_URL: http://omnigate:8080
+    volumes:
+      - ./docker/seed-questions.py:/seed/seed-questions.py:ro
+      - ./demos/bom-pack/demo-questions-bom.json:/seed/demo-questions.json:ro
+    command: ["python", "/seed/seed-questions.py"]
+
+  # One-shot helper: gives every table a plain-language description (and the rules a question depends on) and defines a few named
+  # measures, so the model writes better SQL for questions the team has not approved. Safe to re-run.
+  seed-knowledge:
+    image: python:3.12-slim
+    depends_on:
+      - omnigate
+    restart: "no"
+    environment:
+      OMNIGATE_URL: http://omnigate:8080
+    volumes:
+      - ./demos/bom-pack/apply-knowledge.py:/seed/apply-knowledge.py:ro
+      - ./demos/bom-pack/bom-knowledge.json:/seed/bom-knowledge.json:ro
+    command: ["python", "/seed/apply-knowledge.py"]
+
+  omnigate:
+    build:
+      context: .
+      args:
+        OMNIGATE_RELEASE_TAG: ${OMNIGATE_RELEASE_TAG:-v0.10.16}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      embed-model:
+        condition: service_healthy
+    environment:
+      # One source, one schema: a statement on bom.<table> runs straight on Postgres. (Federation naming, connector.schema.table, is for
+      # packs that span several sources; with a single source it makes the database reject the statement.)
+      OMNIGATE_BACKENDS: "bom=jdbc:postgresql://postgres:5432/postgres?currentSchema=bom|omnigate_ro|omnigate_ro"
+      OMNIGATE_ROUTER_SCHEMA_RULES: "bom:bom"
+      OMNIGATE_PG_HOST: postgres
+      OMNIGATE_PG_PORT: "5432"
+      OMNIGATE_PG_DATABASE: postgres
+      OMNIGATE_PG_USER: omnigate_ro
+      OMNIGATE_PG_PASSWORD: omnigate_ro
+      OMNIGATE_LLM_MODE: cloud-first
+      OMNIGATE_LLM_API_KEY: ${OMNIGATE_LLM_API_KEY:-}
+      OMNIGATE_EMBEDDING_REMOTE_HOST: embed-model
+      OMNIGATE_EMBEDDING_REMOTE_PORT: "8090"
+      # Set to "false" to see how the model does on its own, without the approved questions.
+      OMNIGATE_QUESTION_BANK_RETRIEVAL_ENABLED: ${BOM_BANK_RETRIEVAL:-true}
+      OMNIGATE_APP_USERS: "demo:lJX+xXgLcPmnjyXStA9VQQ==:HdoV/jHar1OSBbnTk8Iu8fbLcoBGFJ/Qe83zERd4Mac=::"
+      OMNIGATE_INSECURE: "true"
+      OMNIGATE_APP_BANNER: "BOM demo pack. All data is invented."
+    ports:
+      - "8080:8080"

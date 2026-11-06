@@ -1,0 +1,62 @@
+{
+ "reworded": [
+  {
+   "question": "List every part in the KR-6 and the quantity per unit",
+   "sameAs": "Which parts are in the KR-6 robot arm, and how many of each does it use?"
+  },
+  {
+   "question": "Which parts depend on a single quote?",
+   "sameAs": "Which parts have only one supplier quote, and which facility is it from?"
+  },
+  {
+   "question": "For the SK-9 drone, which custom parts come from plants that lack a current AS9100 certificate?",
+   "sameAs": "Which parts of the SK-9 are currently sourced from a facility without a valid AS9100 certificate?"
+  },
+  {
+   "question": "Which suppliers are pending or blocked for Kestrel Dynamics?",
+   "sameAs": "Which suppliers has Kestrel Dynamics not yet approved?"
+  },
+  {
+   "question": "What custom parts can we swap for a catalog part and what do we save on each?",
+   "sameAs": "Which custom parts could be replaced by a configurable catalog item, and how much would each save per unit?"
+  },
+  {
+   "question": "What is the yearly saving if we make all the catalog swaps?",
+   "sameAs": "How much would those catalog replacements save per year, using each product's annual volume?"
+  },
+  {
+   "question": "Why can't the rest of the custom parts be swapped for catalog items?",
+   "sameAs": "Which custom parts cannot be replaced by a catalog item, and what rules them out?"
+  },
+  {
+   "question": "Cheapest AS9100 North American plant for each SK-9 custom part?",
+   "sameAs": "To bring the SK-9 under AS9100 and within North America, which facility is cheapest for each custom part?"
+  },
+  {
+   "question": "Which SK-9 parts have no qualified North American source?",
+   "sameAs": "Which SK-9 custom parts have no North American source that holds a valid AS9100 certificate and has capacity?"
+  },
+  {
+   "question": "What happens to the SK-9 unit cost if we re-source everything we can within North America under AS9100?",
+   "sameAs": "If we moved every SK-9 custom part that has a compliant North American source to it, how would the SK-9 unit BOM cost change?"
+  },
+  {
+   "question": "Which no-risk design-for-manufacturing changes would cut KR-6 cost, and by how much per robot?",
+   "sameAs": "Which DFM findings would save money on the KR-6 with no performance impact, and how much per unit?"
+  }
+ ],
+ "shouldDecline": [
+  {
+   "question": "What is the return on ad spend for the SK-9?",
+   "why": "no marketing data"
+  },
+  {
+   "question": "What is the average employee salary at each facility?",
+   "why": "no HR data"
+  },
+  {
+   "question": "What will the lead time for the KR-6 be next quarter?",
+   "why": "a forecast, not a lookup"
+  }
+ ]
+}
