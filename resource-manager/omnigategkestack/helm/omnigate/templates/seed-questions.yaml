@@ -1,11 +1,17 @@
 {{- if .Values.seedDemoQuestions.enabled }}
 {{- $fullname := include "omnigate.fullname" . }}
 {{- $questions := .Files.Get "files/demo-questions.json" | fromJsonArray }}
-{{- if and .Values.manufacturingDemo.enabled (ne .Values.demoDataset "it-risk") }}
+{{- if and .Values.manufacturingDemo.enabled (not (include "omnigate.standalone" .)) }}
 {{- $questions = concat $questions (.Files.Get "files/demo-questions-manufacturing.json" | fromJsonArray) }}
 {{- end }}
 {{- if (eq .Values.demoDataset "it-risk") }}
 {{- $questions = .Files.Get "files/demo-questions-it-risk.json" | fromJsonArray }}
+{{- end }}
+{{- if (eq .Values.demoDataset "bom") }}
+{{- $questions = .Files.Get "files/demo-questions-bom.json" | fromJsonArray }}
+{{- end }}
+{{- if (eq .Values.demoDataset "treasury") }}
+{{- $questions = .Files.Get "files/demo-questions-treasury.json" | fromJsonArray }}
 {{- end }}
 {{- if include "omnigate.packs" . }}
 {{- $questions = .Files.Get "files/demo-questions-all-packs.json" | fromJsonArray }}

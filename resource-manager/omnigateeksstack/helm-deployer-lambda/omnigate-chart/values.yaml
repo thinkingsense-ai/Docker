@@ -102,6 +102,11 @@ manufacturingDemo:
 # questions that join the two show federation. The two sets are alternatives, not additions: the free edition allows three data
 # sources and the supply-chain set already uses all three. It is read on a fresh install only (the database is seeded when its volume
 # is empty); changing it on an existing release does not reseed. See fixtures/it-risk/README.md.
+# Two more standalone sets, chosen the same way (chart value only; not on the deploy forms yet):
+#   "bom"      a manufacturing BOM / sourcing set: one Postgres source (`bom`, 22 tables) and 24 trusted questions (demos/bom-pack).
+#   "treasury" corporate cash and treasury across two systems: Postgres (`treasury`, 13 tables) and MariaDB (`erp`, 4 tables), 24 trusted
+#              questions, four of them joining the two (demos/treasury-pack).
+# Like it-risk they replace the supply-chain data rather than add to it, and are read on a fresh install only.
 demoDataset: supply-chain
 # "all-packs" loads every demo pack at once -- supply chain, manufacturing, IT & operational risk and the Smithsonian Open Access sample -- behind
 # the free edition's three data sources: one Postgres source (`pg`, five schemas), one MariaDB source (`mdb`, the `security` database) and the

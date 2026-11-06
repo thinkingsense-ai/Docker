@@ -33,7 +33,7 @@ data:
   OMNIGATE_EMBEDDING_REMOTE_HOST: {{ include "omnigate.embedHost" . | quote }}
   OMNIGATE_EMBEDDING_REMOTE_PORT: "8090"
 {{- else }}
-  OMNIGATE_ROUTER_SCHEMA_RULES: {{ ternary "risk:risk,security:security" "suppliers:suppliers,inventory:inventory,procurement:procurement" (eq .Values.demoDataset "it-risk") | quote }}
+  OMNIGATE_ROUTER_SCHEMA_RULES: {{ default "suppliers:suppliers,inventory:inventory,procurement:procurement" (get (dict "it-risk" "risk:risk,security:security" "bom" "bom:bom" "treasury" "treasury:treasury,erp:erp") .Values.demoDataset) | quote }}
 {{- end }}
   # OMNIGATE_PG_HOST/PORT/DATABASE/USER are the wire-proxy surface's own single connection
   # target, distinct from OMNIGATE_BACKENDS (which populates the backend registry the Ask
@@ -55,7 +55,7 @@ data:
   # has no business sitting in a plaintext ConfigMap alongside a real Secret already carrying the
   # same value.
 ---
-{{- if and (ne .Values.demoDataset "it-risk") (not (include "omnigate.packs" .)) }}
+{{- if and (not (include "omnigate.standalone" .)) (not (include "omnigate.packs" .)) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -67,7 +67,7 @@ data:
 {{ .Files.Get "files/seed-supply-chain.sql" | indent 4 }}
 ---
 {{- end }}
-{{- if and .Values.manufacturingDemo.enabled (ne .Values.demoDataset "it-risk") }}
+{{- if and .Values.manufacturingDemo.enabled (not (include "omnigate.standalone" .)) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -96,6 +96,32 @@ data:
 {{ .Files.Get "files/seed-it-risk-postgres.sql" | indent 4 }}
 {{- end }}
 
+{{- if eq .Values.demoDataset "bom" }}
+---
+# The BOM / sourcing pack (demos/bom-pack): one Postgres schema, `bom`. Run by the image's first-start entrypoint on an empty volume.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "omnigate.fullname" . }}-seed-bom-postgres
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+data:
+  seed-bom.sql: |
+{{ .Files.Get "files/seed-bom.sql" | indent 4 }}
+{{- end }}
+{{- if eq .Values.demoDataset "treasury" }}
+---
+# The Treasury pack (demos/treasury-pack), Postgres half: the `treasury` schema. The ERP half is the `erp` MariaDB database below.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "omnigate.fullname" . }}-seed-treasury-postgres
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+data:
+  seed-treasury-postgres.sql: |
+{{ .Files.Get "files/seed-treasury-postgres.sql" | indent 4 }}
+{{- end }}
 {{- if include "omnigate.hasMariadb" . }}
 {{- if eq .Values.demoDataset "it-risk" }}
 ---
@@ -113,15 +139,15 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "omnigate.fullname" . }}-seed-it-risk-mariadb
+  name: {{ include "omnigate.fullname" . }}-{{ include "omnigate.mariadbSeedName" . }}
   labels:
     {{- include "omnigate.labels" . | nindent 4 }}
 data:
-  01-seed-it-risk.sql: |
-{{ .Files.Get "files/seed-it-risk-mariadb.sql" | indent 4 }}
+  {{ ternary "01-seed-treasury.sql" "01-seed-it-risk.sql" (eq .Values.demoDataset "treasury") }}: |
+{{ .Files.Get (ternary "files/seed-treasury-mariadb.sql" "files/seed-it-risk-mariadb.sql" (eq .Values.demoDataset "treasury")) | indent 4 }}
   # The image grants the account it creates (MARIADB_USER) everything on the database; narrow that to SELECT.
   02-readonly.sql: |
-    REVOKE ALL PRIVILEGES ON security.* FROM '{{ .Values.mariadb.readOnlyUser }}'@'%';
-    GRANT SELECT ON security.* TO '{{ .Values.mariadb.readOnlyUser }}'@'%';
+    REVOKE ALL PRIVILEGES ON {{ include "omnigate.mariadbDatabase" . }}.* FROM '{{ .Values.mariadb.readOnlyUser }}'@'%';
+    GRANT SELECT ON {{ include "omnigate.mariadbDatabase" . }}.* TO '{{ .Values.mariadb.readOnlyUser }}'@'%';
     FLUSH PRIVILEGES;
 {{- end }}
