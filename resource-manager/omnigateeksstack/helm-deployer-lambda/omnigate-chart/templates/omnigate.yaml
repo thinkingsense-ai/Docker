@@ -123,7 +123,7 @@ spec:
 {{- if include "omnigate.hasMariadb" . }}
 {{- include "omnigate.mariadbWaitInit" . | nindent 8 }}
 {{- end }}
-{{- if and .Values.manufacturingDemo.enabled (ne .Values.demoDataset "it-risk") }}
+{{- if and .Values.manufacturingDemo.enabled (not (include "omnigate.standalone" .)) }}
 {{- include "omnigate.manufacturingDemoInit" . | nindent 8 }}
 {{- end }}
 {{- if include "omnigate.packs" . }}

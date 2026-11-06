@@ -153,7 +153,7 @@ spec:
 {{- if include "omnigate.hasMariadb" . }}
 {{- include "omnigate.mariadbWaitInit" . | nindent 4 }}
 {{- end }}
-{{- if and .Values.manufacturingDemo.enabled (ne .Values.demoDataset "it-risk") }}
+{{- if and .Values.manufacturingDemo.enabled (not (include "omnigate.standalone" .)) }}
 {{- include "omnigate.manufacturingDemoInit" . | nindent 4 }}
 {{- end }}
 {{- if include "omnigate.packs" . }}
@@ -409,7 +409,7 @@ command exits 1 and this container waits forever (found in the first live deploy
 {{- /* The all-packs demo set: every demo pack at once (supply chain, manufacturing, IT & operational risk, Smithsonian). */ -}}
 {{- define "omnigate.packs" -}}{{- if eq .Values.demoDataset "all-packs" }}true{{ end -}}{{- end -}}
 {{- /* The MariaDB database (`security`) is part of the IT & operational risk pack, on its own or inside all-packs. */ -}}
-{{- define "omnigate.hasMariadb" -}}{{- if or (eq .Values.demoDataset "it-risk") (eq .Values.demoDataset "all-packs") }}true{{ end -}}{{- end -}}
+{{- define "omnigate.hasMariadb" -}}{{- if or (eq .Values.demoDataset "it-risk") (eq .Values.demoDataset "treasury") (eq .Values.demoDataset "all-packs") }}true{{ end -}}{{- end -}}
 {{- define "omnigate.embedHost" -}}
 {{- printf "%s-packs-embed" (include "omnigate.fullname" .) -}}
 {{- end -}}
@@ -448,3 +448,10 @@ must not start before both are there. Runs before ensure-readonly-role so that r
       until wget -q -O /dev/null http://{{ include "omnigate.s3Host" . }}:9000/{{ .Values.packs.bucket }}/museums.csv; do echo "waiting for the museum directory"; sleep 3; done
       until wget -q -O /dev/null http://{{ include "omnigate.embedHost" . }}:8090/health; do echo "waiting for the embedding model"; sleep 3; done
 {{- end -}}
+
+{{- /* Standalone demo sets that replace the supply-chain data: it-risk, bom (BOM / sourcing), treasury (cash, payables, hedges, debt). */ -}}
+{{- define "omnigate.standalone" -}}{{- if or (eq .Values.demoDataset "it-risk") (eq .Values.demoDataset "bom") (eq .Values.demoDataset "treasury") }}true{{ end -}}{{- end -}}
+{{- /* The MariaDB database the app reads: `erp` for the treasury pack, `security` for the IT & operational risk pack. */ -}}
+{{- define "omnigate.mariadbDatabase" -}}{{ ternary "erp" "security" (eq .Values.demoDataset "treasury") }}{{- end -}}
+{{- define "omnigate.mariadbSeedName" -}}{{ ternary "seed-treasury-mariadb" "seed-it-risk-mariadb" (eq .Values.demoDataset "treasury") }}{{- end -}}
+{{- define "omnigate.postgresSeedName" -}}{{- if include "omnigate.packs" . }}seed-packs-postgres{{ else if eq .Values.demoDataset "it-risk" }}seed-it-risk-postgres{{ else if eq .Values.demoDataset "bom" }}seed-bom-postgres{{ else if eq .Values.demoDataset "treasury" }}seed-treasury-postgres{{ else }}seed-supply-chain{{ end -}}{{- end -}}

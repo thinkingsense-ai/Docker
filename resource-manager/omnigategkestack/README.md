@@ -219,6 +219,22 @@ standard catalog items and how closely each part matches one, supplier capabilit
 - **Turning it off.** Set `manufacturingDemo.enabled=false` in the chart values. That stops it being added and the extra questions being approved; tables
   already created stay until you drop them.
 
+## BOM / sourcing and Treasury demo data
+
+Two more standalone demo sets, both invented data, chosen with the chart value `demoDataset` on a fresh install (they replace the
+supply-chain data; changing the value on an existing release does not reseed). They are not on the cloud's deploy form yet, so they are
+set at the chart level (`--set demoDataset=bom` or `treasury`).
+
+- **`bom`**: a mechanical bill-of-materials and sourcing set (3 products, 42 parts, 14 supplier facilities, certificates, quotes,
+  nonconformances). One Postgres source, `bom`. 24 trusted questions. Source: `demos/bom-pack`.
+- **`treasury`**: corporate cash, payables, hedges, debt and an agent action log. Two sources, Postgres `treasury` and MariaDB `erp`, so four
+  of the 24 trusted questions are answered by joining them. Source: `demos/treasury-pack`.
+
+The trusted questions are approved after install (turn on `seedDemoQuestions`), so the Ask app offers them on its first screen. These
+two sets do not load the embedding model, so a reworded question is answered by the model writing its own SQL rather than matching an
+approved question; the pack READMEs measure how much that costs. Rendering is checked with `helm template`; the first live deploy of each
+set on this cloud is still to do.
+
 ## IT & operational risk demo data (draft)
 
 An alternative demo data set for customer conversations about technology and operational risk at a financial firm: business services with recovery objectives, applications, outages, a risk register against the board's appetite, controls and their tests, key risk indicators, audit issues, third-party vendors and vulnerabilities. Everything in it is invented. It is not on the deploy form; choose it with the chart value `demoDataset=it-risk` (default `supply-chain`) on a **fresh install**.

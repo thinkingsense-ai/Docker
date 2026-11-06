@@ -49,7 +49,7 @@ spec:
       volumes:
         - name: seed-supply-chain
           configMap:
-            name: {{ include "omnigate.fullname" . }}-seed-{{ if include "omnigate.packs" . }}packs-postgres{{ else }}{{ ternary "it-risk-postgres" "supply-chain" (eq .Values.demoDataset "it-risk") }}{{ end }}
+            name: {{ include "omnigate.fullname" . }}-{{ include "omnigate.postgresSeedName" . }}
   volumeClaimTemplates:
     - metadata:
         name: data

@@ -1,0 +1,122 @@
+[
+ {
+  "question": "What is our consolidated cash position in US dollars across all open accounts?",
+  "referenceSql": "SELECT COUNT(*) AS accounts, ROUND(SUM(usd), 0) AS total_usd FROM (SELECT a.account_id, a.entity_id, a.bank_id, a.currency, a.account_type, a.status, a.feed_method, b.as_of_date, b.ledger_balance,\n        b.ledger_balance * r.rate_to_usd AS usd\n     FROM treasury.bank_accounts a\n     JOIN (SELECT account_id, MAX(as_of_date) AS d FROM treasury.balances GROUP BY account_id) l ON l.account_id = a.account_id\n     JOIN treasury.balances b ON b.account_id = l.account_id AND b.as_of_date = l.d\n     JOIN treasury.fx_rates r ON r.currency = a.currency) x WHERE status = 'Open'",
+  "category": "treasury"
+ },
+ {
+  "question": "How much cash do we hold in each currency, in the local currency and in US dollars?",
+  "referenceSql": "SELECT currency, ROUND(SUM(ledger_balance), 0) AS local_amount, ROUND(SUM(usd), 0) AS usd_amount FROM (SELECT a.account_id, a.entity_id, a.bank_id, a.currency, a.account_type, a.status, a.feed_method, b.as_of_date, b.ledger_balance,\n        b.ledger_balance * r.rate_to_usd AS usd\n     FROM treasury.bank_accounts a\n     JOIN (SELECT account_id, MAX(as_of_date) AS d FROM treasury.balances GROUP BY account_id) l ON l.account_id = a.account_id\n     JOIN treasury.balances b ON b.account_id = l.account_id AND b.as_of_date = l.d\n     JOIN treasury.fx_rates r ON r.currency = a.currency) x WHERE status = 'Open' GROUP BY currency ORDER BY usd_amount DESC",
+  "category": "treasury"
+ },
+ {
+  "question": "What is the cash position of each legal entity in US dollars?",
+  "referenceSql": "SELECT e.name AS entity, ROUND(SUM(x.usd), 0) AS usd_amount FROM (SELECT a.account_id, a.entity_id, a.bank_id, a.currency, a.account_type, a.status, a.feed_method, b.as_of_date, b.ledger_balance,\n        b.ledger_balance * r.rate_to_usd AS usd\n     FROM treasury.bank_accounts a\n     JOIN (SELECT account_id, MAX(as_of_date) AS d FROM treasury.balances GROUP BY account_id) l ON l.account_id = a.account_id\n     JOIN treasury.balances b ON b.account_id = l.account_id AND b.as_of_date = l.d\n     JOIN treasury.fx_rates r ON r.currency = a.currency) x JOIN treasury.entities e ON e.entity_id = x.entity_id WHERE x.status = 'Open' GROUP BY e.name ORDER BY usd_amount DESC",
+  "category": "treasury"
+ },
+ {
+  "question": "How much cash is held at each bank, and what share of the total is that?",
+  "referenceSql": "SELECT bk.name AS bank, ROUND(SUM(x.usd), 0) AS usd_amount, ROUND(100.0 * SUM(x.usd) / (SELECT SUM(usd) FROM (SELECT a.account_id, a.entity_id, a.bank_id, a.currency, a.account_type, a.status, a.feed_method, b.as_of_date, b.ledger_balance,\n        b.ledger_balance * r.rate_to_usd AS usd\n     FROM treasury.bank_accounts a\n     JOIN (SELECT account_id, MAX(as_of_date) AS d FROM treasury.balances GROUP BY account_id) l ON l.account_id = a.account_id\n     JOIN treasury.balances b ON b.account_id = l.account_id AND b.as_of_date = l.d\n     JOIN treasury.fx_rates r ON r.currency = a.currency) y WHERE y.status = 'Open'), 1) AS share_pct FROM (SELECT a.account_id, a.entity_id, a.bank_id, a.currency, a.account_type, a.status, a.feed_method, b.as_of_date, b.ledger_balance,\n        b.ledger_balance * r.rate_to_usd AS usd\n     FROM treasury.bank_accounts a\n     JOIN (SELECT account_id, MAX(as_of_date) AS d FROM treasury.balances GROUP BY account_id) l ON l.account_id = a.account_id\n     JOIN treasury.balances b ON b.account_id = l.account_id AND b.as_of_date = l.d\n     JOIN treasury.fx_rates r ON r.currency = a.currency) x JOIN treasury.banks bk ON bk.bank_id = x.bank_id WHERE x.status = 'Open' GROUP BY bk.name ORDER BY usd_amount DESC",
+  "category": "treasury"
+ },
+ {
+  "question": "Which accounts have a balance that is more than a day old?",
+  "referenceSql": "SELECT a.account_no, a.currency, a.feed_method, a.status, MAX(b.as_of_date) AS latest_balance FROM treasury.bank_accounts a JOIN treasury.balances b ON b.account_id = a.account_id GROUP BY a.account_no, a.currency, a.feed_method, a.status HAVING MAX(b.as_of_date) < CURRENT_DATE - INTERVAL '1' DAY ORDER BY latest_balance, a.account_no",
+  "category": "treasury"
+ },
+ {
+  "question": "How much cash is trapped in frozen or restricted accounts, in US dollars?",
+  "referenceSql": "SELECT x.account_type, x.status, x.currency, ROUND(x.ledger_balance, 0) AS local_amount, ROUND(x.usd, 0) AS usd_amount FROM (SELECT a.account_id, a.entity_id, a.bank_id, a.currency, a.account_type, a.status, a.feed_method, b.as_of_date, b.ledger_balance,\n        b.ledger_balance * r.rate_to_usd AS usd\n     FROM treasury.bank_accounts a\n     JOIN (SELECT account_id, MAX(as_of_date) AS d FROM treasury.balances GROUP BY account_id) l ON l.account_id = a.account_id\n     JOIN treasury.balances b ON b.account_id = l.account_id AND b.as_of_date = l.d\n     JOIN treasury.fx_rates r ON r.currency = a.currency) x WHERE x.status = 'Frozen' OR x.account_type = 'Restricted'",
+  "category": "treasury"
+ },
+ {
+  "question": "How many open accounts are fed by API, file and portal?",
+  "referenceSql": "SELECT feed_method, COUNT(*) AS accounts FROM treasury.bank_accounts WHERE status <> 'Closed' GROUP BY feed_method ORDER BY accounts DESC",
+  "category": "treasury"
+ },
+ {
+  "question": "Which ledger entries have been waiting more than 5 days to be reconciled, by entity?",
+  "referenceSql": "SELECT e.name AS entity, COUNT(*) AS entries, MIN(l.posting_date) AS oldest FROM erp.ledger_entries l JOIN treasury.entities e ON e.entity_id = l.entity_id WHERE l.reconciled = FALSE AND l.posting_date < CURRENT_DATE - INTERVAL '5' DAY GROUP BY e.name ORDER BY entries DESC",
+  "category": "treasury"
+ },
+ {
+  "question": "Which bank transactions in the last 14 days have no matching ledger entry, by account?",
+  "referenceSql": "SELECT a.account_no, a.currency, COUNT(*) AS unmatched, ROUND(SUM(ABS(t.amount)), 0) AS gross_amount FROM treasury.bank_transactions t JOIN treasury.bank_accounts a ON a.account_id = t.account_id WHERE t.matched_ledger_id IS NULL AND t.booking_date >= CURRENT_DATE - INTERVAL '14' DAY GROUP BY a.account_no, a.currency ORDER BY unmatched DESC, a.account_no",
+  "category": "treasury"
+ },
+ {
+  "question": "How many ledger entries are still unreconciled even though the bank has already booked the transaction, by entity?",
+  "referenceSql": "SELECT e.name AS entity, COUNT(*) AS entries FROM treasury.bank_transactions t JOIN erp.ledger_entries l ON l.entry_id = t.matched_ledger_id JOIN treasury.entities e ON e.entity_id = l.entity_id WHERE l.reconciled = FALSE GROUP BY e.name ORDER BY entries DESC, e.name",
+  "category": "treasury"
+ },
+ {
+  "question": "What invoices fall due in the next 14 days, by currency?",
+  "referenceSql": "SELECT i.currency, COUNT(*) AS invoices, ROUND(SUM(i.amount), 0) AS amount FROM erp.invoices i WHERE i.status IN ('Open', 'Approved', 'On hold') AND i.due_date >= CURRENT_DATE AND i.due_date <= CURRENT_DATE + INTERVAL '14' DAY GROUP BY i.currency ORDER BY amount DESC",
+  "category": "treasury"
+ },
+ {
+  "question": "Which invoices are in a different currency from the one in the vendor's contract?",
+  "referenceSql": "SELECT v.name AS vendor, v.contract_currency, i.invoice_no, i.currency AS invoiced_in, i.amount, i.invoice_date FROM erp.invoices i JOIN erp.vendors v ON v.vendor_id = i.vendor_id WHERE i.currency <> v.contract_currency ORDER BY v.name, i.invoice_date",
+  "category": "treasury"
+ },
+ {
+  "question": "Are there possible duplicate invoices, with the same vendor, amount and date?",
+  "referenceSql": "SELECT v.name AS vendor, i.amount, i.currency, i.invoice_date, COUNT(*) AS invoices FROM erp.invoices i JOIN erp.vendors v ON v.vendor_id = i.vendor_id GROUP BY v.name, i.amount, i.currency, i.invoice_date HAVING COUNT(*) > 1 ORDER BY v.name",
+  "category": "treasury"
+ },
+ {
+  "question": "Which open or approved invoices have no purchase order?",
+  "referenceSql": "SELECT v.name AS vendor, i.invoice_no, i.amount, i.currency, i.invoice_date FROM erp.invoices i JOIN erp.vendors v ON v.vendor_id = i.vendor_id WHERE i.po_number IS NULL AND i.status IN ('Open', 'Approved') ORDER BY i.invoice_date DESC",
+  "category": "treasury"
+ },
+ {
+  "question": "Which payments are waiting for approval, and how much is each in US dollars?",
+  "referenceSql": "SELECT p.payment_id, e.name AS entity, p.amount, p.currency, p.amount_usd, p.value_date, p.initiated_by FROM treasury.payments p JOIN treasury.entities e ON e.entity_id = p.entity_id WHERE p.status = 'Pending approval' ORDER BY p.amount_usd DESC",
+  "category": "treasury"
+ },
+ {
+  "question": "Which released payments were above the dual-approval limit without a second approver?",
+  "referenceSql": "SELECT p.payment_id, e.name AS entity, p.amount_usd, p.approved_by, p.second_approver, p.value_date FROM treasury.payments p JOIN treasury.entities e ON e.entity_id = p.entity_id JOIN treasury.payment_policies pol ON pol.policy_id = p.policy_id WHERE p.status = 'Released' AND p.amount_usd > pol.dual_approval_above_usd AND p.second_approver IS NULL ORDER BY p.amount_usd DESC",
+  "category": "treasury"
+ },
+ {
+  "question": "What did the treasury agent do outside policy in the last 30 days?",
+  "referenceSql": "SELECT a.occurred_at, a.action_type, a.detail, a.approved_by FROM treasury.agent_actions a WHERE a.within_policy = FALSE AND a.occurred_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY ORDER BY a.occurred_at DESC",
+  "category": "treasury"
+ },
+ {
+  "question": "Which payments waiting for approval are for invoices that are on hold?",
+  "referenceSql": "SELECT p.payment_id, v.name AS vendor, i.invoice_no, p.amount_usd FROM treasury.payments p JOIN erp.invoices i ON i.invoice_id = p.invoice_id JOIN erp.vendors v ON v.vendor_id = i.vendor_id WHERE p.status = 'Pending approval' AND i.status = 'On hold' ORDER BY p.amount_usd DESC",
+  "category": "treasury"
+ },
+ {
+  "question": "For each foreign currency, how much of our open payables is covered by active hedges?",
+  "referenceSql": "SELECT pay.currency, pay.payable, COALESCE(h.hedged, 0) AS hedged, ROUND(100.0 * COALESCE(h.hedged, 0) / pay.payable, 0) AS coverage_pct FROM (SELECT i.currency, SUM(i.amount) AS payable FROM erp.invoices i WHERE i.status IN ('Open', 'Approved', 'On hold') AND i.currency <> 'USD' GROUP BY i.currency) pay LEFT JOIN (SELECT currency, SUM(notional) AS hedged FROM treasury.hedges WHERE status = 'Active' GROUP BY currency) h ON h.currency = pay.currency ORDER BY coverage_pct, pay.currency",
+  "category": "treasury"
+ },
+ {
+  "question": "Which hedges mature in the next 30 days?",
+  "referenceSql": "SELECT h.hedge_id, e.name AS entity, h.currency, h.notional, h.rate, h.maturity_date, bk.name AS bank FROM treasury.hedges h JOIN treasury.entities e ON e.entity_id = h.entity_id JOIN treasury.banks bk ON bk.bank_id = h.bank_id WHERE h.status = 'Active' AND h.maturity_date >= CURRENT_DATE AND h.maturity_date <= CURRENT_DATE + INTERVAL '30' DAY ORDER BY h.maturity_date",
+  "category": "treasury"
+ },
+ {
+  "question": "How much headroom does each covenant have, tightest first?",
+  "referenceSql": "SELECT f.name AS facility, c.name AS covenant, c.test_type, c.threshold, c.current_value, ROUND(100.0 * CASE WHEN c.test_type = 'Maximum' THEN c.threshold - c.current_value ELSE c.current_value - c.threshold END / c.threshold, 1) AS headroom_pct FROM treasury.covenants c JOIN treasury.debt_facilities f ON f.facility_id = c.facility_id ORDER BY headroom_pct, c.covenant_id",
+  "category": "treasury"
+ },
+ {
+  "question": "What is our total liquidity: cash in open accounts plus undrawn revolving credit, in US dollars?",
+  "referenceSql": "SELECT ROUND((SELECT SUM(usd) FROM (SELECT a.account_id, a.entity_id, a.bank_id, a.currency, a.account_type, a.status, a.feed_method, b.as_of_date, b.ledger_balance,\n        b.ledger_balance * r.rate_to_usd AS usd\n     FROM treasury.bank_accounts a\n     JOIN (SELECT account_id, MAX(as_of_date) AS d FROM treasury.balances GROUP BY account_id) l ON l.account_id = a.account_id\n     JOIN treasury.balances b ON b.account_id = l.account_id AND b.as_of_date = l.d\n     JOIN treasury.fx_rates r ON r.currency = a.currency) x WHERE x.status = 'Open'), 0) AS cash_usd, ROUND((SELECT SUM((f.commitment - f.drawn) * r.rate_to_usd) FROM treasury.debt_facilities f JOIN treasury.fx_rates r ON r.currency = f.currency WHERE f.facility_type = 'Revolver'), 0) AS undrawn_revolver_usd",
+  "category": "treasury"
+ },
+ {
+  "question": "How accurate were the weekly cash forecasts for each entity over the last 12 weeks?",
+  "referenceSql": "SELECT e.name AS entity, ROUND(100.0 * AVG(ABS(f.actual_net_cash_usd - f.forecast_net_cash_usd) / f.forecast_net_cash_usd), 1) AS avg_error_pct FROM treasury.cash_forecasts f JOIN treasury.entities e ON e.entity_id = f.entity_id GROUP BY e.name ORDER BY avg_error_pct DESC",
+  "category": "treasury"
+ },
+ {
+  "question": "Which entities' forecasts have missed by more than 15% on average?",
+  "referenceSql": "SELECT e.name AS entity, ROUND(100.0 * AVG(ABS(f.actual_net_cash_usd - f.forecast_net_cash_usd) / f.forecast_net_cash_usd), 1) AS avg_error_pct FROM treasury.cash_forecasts f JOIN treasury.entities e ON e.entity_id = f.entity_id GROUP BY e.name HAVING AVG(ABS(f.actual_net_cash_usd - f.forecast_net_cash_usd) / f.forecast_net_cash_usd) > 0.15 ORDER BY avg_error_pct DESC",
+  "category": "treasury"
+ }
+]

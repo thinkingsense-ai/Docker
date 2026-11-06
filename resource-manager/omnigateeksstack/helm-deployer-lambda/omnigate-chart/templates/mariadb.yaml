@@ -27,7 +27,7 @@ spec:
           image: {{ .Values.mariadb.image }}
           env:
             - name: MARIADB_DATABASE
-              value: security
+              value: {{ include "omnigate.mariadbDatabase" . }}
           envFrom:
             - secretRef:
                 name: {{ include "omnigate.fullname" . }}-mariadb-secret
@@ -51,7 +51,7 @@ spec:
       volumes:
         - name: seed
           configMap:
-            name: {{ include "omnigate.fullname" . }}-seed-it-risk-mariadb
+            name: {{ include "omnigate.fullname" . }}-{{ include "omnigate.mariadbSeedName" . }}
   volumeClaimTemplates:
     - metadata:
         name: data
