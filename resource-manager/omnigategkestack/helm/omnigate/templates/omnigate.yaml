@@ -136,6 +136,8 @@ spec:
 {{- end }}
 {{- if include "omnigate.packs" . }}
 {{- include "omnigate.packsWaitInit" . | nindent 8 }}
+{{- else if include "omnigate.embedding" . }}
+{{- include "omnigate.embedWaitInit" . | nindent 8 }}
 {{- end }}
 {{- include "omnigate.readOnlyRoleInit" . | nindent 8 }}
       containers:

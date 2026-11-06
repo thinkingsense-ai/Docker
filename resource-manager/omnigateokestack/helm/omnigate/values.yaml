@@ -236,7 +236,7 @@ tpch:
   loaderDuckdbMemory: 2GB
   loaderMemoryLimit: 4Gi
 
-# Only read when demoDataset is all-packs: the object store for the museum directory and the Smithsonian sample the loader Job downloads.
+# The embedding model below is also used by the bom and treasury sets. The rest (object store, loader) is read only when demoDataset is all-packs: the object store for the museum directory and the Smithsonian sample the loader Job downloads.
 packs:
   bucket: si-poc
   storageSize: 1Gi

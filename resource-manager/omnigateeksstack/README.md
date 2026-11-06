@@ -123,9 +123,10 @@ The seed job also gives the chosen set its table descriptions and a few named me
   of the 24 trusted questions are answered by joining them. Source: `demos/treasury-pack`.
 
 The trusted questions are approved after install (turn on `seedDemoQuestions`), so the Ask app offers them on its first screen. These
-two sets do not load the embedding model, so a reworded question is answered by the model writing its own SQL rather than matching an
-approved question; the pack READMEs measure how much that costs. Rendering is checked with `helm template`; the first live deploy of each
-set on this cloud is still to do.
+two sets also run the embedding model as its own small Deployment (the one `all-packs` uses) and turn on question matching: without it
+the approved questions are never used, and every question, even an approved one asked word for word, is written from scratch by the model
+(found on the first live deploy of `treasury`). A question that matches an approved one closely is then answered with its saved SQL;
+a reworded one falls back to the model, and the pack READMEs measure how much that costs. `it-risk` does not have this yet.
 
 ## IT & operational risk demo data (draft)
 

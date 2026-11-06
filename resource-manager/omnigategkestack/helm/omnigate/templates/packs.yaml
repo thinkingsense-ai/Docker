@@ -1,7 +1,8 @@
-{{- if include "omnigate.packs" . }}
+{{- if include "omnigate.embedding" . }}
 {{- $fullname := include "omnigate.fullname" . }}
 {{- $pgHost := include "omnigate.postgresHost" . }}
 {{- $s3Host := include "omnigate.s3Host" . }}
+{{- if include "omnigate.packs" . }}
 # The all-packs demo's two extra pieces (demoDataset=all-packs): an in-cluster S3-compatible store holding the museum directory CSV (the third
 # data source), and a Job that loads the Smithsonian Open Access sample into Postgres (schema `smithsonian`) and the CSV into the bucket.
 #
@@ -82,6 +83,7 @@ spec:
     - name: s3
       port: 9000
       targetPort: 9000
+{{- end }}
 ---
 # The embedding model (see values.yaml, packs.embedImage). No PVC: the 84 MB model is downloaded to a scratch volume on every start.
 apiVersion: apps/v1
@@ -167,6 +169,7 @@ spec:
     - name: http
       port: 8090
       targetPort: 8090
+{{- if include "omnigate.packs" . }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -292,6 +295,7 @@ spec:
       ports:
         - protocol: TCP
           port: 9000
+{{- end }}
 ---
 # Only the app's pods may call the embedding model.
 apiVersion: networking.k8s.io/v1
