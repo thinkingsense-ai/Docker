@@ -1,0 +1,96 @@
+# The Treasury demo pack on its own: cash, accounts, payments, hedges and debt in Postgres (schema `treasury`), and the ERP (vendors, purchase
+# orders, invoices, general-ledger cash entries) in MariaDB (database `erp`). Questions that need both read across the two sources. All data is
+# invented, and its dates move with the day the stack first starts. No local model containers: answers come from Claude through your own key.
+#
+#   export OMNIGATE_LLM_API_KEY=sk-ant-...        # required; without it the app starts but cannot answer in plain English
+#   docker compose --project-directory . -f demos/treasury-pack/docker-compose.treasury.yml up --build
+#
+# Run it from the repository root. Ask is at http://localhost:8080 (demo / demo). The admin console is open on localhost only
+# (OMNIGATE_INSECURE): change both before this is reachable beyond your own machine.
+# Tables are addressed schema.table: treasury.bank_accounts, erp.invoices.
+name: treasury-pack
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - ./demos/treasury-pack/seed-treasury-postgres.sql:/docker-entrypoint-initdb.d/01-treasury.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mariadb:
+    image: docker.io/library/mariadb:11
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: erp
+      MARIADB_USER: omnigate_ro
+      MARIADB_PASSWORD: omnigate_ro
+    volumes:
+      - ./demos/treasury-pack/seed-treasury-mariadb.sql:/docker-entrypoint-initdb.d/01-erp.sql:ro
+      - ./demos/treasury-pack/mariadb-readonly.sql:/docker-entrypoint-initdb.d/02-readonly.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -proot --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Small embedding model (nomic-embed-text, ~80 MB): matches a new question to the approved ones, so a question the team has already
+  # checked is answered with its saved, verified SQL instead of being written from scratch.
+  embed-model:
+    build:
+      context: sidecars/llama
+      args:
+        MODEL_URL: https://huggingface.co/nomic-ai/nomic-embed-text-v1.5-GGUF/resolve/main/nomic-embed-text-v1.5.Q4_K_M.gguf
+    entrypoint: ["./llama/llama-server", "-m", "/opt/model.gguf", "--port", "8090", "--host", "0.0.0.0", "--embeddings", "-c", "2048", "-b", "2048", "-ub", "2048", "-ngl", "0"]
+
+  seed-questions:
+    image: python:3.12-slim
+    depends_on:
+      - omnigate
+    restart: "no"
+    environment:
+      OMNIGATE_URL: http://omnigate:8080
+    volumes:
+      - ./docker/seed-questions.py:/seed/seed-questions.py:ro
+      - ./demos/treasury-pack/demo-questions-treasury.json:/seed/demo-questions.json:ro
+    command: ["python", "/seed/seed-questions.py"]
+
+  omnigate:
+    build:
+      context: .
+      args:
+        OMNIGATE_RELEASE_TAG: ${OMNIGATE_RELEASE_TAG:-v0.10.16}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mariadb:
+        condition: service_healthy
+      embed-model:
+        condition: service_healthy
+    environment:
+      # Each source is registered under the name of the schema it holds, and the router sends treasury.* to Postgres and erp.* to MariaDB.
+      # A statement on one source runs straight on that database; a statement naming both is joined across them.
+      OMNIGATE_BACKENDS: "treasury=jdbc:postgresql://postgres:5432/postgres?currentSchema=treasury|omnigate_ro|omnigate_ro;erp=jdbc:mariadb://mariadb:3306/erp|omnigate_ro|omnigate_ro"
+      OMNIGATE_ROUTER_SCHEMA_RULES: "treasury:treasury,erp:erp"
+      OMNIGATE_PG_HOST: postgres
+      OMNIGATE_PG_PORT: "5432"
+      OMNIGATE_PG_DATABASE: postgres
+      OMNIGATE_PG_USER: omnigate_ro
+      OMNIGATE_PG_PASSWORD: omnigate_ro
+      OMNIGATE_LLM_MODE: cloud-first
+      OMNIGATE_LLM_API_KEY: ${OMNIGATE_LLM_API_KEY:-}
+      OMNIGATE_EMBEDDING_REMOTE_HOST: embed-model
+      OMNIGATE_EMBEDDING_REMOTE_PORT: "8090"
+      # Set to "false" to see how the model does on its own, without the approved questions.
+      OMNIGATE_QUESTION_BANK_RETRIEVAL_ENABLED: ${TREASURY_BANK_RETRIEVAL:-true}
+      OMNIGATE_APP_USERS: "demo:lJX+xXgLcPmnjyXStA9VQQ==:HdoV/jHar1OSBbnTk8Iu8fbLcoBGFJ/Qe83zERd4Mac=::"
+      OMNIGATE_INSECURE: "true"
+      OMNIGATE_APP_BANNER: "Treasury demo pack. All data is invented."
+    ports:
+      - "8080:8080"
