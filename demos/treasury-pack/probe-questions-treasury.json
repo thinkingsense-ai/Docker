@@ -1,0 +1,70 @@
+{
+ "reworded": [
+  {
+   "question": "What's our total cash in USD?",
+   "sameAs": "What is our consolidated cash position in US dollars across all open accounts?"
+  },
+  {
+   "question": "Break cash down by currency",
+   "sameAs": "How much cash do we hold in each currency, in the local currency and in US dollars?"
+  },
+  {
+   "question": "Which bank feeds have gone stale?",
+   "sameAs": "Which accounts have a balance that is more than a day old?"
+  },
+  {
+   "question": "Which entities have old unreconciled ledger entries?",
+   "sameAs": "Which ledger entries have been waiting more than 5 days to be reconciled, by entity?"
+  },
+  {
+   "question": "Any invoices where the supplier switched currency?",
+   "sameAs": "Which invoices are in a different currency from the one in the vendor's contract?"
+  },
+  {
+   "question": "Show me duplicate invoices",
+   "sameAs": "Are there possible duplicate invoices, with the same vendor, amount and date?"
+  },
+  {
+   "question": "Who approved payments above the dual-approval threshold with only one signature?",
+   "sameAs": "Which released payments were above the dual-approval limit without a second approver?"
+  },
+  {
+   "question": "List the agent's out-of-policy actions this month",
+   "sameAs": "What did the treasury agent do outside policy in the last 30 days?"
+  },
+  {
+   "question": "How well hedged are we against each currency's payables?",
+   "sameAs": "For each foreign currency, how much of our open payables is covered by active hedges?"
+  },
+  {
+   "question": "Which covenant is closest to breaching?",
+   "sameAs": "How much headroom does each covenant have, tightest first?"
+  },
+  {
+   "question": "How much liquidity do we have including undrawn lines?",
+   "sameAs": "What is our total liquidity: cash in open accounts plus undrawn revolving credit, in US dollars?"
+  },
+  {
+   "question": "Which entity's cash forecast is least reliable?",
+   "sameAs": "Which entities' forecasts have missed by more than 15% on average?"
+  }
+ ],
+ "shouldDecline": [
+  {
+   "question": "Will we breach a debt covenant in the next 60 days?",
+   "why": "needs a simulation"
+  },
+  {
+   "question": "Should we draw down the revolving credit facility?",
+   "why": "a decision, not a lookup"
+  },
+  {
+   "question": "What is the optimal hedge ratio for the euro?",
+   "why": "needs a model and a policy view"
+  },
+  {
+   "question": "What is the credit rating of Atlantic National Bank?",
+   "why": "no such data"
+  }
+ ]
+}
