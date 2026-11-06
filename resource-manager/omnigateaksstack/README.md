@@ -305,6 +305,8 @@ Two more standalone demo sets, both invented data, chosen with the chart value `
 supply-chain data; changing the value on an existing release does not reseed). They are not on the cloud's deploy form yet, so they are
 set at the chart level (`--set demoDataset=bom` or `treasury`).
 
+The seed job also gives the chosen set its table descriptions and a few named measures (`files/knowledge-bom.json`, `files/knowledge-treasury.json`), so the admin ontology page shows that pack's tables with their rules. Whether the descriptions improve free-form answers is not established: on the BOM pack five runs showed no difference beyond run-to-run noise (Server#43).
+
 - **`bom`**: a mechanical bill-of-materials and sourcing set (3 products, 42 parts, 14 supplier facilities, certificates, quotes,
   nonconformances). One Postgres source, `bom`. 24 trusted questions. Source: `demos/bom-pack`.
 - **`treasury`**: corporate cash, payables, hedges, debt and an agent action log. Two sources, Postgres `treasury` and MariaDB `erp`, so four

@@ -16,6 +16,10 @@ Run it from the repository root. Ask is at `http://localhost:8080` (`demo` / `de
 Change both before the stack is reachable beyond your own machine. Stop and wipe it with `down -v`. Set `TREASURY_BANK_RETRIEVAL=false` to see
 the model working without the approved questions.
 
+A one-shot `seed-knowledge` service describes every table (including the rules a question depends on, such as when a payment breaks the
+dual-approval policy or what counts as stale) and defines three named measures (`treasury-knowledge.json`). Whether this helps free-form
+answers has not been measured for this pack.
+
 Postgres holds the `treasury` schema, MariaDB the `erp` database, each registered under that name; a statement on one source runs on that database, a
 statement naming both is joined across them. Tables are addressed `treasury.<table>` and `erp.<table>`.
 

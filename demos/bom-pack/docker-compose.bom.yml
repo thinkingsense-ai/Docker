@@ -55,8 +55,8 @@ services:
     environment:
       OMNIGATE_URL: http://omnigate:8080
     volumes:
-      - ./demos/bom-pack/apply-knowledge.py:/seed/apply-knowledge.py:ro
-      - ./demos/bom-pack/bom-knowledge.json:/seed/bom-knowledge.json:ro
+      - ./docker/apply-knowledge.py:/seed/apply-knowledge.py:ro
+      - ./demos/bom-pack/bom-knowledge.json:/seed/knowledge.json:ro
     command: ["python", "/seed/apply-knowledge.py"]
 
   omnigate:

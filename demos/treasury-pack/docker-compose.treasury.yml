@@ -61,6 +61,20 @@ services:
       - ./demos/treasury-pack/demo-questions-treasury.json:/seed/demo-questions.json:ro
     command: ["python", "/seed/seed-questions.py"]
 
+  # One-shot helper: a plain-language description for every table (and the rules a question depends on) plus a few named measures,
+  # so the model writes better SQL for questions the team has not approved. Safe to re-run.
+  seed-knowledge:
+    image: python:3.12-slim
+    depends_on:
+      - omnigate
+    restart: "no"
+    environment:
+      OMNIGATE_URL: http://omnigate:8080
+    volumes:
+      - ./docker/apply-knowledge.py:/seed/apply-knowledge.py:ro
+      - ./demos/treasury-pack/treasury-knowledge.json:/seed/knowledge.json:ro
+    command: ["python", "/seed/apply-knowledge.py"]
+
   omnigate:
     build:
       context: .
