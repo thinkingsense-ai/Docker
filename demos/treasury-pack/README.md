@@ -67,8 +67,8 @@ borderline answers count against it.
 |---|---|
 | Approved questions, asked verbatim, bank on | **24 of 24** return the reference rows (8 to 14 seconds each) |
 | Same questions, bank off (the model writes the SQL itself) | **11 and 9 of 24** in two runs |
-| Reworded questions, bank on | **6 of 12** right on a manual read |
-| Questions that should be declined | 3 of 4 declined clearly; "credit rating" got a bare "No results found" |
+| Reworded questions, bank on | **6 of 12** right on a manual read locally; **3 of 12** on a second run on a live AKS cluster, where none matched an approved question |
+| Questions that should be declined | 3 of 4 declined clearly locally; **1 of 4** on the AKS run |
 
 What the free-form runs show:
 
@@ -78,6 +78,12 @@ What the free-form runs show:
   table (`aa.CURRENT_TIMESTAMP does not exist`). This is drafted for the Server repo (`briefs/server-issue-drafts/`).
 - A reworded forecast-accuracy question ("least reliable forecast") was refused as a prediction request, the same routing problem as Server#69.
 - One approved question returned the right three rows but its narrative said "two actions" (Server#8, the answer text contradicting its own data).
+- On the AKS run (2026-11-06) the three right rewordings were the currency switch, duplicate invoices and the tightest covenant. The rest failed in
+  the ways above, plus a missed frozen account in the stale-feed question, a liquidity answer that read the covenant figure instead of cash plus
+  undrawn lines, and a hedge-cover question where 9 of 10 sub-queries failed.
+- Decline cases on the same run: only the optimal-hedge-ratio question was declined. "Will we breach a covenant in the next 60 days?" was answered
+  with "all covenants are in compliance with comfortable headroom", although net leverage has 3.4% headroom, so the answer contradicts the data.
+  "Should we draw the revolver?" got advice that there is no immediate need. Model output varies between runs, so treat these as two samples.
 - Cross-system questions (four of the 24) all run when approved. Free-form, they were the least reliable.
 
 The pattern matches the BOM pack and Server#43: approved questions are the reliable path, free-form accuracy is the weak point, and the article's
