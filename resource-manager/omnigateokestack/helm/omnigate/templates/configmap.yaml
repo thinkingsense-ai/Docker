@@ -34,6 +34,12 @@ data:
   OMNIGATE_EMBEDDING_REMOTE_PORT: "8090"
 {{- else }}
   OMNIGATE_ROUTER_SCHEMA_RULES: {{ default "suppliers:suppliers,inventory:inventory,procurement:procurement" (get (dict "it-risk" "risk:risk,security:security" "bom" "bom:bom" "treasury" "treasury:treasury,erp:erp") .Values.demoDataset) | quote }}
+{{- if include "omnigate.embedding" . }}
+  # bom and treasury: serve an approved question's saved SQL when a new question matches it; the embedding model runs as its own Deployment (packs.yaml).
+  OMNIGATE_QUESTION_BANK_RETRIEVAL_ENABLED: "true"
+  OMNIGATE_EMBEDDING_REMOTE_HOST: {{ include "omnigate.embedHost" . | quote }}
+  OMNIGATE_EMBEDDING_REMOTE_PORT: "8090"
+{{- end }}
 {{- end }}
   # OMNIGATE_PG_HOST/PORT/DATABASE/USER are the wire-proxy surface's own single connection
   # target, distinct from OMNIGATE_BACKENDS (which populates the backend registry the Ask

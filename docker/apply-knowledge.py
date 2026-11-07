@@ -1,10 +1,10 @@
-"""Gives the BOM pack its business knowledge: a description for every table (including the rules a question depends on, such as
+"""Gives a demo pack its business knowledge: a description for every table (including the rules a question depends on, such as
 what 'approved' means and when a certificate is valid) and a few named measures. Run once by the `seed-knowledge` service after the app is
 up; safe to re-run, best effort (it always exits 0)."""
 import json, os, sys, time, urllib.error, urllib.request
 
 base = os.environ.get("OMNIGATE_URL", "http://omnigate:8080")
-know = json.load(open("/seed/bom-knowledge.json"))
+know = json.load(open(os.environ.get("KNOWLEDGE_FILE", "/seed/knowledge.json")))
 
 
 def call(path, body=None, method=None):

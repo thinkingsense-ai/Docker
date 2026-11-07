@@ -158,6 +158,8 @@ spec:
 {{- end }}
 {{- if include "omnigate.packs" . }}
 {{- include "omnigate.packsWaitInit" . | nindent 4 }}
+{{- else if include "omnigate.embedding" . }}
+{{- include "omnigate.embedWaitInit" . | nindent 4 }}
 {{- end }}
 {{- include "omnigate.readOnlyRoleInit" . | nindent 4 }}
   containers:
@@ -455,3 +457,15 @@ must not start before both are there. Runs before ensure-readonly-role so that r
 {{- define "omnigate.mariadbDatabase" -}}{{ ternary "erp" "security" (eq .Values.demoDataset "treasury") }}{{- end -}}
 {{- define "omnigate.mariadbSeedName" -}}{{ ternary "seed-treasury-mariadb" "seed-it-risk-mariadb" (eq .Values.demoDataset "treasury") }}{{- end -}}
 {{- define "omnigate.postgresSeedName" -}}{{- if include "omnigate.packs" . }}seed-packs-postgres{{ else if eq .Values.demoDataset "it-risk" }}seed-it-risk-postgres{{ else if eq .Values.demoDataset "bom" }}seed-bom-postgres{{ else if eq .Values.demoDataset "treasury" }}seed-treasury-postgres{{ else }}seed-supply-chain{{ end -}}{{- end -}}
+
+{{- /* The embedding model Deployment and question matching (approved questions served from their saved SQL): all-packs, and the bom and treasury sets. */ -}}
+{{- define "omnigate.embedding" -}}{{- if or (eq .Values.demoDataset "all-packs") (eq .Values.demoDataset "bom") (eq .Values.demoDataset "treasury") }}true{{ end -}}{{- end -}}
+{{- /* Waits for the embedding model to answer before the app starts (the bom and treasury sets; all-packs has this inside packsWaitInit). */ -}}
+{{- define "omnigate.embedWaitInit" -}}
+- name: wait-for-embedding-model
+  image: docker.io/library/postgres:16-alpine
+  command:
+    - sh
+    - -c
+    - until wget -q -O /dev/null http://{{ include "omnigate.embedHost" . }}:8090/health; do echo "waiting for the embedding model"; sleep 3; done
+{{- end -}}
