@@ -92,7 +92,7 @@ param imagePullUsername string = ''
 param imagePullAuthToken string = ''
 
 @description('Image tag (advanced). Pinned to a specific free-edition release rather than "latest" -- confirmed live that "latest" had silently stopped tracking new app releases (frozen at v0.6.0\'s content for two releases, since v0.7.0/v0.8.0 were only ever published to a different registry this stack never pulled from), so a moving-target default was not actually keeping deployers current, just non-reproducible. The AWS/OCI/GCP stacks made the identical fix the same way -- bump this deliberately when a newer free-edition image is built and pushed, do not go back to "latest".')
-param imageTag string = 'v0.10.16'
+param imageTag string = 'v0.10.17'
 
 @description('Which demo data a new install gets: supply-chain (the default), it-risk (IT and operational risk at a financial firm), or all-packs (supply chain, manufacturing, IT risk and the Smithsonian sample together, with a pack picker in the Ask app; adds an object store and an embedding model and needs outbound access to raw.githubusercontent.com and huggingface.co). Read on a fresh install only: changing it on an existing deployment does not reseed.')
 @allowed([
