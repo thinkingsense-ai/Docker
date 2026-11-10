@@ -10,7 +10,7 @@
   "id": "T2",
   "group": "trusted",
   "question": "Which parts have only one supplier quote, and where is that supplier?",
-  "referenceSql": "SELECT r.part_no, p.description, MIN(s.name) AS supplier, MIN(s.country) AS country FROM procurement.rfqs r JOIN procurement.quotes q ON q.rfq_id = r.rfq_id JOIN suppliers.suppliers s ON s.supplier_id = q.supplier_id JOIN inventory.parts p ON p.part_no = r.part_no GROUP BY r.part_no, p.description HAVING COUNT(*) = 1 ORDER BY r.part_no",
+  "referenceSql": "SELECT r.part_no, MIN(s.name) AS supplier, MIN(s.country) AS country FROM procurement.rfqs r JOIN procurement.quotes q ON q.rfq_id = r.rfq_id JOIN suppliers.suppliers s ON s.supplier_id = q.supplier_id GROUP BY r.part_no HAVING COUNT(*) = 1 ORDER BY r.part_no",
   "expectBank": true
  },
  {
@@ -94,14 +94,14 @@
   "id": "P21",
   "group": "paraphrase",
   "question": "Which parts did only one supplier quote on?",
-  "referenceSql": "SELECT r.part_no, p.description, MIN(s.name) AS supplier, MIN(s.country) AS country FROM procurement.rfqs r JOIN procurement.quotes q ON q.rfq_id = r.rfq_id JOIN suppliers.suppliers s ON s.supplier_id = q.supplier_id JOIN inventory.parts p ON p.part_no = r.part_no GROUP BY r.part_no, p.description HAVING COUNT(*) = 1 ORDER BY r.part_no",
+  "referenceSql": "SELECT r.part_no, MIN(s.name) AS supplier, MIN(s.country) AS country FROM procurement.rfqs r JOIN procurement.quotes q ON q.rfq_id = r.rfq_id JOIN suppliers.suppliers s ON s.supplier_id = q.supplier_id GROUP BY r.part_no HAVING COUNT(*) = 1 ORDER BY r.part_no",
   "expectBank": false
  },
  {
   "id": "P22",
   "group": "paraphrase",
   "question": "Show parts where we got just a single quote, with the supplier and its country.",
-  "referenceSql": "SELECT r.part_no, p.description, MIN(s.name) AS supplier, MIN(s.country) AS country FROM procurement.rfqs r JOIN procurement.quotes q ON q.rfq_id = r.rfq_id JOIN suppliers.suppliers s ON s.supplier_id = q.supplier_id JOIN inventory.parts p ON p.part_no = r.part_no GROUP BY r.part_no, p.description HAVING COUNT(*) = 1 ORDER BY r.part_no",
+  "referenceSql": "SELECT r.part_no, MIN(s.name) AS supplier, MIN(s.country) AS country FROM procurement.rfqs r JOIN procurement.quotes q ON q.rfq_id = r.rfq_id JOIN suppliers.suppliers s ON s.supplier_id = q.supplier_id GROUP BY r.part_no HAVING COUNT(*) = 1 ORDER BY r.part_no",
   "expectBank": false
  },
  {
