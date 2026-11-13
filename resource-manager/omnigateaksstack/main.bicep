@@ -94,10 +94,12 @@ param imagePullAuthToken string = ''
 @description('Image tag (advanced). Pinned to a specific free-edition release rather than "latest" -- confirmed live that "latest" had silently stopped tracking new app releases (frozen at v0.6.0\'s content for two releases, since v0.7.0/v0.8.0 were only ever published to a different registry this stack never pulled from), so a moving-target default was not actually keeping deployers current, just non-reproducible. The AWS/OCI/GCP stacks made the identical fix the same way -- bump this deliberately when a newer free-edition image is built and pushed, do not go back to "latest".')
 param imageTag string = 'v0.10.17'
 
-@description('Which demo data a new install gets: supply-chain (the default), it-risk (IT and operational risk at a financial firm), or all-packs (supply chain, manufacturing, IT risk and the Smithsonian sample together, with a pack picker in the Ask app; adds an object store and an embedding model and needs outbound access to raw.githubusercontent.com and huggingface.co). Read on a fresh install only: changing it on an existing deployment does not reseed.')
+@description('Which demo data a new install gets: supply-chain (the default), it-risk (IT and operational risk at a financial firm), bom (manufacturing bill of materials and sourcing), treasury (cash, payables, hedges and debt across Postgres and MariaDB), or all-packs (supply chain, manufacturing, IT risk and the Smithsonian sample together, with a pack picker in the Ask app; adds an object store and an embedding model and needs outbound access to raw.githubusercontent.com and huggingface.co). bom and treasury also run an embedding model and need outbound access to huggingface.co. Read on a fresh install only: changing it on an existing deployment does not reseed.')
 @allowed([
   'supply-chain'
   'it-risk'
+  'bom'
+  'treasury'
   'all-packs'
 ])
 param demoDataset string = 'supply-chain'
