@@ -23,7 +23,7 @@ data:
   # all-packs: no schema-to-source rules. Every schema of each source is discovered and addressed connector.schema.table (pg.risk.incidents,
   # mdb.security.vendors, files.museums); a rule here would rewrite the schema part to the source name and break cross-source questions.
   OMNIGATE_FEDERATION_AUTO_DISCOVER_SCHEMAS: "true"
-  OMNIGATE_FEDERATION_SCHEMA_INCLUDE: "suppliers,inventory,procurement,risk,smithsonian,security,museums"
+  OMNIGATE_FEDERATION_SCHEMA_INCLUDE: "suppliers,inventory,procurement,risk,smithsonian,security,museums,bom,treasury,erp"
   # Serve an approved question's saved SQL when a new question matches it closely (the packs' questions are checked to run).
   OMNIGATE_QUESTION_BANK_RETRIEVAL_ENABLED: "true"
   # The embedding model runs as its own Deployment (packs.yaml): question matching, the subject vocabulary and vector search call it there.
@@ -94,6 +94,10 @@ data:
 {{ .Files.Get "files/seed-supply-chain.sql" | indent 4 }}
   02-seed-it-risk-postgres.sql: |
 {{ .Files.Get "files/seed-it-risk-postgres.sql" | indent 4 }}
+  03-seed-bom.sql: |
+{{ .Files.Get "files/seed-bom.sql" | indent 4 }}
+  04-seed-treasury-postgres.sql: |
+{{ .Files.Get "files/seed-treasury-postgres.sql" | indent 4 }}
 {{- end }}
 
 {{- if eq .Values.demoDataset "bom" }}
@@ -150,4 +154,12 @@ data:
     REVOKE ALL PRIVILEGES ON {{ include "omnigate.mariadbDatabase" . }}.* FROM '{{ .Values.mariadb.readOnlyUser }}'@'%';
     GRANT SELECT ON {{ include "omnigate.mariadbDatabase" . }}.* TO '{{ .Values.mariadb.readOnlyUser }}'@'%';
     FLUSH PRIVILEGES;
+{{- if include "omnigate.packs" . }}
+  # all-packs also holds the Treasury pack's ERP database (`erp`) next to `security`: the same SELECT-only account reads it.
+  03-seed-treasury-erp.sql: |
+{{ .Files.Get "files/seed-treasury-mariadb.sql" | indent 4 }}
+  04-readonly-erp.sql: |
+    GRANT SELECT ON erp.* TO '{{ .Values.mariadb.readOnlyUser }}'@'%';
+    FLUSH PRIVILEGES;
+{{- end }}
 {{- end }}

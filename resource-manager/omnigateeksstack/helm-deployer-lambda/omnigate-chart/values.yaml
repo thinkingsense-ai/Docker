@@ -108,10 +108,10 @@ manufacturingDemo:
 #              questions, four of them joining the two (demos/treasury-pack).
 # Like it-risk they replace the supply-chain data rather than add to it, and are read on a fresh install only.
 demoDataset: supply-chain
-# "all-packs" loads every demo pack at once -- supply chain, manufacturing, IT & operational risk and the Smithsonian Open Access sample -- behind
+# "all-packs" loads every demo pack at once -- supply chain, manufacturing, IT & operational risk, the Smithsonian Open Access sample, BOM & sourcing and Treasury -- behind
 # the free edition's three data sources: one Postgres source (`pg`, five schemas), one MariaDB source (`mdb`, the `security` database) and the
 # museum directory CSV in an in-cluster object store (`files`). Schema auto-discovery is on, tables are addressed connector.schema.table, and the
-# Ask app offers the packs as a picker. 28 trusted questions are approved, each checked to run (demos/all-packs/README.md has the rules they follow).
+# Ask app offers the packs as a picker. 76 trusted questions are approved, each checked to run (demos/all-packs/README.md has the rules they follow).
 # Like it-risk it is chosen on a fresh install only and is not on the deploy form.
 
 # The MariaDB half of the IT & operational risk pack (only rendered when demoDataset is it-risk).

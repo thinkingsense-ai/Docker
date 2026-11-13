@@ -2,3 +2,6 @@
 REVOKE ALL PRIVILEGES ON security.* FROM 'omnigate_ro'@'%';
 GRANT SELECT ON security.* TO 'omnigate_ro'@'%';
 FLUSH PRIVILEGES;
+-- The Treasury pack's ERP database (seeded just before this file): the same SELECT-only account.
+GRANT SELECT ON erp.* TO 'omnigate_ro'@'%';
+FLUSH PRIVILEGES;
