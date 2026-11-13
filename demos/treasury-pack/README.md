@@ -60,7 +60,7 @@ optimal hedge ratio, a bank's credit rating).
 
 ## Results on app 0.10.17 (2026-11-13)
 
-Re-run on 0.10.17, the release that partly fixes Server#43, with the same questions. Each answer was graded by an LLM judge (Claude Haiku 5.5)
+Re-run on 0.10.17, the release that improves but does not fix Server#43 (closed on 2026-11-10 at the owner's instruction with its closing bar unmet; the accuracy work continues outside the issue), with the same questions. Each answer was graded by an LLM judge (Claude Haiku 5.5)
 against the rows from the approved, checked SQL, ignoring row order, extra columns, ids shown instead of names and rounding. This is a
 different and fairer grader than the strict row match used for the 0.10.16 table below, so the two tables are not directly comparable. To
 compare versions, use the like-for-like rows here: 0.10.16 and 0.10.17 were both run on 2026-11-13 with the same model and the same grader.
@@ -77,7 +77,7 @@ What this says:
 
 - **0.10.17 did not improve Treasury free-form accuracy on this pack.** 7 and 8 of 24 against 9 and 9 is inside the run-to-run noise (the same
   question flips between right and wrong from run to run), so no change is claimed in either direction. The release notes say the same: #43 is improved,
-  not closed.
+  not resolved.
 - **Haiku 5.5 scored the same or better than Sonnet 4.5 here** (12 and 10 of 24) at roughly a seventeenth of the model cost. That is two runs of
   24 questions, so read it as "no evidence the larger model is needed for this pack", not as proof that the smaller one is better.
 - Reworded questions stay hard for every combination (2 or 3 of 12). The approved-question bank only helps when the wording is close to a saved question.
@@ -114,7 +114,7 @@ What the free-form runs show:
   "Should we draw the revolver?" got advice that there is no immediate need. Model output varies between runs, so treat these as two samples.
 - Cross-system questions (four of the 24) all run when approved. Free-form, they were the least reliable.
 
-The pattern matches the BOM pack and Server#43: approved questions are the reliable path, free-form accuracy is the weak point, and the article's
+The pattern matches the BOM pack and Server#43 (closed 2026-11-10 without meeting its bar): approved questions are the reliable path, free-form accuracy is the weak point, and the article's
 "proof, not vibes" point is better served by saved, checked SQL plus the audit log than by letting the model improvise on money.
 
 ## What this pack does not do

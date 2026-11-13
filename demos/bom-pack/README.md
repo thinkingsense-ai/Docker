@@ -52,7 +52,7 @@ Traps in the data that the questions depend on:
 
 ## Results on app 0.10.17 (2026-11-13)
 
-Re-run on 0.10.17, the release that partly fixes Server#43, with the same questions. Each answer was graded by an LLM judge (Claude Haiku 5.5)
+Re-run on 0.10.17, the release that improves but does not fix Server#43 (closed on 2026-11-10 at the owner's instruction with its closing bar unmet; the accuracy work continues outside the issue), with the same questions. Each answer was graded by an LLM judge (Claude Haiku 5.5)
 against the rows from the approved, checked SQL, ignoring row order, extra columns, ids shown instead of names and rounding. This is a fairer
 grader than the strict match behind the 0.10.16 table below, so use the like-for-like rows here to compare versions: 0.10.16 and 0.10.17 were
 both run on 2026-11-13 with the same model and grader.
@@ -72,7 +72,7 @@ What this says:
 - **Haiku 5.5 scored at least as well as Sonnet 4.5** (13 and 10 of 24) at roughly a twelfth of the model cost per question. Two runs only.
 - Reworded questions remain the weak spot (2 or 3 of 11 in every configuration).
 - The decline cases behave correctly on 0.10.17, though by the model's own judgement (some by giving up on writing SQL, some by saying the data is missing)
-  rather than by an answerability check (Server#60).
+  rather than by an answerability check (Server#60, closed as not planned on 2026-11-10, so no such check is scheduled).
 - Free-form questions use about 6 model calls each and about 8,500 input tokens per question in total; no prompt caching is used.
 
 ## Earlier results (app 0.10.16, Claude Sonnet 4.5, run locally 2026-11-05, strict row match)
@@ -96,9 +96,9 @@ Reading these honestly:
 - One planning question was blocked because its wording contained "forecast"; the predictive-question screen refused it. Reworded to
   "using each product's annual volume" it ran. Worth keeping in mind when writing demo questions.
 - The three decline cases behaved correctly, but there is no pre-flight check; the model decides, and one (the salary question) was
-  refused only after the model gave up on writing a query. This is Server#60 (answerability check, not yet released).
+  refused only after the model gave up on writing a query. This is Server#60 (answerability check; closed as not planned on 2026-11-10, nothing changed in the code).
 
-This is the same pattern as Server#43: free-form accuracy is the weak point, and approved questions are the reliable path. The
+This is the same pattern as Server#43 (closed 2026-11-10 without meeting its bar): free-form accuracy is the weak point, and approved questions are the reliable path. The
 planning questions are the ones worth turning into approved questions or metrics before a customer demo.
 
 ## Does describing the tables help?
@@ -110,4 +110,4 @@ inside the run-to-run noise, so no benefit is claimed. They stay because they ma
 are in the app, not in the pack's data or descriptions: multi-rule questions never come out right (0 of 6 in every run), and the same
 question flips between right and wrong from run to run. Two concrete defects found along the way are filed against the app: a repair that swaps `CURRENT_DATE` for a hard-coded date (Server#68; the
 `CURRENT_DATE()` part is fixed in Server#67), and the word "forecast" sending a data question to the predictive tier (Server#69). Free-form accuracy
-in general is Server#43.
+in general was Server#43, now closed without being resolved.
