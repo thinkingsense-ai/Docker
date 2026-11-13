@@ -13,7 +13,7 @@ ALTER TABLE smithsonian.si_topics ADD COLUMN concept text;
 UPDATE smithsonian.si_topics t SET concept = COALESCE((SELECT canonical_concept FROM cm WHERE member_label = t.topic AND status = 'AUTO_ACCEPTED' LIMIT 1), t.topic);
 
 -- The app reads as a SELECT-only account, not the postgres superuser, so no question can change the data.
-CREATE ROLE omnigate_ro LOGIN PASSWORD 'omnigate_ro';
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'omnigate_ro') THEN CREATE ROLE omnigate_ro LOGIN PASSWORD 'omnigate_ro'; END IF; END $$;
 GRANT CONNECT ON DATABASE postgres TO omnigate_ro;
-GRANT USAGE ON SCHEMA suppliers, inventory, procurement, risk, smithsonian TO omnigate_ro;
-GRANT SELECT ON ALL TABLES IN SCHEMA suppliers, inventory, procurement, risk, smithsonian TO omnigate_ro;
+GRANT USAGE ON SCHEMA suppliers, inventory, procurement, risk, smithsonian, bom, treasury TO omnigate_ro;
+GRANT SELECT ON ALL TABLES IN SCHEMA suppliers, inventory, procurement, risk, smithsonian, bom, treasury TO omnigate_ro;

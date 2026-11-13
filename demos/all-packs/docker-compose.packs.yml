@@ -1,4 +1,4 @@
-# Every demo pack in one stack: supply chain, manufacturing, IT & operational risk and the Smithsonian Open Access sample, behind
+# Every demo pack in one stack: supply chain, manufacturing, IT & operational risk, the Smithsonian Open Access sample, BOM / sourcing and Treasury, behind
 # the free edition's three data sources (one Postgres connector, one MariaDB connector, one object-store CSV), with schema auto-discovery
 # on so every schema of a connection is queryable. The Ask app offers the packs as a picker (each pack's approved questions carry its
 # own category).
@@ -10,14 +10,16 @@
 #   Admin  http://localhost:8080/admin   admin / Admin-SI-1
 # These are fixed demo logins in a public repo: change them before this is reachable beyond your own machine.
 #
-# Tables are addressed connector.schema.table, e.g. pg.risk.incidents, mdb.security.vendors, pg.smithsonian.si_topics.
+# Tables are addressed connector.schema.table, e.g. pg.risk.incidents, mdb.security.vendors, pg.smithsonian.si_topics, pg.bom.parts, pg.treasury.bank_accounts, mdb.erp.invoices.
 services:
   postgres:
     volumes: !override
       - ./resource-manager/omnigategkestack/helm/omnigate/files/seed-supply-chain.sql:/docker-entrypoint-initdb.d/01-supply-chain.sql:ro
       - ./resource-manager/omnigategkestack/helm/omnigate/files/seed-manufacturing.sql:/docker-entrypoint-initdb.d/02-manufacturing.sql:ro
       - ./resource-manager/omnigategkestack/helm/omnigate/files/seed-it-risk-postgres.sql:/docker-entrypoint-initdb.d/03-it-risk.sql:ro
-      - ./demos/all-packs/init-smithsonian-and-readonly.sql:/docker-entrypoint-initdb.d/04-smithsonian.sql:ro
+      - ./demos/bom-pack/seed-bom.sql:/docker-entrypoint-initdb.d/04-bom.sql:ro
+      - ./demos/treasury-pack/seed-treasury-postgres.sql:/docker-entrypoint-initdb.d/05-treasury.sql:ro
+      - ./demos/all-packs/init-smithsonian-and-readonly.sql:/docker-entrypoint-initdb.d/06-smithsonian.sql:ro
       - ./demos/smithsonian-poc/data-src/si_open_access_sample.csv:/si-data/si_open_access_sample.csv:ro
       - ./demos/smithsonian-poc/vocabulary-concepts.csv:/si-data/vocabulary-concepts.csv:ro
 
@@ -30,7 +32,8 @@ services:
       MARIADB_PASSWORD: omnigate_ro
     volumes:
       - ./resource-manager/omnigategkestack/helm/omnigate/files/seed-it-risk-mariadb.sql:/docker-entrypoint-initdb.d/01-seed.sql:ro
-      - ./demos/all-packs/mariadb-readonly.sql:/docker-entrypoint-initdb.d/02-readonly.sql:ro
+      - ./demos/treasury-pack/seed-treasury-mariadb.sql:/docker-entrypoint-initdb.d/02-erp.sql:ro
+      - ./demos/all-packs/mariadb-readonly.sql:/docker-entrypoint-initdb.d/03-readonly.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -uroot -proot --silent"]
       interval: 5s
@@ -81,7 +84,7 @@ services:
       # Blank on purpose: the base file maps schema names to the old per-schema backends, and the discovery names (connector.schema.table) replace that.
       OMNIGATE_ROUTER_SCHEMA_RULES: ""
       OMNIGATE_FEDERATION_AUTO_DISCOVER_SCHEMAS: "true"
-      OMNIGATE_FEDERATION_SCHEMA_INCLUDE: "suppliers,inventory,procurement,risk,smithsonian,security,museums"
+      OMNIGATE_FEDERATION_SCHEMA_INCLUDE: "suppliers,inventory,procurement,risk,smithsonian,security,museums,bom,treasury,erp"
       OMNIGATE_PG_DATABASE: postgres
       OMNIGATE_PG_USER: omnigate_ro
       OMNIGATE_PG_PASSWORD: omnigate_ro
