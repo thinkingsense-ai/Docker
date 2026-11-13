@@ -219,12 +219,12 @@ variable "omnigate_debug_federation" {
 # --- Optional demo dataset ------------------------------------------------------------------
 
 variable "demo_dataset" {
-  description = "Which demo data a new install gets: supply-chain (the default), it-risk (IT and operational risk at a financial firm), or all-packs (supply chain, manufacturing, IT risk and the Smithsonian sample together, with a pack picker in the Ask app; adds an object store and an embedding model, and needs outbound access to raw.githubusercontent.com and huggingface.co). Read on a fresh install only: changing it on an existing stack does not reseed."
+  description = "Which demo data a new install gets: supply-chain (the default), it-risk (IT and operational risk at a financial firm), bom (manufacturing bill of materials and sourcing), treasury (cash, payables, hedges and debt across Postgres and MariaDB), or all-packs (supply chain, manufacturing, IT risk and the Smithsonian sample together, with a pack picker in the Ask app; adds an object store and an embedding model, and needs outbound access to raw.githubusercontent.com and huggingface.co). bom and treasury also run an embedding model and need outbound access to huggingface.co. Read on a fresh install only: changing it on an existing stack does not reseed."
   type        = string
   default     = "supply-chain"
   validation {
-    condition     = contains(["supply-chain", "it-risk", "all-packs"], var.demo_dataset)
-    error_message = "demo_dataset must be supply-chain, it-risk or all-packs."
+    condition     = contains(["supply-chain", "it-risk", "bom", "treasury", "all-packs"], var.demo_dataset)
+    error_message = "demo_dataset must be supply-chain, it-risk, bom, treasury or all-packs."
   }
 }
 

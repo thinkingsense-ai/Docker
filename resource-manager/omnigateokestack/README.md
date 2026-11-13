@@ -126,8 +126,8 @@ standard catalog items and how closely each part matches one, supplier capabilit
 ## BOM / sourcing and Treasury demo data
 
 Two more standalone demo sets, both invented data, chosen with the chart value `demoDataset` on a fresh install (they replace the
-supply-chain data; changing the value on an existing release does not reseed). They are not on the cloud's deploy form yet, so they are
-set at the chart level (`--set demoDataset=bom` or `treasury`).
+supply-chain data; changing the value on an existing release does not reseed). Choose them with **Demo data** in the Resource Manager form ("Demo dataset" section) or `-var demo_dataset=bom`, or at the chart level (`--set demoDataset=bom` or `treasury`). Both pull an embedding model, so the cluster
+needs outbound access to huggingface.co.
 
 The seed job also gives the chosen set its table descriptions and a few named measures (`files/knowledge-bom.json`, `files/knowledge-treasury.json`), so the admin ontology page shows that pack's tables with their rules. Whether the descriptions improve free-form answers is not established: on the BOM pack five runs showed no difference beyond run-to-run noise (Server#43).
 
