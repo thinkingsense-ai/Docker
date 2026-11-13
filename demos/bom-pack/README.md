@@ -50,7 +50,32 @@ Traps in the data that the questions depend on:
 | Planning | catalog substitutions and saving; annual saving at product volume; why other parts cannot be substituted; cheapest compliant source for the SK-9; SK-9 parts with no compliant source; SK-9 cost if re-sourced; safe design-for-manufacturing savings |
 | Should decline | `probe-questions-bom.json`: return on ad spend, employee salary, next-quarter lead time (no such data) |
 
-## Results (app 0.10.16, Claude Sonnet 4.5, run locally 2026-11-05)
+## Results on app 0.10.17 (2026-11-13)
+
+Re-run on 0.10.17, the release that partly fixes Server#43, with the same questions. Each answer was graded by an LLM judge (Claude Haiku 5.5)
+against the rows from the approved, checked SQL, ignoring row order, extra columns, ids shown instead of names and rounding. This is a fairer
+grader than the strict match behind the 0.10.16 table below, so use the like-for-like rows here to compare versions: 0.10.16 and 0.10.17 were
+both run on 2026-11-13 with the same model and grader.
+
+| Condition | 0.10.16, Sonnet 4.5 | 0.10.17, Sonnet 4.5 | 0.10.17, Haiku 5.5 |
+|---|---|---|---|
+| Approved questions, asked verbatim, bank on (24) | 24 of 24 | 24 of 24 | 24 of 24 |
+| Bank off, model writes the SQL (24, two runs) | 7 and 7 | 10 and 7 | 13 and 10 |
+| Reworded planning and lookup questions, bank on (11) | 3 | 2 | 3 |
+| Questions the data cannot answer (3) | 3 declined | 3 declined | 3 declined |
+| Model cost per free-form question (list price, Sonnet 4.5 price assumed $3/$15 per million tokens) | about $0.032 | about $0.041 | about $0.003 |
+
+What this says:
+
+- **0.10.17 shows no reliable gain on BOM free-form accuracy.** 10 and 7 of 24 against 7 and 7 is within the run-to-run spread (the 10 and
+  the 7 are the same configuration). Release notes quote 18 to 23 of 37 for manufacturing on cloud models; this pack is a different question set.
+- **Haiku 5.5 scored at least as well as Sonnet 4.5** (13 and 10 of 24) at roughly a twelfth of the model cost per question. Two runs only.
+- Reworded questions remain the weak spot (2 or 3 of 11 in every configuration).
+- The decline cases behave correctly on 0.10.17, though by the model's own judgement (some by giving up on writing SQL, some by saying the data is missing)
+  rather than by an answerability check (Server#60).
+- Free-form questions use about 6 model calls each and about 8,500 input tokens per question in total; no prompt caching is used.
+
+## Earlier results (app 0.10.16, Claude Sonnet 4.5, run locally 2026-11-05, strict row match)
 
 Each question was asked through the Ask API and the returned rows compared with the reference SQL.
 
