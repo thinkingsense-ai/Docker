@@ -58,7 +58,35 @@ Traps planted on purpose, each behind at least one question:
 `probe-questions-treasury.json` holds 12 reworded questions and 4 that should be declined (covenant breach in 60 days, whether to draw the revolver,
 optimal hedge ratio, a bank's credit rating).
 
-## Results (app 0.10.16, Claude Sonnet 4.5, run locally 2026-11-06)
+## Results on app 0.10.17 (2026-11-13)
+
+Re-run on 0.10.17, the release that partly fixes Server#43, with the same questions. Each answer was graded by an LLM judge (Claude Haiku 5.5)
+against the rows from the approved, checked SQL, ignoring row order, extra columns, ids shown instead of names and rounding. This is a
+different and fairer grader than the strict row match used for the 0.10.16 table below, so the two tables are not directly comparable. To
+compare versions, use the like-for-like rows here: 0.10.16 and 0.10.17 were both run on 2026-11-13 with the same model and the same grader.
+
+| Condition (24 questions unless stated) | 0.10.16, Sonnet 4.5 | 0.10.17, Sonnet 4.5 | 0.10.17, Haiku 5.5 |
+|---|---|---|---|
+| Approved questions, asked verbatim, bank on | 24 of 24 | 24 of 24 | 24 of 24 |
+| Bank off, model writes the SQL (two runs) | 9 and 9 | 7 and 8 | 12 and 10 |
+| Reworded questions, bank on (12) | 3 | 3 | 2 |
+| Questions that should be declined (4) | 2 clear, 2 answered | 2 clear, 2 answered | 2 clear, 2 answered |
+| Model cost per free-form question (list price, Sonnet 4.5 price assumed $3/$15 per million tokens) | about $0.035 | not captured | about $0.002 |
+
+What this says:
+
+- **0.10.17 did not improve Treasury free-form accuracy on this pack.** 7 and 8 of 24 against 9 and 9 is inside the run-to-run noise (the same
+  question flips between right and wrong from run to run), so no change is claimed in either direction. The release notes say the same: #43 is improved,
+  not closed.
+- **Haiku 5.5 scored the same or better than Sonnet 4.5 here** (12 and 10 of 24) at roughly a seventeenth of the model cost. That is two runs of
+  24 questions, so read it as "no evidence the larger model is needed for this pack", not as proof that the smaller one is better.
+- Reworded questions stay hard for every combination (2 or 3 of 12). The approved-question bank only helps when the wording is close to a saved question.
+- Decline cases: all three configurations declined the optimal-hedge-ratio question; the credit-rating question was declined or came back empty; the
+  covenant-breach and revolver questions were answered with caveated numbers instead of being declined. Haiku's covenant answer was accurate
+  (passed today, about 9% headroom, cannot confirm the next 60 days); Sonnet's 0.10.16 answer said the covenant data was missing.
+- Free-form model use averages about 5 model calls per question, and the app sends no prompt-cache markers, so every call pays for the full schema prompt again.
+
+## Earlier results (app 0.10.16, Claude Sonnet 4.5, run locally 2026-11-06, strict row match)
 
 Each question was asked through the Ask API and the returned rows compared with the reference SQL. The automatic check is strict, so a few
 borderline answers count against it.
