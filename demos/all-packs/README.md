@@ -30,7 +30,7 @@ source per schema. `OMNIGATE_ROUTER_SCHEMA_RULES` is blank on purpose: the base 
 - Write each table as `connector.schema.table`. The one exception is the CSV, which is `files.museums` when the statement also touches another source.
 - In a statement that spans two sources, `CURRENT_DATE - 365` fails to plan. Write `CURRENT_DATE - INTERVAL '365' DAY` in a filter, or
   `TIMESTAMPDIFF(DAY, date_col, CURRENT_DATE)` in the select list.
-- Questions that Ask answers on its own (not from the bank) are a separate matter: see thinkingsense-ai/Server#43.
+- Questions that Ask answers on its own (not from the bank) are a separate matter: see thinkingsense-ai/Server#43 (closed on 2026-11-10 with its bar unmet; free-form accuracy is still weak).
 
 The Smithsonian vocabulary build (`POST /api/ontology/vocabulary/build`) also works here from app 0.10.16; the `concept` column is preloaded from
 `demos/smithsonian-poc/vocabulary-concepts.csv` so the demo does not depend on it.
