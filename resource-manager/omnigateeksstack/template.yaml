@@ -118,7 +118,7 @@ Mappings:
   # OLD release and silently upgrade nothing. Updating the template is what moves the stack to a new release.
   Release:
     Current:
-      Tag: eks-stack-v1.0.30
+      Tag: eks-stack-v1.0.31
 
 Parameters:
   ClusterName:
