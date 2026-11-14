@@ -103,11 +103,12 @@ planning questions are the ones worth turning into approved questions or metrics
 
 ## Does describing the tables help?
 
-Tried: a plain-language description for all 22 tables (including rules such as "a supplier is not approved when its status is anything but
-'approved'" and "a certificate is valid when expires_on is today or later") and three named measures. Five full free-form runs, scored
-automatically against the reference rows (stricter than the manual count above): **8, 7 and 6 of 24 with them, 6 and 7 without.** That is
-inside the run-to-run noise, so no benefit is claimed. They stay because they make the admin ontology readable. The failures that remain
-are in the app, not in the pack's data or descriptions: multi-rule questions never come out right (0 of 6 in every run), and the same
-question flips between right and wrong from run to run. Two concrete defects found along the way are filed against the app: a repair that swaps `CURRENT_DATE` for a hard-coded date (Server#68; the
-`CURRENT_DATE()` part is fixed in Server#67), and the word "forecast" sending a data question to the predictive tier (Server#69). Free-form accuracy
-in general was Server#43, now closed without being resolved.
+Yes, once the descriptions are where the app reads them. A plain-language description of all 22 tables (including rules such as "a supplier is not approved when its
+status is anything but 'approved'" and "a certificate is valid when expires_on is today or later") and three named measures are applied to the ontology by the seed job,
+but the app does **not** read ontology descriptions when it writes SQL: it reads a table's database comment. A table description appeared in 0 of 48 prompts, which is why
+five earlier runs (8, 7 and 6 of 24 with the descriptions, 6 and 7 without) showed no difference. `seed-bom.sql` now also writes the same text as `COMMENT ON TABLE`
+(`generate-bom-seed.py` does it from `bom-knowledge.json`). On the benchmark (`demos/benchmark`, Haiku 5.5, app 0.10.17, 3 runs, same-day reference rows) free-form accuracy went from
+**11, 13, 13 to 14, 15, 15 of 24**. The questions still never right are the multi-rule planning ones (utilisation under 95%, tariff-landed cost, certificate validity, replaceability checks),
+which need the rules at a finer level than a table description. Two concrete defects found along the way are filed against the app: a repair that swaps `CURRENT_DATE` for a hard-coded
+date (Server#68; the `CURRENT_DATE()` part is fixed in Server#67), and the word "forecast" sending a data question to the predictive tier (Server#69). Free-form accuracy in general was
+Server#43, now closed without being resolved.

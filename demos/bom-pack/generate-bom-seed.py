@@ -363,6 +363,14 @@ table("inventory", ["inventory_id", "part_no", "facility_id", "on_hand", "safety
 table("dfm_findings", ["finding_id", "part_no", "recommendation", "saving_pct", "performance_impact"], dfm,
       "finding_id INT PRIMARY KEY, part_no VARCHAR(12) REFERENCES bom.parts, recommendation VARCHAR(200), saving_pct NUMERIC(5,1), performance_impact VARCHAR(40)")
 
+# Table descriptions as database comments: the app puts a table's comment in the prompt it sends the model (the ontology descriptions applied by the seed job are not read for SQL).
+import json as _json, os as _os
+_know = _json.load(open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "bom-knowledge.json")))["entities"]
+out.append("-- What each table holds and the rules a question depends on, as database comments: the app puts a table's comment in the prompt it sends the model\n"
+           "-- (the ontology descriptions applied by the seed job are not read for SQL). Same text as bom-knowledge.json.")
+for _k, _v in _know.items():
+    out.append("COMMENT ON TABLE %s IS '%s';" % (_k.split(":", 1)[1], _v.replace("'", "''")))
+out.append("")
 out.append("-- The app reads as a SELECT-only account, so no question can change the data.\n"
            "DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'omnigate_ro') THEN CREATE ROLE omnigate_ro LOGIN PASSWORD 'omnigate_ro'; END IF; END $$;\n"
            "GRANT CONNECT ON DATABASE postgres TO omnigate_ro;\nGRANT USAGE ON SCHEMA bom TO omnigate_ro;\nGRANT SELECT ON ALL TABLES IN SCHEMA bom TO omnigate_ro;")
