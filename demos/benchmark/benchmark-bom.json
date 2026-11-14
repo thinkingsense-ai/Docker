@@ -1,0 +1,475 @@
+[
+ {
+  "id": "bom-01",
+  "pack": "bom",
+  "question": "Which parts are in the KR-6 robot arm, and how many of each does it use?",
+  "referenceSql": "SELECT p.part_no, p.name, p.source_type, SUM(bl.quantity) AS quantity FROM bom.bom_lines bl JOIN bom.assemblies a ON a.assembly_id = bl.assembly_id JOIN bom.products pr ON pr.product_id = a.product_id JOIN bom.parts p ON p.part_no = bl.part_no WHERE pr.sku = 'KR-6' GROUP BY p.part_no, p.name, p.source_type ORDER BY p.part_no",
+  "tags": [
+   "tables:4",
+   "many-tables",
+   "join",
+   "aggregate"
+  ],
+  "rules": [
+   "The product is identified by SKU 'KR-6', and all of its assemblies are included.",
+   "Parts come from the bill of materials lines of the product's assemblies; no filtering by assembly type, revision, or status is applied.",
+   "Quantity per part is the sum of BOM line quantities across all of the product's assemblies, so a part used in several assemblies or lines is counted once with the total.",
+   "Results are grouped at part level (part number, name, source type) and ordered by part number.",
+   "Quantities are in units of each part as recorded on the BOM lines, covering only direct BOM lines (no multi-level sub-assembly explosion)."
+  ]
+ },
+ {
+  "id": "bom-02",
+  "pack": "bom",
+  "question": "How many custom, catalog and standard parts does each product have?",
+  "referenceSql": "SELECT pr.sku, p.source_type, COUNT(DISTINCT p.part_no) AS parts FROM bom.products pr JOIN bom.assemblies a ON a.product_id = pr.product_id JOIN bom.bom_lines bl ON bl.assembly_id = a.assembly_id JOIN bom.parts p ON p.part_no = bl.part_no GROUP BY pr.sku, p.source_type ORDER BY pr.sku, p.source_type",
+  "tags": [
+   "tables:4",
+   "many-tables",
+   "join",
+   "aggregate"
+  ],
+  "rules": [
+   "Results are grouped by product (identified by SKU) and by part source type, so each product has one count per source type (e.g. custom, catalog, standard).",
+   "A product's parts are found by linking the product to its assemblies, then the assemblies' bill-of-materials lines, then the parts on those lines.",
+   "Parts are counted as distinct part numbers, so a part used in multiple assemblies or lines of the same product is counted once per product and source type.",
+   "Only parts that appear on a bill-of-materials line of some assembly of the product are counted; products with no assemblies or BOM lines do not appear, and source types with zero parts for a product are not shown.",
+   "No filtering on part, assembly, or product status is applied; all are included.",
+   "Output is ordered by SKU, then source type."
+  ]
+ },
+ {
+  "id": "bom-03",
+  "pack": "bom",
+  "question": "What is each product's unit BOM cost at its current sources, including tariffs, compared with its target cost?",
+  "referenceSql": "SELECT pr.sku, ROUND(SUM(bl.quantity * q.unit_cost * (1 + q.tariff_pct / 100.0)), 2) AS unit_bom_cost, pr.target_unit_cost, ROUND(SUM(bl.quantity * q.unit_cost * (1 + q.tariff_pct / 100.0)) - pr.target_unit_cost, 2) AS over_target FROM bom.products pr JOIN bom.assemblies a ON a.product_id = pr.product_id JOIN bom.bom_lines bl ON bl.assembly_id = a.assembly_id JOIN bom.quotes q ON q.part_no = bl.part_no AND q.is_current_source GROUP BY pr.sku, pr.target_unit_cost ORDER BY pr.sku",
+  "tags": [
+   "tables:4",
+   "many-tables",
+   "join",
+   "aggregate"
+  ],
+  "rules": [
+   "Unit BOM cost per product = sum over all its BOM lines of (line quantity \u00d7 current-source unit cost \u00d7 (1 + tariff percentage/100)), rounded to 2 decimals.",
+   "Part cost comes only from quotes flagged as the current source for that part; non-current quotes are excluded.",
+   "Tariff is applied as a percentage markup on the quoted unit cost.",
+   "BOM lines are reached through a product's assemblies, so all assemblies of a product are combined into one product-level total.",
+   "Comparison to target: over_target = computed unit BOM cost minus the product's target unit cost (positive means over target), at product SKU level.",
+   "Parts without a current-source quote drop out of the cost (inner join), which may understate the total."
+  ]
+ },
+ {
+  "id": "bom-04",
+  "pack": "bom",
+  "question": "Which material is used by the most parts?",
+  "referenceSql": "SELECT m.name AS material, COUNT(*) AS parts FROM bom.parts p JOIN bom.materials m ON m.material_id = p.material_id GROUP BY m.name ORDER BY parts DESC, m.name LIMIT 5",
+  "tags": [
+   "tables:2",
+   "join",
+   "aggregate"
+  ],
+  "rules": [
+   "Usage is counted as the number of part records in the parts table that reference each material (each part counts once, regardless of quantity or whether it is active).",
+   "Parts without a material assigned are excluded, since only parts matching a record in the materials table are counted.",
+   "Materials are grouped by material name, so different materials sharing the same name would be combined.",
+   "Materials are ranked by part count from highest to lowest, with ties broken alphabetically by material name.",
+   "Only the top 5 materials are returned, even though the question asks for the single most-used material."
+  ],
+  "ask": "Which five materials are used by the most parts, and how many parts does each have?",
+  "referenceNote": "Reference returns the top 5 materials, not the single most-used one."
+ },
+ {
+  "id": "bom-05",
+  "pack": "bom",
+  "question": "Which facilities hold a valid AS9100 certificate today?",
+  "referenceSql": "SELECT f.name AS facility, f.country, fc.expires_on FROM bom.facilities f JOIN bom.facility_certifications fc ON fc.facility_id = f.facility_id JOIN bom.certifications c ON c.certification_id = fc.certification_id WHERE c.code = 'AS9100' AND fc.expires_on >= CURRENT_DATE ORDER BY f.name",
+  "tags": [
+   "tables:3",
+   "join",
+   "relative-date"
+  ],
+  "rules": [
+   "The certification is identified by the code 'AS9100' in the certifications catalog.",
+   "A certificate counts as valid if its expiration date is on or after today's date, so one expiring today still counts.",
+   "Only the expiration date determines validity; issue date, suspension, or revocation status are not checked.",
+   "A facility is listed once for each of its AS9100 certification records that is still valid, so a facility with multiple valid records could appear more than once.",
+   "Each result shows the facility name, its country, and the certificate expiration date, sorted by facility name."
+  ]
+ },
+ {
+  "id": "bom-06",
+  "pack": "bom",
+  "question": "Which facilities are running at 95% utilization or higher?",
+  "referenceSql": "SELECT name AS facility, city, utilization_pct FROM bom.facilities WHERE utilization_pct >= 95 ORDER BY utilization_pct DESC",
+  "tags": [
+   "tables:1"
+  ],
+  "rules": [
+   "Utilization is taken as the stored utilization_pct value on each facility record, not recalculated from capacity and output.",
+   "A facility counts as running at high utilization if utilization_pct is 95 or greater (threshold is inclusive).",
+   "Utilization is measured in percentage points, so 95 means 95%.",
+   "Results are at the facility level, showing facility name, city, and utilization percentage.",
+   "Results are ordered from highest to lowest utilization.",
+   "No filter on facility status, type, or location is applied, so all facilities in the table are considered."
+  ]
+ },
+ {
+  "id": "bom-07",
+  "pack": "bom",
+  "question": "Which supply disruptions are active right now, and which facility does each affect?",
+  "referenceSql": "SELECT e.event_type, e.severity, f.name AS facility, e.started_on, e.note FROM bom.supply_events e JOIN bom.facilities f ON f.facility_id = e.facility_id WHERE e.status = 'Active' ORDER BY CASE e.severity WHEN 'High' THEN 1 WHEN 'Medium' THEN 2 ELSE 3 END, e.started_on",
+  "tags": [
+   "tables:2",
+   "join",
+   "case"
+  ],
+  "rules": [
+   "A disruption counts as active right now only if its recorded status is 'Active'; other statuses are excluded.",
+   "Each disruption is matched to the single facility it is recorded against, and the facility's name is shown.",
+   "Disruptions with no matching facility record are left out.",
+   "Each disruption is listed individually with its type, severity, start date and note, not aggregated.",
+   "Results are ordered by severity (High, then Medium, then all others), and within the same severity by earliest start date first."
+  ]
+ },
+ {
+  "id": "bom-08",
+  "pack": "bom",
+  "question": "Which parts have only one supplier quote, and which facility is it from?",
+  "referenceSql": "SELECT q.part_no, p.name, MIN(f.name) AS facility FROM bom.quotes q JOIN bom.parts p ON p.part_no = q.part_no JOIN bom.facilities f ON f.facility_id = q.facility_id GROUP BY q.part_no, p.name HAVING COUNT(*) = 1 ORDER BY q.part_no",
+  "tags": [
+   "tables:3",
+   "join",
+   "aggregate"
+  ],
+  "rules": [
+   "A part counts as single-sourced when it has exactly one quote record in the quotes table; parts with zero or two or more quotes are excluded.",
+   "Quotes are counted per part number, with every quote row counted regardless of status, date, or whether the supplier or price differ.",
+   "The facility reported is the one linked to that single quote, so each qualifying part has one facility name.",
+   "Only parts that exist in the parts table and quotes tied to a known facility are included, because both lookups are inner joins; a quote with a missing facility would drop out before counting.",
+   "Results are one row per part (part number and name), sorted by part number."
+  ]
+ },
+ {
+  "id": "bom-09",
+  "pack": "bom",
+  "question": "A fire hit our Shenzhen plant. Which parts do we currently source there, and which products do they go into?",
+  "referenceSql": "SELECT q.part_no, p.name, pr.sku AS product, (SELECT COUNT(*) FROM bom.quotes q2 WHERE q2.part_no = q.part_no AND q2.facility_id <> q.facility_id) AS alternative_quotes FROM bom.quotes q JOIN bom.facilities f ON f.facility_id = q.facility_id JOIN bom.parts p ON p.part_no = q.part_no JOIN bom.bom_lines bl ON bl.part_no = q.part_no JOIN bom.assemblies a ON a.assembly_id = bl.assembly_id JOIN bom.products pr ON pr.product_id = a.product_id WHERE q.is_current_source AND f.name = 'Shenzhen Plant' GROUP BY q.part_no, p.name, pr.sku, q.facility_id ORDER BY q.part_no, pr.sku",
+  "tags": [
+   "tables:6",
+   "many-tables",
+   "join",
+   "aggregate",
+   "subquery-or-cte"
+  ],
+  "rules": [
+   "A part counts as currently sourced from Shenzhen only if its quote at the facility named 'Shenzhen Plant' is flagged as the current source; past or non-selected quotes are excluded.",
+   "Products are found by tracing each part through the bill-of-materials lines to its assembly and then to the product, shown by product SKU. A part used in several products appears once per product.",
+   "Alternative quotes for a part means the number of quotes for the same part from any facility other than the one currently sourcing it, regardless of whether those quotes are current.",
+   "Results are at the level of part, product SKU and sourcing facility, ordered by part number and then SKU."
+  ]
+ },
+ {
+  "id": "bom-10",
+  "pack": "bom",
+  "question": "Which engineering change orders are still open or in review, and which products does each touch?",
+  "referenceSql": "SELECT e.eco_id, e.part_no, e.change_type, e.status, pr.sku AS product, a.name AS assembly FROM bom.engineering_changes e JOIN bom.bom_lines bl ON bl.part_no = e.part_no JOIN bom.assemblies a ON a.assembly_id = bl.assembly_id JOIN bom.products pr ON pr.product_id = a.product_id WHERE e.status IN ('Open', 'In review') ORDER BY e.eco_id, pr.sku",
+  "tags": [
+   "tables:4",
+   "many-tables",
+   "join"
+  ],
+  "rules": [
+   "Only engineering change orders with status 'Open' or 'In review' are included; all other statuses are excluded.",
+   "A product is considered touched by an ECO if the ECO's part appears as a line in the bill of materials of any assembly belonging to that product.",
+   "The link from ECO to product goes through the BOM line's assembly, so each result row is one ECO, affected product and assembly combination; an ECO touching several assemblies or products appears multiple times.",
+   "ECOs whose part is not used in any BOM line, assembly or product are omitted, since the joins are inner joins.",
+   "Results are ordered by ECO id and then product SKU, and products are identified by SKU."
+  ]
+ },
+ {
+  "id": "bom-11",
+  "pack": "bom",
+  "question": "Which parts of the SK-9 are currently sourced from a facility without a valid AS9100 certificate?",
+  "referenceSql": "SELECT p.part_no, p.name, f.name AS facility FROM bom.quotes q JOIN bom.parts p ON p.part_no = q.part_no JOIN bom.facilities f ON f.facility_id = q.facility_id JOIN bom.bom_lines bl ON bl.part_no = p.part_no JOIN bom.assemblies a ON a.assembly_id = bl.assembly_id JOIN bom.products pr ON pr.product_id = a.product_id WHERE pr.sku = 'SK-9' AND q.is_current_source AND p.source_type = 'custom' AND NOT EXISTS (SELECT 1 FROM bom.facility_certifications fc JOIN bom.certifications c ON c.certification_id = fc.certification_id WHERE fc.facility_id = f.facility_id AND c.code = 'AS9100' AND fc.expires_on >= CURRENT_DATE) GROUP BY p.part_no, p.name, f.name ORDER BY p.part_no",
+  "tags": [
+   "tables:8",
+   "many-tables",
+   "join",
+   "aggregate",
+   "relative-date",
+   "subquery-or-cte"
+  ],
+  "rules": [
+   "Parts belong to SK-9 if they appear as BOM lines in any assembly of the product with SKU 'SK-9'.",
+   "Only parts with source type 'custom' are considered.",
+   "A part's current source is the quote flagged as the current source, and the facility on that quote is the sourcing facility.",
+   "A facility has a valid AS9100 certificate if it holds the certification with code 'AS9100' whose expiry date is today or later.",
+   "Parts are flagged when their current sourcing facility has no valid AS9100 certificate (including having none at all).",
+   "Results are one row per part and facility, deduplicated across multiple BOM lines or assemblies."
+  ]
+ },
+ {
+  "id": "bom-12",
+  "pack": "bom",
+  "question": "What was the total cost of nonconformances by root cause?",
+  "referenceSql": "SELECT root_cause, COUNT(*) AS reports, ROUND(SUM(cost), 2) AS total_cost FROM bom.nonconformances GROUP BY root_cause ORDER BY total_cost DESC",
+  "tags": [
+   "tables:1",
+   "aggregate"
+  ],
+  "rules": [
+   "Total cost is the sum of the recorded cost on each nonconformance record, rounded to 2 decimal places.",
+   "Results are grouped by root cause, with one row per distinct root cause value (including any null or blank root cause as its own group).",
+   "All nonconformance records are included, with no filtering by status, date, severity, or product.",
+   "A report count per root cause is shown alongside the cost, with each nonconformance record counted once.",
+   "Root causes are ranked from highest to lowest total cost.",
+   "Cost is taken as stored in the data, with no currency conversion or unit adjustment."
+  ]
+ },
+ {
+  "id": "bom-13",
+  "pack": "bom",
+  "question": "Which suppliers deliver late most often, and what share of their purchase orders arrived after the promised date?",
+  "referenceSql": "SELECT s.name AS supplier, COUNT(*) AS orders_received, SUM(CASE WHEN po.received_date > po.promised_date THEN 1 ELSE 0 END) AS late_orders, ROUND(100.0 * SUM(CASE WHEN po.received_date > po.promised_date THEN 1 ELSE 0 END) / COUNT(*), 1) AS late_pct FROM bom.purchase_orders po JOIN bom.facilities f ON f.facility_id = po.facility_id JOIN bom.suppliers s ON s.supplier_id = f.supplier_id WHERE po.received_date IS NOT NULL GROUP BY s.name ORDER BY late_pct DESC, s.name",
+  "tags": [
+   "tables:3",
+   "join",
+   "aggregate",
+   "case"
+  ],
+  "rules": [
+   "Only purchase orders that have actually been received (non-null received date) are counted; open or unreceived orders are excluded from both numerator and denominator.",
+   "A purchase order is late if its received date is strictly later than its promised date; arriving on the promised date or earlier is on time.",
+   "Late share = late received orders divided by all received orders for the supplier, as a percentage rounded to one decimal.",
+   "Orders are attributed to a supplier through the facility on the purchase order, i.e., the supplier that owns that facility.",
+   "Results are grouped by supplier name (suppliers sharing a name would be combined) and ranked by late percentage, highest first, with ties broken alphabetically; no minimum order volume is applied."
+  ]
+ },
+ {
+  "id": "bom-14",
+  "pack": "bom",
+  "question": "Which parts are below their safety stock, and where are they held?",
+  "referenceSql": "SELECT i.part_no, p.name, f.name AS facility, i.on_hand, i.safety_stock FROM bom.inventory i JOIN bom.parts p ON p.part_no = i.part_no JOIN bom.facilities f ON f.facility_id = i.facility_id WHERE i.on_hand < i.safety_stock ORDER BY i.safety_stock - i.on_hand DESC, i.part_no",
+  "tags": [
+   "tables:3",
+   "join"
+  ],
+  "rules": [
+   "A part is considered below safety stock when its on-hand quantity is strictly less than its safety stock level (equal does not count).",
+   "The comparison is made per inventory record, i.e. per part at each facility, so a part can appear multiple times if short at several facilities.",
+   "Location is the facility holding the inventory, shown by facility name.",
+   "Results are ranked by shortfall (safety stock minus on-hand), largest first, with ties broken by part number.",
+   "Only parts and facilities that exist in the parts and facilities reference tables are included."
+  ]
+ },
+ {
+  "id": "bom-15",
+  "pack": "bom",
+  "question": "What is the scrap rate at each facility?",
+  "referenceSql": "SELECT f.name AS facility, SUM(w.quantity) AS units_made, SUM(w.scrap_quantity) AS units_scrapped, ROUND(100.0 * SUM(w.scrap_quantity) / SUM(w.quantity), 2) AS scrap_pct FROM bom.work_orders w JOIN bom.facilities f ON f.facility_id = w.facility_id GROUP BY f.name ORDER BY scrap_pct DESC",
+  "tags": [
+   "tables:2",
+   "join",
+   "aggregate"
+  ],
+  "rules": [
+   "Scrap rate is total scrapped units divided by total units made, summed over all work orders at the facility (a weighted ratio, not an average of per-order rates).",
+   "Expressed as a percentage rounded to 2 decimal places.",
+   "Units made is the work order quantity field; scrapped units is the work order scrap quantity field; the denominator does not add scrap to quantity.",
+   "All work orders are included regardless of status or date, with no time window.",
+   "Grouped by facility name, so facilities sharing a name would be combined; facilities with no work orders are excluded.",
+   "Results are ordered from highest to lowest scrap rate."
+  ]
+ },
+ {
+  "id": "bom-16",
+  "pack": "bom",
+  "question": "Which suppliers has Kestrel Dynamics not yet approved?",
+  "referenceSql": "SELECT s.name AS supplier, av.status FROM bom.approved_vendors av JOIN bom.suppliers s ON s.supplier_id = av.supplier_id JOIN bom.customers c ON c.customer_id = av.customer_id WHERE c.name = 'Kestrel Dynamics' AND av.status <> 'approved' ORDER BY s.name",
+  "tags": [
+   "tables:3",
+   "join"
+  ],
+  "rules": [
+   "Approval is determined from the approved-vendor record linking Kestrel Dynamics (identified by customer name) to a supplier; only suppliers with such a record for that customer are considered.",
+   "A supplier counts as 'not yet approved' if its approval status for Kestrel Dynamics is anything other than 'approved' (e.g. pending, rejected, suspended).",
+   "Suppliers with no approved-vendor record for Kestrel Dynamics at all are not included.",
+   "Each result shows the supplier name with its current approval status, sorted alphabetically by supplier name."
+  ]
+ },
+ {
+  "id": "bom-17",
+  "pack": "bom",
+  "question": "Which current-source part has the longest lead time for each product?",
+  "referenceSql": "SELECT DISTINCT ON (pr.sku) pr.sku, q.part_no, p.name, q.lead_time_days FROM bom.quotes q JOIN bom.parts p ON p.part_no = q.part_no JOIN bom.bom_lines bl ON bl.part_no = q.part_no JOIN bom.assemblies a ON a.assembly_id = bl.assembly_id JOIN bom.products pr ON pr.product_id = a.product_id WHERE q.is_current_source ORDER BY pr.sku, q.lead_time_days DESC, q.part_no",
+  "tags": [
+   "tables:5",
+   "many-tables",
+   "join",
+   "distinct-on"
+  ],
+  "rules": [
+   "Only quotes flagged as the current source are considered; non-current supplier quotes are excluded.",
+   "A part belongs to a product if it appears on a BOM line of an assembly that belongs to that product.",
+   "Lead time is the quoted lead_time_days on the current-source quote, measured in days.",
+   "Results are at product level (one row per product SKU), picking the part with the maximum lead time.",
+   "Ties on lead time are broken by the lowest part number, so exactly one part is returned per product.",
+   "Products with no parts having a current-source quote do not appear."
+  ]
+ },
+ {
+  "id": "bom-18",
+  "pack": "bom",
+  "question": "Which custom parts could be replaced by a configurable catalog item, and how much would each save per unit?",
+  "referenceSql": "WITH fit AS (SELECT p.part_no, p.name, ci.sku AS catalog_item, q.unit_cost * (1 + q.tariff_pct / 100.0) AS current_cost, ci.unit_price AS catalog_price FROM bom.parts p JOIN bom.quotes q ON q.part_no = p.part_no AND q.is_current_source JOIN bom.catalog_items ci ON ci.material_id = p.material_id AND ci.shape = p.shape AND ci.finish = p.finish AND ci.min_tolerance_mm <= p.tolerance_mm AND ci.max_length_mm >= p.length_mm AND ci.max_width_mm >= p.width_mm AND ci.max_height_mm >= p.height_mm WHERE p.source_type = 'custom' AND NOT p.is_critical AND ci.unit_price < q.unit_cost * (1 + q.tariff_pct / 100.0) AND (ci.distributor_certification = 'AS9120' OR NOT EXISTS (SELECT 1 FROM bom.bom_lines bl JOIN bom.assemblies a ON a.assembly_id = bl.assembly_id JOIN bom.products pr ON pr.product_id = a.product_id WHERE bl.part_no = p.part_no AND pr.required_certification = 'AS9100'))) SELECT DISTINCT ON (part_no) part_no, name, catalog_item, ROUND(current_cost, 2) AS current_cost, catalog_price, ROUND(current_cost - catalog_price, 2) AS saving_per_unit FROM fit ORDER BY part_no, catalog_price",
+  "tags": [
+   "tables:6",
+   "many-tables",
+   "join",
+   "subquery-or-cte",
+   "distinct-on"
+  ],
+  "rules": [
+   "Only parts with source type 'custom' that are not flagged critical are candidates.",
+   "Current cost per unit = unit cost from the part's current-source quote, plus its tariff percentage (unit_cost \u00d7 (1 + tariff%/100)).",
+   "A catalog item is a fit only if its material, shape and finish match the part exactly, its minimum achievable tolerance is no tighter than needed (min_tolerance_mm \u2264 part tolerance), and its maximum length, width and height are each at least the part's dimensions.",
+   "The catalog item must be strictly cheaper than the part's current tariff-inclusive cost.",
+   "If the part is used in any assembly of a product requiring AS9100 certification, the catalog item's distributor must be AS9120 certified; parts not used in such products have no certification requirement.",
+   "Each part is reported once, paired with its cheapest qualifying catalog item; saving per unit = current cost minus catalog price, with costs rounded to 2 decimals."
+  ]
+ },
+ {
+  "id": "bom-19",
+  "pack": "bom",
+  "question": "How much would those catalog replacements save per year, using each product's annual volume?",
+  "referenceSql": "WITH fit AS (SELECT p.part_no, p.name, ci.sku AS catalog_item, q.unit_cost * (1 + q.tariff_pct / 100.0) AS current_cost, ci.unit_price AS catalog_price FROM bom.parts p JOIN bom.quotes q ON q.part_no = p.part_no AND q.is_current_source JOIN bom.catalog_items ci ON ci.material_id = p.material_id AND ci.shape = p.shape AND ci.finish = p.finish AND ci.min_tolerance_mm <= p.tolerance_mm AND ci.max_length_mm >= p.length_mm AND ci.max_width_mm >= p.width_mm AND ci.max_height_mm >= p.height_mm WHERE p.source_type = 'custom' AND NOT p.is_critical AND ci.unit_price < q.unit_cost * (1 + q.tariff_pct / 100.0) AND (ci.distributor_certification = 'AS9120' OR NOT EXISTS (SELECT 1 FROM bom.bom_lines bl JOIN bom.assemblies a ON a.assembly_id = bl.assembly_id JOIN bom.products pr ON pr.product_id = a.product_id WHERE bl.part_no = p.part_no AND pr.required_certification = 'AS9100'))), best AS (SELECT DISTINCT ON (part_no) * FROM fit ORDER BY part_no, catalog_price) SELECT COUNT(DISTINCT b.part_no) AS parts_replaced, ROUND(SUM((b.current_cost - b.catalog_price) * bl.quantity * pr.annual_volume), 0) AS annual_saving FROM best b JOIN bom.bom_lines bl ON bl.part_no = b.part_no JOIN bom.assemblies a ON a.assembly_id = bl.assembly_id JOIN bom.products pr ON pr.product_id = a.product_id",
+  "tags": [
+   "tables:6",
+   "many-tables",
+   "join",
+   "aggregate",
+   "subquery-or-cte",
+   "distinct-on"
+  ],
+  "rules": [
+   "Only custom-sourced, non-critical parts are considered for replacement.",
+   "A part's current cost is its current-source quote unit cost plus the tariff percentage (unit_cost \u00d7 (1 + tariff%/100)).",
+   "A catalog item is a valid replacement only if it matches the part's material, shape and finish, supports the part's tolerance (min tolerance no tighter than needed), and its max length, width and height are at least the part's dimensions.",
+   "A replacement must have a catalog unit price strictly below the part's current tariff-inclusive cost.",
+   "If the part is used in any product requiring AS9100 certification, the catalog distributor must be AS9120 certified; otherwise certification does not matter.",
+   "Each part gets only its cheapest qualifying catalog item.",
+   "Annual saving = sum over every BOM line using the part of (current cost \u2212 catalog price) \u00d7 quantity per assembly \u00d7 the product's annual volume, rounded to whole dollars, totaled across all replaced parts."
+  ]
+ },
+ {
+  "id": "bom-20",
+  "pack": "bom",
+  "question": "Which custom parts cannot be replaced by a catalog item, and what rules them out?",
+  "referenceSql": "WITH fit AS (SELECT p.part_no, p.name, ci.sku AS catalog_item, q.unit_cost * (1 + q.tariff_pct / 100.0) AS current_cost, ci.unit_price AS catalog_price FROM bom.parts p JOIN bom.quotes q ON q.part_no = p.part_no AND q.is_current_source JOIN bom.catalog_items ci ON ci.material_id = p.material_id AND ci.shape = p.shape AND ci.finish = p.finish AND ci.min_tolerance_mm <= p.tolerance_mm AND ci.max_length_mm >= p.length_mm AND ci.max_width_mm >= p.width_mm AND ci.max_height_mm >= p.height_mm WHERE p.source_type = 'custom' AND NOT p.is_critical AND ci.unit_price < q.unit_cost * (1 + q.tariff_pct / 100.0) AND (ci.distributor_certification = 'AS9120' OR NOT EXISTS (SELECT 1 FROM bom.bom_lines bl JOIN bom.assemblies a ON a.assembly_id = bl.assembly_id JOIN bom.products pr ON pr.product_id = a.product_id WHERE bl.part_no = p.part_no AND pr.required_certification = 'AS9100'))) SELECT p.part_no, p.name, CASE WHEN p.is_critical THEN 'critical part' WHEN NOT EXISTS (SELECT 1 FROM bom.catalog_items ci WHERE ci.material_id = p.material_id) THEN 'no catalog item in this material' WHEN NOT EXISTS (SELECT 1 FROM bom.catalog_items ci WHERE ci.material_id = p.material_id AND ci.shape = p.shape) THEN 'no catalog item of this type' WHEN NOT EXISTS (SELECT 1 FROM bom.catalog_items ci WHERE ci.material_id = p.material_id AND ci.shape = p.shape AND ci.finish = p.finish) THEN 'no catalog item with this finish' WHEN NOT EXISTS (SELECT 1 FROM bom.catalog_items ci WHERE ci.material_id = p.material_id AND ci.shape = p.shape AND ci.max_length_mm >= p.length_mm AND ci.max_width_mm >= p.width_mm AND ci.max_height_mm >= p.height_mm) THEN 'too large for any catalog item' ELSE 'tolerance, certification or price rules it out' END AS reason FROM bom.parts p WHERE p.source_type = 'custom' AND p.part_no NOT IN (SELECT part_no FROM fit) ORDER BY p.part_no",
+  "tags": [
+   "tables:6",
+   "many-tables",
+   "join",
+   "subquery-or-cte",
+   "case"
+  ],
+  "rules": [
+   "Scope is parts whose source type is 'custom'; a part is 'not replaceable' if it has no qualifying catalog replacement under the rules below.",
+   "A catalog item qualifies as a replacement only if it matches the part's material, shape and finish exactly.",
+   "The catalog item must meet the part's tolerance (its minimum achievable tolerance is no tighter than needed, i.e. <= the part's tolerance) and its maximum length, width and height must each be at least the part's dimensions.",
+   "Critical parts are never eligible for replacement.",
+   "The catalog item's unit price must be lower than the part's current cost, defined as the current-source quote unit cost plus its tariff percentage; parts with no current-source quote are not considered replaceable.",
+   "If the part is used in any assembly of a product requiring AS9100 certification, the catalog item's distributor must hold AS9120 certification.",
+   "The reason is the first failing check in order: critical part, no catalog item in the material, none of the shape, none with the finish, too large in dimensions, otherwise tolerance/certification/price."
+  ]
+ },
+ {
+  "id": "bom-21",
+  "pack": "bom",
+  "question": "To bring the SK-9 under AS9100 and within North America, which facility is cheapest for each custom part?",
+  "referenceSql": "SELECT DISTINCT ON (q.part_no) q.part_no, p.name, f.name AS facility, ROUND(q.unit_cost * (1 + q.tariff_pct / 100.0), 2) AS landed_cost, q.lead_time_days FROM bom.quotes q JOIN bom.parts p ON p.part_no = q.part_no JOIN bom.facilities f ON f.facility_id = q.facility_id JOIN bom.bom_lines bl ON bl.part_no = q.part_no JOIN bom.assemblies a ON a.assembly_id = bl.assembly_id JOIN bom.products pr ON pr.product_id = a.product_id WHERE pr.sku = 'SK-9' AND p.source_type = 'custom' AND f.region = 'North America' AND f.utilization_pct < 95\n      AND EXISTS (SELECT 1 FROM bom.facility_certifications fc JOIN bom.certifications c ON c.certification_id = fc.certification_id\n                  WHERE fc.facility_id = f.facility_id AND c.code = 'AS9100' AND fc.expires_on >= CURRENT_DATE)\n      AND NOT EXISTS (SELECT 1 FROM bom.supply_events e WHERE e.facility_id = f.facility_id AND e.status = 'Active' AND e.severity = 'High')\n      AND EXISTS (SELECT 1 FROM bom.approved_vendors av WHERE av.supplier_id = f.supplier_id AND av.customer_id = 1 AND av.status = 'approved') ORDER BY q.part_no, q.unit_cost * (1 + q.tariff_pct / 100.0)",
+  "tags": [
+   "tables:10",
+   "many-tables",
+   "join",
+   "relative-date",
+   "subquery-or-cte",
+   "distinct-on"
+  ],
+  "rules": [
+   "Scope is parts that appear in the bill of materials (via assemblies) of the product with SKU 'SK-9', and only parts whose source type is 'custom'.",
+   "Cost is landed cost: quoted unit cost plus the tariff percentage, rounded to 2 decimals; the cheapest facility per part is the one with the lowest landed cost (one row per part).",
+   "Eligible facilities must be in the North America region and have utilization below 95%.",
+   "Facility must hold an AS9100 certification that has not expired (expiry date today or later).",
+   "Facilities with any active high-severity supply event are excluded.",
+   "The facility's supplier must be an approved vendor (status 'approved') for customer 1."
+  ]
+ },
+ {
+  "id": "bom-22",
+  "pack": "bom",
+  "question": "Which SK-9 custom parts have no North American source that holds a valid AS9100 certificate and has capacity?",
+  "referenceSql": "SELECT p.part_no, p.name FROM bom.parts p JOIN bom.bom_lines bl ON bl.part_no = p.part_no JOIN bom.assemblies a ON a.assembly_id = bl.assembly_id JOIN bom.products pr ON pr.product_id = a.product_id WHERE pr.sku = 'SK-9' AND p.source_type = 'custom' AND NOT EXISTS (SELECT 1 FROM bom.quotes q JOIN bom.facilities f ON f.facility_id = q.facility_id WHERE q.part_no = p.part_no AND f.region = 'North America' AND f.utilization_pct < 95\n      AND EXISTS (SELECT 1 FROM bom.facility_certifications fc JOIN bom.certifications c ON c.certification_id = fc.certification_id\n                  WHERE fc.facility_id = f.facility_id AND c.code = 'AS9100' AND fc.expires_on >= CURRENT_DATE)\n      AND NOT EXISTS (SELECT 1 FROM bom.supply_events e WHERE e.facility_id = f.facility_id AND e.status = 'Active' AND e.severity = 'High')\n      AND EXISTS (SELECT 1 FROM bom.approved_vendors av WHERE av.supplier_id = f.supplier_id AND av.customer_id = 1 AND av.status = 'approved')) GROUP BY p.part_no, p.name ORDER BY p.part_no",
+  "tags": [
+   "tables:10",
+   "many-tables",
+   "join",
+   "aggregate",
+   "relative-date",
+   "subquery-or-cte"
+  ],
+  "rules": [
+   "Parts in scope are those on any BOM line of any assembly of the product with SKU 'SK-9' and with source type 'custom'.",
+   "A part's potential source is a facility that has quoted that part.",
+   "The source must be in the North America region.",
+   "Having capacity means facility utilization is below 95%.",
+   "A valid AS9100 certificate means the facility holds the AS9100 certification with an expiry date today or later.",
+   "A source is disqualified if its facility has an active, high-severity supply event.",
+   "The source's supplier must be an approved vendor (status 'approved') for customer 1.",
+   "A part is listed only when no quoting facility meets all of these conditions; each part is returned once, ordered by part number."
+  ]
+ },
+ {
+  "id": "bom-23",
+  "pack": "bom",
+  "question": "If we moved every SK-9 custom part that has a compliant North American source to it, how would the SK-9 unit BOM cost change?",
+  "referenceSql": "WITH sk AS (SELECT bl.part_no, SUM(bl.quantity) AS qty FROM bom.bom_lines bl JOIN bom.assemblies a ON a.assembly_id = bl.assembly_id JOIN bom.products pr ON pr.product_id = a.product_id WHERE pr.sku = 'SK-9' GROUP BY bl.part_no), cur AS (SELECT sk.part_no, sk.qty, q.unit_cost * (1 + q.tariff_pct / 100.0) AS c FROM sk JOIN bom.quotes q ON q.part_no = sk.part_no AND q.is_current_source), alt AS (SELECT q.part_no, MIN(q.unit_cost * (1 + q.tariff_pct / 100.0)) AS c FROM bom.quotes q JOIN bom.facilities f ON f.facility_id = q.facility_id JOIN sk ON sk.part_no = q.part_no WHERE f.region = 'North America' AND f.utilization_pct < 95\n      AND EXISTS (SELECT 1 FROM bom.facility_certifications fc JOIN bom.certifications c ON c.certification_id = fc.certification_id\n                  WHERE fc.facility_id = f.facility_id AND c.code = 'AS9100' AND fc.expires_on >= CURRENT_DATE)\n      AND NOT EXISTS (SELECT 1 FROM bom.supply_events e WHERE e.facility_id = f.facility_id AND e.status = 'Active' AND e.severity = 'High')\n      AND EXISTS (SELECT 1 FROM bom.approved_vendors av WHERE av.supplier_id = f.supplier_id AND av.customer_id = 1 AND av.status = 'approved') GROUP BY q.part_no) SELECT ROUND(SUM(cur.qty * cur.c), 2) AS current_unit_cost, ROUND(SUM(cur.qty * COALESCE(alt.c, cur.c)), 2) AS resourced_unit_cost, ROUND(100.0 * (SUM(cur.qty * COALESCE(alt.c, cur.c)) - SUM(cur.qty * cur.c)) / SUM(cur.qty * cur.c), 1) AS change_pct, COUNT(alt.part_no) AS parts_with_compliant_source FROM cur LEFT JOIN alt ON alt.part_no = cur.part_no",
+  "tags": [
+   "tables:9",
+   "many-tables",
+   "join",
+   "aggregate",
+   "relative-date",
+   "subquery-or-cte"
+  ],
+  "rules": [
+   "Unit BOM cost is the sum over SK-9 parts of total quantity per unit (quantities summed across all SK-9 assembly lines) times landed unit cost.",
+   "Landed unit cost = quoted unit cost increased by the quote's tariff percentage.",
+   "Current cost uses each part's quote flagged as the current source; parts without a current-source quote are excluded from both totals.",
+   "A compliant North American alternative is a quote from a facility in the North America region with utilization below 95%.",
+   "The facility must hold a non-expired AS9100 certification (expiry on or after today), have no active high-severity supply event, and belong to a supplier with approved-vendor status for customer 1.",
+   "Where several compliant quotes exist for a part, the lowest landed cost is used; parts with no compliant source stay at their current cost.",
+   "Result reports current cost, re-sourced cost, percent change relative to current, and the count of parts that have a compliant alternative."
+  ]
+ },
+ {
+  "id": "bom-24",
+  "pack": "bom",
+  "question": "Which DFM findings would save money on the KR-6 with no performance impact, and how much per unit?",
+  "referenceSql": "SELECT d.part_no, p.name, d.recommendation, d.saving_pct, ROUND(SUM(bl.quantity) * q.unit_cost * (1 + q.tariff_pct / 100.0) * d.saving_pct / 100.0, 2) AS saving_per_robot FROM bom.dfm_findings d JOIN bom.parts p ON p.part_no = d.part_no JOIN bom.quotes q ON q.part_no = d.part_no AND q.is_current_source JOIN bom.bom_lines bl ON bl.part_no = d.part_no JOIN bom.assemblies a ON a.assembly_id = bl.assembly_id JOIN bom.products pr ON pr.product_id = a.product_id WHERE pr.sku = 'KR-6' AND d.performance_impact = 'None' GROUP BY d.part_no, p.name, d.recommendation, d.saving_pct, q.unit_cost, q.tariff_pct ORDER BY saving_per_robot DESC",
+  "tags": [
+   "tables:6",
+   "many-tables",
+   "join",
+   "aggregate"
+  ],
+  "rules": [
+   "Only DFM findings flagged with performance impact 'None' are included.",
+   "Scope is parts that appear in the BOM of the product with SKU KR-6, across all of its assemblies.",
+   "Quantity per robot for a part is the sum of its BOM line quantities across the KR-6 assemblies.",
+   "Part cost is the unit cost from the current sourced quote, plus the tariff percentage (landed unit cost = unit_cost * (1 + tariff_pct/100)).",
+   "Saving per robot = total quantity per robot * landed unit cost * the finding's saving percentage / 100, rounded to 2 decimals.",
+   "Results are listed per part and recommendation, ordered by saving per robot from highest to lowest."
+  ]
+ }
+]

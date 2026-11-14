@@ -1,0 +1,6 @@
+# Points the app at the logging proxy (tools/llmproxy.py on the host) and fixes the model. Used by run_variant.sh.
+services:
+  omnigate:
+    environment:
+      OMNIGATE_LLM_ENDPOINT: http://host.docker.internal:9099/v1/messages
+      OMNIGATE_LLM_MODEL: ${BENCH_MODEL:-claude-haiku-5-5}
