@@ -129,7 +129,7 @@ Two more standalone demo sets, both invented data, chosen with the chart value `
 supply-chain data; changing the value on an existing release does not reseed). Choose them with **Demo data** in the Resource Manager form ("Demo dataset" section) or `-var demo_dataset=bom`, or at the chart level (`--set demoDataset=bom` or `treasury`). Both pull an embedding model, so the cluster
 needs outbound access to huggingface.co.
 
-The seed job also gives the chosen set its table descriptions and a few named measures (`files/knowledge-bom.json`, `files/knowledge-treasury.json`), so the admin ontology page shows that pack's tables with their rules. Whether the descriptions improve free-form answers is not established: on the BOM pack five runs showed no difference beyond run-to-run noise (Server#43).
+The seed job also gives the chosen set its table descriptions and a few named measures (`files/knowledge-bom.json`, `files/knowledge-treasury.json`), so the admin ontology page shows that pack's tables with their rules. The ontology descriptions are not read when the app writes SQL; the app reads a table's *database* comment. The BOM seed therefore also writes its descriptions as `COMMENT ON TABLE`, which lifted its free-form accuracy on the benchmark from 12.3 to 14.7 of 24 (3 runs, Haiku 5.5; `demos/benchmark`). Treasury's descriptions are not written as database comments yet: they raise its score too, but make some questions fail until the app's per-table decomposition is fixed (Server#93).
 
 - **`bom`**: a mechanical bill-of-materials and sourcing set (3 products, 42 parts, 14 supplier facilities, certificates, quotes,
   nonconformances). One Postgres source, `bom`. 24 trusted questions. Source: `demos/bom-pack`.

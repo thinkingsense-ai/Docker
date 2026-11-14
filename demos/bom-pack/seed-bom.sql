@@ -703,6 +703,31 @@ INSERT INTO bom.dfm_findings (finding_id, part_no, recommendation, saving_pct, p
  (9, 'KR-108', 'Use a single bend radius for all flanges', 5, 'None'),
  (10, 'KR-103', 'Switch from solid bar to extruded tube stock', 14, 'Needs engineering validation');
 
+-- What each table holds and the rules a question depends on, as database comments: the app puts a table's comment in the prompt it sends the model
+-- (the ontology descriptions applied by the seed job are not read for SQL). Same text as bom-knowledge.json.
+COMMENT ON TABLE bom.customers IS 'A company that buys our products, such as Kestrel Dynamics or Alpenfluss Technik.';
+COMMENT ON TABLE bom.products IS 'A finished product a customer buys. `sku` is the short product code people use in questions (KR-6, SK-9, PU-3); `name` is the long name. A product''s parts are found through its assemblies: products.product_id -> assemblies.product_id -> bom_lines.assembly_id -> parts.part_no. `required_certification` and `region_restriction` are the sourcing rules every part of that product must meet.';
+COMMENT ON TABLE bom.assemblies IS 'A node in a product''s assembly tree (a top-level assembly or a sub-module). Every assembly carries `product_id`, so the product of any assembly is known directly; `parent_assembly_id` is only for the tree.';
+COMMENT ON TABLE bom.bom_lines IS 'The bill of materials: one row per part in an assembly with the `quantity` used in one unit of it. To list or cost a product''s parts, join bom_lines to assemblies on assembly_id, assemblies to products on product_id, and sum `quantity` where a part appears in more than one assembly.';
+COMMENT ON TABLE bom.parts IS 'A part number. `source_type` is custom (made to our drawing), catalog (bought from a catalog) or standard (off-the-shelf). `is_critical` parts need engineering review before they are changed. `shape`, `material_id`, `finish`, `tolerance_mm` and the three dimensions decide whether a catalog item can replace a custom part.';
+COMMENT ON TABLE bom.catalog_items IS 'A configurable catalog item that can stand in for a custom part when it has the same `shape`, `material_id` and `finish`, a `min_tolerance_mm` no tighter than the part''s `tolerance_mm`, maximum dimensions at least as large as the part''s, and a lower price. `distributor_certification` must be AS9120 when the product requires AS9100.';
+COMMENT ON TABLE bom.materials IS 'A raw material, with its family and cost per kg.';
+COMMENT ON TABLE bom.processes IS 'A manufacturing process, such as 5-axis CNC milling or die casting.';
+COMMENT ON TABLE bom.quotes IS 'A supplier quote for a part at a facility. `unit_cost` excludes duties; the landed cost is unit_cost * (1 + tariff_pct / 100). `is_current_source` is true for the one quote each part is bought on today. Parts with a single quote have only one possible source.';
+COMMENT ON TABLE bom.suppliers IS 'A supplier company. A supplier can run several facilities.';
+COMMENT ON TABLE bom.facilities IS 'A plant or distribution centre that makes or ships parts. `utilization_pct` of 95 or more means it cannot take new work. `region` is North America, Europe or Asia Pacific.';
+COMMENT ON TABLE bom.certifications IS 'A quality standard: ISO 9001 (general), AS9100 (aerospace manufacturers, needed for custom aerospace parts), AS9120 (aerospace distributors, needed for catalog and standard parts), NADCAP (special processes).';
+COMMENT ON TABLE bom.facility_certifications IS 'Which facility holds which certificate. A certificate is valid only when `expires_on` is on or after today (use CURRENT_DATE, with no parentheses); a facility with an expired certificate does not hold it.';
+COMMENT ON TABLE bom.machines IS 'A machine at a facility and the tightest tolerance it can hold. It says what a facility can make; it is not needed to judge a facility''s utilization.';
+COMMENT ON TABLE bom.approved_vendors IS 'Whether a customer allows a supplier. There is one row per customer and supplier, and `status` is approved, pending or blocked. A supplier is NOT approved when its status is anything other than ''approved''; do not look for suppliers missing from this table.';
+COMMENT ON TABLE bom.work_orders IS 'A production run of a part at a facility, with the quantity made and the quantity scrapped (`scrap_quantity`). The scrap rate is scrap_quantity divided by quantity.';
+COMMENT ON TABLE bom.nonconformances IS 'A quality defect report on a work order, with its `root_cause`, `severity` and `cost`.';
+COMMENT ON TABLE bom.engineering_changes IS 'An engineering change order (ECO) against one part. Open and In review ones are still in progress. The products it affects are those whose assemblies use the part, through bom_lines.';
+COMMENT ON TABLE bom.supply_events IS 'A disruption at a facility such as a fire, a certificate lapse, a capacity constraint or a tariff change. `status` is Active or Resolved; `severity` is High, Medium or Low. An active High event means the facility must not be used.';
+COMMENT ON TABLE bom.purchase_orders IS 'An order placed for a part at a facility. It was late when `received_date` is after `promised_date`; orders not yet received have no received_date.';
+COMMENT ON TABLE bom.inventory IS 'Stock of a part at a facility. A part is below safety stock when `on_hand` is less than `safety_stock`.';
+COMMENT ON TABLE bom.dfm_findings IS 'A design-for-manufacturability suggestion for a part, with the percentage it would save. It is safe when `performance_impact` is ''None''; ''Needs engineering validation'' ones are excluded from no-risk savings.';
+
 -- The app reads as a SELECT-only account, so no question can change the data.
 DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'omnigate_ro') THEN CREATE ROLE omnigate_ro LOGIN PASSWORD 'omnigate_ro'; END IF; END $$;
 GRANT CONNECT ON DATABASE postgres TO omnigate_ro;
