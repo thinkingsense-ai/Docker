@@ -1,0 +1,462 @@
+[
+ {
+  "id": "treasury-01",
+  "pack": "treasury",
+  "question": "What is our consolidated cash position in US dollars across all open accounts?",
+  "referenceSql": "SELECT COUNT(*) AS accounts, ROUND(SUM(usd), 0) AS total_usd FROM (SELECT a.account_id, a.entity_id, a.bank_id, a.currency, a.account_type, a.status, a.feed_method, b.as_of_date, b.ledger_balance,\n        b.ledger_balance * r.rate_to_usd AS usd\n     FROM treasury.bank_accounts a\n     JOIN (SELECT account_id, MAX(as_of_date) AS d FROM treasury.balances GROUP BY account_id) l ON l.account_id = a.account_id\n     JOIN treasury.balances b ON b.account_id = l.account_id AND b.as_of_date = l.d\n     JOIN treasury.fx_rates r ON r.currency = a.currency) x WHERE status = 'Open'",
+  "tags": [
+   "tables:3",
+   "join",
+   "aggregate",
+   "subquery-or-cte"
+  ],
+  "rules": [
+   "Only accounts with status 'Open' are included; closed or other-status accounts are excluded.",
+   "Each account's balance is its most recent ledger balance, taken from the latest as-of date available for that account (not a sum over history).",
+   "Ledger balance (not another balance type) is the cash measure.",
+   "Balances are converted to USD by multiplying by the rate_to_usd for the account's currency from the FX rates table, with one rate per currency (no rate date matching).",
+   "Consolidation is a simple sum of USD-converted balances across all open accounts, across all entities, banks, and account types, rounded to whole dollars.",
+   "Accounts lacking a balance record or an FX rate drop out of the total because of inner joins."
+  ]
+ },
+ {
+  "id": "treasury-02",
+  "pack": "treasury",
+  "question": "How much cash do we hold in each currency, in the local currency and in US dollars?",
+  "referenceSql": "SELECT currency, ROUND(SUM(ledger_balance), 0) AS local_amount, ROUND(SUM(usd), 0) AS usd_amount FROM (SELECT a.account_id, a.entity_id, a.bank_id, a.currency, a.account_type, a.status, a.feed_method, b.as_of_date, b.ledger_balance,\n        b.ledger_balance * r.rate_to_usd AS usd\n     FROM treasury.bank_accounts a\n     JOIN (SELECT account_id, MAX(as_of_date) AS d FROM treasury.balances GROUP BY account_id) l ON l.account_id = a.account_id\n     JOIN treasury.balances b ON b.account_id = l.account_id AND b.as_of_date = l.d\n     JOIN treasury.fx_rates r ON r.currency = a.currency) x WHERE status = 'Open' GROUP BY currency ORDER BY usd_amount DESC",
+  "tags": [
+   "tables:3",
+   "join",
+   "aggregate",
+   "subquery-or-cte"
+  ],
+  "rules": [
+   "Cash is the ledger balance (not available balance) from the most recent balance record for each account.",
+   "Only accounts with status 'Open' are included; closed or other-status accounts are excluded.",
+   "USD value is the ledger balance multiplied by the account currency's rate to USD from the FX rates table (a single rate per currency).",
+   "Results are grouped by account currency, summing local and USD amounts across all accounts, entities, banks and account types, rounded to whole units.",
+   "Currencies are ordered by USD amount, largest first."
+  ]
+ },
+ {
+  "id": "treasury-03",
+  "pack": "treasury",
+  "question": "What is the cash position of each legal entity in US dollars?",
+  "referenceSql": "SELECT e.name AS entity, ROUND(SUM(x.usd), 0) AS usd_amount FROM (SELECT a.account_id, a.entity_id, a.bank_id, a.currency, a.account_type, a.status, a.feed_method, b.as_of_date, b.ledger_balance,\n        b.ledger_balance * r.rate_to_usd AS usd\n     FROM treasury.bank_accounts a\n     JOIN (SELECT account_id, MAX(as_of_date) AS d FROM treasury.balances GROUP BY account_id) l ON l.account_id = a.account_id\n     JOIN treasury.balances b ON b.account_id = l.account_id AND b.as_of_date = l.d\n     JOIN treasury.fx_rates r ON r.currency = a.currency) x JOIN treasury.entities e ON e.entity_id = x.entity_id WHERE x.status = 'Open' GROUP BY e.name ORDER BY usd_amount DESC",
+  "tags": [
+   "tables:4",
+   "many-tables",
+   "join",
+   "aggregate",
+   "subquery-or-cte"
+  ],
+  "rules": [
+   "Cash position is the sum of ledger balances, using each account's most recent balance (latest as-of date per account) rather than historical balances.",
+   "Only accounts with status 'Open' are included; closed or other-status accounts are excluded.",
+   "Each balance is converted to USD by multiplying by the rate to USD for the account's currency, using a single rate per currency from the FX rates table.",
+   "Account types, banks, and feed methods are not filtered, so all kinds of open accounts count toward cash.",
+   "Results are grouped by legal entity name, summed, rounded to whole US dollars, and ordered from largest to smallest."
+  ]
+ },
+ {
+  "id": "treasury-04",
+  "pack": "treasury",
+  "question": "How much cash is held at each bank, and what share of the total is that?",
+  "referenceSql": "SELECT bk.name AS bank, ROUND(SUM(x.usd), 0) AS usd_amount, ROUND(100.0 * SUM(x.usd) / (SELECT SUM(usd) FROM (SELECT a.account_id, a.entity_id, a.bank_id, a.currency, a.account_type, a.status, a.feed_method, b.as_of_date, b.ledger_balance,\n        b.ledger_balance * r.rate_to_usd AS usd\n     FROM treasury.bank_accounts a\n     JOIN (SELECT account_id, MAX(as_of_date) AS d FROM treasury.balances GROUP BY account_id) l ON l.account_id = a.account_id\n     JOIN treasury.balances b ON b.account_id = l.account_id AND b.as_of_date = l.d\n     JOIN treasury.fx_rates r ON r.currency = a.currency) y WHERE y.status = 'Open'), 1) AS share_pct FROM (SELECT a.account_id, a.entity_id, a.bank_id, a.currency, a.account_type, a.status, a.feed_method, b.as_of_date, b.ledger_balance,\n        b.ledger_balance * r.rate_to_usd AS usd\n     FROM treasury.bank_accounts a\n     JOIN (SELECT account_id, MAX(as_of_date) AS d FROM treasury.balances GROUP BY account_id) l ON l.account_id = a.account_id\n     JOIN treasury.balances b ON b.account_id = l.account_id AND b.as_of_date = l.d\n     JOIN treasury.fx_rates r ON r.currency = a.currency) x JOIN treasury.banks bk ON bk.bank_id = x.bank_id WHERE x.status = 'Open' GROUP BY bk.name ORDER BY usd_amount DESC",
+  "tags": [
+   "tables:4",
+   "many-tables",
+   "join",
+   "aggregate",
+   "subquery-or-cte"
+  ],
+  "rules": [
+   "Cash for an account is its ledger balance on the most recent balance date available for that account (latest snapshot per account, not a sum over time).",
+   "Only accounts with status 'Open' are included; closed or other-status accounts are excluded from both bank amounts and the total.",
+   "Balances are converted to USD by multiplying the ledger balance by the account currency's rate_to_usd from the FX rates table (a single rate per currency).",
+   "Grouped by bank (bank name); each bank's amount is the sum of USD cash across its open accounts, rounded to whole dollars.",
+   "Share is the bank's USD cash divided by total USD cash across all open accounts at all banks, as a percentage rounded to 1 decimal.",
+   "Results are ordered by USD amount, largest first."
+  ]
+ },
+ {
+  "id": "treasury-05",
+  "pack": "treasury",
+  "question": "Which accounts have a balance that is more than a day old?",
+  "referenceSql": "SELECT a.account_no, a.currency, a.feed_method, a.status, MAX(b.as_of_date) AS latest_balance FROM treasury.bank_accounts a JOIN treasury.balances b ON b.account_id = a.account_id GROUP BY a.account_no, a.currency, a.feed_method, a.status HAVING MAX(b.as_of_date) < CURRENT_DATE - INTERVAL '1' DAY ORDER BY latest_balance, a.account_no",
+  "tags": [
+   "tables:2",
+   "join",
+   "aggregate",
+   "relative-date"
+  ],
+  "rules": [
+   "An account's balance date is the most recent as-of date among all its recorded balances.",
+   "A balance is stale if that latest as-of date is earlier than yesterday (before today minus one day), so a balance dated yesterday or today is not stale.",
+   "Only accounts with at least one recorded balance are considered; accounts with no balances are excluded.",
+   "Accounts of every status (open or otherwise), currency and feed method are included, with no filtering on those attributes.",
+   "Results are at the account level, shown with account number, currency, feed method and status, ordered from oldest latest-balance date to newest, then by account number."
+  ]
+ },
+ {
+  "id": "treasury-06",
+  "pack": "treasury",
+  "question": "How much cash is trapped in frozen or restricted accounts, in US dollars?",
+  "referenceSql": "SELECT x.account_type, x.status, x.currency, ROUND(x.ledger_balance, 0) AS local_amount, ROUND(x.usd, 0) AS usd_amount FROM (SELECT a.account_id, a.entity_id, a.bank_id, a.currency, a.account_type, a.status, a.feed_method, b.as_of_date, b.ledger_balance,\n        b.ledger_balance * r.rate_to_usd AS usd\n     FROM treasury.bank_accounts a\n     JOIN (SELECT account_id, MAX(as_of_date) AS d FROM treasury.balances GROUP BY account_id) l ON l.account_id = a.account_id\n     JOIN treasury.balances b ON b.account_id = l.account_id AND b.as_of_date = l.d\n     JOIN treasury.fx_rates r ON r.currency = a.currency) x WHERE x.status = 'Frozen' OR x.account_type = 'Restricted'",
+  "tags": [
+   "tables:3",
+   "join",
+   "aggregate",
+   "subquery-or-cte"
+  ],
+  "rules": [
+   "Cash is the latest available ledger balance per account (most recent as-of date for each account), not a sum over history.",
+   "An account counts as trapped if its status is Frozen or its account type is Restricted; either condition alone qualifies.",
+   "Balances are converted to US dollars by multiplying the local-currency ledger balance by the account currency's rate to USD.",
+   "Results are listed per account type, status and currency with local and USD amounts rounded to whole units.",
+   "Frozen and restricted accounts are included regardless of the bank, entity or balance feed method."
+  ]
+ },
+ {
+  "id": "treasury-07",
+  "pack": "treasury",
+  "question": "How many open accounts are fed by API, file and portal?",
+  "referenceSql": "SELECT feed_method, COUNT(*) AS accounts FROM treasury.bank_accounts WHERE status <> 'Closed' GROUP BY feed_method ORDER BY accounts DESC",
+  "tags": [
+   "tables:1",
+   "aggregate"
+  ],
+  "rules": [
+   "An account counts as open if its status is anything other than 'Closed' (so statuses like dormant or pending would be included).",
+   "Each bank account is counted once, using one row per account in the bank accounts table.",
+   "Accounts are grouped by their feed method, and the count is reported per method.",
+   "Results are sorted from the method with the most accounts to the fewest.",
+   "The query does not filter to API, file and portal only; any other feed method value (including blank) would also appear as its own group."
+  ],
+  "ask": "How many accounts that are not closed are fed by each method (API, file, portal)?",
+  "referenceNote": "Pack wording says 'open' but the reference counts every account that is not Closed (Frozen included); the knowledge file says only Open accounts count as usable cash."
+ },
+ {
+  "id": "treasury-08",
+  "pack": "treasury",
+  "question": "Which ledger entries have been waiting more than 5 days to be reconciled, by entity?",
+  "referenceSql": "SELECT e.name AS entity, COUNT(*) AS entries, MIN(l.posting_date) AS oldest FROM erp.ledger_entries l JOIN treasury.entities e ON e.entity_id = l.entity_id WHERE l.reconciled = FALSE AND l.posting_date < CURRENT_DATE - INTERVAL '5' DAY GROUP BY e.name ORDER BY entries DESC",
+  "tags": [
+   "tables:2",
+   "join",
+   "aggregate",
+   "relative-date",
+   "cross-source"
+  ],
+  "rules": [
+   "An entry counts as waiting only if it is not yet reconciled (reconciled flag is false).",
+   "An entry is waiting more than 5 days when its posting date is earlier than today minus 5 days, so entries posted exactly 5 days ago are excluded.",
+   "Age is measured from the entry's posting date to the current date, in calendar days.",
+   "Results are grouped by entity name, reporting the count of waiting entries and the oldest posting date for each entity.",
+   "Entities are sorted by number of waiting entries, highest first.",
+   "Only entries linked to a known entity are included (entries without a matching entity are dropped)."
+  ]
+ },
+ {
+  "id": "treasury-09",
+  "pack": "treasury",
+  "question": "Which bank transactions in the last 14 days have no matching ledger entry, by account?",
+  "referenceSql": "SELECT a.account_no, a.currency, COUNT(*) AS unmatched, ROUND(SUM(ABS(t.amount)), 0) AS gross_amount FROM treasury.bank_transactions t JOIN treasury.bank_accounts a ON a.account_id = t.account_id WHERE t.matched_ledger_id IS NULL AND t.booking_date >= CURRENT_DATE - INTERVAL '14' DAY GROUP BY a.account_no, a.currency ORDER BY unmatched DESC, a.account_no",
+  "tags": [
+   "tables:2",
+   "join",
+   "aggregate",
+   "relative-date"
+  ],
+  "rules": [
+   "A bank transaction counts as unmatched when it has no linked ledger entry (matched_ledger_id is empty).",
+   "The time window is the last 14 days relative to today, based on booking date and including today and the date 14 days ago.",
+   "Results are grouped by bank account number and its currency, with one row per account.",
+   "Gross amount is the sum of absolute transaction amounts (debits and credits both positive), rounded to whole units and left in the account's own currency with no conversion.",
+   "Every transaction status is included; there is no filter on transaction type or account status.",
+   "Accounts are ordered by number of unmatched transactions, highest first, then by account number."
+  ],
+  "ask": "For each account, how many bank transactions in the last 14 days have no matching ledger entry, and what is their gross amount?"
+ },
+ {
+  "id": "treasury-10",
+  "pack": "treasury",
+  "question": "How many ledger entries are still unreconciled even though the bank has already booked the transaction, by entity?",
+  "referenceSql": "SELECT e.name AS entity, COUNT(*) AS entries FROM treasury.bank_transactions t JOIN erp.ledger_entries l ON l.entry_id = t.matched_ledger_id JOIN treasury.entities e ON e.entity_id = l.entity_id WHERE l.reconciled = FALSE GROUP BY e.name ORDER BY entries DESC, e.name",
+  "tags": [
+   "tables:3",
+   "join",
+   "aggregate",
+   "cross-source"
+  ],
+  "rules": [
+   "Only ledger entries that are linked to a bank transaction (the bank transaction's matched ledger entry) are considered; this link is how the bank is treated as having booked the transaction.",
+   "An entry counts as unreconciled when its reconciled flag is false.",
+   "The count is of bank-transaction-to-ledger-entry matches, so a ledger entry matched by several bank transactions would be counted once per match.",
+   "Entries are grouped by the entity that owns the ledger entry, shown by entity name.",
+   "Results are sorted by count descending, then entity name alphabetically.",
+   "No status or date filter is applied on the bank transactions, so any matched transaction qualifies regardless of its status or age."
+  ]
+ },
+ {
+  "id": "treasury-11",
+  "pack": "treasury",
+  "question": "What invoices fall due in the next 14 days, by currency?",
+  "referenceSql": "SELECT i.currency, COUNT(*) AS invoices, ROUND(SUM(i.amount), 0) AS amount FROM erp.invoices i WHERE i.status IN ('Open', 'Approved', 'On hold') AND i.due_date >= CURRENT_DATE AND i.due_date <= CURRENT_DATE + INTERVAL '14' DAY GROUP BY i.currency ORDER BY amount DESC",
+  "tags": [
+   "tables:1",
+   "aggregate",
+   "relative-date"
+  ],
+  "rules": [
+   "Only invoices with status Open, Approved, or On hold count as outstanding; other statuses (e.g. paid, cancelled) are excluded.",
+   "The 14-day window runs from today through 14 days from today, inclusive of both ends, based on invoice due date; overdue invoices (due before today) are excluded.",
+   "Results are grouped by invoice currency, with no conversion to a common currency; amounts are in each invoice's own currency.",
+   "Each currency shows the number of invoices and the total invoice amount rounded to whole units.",
+   "Currencies are ordered by total amount, largest first."
+  ]
+ },
+ {
+  "id": "treasury-12",
+  "pack": "treasury",
+  "question": "Which invoices are in a different currency from the one in the vendor's contract?",
+  "referenceSql": "SELECT v.name AS vendor, v.contract_currency, i.invoice_no, i.currency AS invoiced_in, i.amount, i.invoice_date FROM erp.invoices i JOIN erp.vendors v ON v.vendor_id = i.vendor_id WHERE i.currency <> v.contract_currency ORDER BY v.name, i.invoice_date",
+  "tags": [
+   "tables:2",
+   "join"
+  ],
+  "rules": [
+   "An invoice is flagged when its currency code differs from the contract currency recorded on its vendor's record.",
+   "Each invoice is compared only to its own vendor's single contract currency, matched by vendor ID.",
+   "Currency comparison is on exact code values with no conversion; invoices or vendors with a missing currency are not flagged.",
+   "Invoices without a matching vendor are excluded.",
+   "All invoices are included regardless of status or date, and the amount is shown in its original invoiced currency.",
+   "Results are listed per invoice, sorted by vendor name and then invoice date."
+  ]
+ },
+ {
+  "id": "treasury-13",
+  "pack": "treasury",
+  "question": "Are there possible duplicate invoices, with the same vendor, amount and date?",
+  "referenceSql": "SELECT v.name AS vendor, i.amount, i.currency, i.invoice_date, COUNT(*) AS invoices FROM erp.invoices i JOIN erp.vendors v ON v.vendor_id = i.vendor_id GROUP BY v.name, i.amount, i.currency, i.invoice_date HAVING COUNT(*) > 1 ORDER BY v.name",
+  "tags": [
+   "tables:2",
+   "join",
+   "aggregate"
+  ],
+  "rules": [
+   "A possible duplicate is a group of two or more invoices that share the same vendor, amount, currency and invoice date.",
+   "Vendors are identified and grouped by vendor name (via the vendor record linked to each invoice), so different vendor IDs with the same name are treated as one vendor.",
+   "Currency is part of the match, so identical amounts in different currencies are not duplicates.",
+   "The invoice date is the invoice's own date, not the received or payment date, and must match exactly.",
+   "All invoices are included regardless of status (for example voided or paid), with no time window.",
+   "Results show each duplicate group with its count of invoices, sorted by vendor name."
+  ]
+ },
+ {
+  "id": "treasury-14",
+  "pack": "treasury",
+  "question": "Which open or approved invoices have no purchase order?",
+  "referenceSql": "SELECT v.name AS vendor, i.invoice_no, i.amount, i.currency, i.invoice_date FROM erp.invoices i JOIN erp.vendors v ON v.vendor_id = i.vendor_id WHERE i.po_number IS NULL AND i.status IN ('Open', 'Approved') ORDER BY i.invoice_date DESC",
+  "tags": [
+   "tables:2",
+   "join"
+  ],
+  "rules": [
+   "An invoice counts as having no purchase order when its PO number field is empty (null); blank-string values would not be caught.",
+   "Only invoices with status Open or Approved are included; other statuses such as paid, rejected, or void are excluded.",
+   "Each invoice is listed individually (not aggregated) with its vendor name, invoice number, amount, currency, and invoice date.",
+   "Amounts are shown in each invoice's original currency, with no conversion to a common currency.",
+   "Invoices must be linked to a vendor record; invoices without a matching vendor are excluded.",
+   "Results are ordered by invoice date, most recent first."
+  ]
+ },
+ {
+  "id": "treasury-15",
+  "pack": "treasury",
+  "question": "Which payments are waiting for approval, and how much is each in US dollars?",
+  "referenceSql": "SELECT p.payment_id, e.name AS entity, p.amount, p.currency, p.amount_usd, p.value_date, p.initiated_by FROM treasury.payments p JOIN treasury.entities e ON e.entity_id = p.entity_id WHERE p.status = 'Pending approval' ORDER BY p.amount_usd DESC",
+  "tags": [
+   "tables:2",
+   "join"
+  ],
+  "rules": [
+   "A payment counts as waiting for approval only if its status is exactly 'Pending approval'; all other statuses are excluded.",
+   "The US dollar value of each payment is taken from the stored amount_usd field on the payment record, not recalculated from the original amount and a current exchange rate.",
+   "Each payment is listed individually (one row per payment) with its original amount and currency alongside the USD amount.",
+   "Each payment is tied to its owning entity, shown by entity name; payments without a matching entity would be left out.",
+   "Results are ordered from largest to smallest USD amount."
+  ]
+ },
+ {
+  "id": "treasury-16",
+  "pack": "treasury",
+  "question": "Which released payments were above the dual-approval limit without a second approver?",
+  "referenceSql": "SELECT p.payment_id, e.name AS entity, p.amount_usd, p.approved_by, p.second_approver, p.value_date FROM treasury.payments p JOIN treasury.entities e ON e.entity_id = p.entity_id JOIN treasury.payment_policies pol ON pol.policy_id = p.policy_id WHERE p.status = 'Released' AND p.amount_usd > pol.dual_approval_above_usd AND p.second_approver IS NULL ORDER BY p.amount_usd DESC",
+  "tags": [
+   "tables:3",
+   "join"
+  ],
+  "rules": [
+   "Only payments with status 'Released' are considered; other statuses (e.g., pending, rejected, cancelled) are excluded.",
+   "A payment is over the limit when its USD amount is strictly greater than the dual-approval threshold (in USD) set by the payment's own policy, so the limit can differ by policy.",
+   "A missing second approver means no second approver is recorded on the payment at all.",
+   "Amounts are compared in USD using the payment's recorded USD amount, with no further currency conversion.",
+   "Results are reported per individual payment, showing the entity name, first approver and value date, sorted by amount from largest to smallest."
+  ]
+ },
+ {
+  "id": "treasury-17",
+  "pack": "treasury",
+  "question": "What did the treasury agent do outside policy in the last 30 days?",
+  "referenceSql": "SELECT a.occurred_at, a.action_type, a.detail, a.approved_by FROM treasury.agent_actions a WHERE a.within_policy = FALSE AND a.occurred_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY ORDER BY a.occurred_at DESC",
+  "tags": [
+   "tables:1",
+   "relative-date"
+  ],
+  "rules": [
+   "An action counts as 'outside policy' when the treasury agent's action record has its within-policy flag set to false; actions flagged within policy or with no flag are not included.",
+   "The window is the rolling 30 days ending at the moment the query runs, based on when the action occurred.",
+   "Each row is one individual recorded agent action, not an aggregate, showing when it happened, the action type, its detail, and who approved it.",
+   "Results are ordered with the most recent action first.",
+   "Actions are listed regardless of approver, including those with no recorded approver."
+  ]
+ },
+ {
+  "id": "treasury-18",
+  "pack": "treasury",
+  "question": "Which payments waiting for approval are for invoices that are on hold?",
+  "referenceSql": "SELECT p.payment_id, v.name AS vendor, i.invoice_no, p.amount_usd FROM treasury.payments p JOIN erp.invoices i ON i.invoice_id = p.invoice_id JOIN erp.vendors v ON v.vendor_id = i.vendor_id WHERE p.status = 'Pending approval' AND i.status = 'On hold' ORDER BY p.amount_usd DESC",
+  "tags": [
+   "tables:3",
+   "join",
+   "cross-source"
+  ],
+  "rules": [
+   "A payment is 'waiting for approval' when its status is 'Pending approval'.",
+   "An invoice is 'on hold' when its status is 'On hold'; the invoice status is the current one on the invoice record, not the payment.",
+   "Each payment is linked to its invoice through the invoice ID, and each invoice to its vendor, so only payments tied to an invoice are included.",
+   "Amounts are reported in USD using the payment's USD amount field.",
+   "Results list payment, vendor name, and invoice number, sorted by payment amount from largest to smallest."
+  ]
+ },
+ {
+  "id": "treasury-19",
+  "pack": "treasury",
+  "question": "For each foreign currency, how much of our open payables is covered by active hedges?",
+  "referenceSql": "SELECT pay.currency, pay.payable, COALESCE(h.hedged, 0) AS hedged, ROUND(100.0 * COALESCE(h.hedged, 0) / pay.payable, 0) AS coverage_pct FROM (SELECT i.currency, SUM(i.amount) AS payable FROM erp.invoices i WHERE i.status IN ('Open', 'Approved', 'On hold') AND i.currency <> 'USD' GROUP BY i.currency) pay LEFT JOIN (SELECT currency, SUM(notional) AS hedged FROM treasury.hedges WHERE status = 'Active' GROUP BY currency) h ON h.currency = pay.currency ORDER BY coverage_pct, pay.currency",
+  "tags": [
+   "tables:2",
+   "join",
+   "aggregate",
+   "subquery-or-cte",
+   "cross-source"
+  ],
+  "rules": [
+   "Open payables are invoices with status Open, Approved, or On hold; other statuses are excluded.",
+   "Payables are summed in each invoice's original currency amount, with no conversion to USD.",
+   "Foreign currency means any currency other than USD.",
+   "Hedged amount is the sum of notional on hedges with status Active, grouped by currency.",
+   "Coverage percent is hedged amount divided by open payables for the currency, times 100, rounded to a whole number; currencies with no active hedges show 0 hedged.",
+   "Results are at currency level and include only currencies that have open payables, ordered from lowest to highest coverage."
+  ]
+ },
+ {
+  "id": "treasury-20",
+  "pack": "treasury",
+  "question": "Which hedges mature in the next 30 days?",
+  "referenceSql": "SELECT h.hedge_id, e.name AS entity, h.currency, h.notional, h.rate, h.maturity_date, bk.name AS bank FROM treasury.hedges h JOIN treasury.entities e ON e.entity_id = h.entity_id JOIN treasury.banks bk ON bk.bank_id = h.bank_id WHERE h.status = 'Active' AND h.maturity_date >= CURRENT_DATE AND h.maturity_date <= CURRENT_DATE + INTERVAL '30' DAY ORDER BY h.maturity_date",
+  "tags": [
+   "tables:3",
+   "join",
+   "relative-date"
+  ],
+  "rules": [
+   "Only hedges with status 'Active' are included; hedges in any other state (e.g., matured, terminated, cancelled) are excluded.",
+   "The 30-day window is relative to today: maturity date from today (inclusive) through 30 days from today (inclusive); already-matured hedges are excluded.",
+   "Each hedge is listed individually (one row per hedge) with its entity name, currency, notional, rate, maturity date and counterparty bank, with no aggregation.",
+   "Notional is shown in the hedge's own currency, with no conversion to a common currency.",
+   "Results are ordered by maturity date, soonest first."
+  ]
+ },
+ {
+  "id": "treasury-21",
+  "pack": "treasury",
+  "question": "How much headroom does each covenant have, tightest first?",
+  "referenceSql": "SELECT f.name AS facility, c.name AS covenant, c.test_type, c.threshold, c.current_value, ROUND(100.0 * CASE WHEN c.test_type = 'Maximum' THEN c.threshold - c.current_value ELSE c.current_value - c.threshold END / c.threshold, 1) AS headroom_pct FROM treasury.covenants c JOIN treasury.debt_facilities f ON f.facility_id = c.facility_id ORDER BY headroom_pct, c.covenant_id",
+  "tags": [
+   "tables:2",
+   "join",
+   "case"
+  ],
+  "rules": [
+   "Headroom is the distance between the covenant's current value and its threshold, expressed as a percentage of the threshold and rounded to one decimal place.",
+   "For 'Maximum' covenants (value must stay at or below the threshold), headroom = threshold minus current value; for other covenants (treated as minimums), headroom = current value minus threshold.",
+   "Negative headroom means the covenant is currently breached.",
+   "Each covenant is reported once, labeled with its debt facility name, covenant name, test type, threshold and current value.",
+   "Results are ordered by headroom percentage ascending (tightest or most breached first), with covenant ID as the tie-breaker.",
+   "Only covenants linked to an existing debt facility are included."
+  ],
+  "ask": "How much headroom does each covenant have, as a percentage of its threshold, tightest first?"
+ },
+ {
+  "id": "treasury-22",
+  "pack": "treasury",
+  "question": "What is our total liquidity: cash in open accounts plus undrawn revolving credit, in US dollars?",
+  "referenceSql": "SELECT ROUND((SELECT SUM(usd) FROM (SELECT a.account_id, a.entity_id, a.bank_id, a.currency, a.account_type, a.status, a.feed_method, b.as_of_date, b.ledger_balance,\n        b.ledger_balance * r.rate_to_usd AS usd\n     FROM treasury.bank_accounts a\n     JOIN (SELECT account_id, MAX(as_of_date) AS d FROM treasury.balances GROUP BY account_id) l ON l.account_id = a.account_id\n     JOIN treasury.balances b ON b.account_id = l.account_id AND b.as_of_date = l.d\n     JOIN treasury.fx_rates r ON r.currency = a.currency) x WHERE x.status = 'Open'), 0) AS cash_usd, ROUND((SELECT SUM((f.commitment - f.drawn) * r.rate_to_usd) FROM treasury.debt_facilities f JOIN treasury.fx_rates r ON r.currency = f.currency WHERE f.facility_type = 'Revolver'), 0) AS undrawn_revolver_usd",
+  "tags": [
+   "tables:4",
+   "many-tables",
+   "join",
+   "aggregate",
+   "subquery-or-cte"
+  ],
+  "rules": [
+   "Cash is the latest available ledger balance for each account (the most recent as-of date per account), counting only accounts with status 'Open'.",
+   "Account balances are converted to USD by multiplying by the rate to USD for the account's currency, using the fx_rates table.",
+   "Undrawn revolving credit is commitment minus drawn amount for debt facilities of type 'Revolver', with no filter on facility status or maturity.",
+   "Undrawn revolver amounts are converted to USD using the facility currency's rate to USD.",
+   "Total liquidity is the sum of USD cash and USD undrawn revolver capacity, with each component rounded to whole dollars."
+  ]
+ },
+ {
+  "id": "treasury-23",
+  "pack": "treasury",
+  "question": "How accurate were the weekly cash forecasts for each entity over the last 12 weeks?",
+  "referenceSql": "SELECT e.name AS entity, ROUND(100.0 * AVG(ABS(f.actual_net_cash_usd - f.forecast_net_cash_usd) / f.forecast_net_cash_usd), 1) AS avg_error_pct FROM treasury.cash_forecasts f JOIN treasury.entities e ON e.entity_id = f.entity_id GROUP BY e.name ORDER BY avg_error_pct DESC",
+  "tags": [
+   "tables:2",
+   "join",
+   "aggregate"
+  ],
+  "rules": [
+   "Forecast accuracy is measured as the average absolute percentage error: |actual net cash - forecast net cash| divided by the forecast net cash, expressed as a percent and rounded to one decimal.",
+   "Both actual and forecast net cash are in USD, one forecast record per entity per week.",
+   "Error is averaged across all of an entity's weekly forecasts, giving one figure per entity (grouped by entity name).",
+   "Percentage error is relative to the forecast value, so weeks with a forecast of zero cannot be computed, and weeks with a negative forecast give a distorted denominator.",
+   "Entities are ordered from least accurate (highest error) to most accurate.",
+   "The query as written does not restrict to the last 12 weeks, so it covers every forecast week in the table rather than a rolling 12-week window."
+  ],
+  "ask": "How accurate were the weekly cash forecasts for each entity over the last 12 weeks? Give each entity's average absolute error as a percentage of the forecast.",
+  "referenceNote": "Wording says 'last 12 weeks' but the reference averages every forecast row; correct only if the data holds exactly 12 weeks."
+ },
+ {
+  "id": "treasury-24",
+  "pack": "treasury",
+  "question": "Which entities' forecasts have missed by more than 15% on average?",
+  "referenceSql": "SELECT e.name AS entity, ROUND(100.0 * AVG(ABS(f.actual_net_cash_usd - f.forecast_net_cash_usd) / f.forecast_net_cash_usd), 1) AS avg_error_pct FROM treasury.cash_forecasts f JOIN treasury.entities e ON e.entity_id = f.entity_id GROUP BY e.name HAVING AVG(ABS(f.actual_net_cash_usd - f.forecast_net_cash_usd) / f.forecast_net_cash_usd) > 0.15 ORDER BY avg_error_pct DESC",
+  "tags": [
+   "tables:2",
+   "join",
+   "aggregate"
+  ],
+  "rules": [
+   "Forecast error for each forecast is the absolute difference between actual and forecast net cash in USD, divided by the forecast net cash in USD (relative to the forecast, not the actual).",
+   "Each entity's miss is the simple average of these per-forecast error ratios across all of its forecasts, with every forecast weighted equally and no time window applied.",
+   "An entity counts as having missed only if its average error is strictly greater than 15%.",
+   "Results are grouped by entity name, so entities sharing a name would be combined.",
+   "The error is shown as a percentage rounded to one decimal place, with the largest misses listed first.",
+   "Forecasts with a forecast value of zero are not handled specially and would break the ratio; the amounts are all in USD."
+  ]
+ }
+]
