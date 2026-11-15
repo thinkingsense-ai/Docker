@@ -1,0 +1,87 @@
+[
+ {
+  "question": "How many recordings do we have for each bird species, most first?",
+  "referenceSql": "SELECT species, COUNT(*) AS recordings FROM sounds.recordings WHERE group_name = 'bird' GROUP BY species ORDER BY recordings DESC, species",
+  "category": "sounds"
+ },
+ {
+  "question": "Which countries do the bird recordings come from, and how many from each?",
+  "referenceSql": "SELECT country, COUNT(*) AS recordings FROM sounds.recordings WHERE group_name = 'bird' GROUP BY country ORDER BY recordings DESC, country",
+  "category": "sounds"
+ },
+ {
+  "question": "Which bird recordings are alarm calls?",
+  "referenceSql": "SELECT recording_id, species, country, recorded_on FROM sounds.recordings WHERE group_name = 'bird' AND call_type = 'alarm call' ORDER BY recording_id",
+  "category": "sounds"
+ },
+ {
+  "question": "How many species and how many recordings do we have in each group, birds and fish?",
+  "referenceSql": "SELECT group_name, COUNT(DISTINCT species) AS species, COUNT(*) AS recordings FROM sounds.recordings GROUP BY group_name ORDER BY group_name",
+  "category": "sounds"
+ },
+ {
+  "question": "Which fish recordings are grunts?",
+  "referenceSql": "SELECT recording_id, species, recorded_year FROM sounds.recordings WHERE group_name = 'fish' AND call_type = 'grunt' ORDER BY recording_id",
+  "category": "sounds"
+ },
+ {
+  "question": "For each bird species with a recording, how many Smithsonian specimens does the NMNH hold, and how many of them have coordinates?",
+  "referenceSql": "SELECT s.species, s.usnm_specimens, s.usnm_with_coordinates FROM sounds.species s WHERE s.group_name = 'bird' AND EXISTS (SELECT 1 FROM sounds.recordings r WHERE r.species = s.species) ORDER BY s.usnm_specimens DESC",
+  "category": "sounds"
+ },
+ {
+  "question": "Which bird species has the most Smithsonian specimens, and how many recordings do we have of it?",
+  "referenceSql": "SELECT s.species, s.usnm_specimens, COUNT(r.recording_id) AS recordings FROM sounds.species s LEFT JOIN sounds.recordings r ON r.species = s.species WHERE s.group_name = 'bird' GROUP BY s.species, s.usnm_specimens ORDER BY s.usnm_specimens DESC LIMIT 1",
+  "category": "sounds"
+ },
+ {
+  "question": "What share of each bird species' Smithsonian specimens has coordinates, lowest first?",
+  "referenceSql": "SELECT species, ROUND(100.0 * usnm_with_coordinates / usnm_specimens, 1) AS pct_with_coordinates FROM sounds.species WHERE group_name = 'bird' ORDER BY pct_with_coordinates, species",
+  "category": "sounds"
+ },
+ {
+  "question": "Which bird species have a recording but fewer than 1,500 Smithsonian specimens?",
+  "referenceSql": "SELECT species, usnm_specimens FROM sounds.species WHERE group_name = 'bird' AND usnm_specimens < 1500 ORDER BY usnm_specimens",
+  "category": "sounds"
+ },
+ {
+  "question": "Which recordings carry a licence that forbids derived works?",
+  "referenceSql": "SELECT r.recording_id, r.species, r.license FROM sounds.recordings r JOIN sounds.licenses l ON l.license = r.license WHERE NOT l.allows_derivatives ORDER BY r.recording_id",
+  "category": "sounds"
+ },
+ {
+  "question": "Which recordings can be used commercially?",
+  "referenceSql": "SELECT r.recording_id, r.species, r.license FROM sounds.recordings r JOIN sounds.licenses l ON l.license = r.license WHERE l.allows_commercial_use ORDER BY r.recording_id",
+  "category": "sounds"
+ },
+ {
+  "question": "How many recordings do we have under each licence?",
+  "referenceSql": "SELECT license, COUNT(*) AS recordings FROM sounds.recordings GROUP BY license ORDER BY recordings DESC, license",
+  "category": "sounds"
+ },
+ {
+  "question": "Who made the most bird recordings, and how many?",
+  "referenceSql": "SELECT recordist, COUNT(*) AS recordings FROM sounds.recordings WHERE group_name = 'bird' GROUP BY recordist ORDER BY recordings DESC, recordist LIMIT 1",
+  "category": "sounds"
+ },
+ {
+  "question": "Which bird species were recorded in more than one country?",
+  "referenceSql": "SELECT species, COUNT(DISTINCT country) AS countries FROM sounds.recordings WHERE group_name = 'bird' GROUP BY species HAVING COUNT(DISTINCT country) > 1 ORDER BY countries DESC, species",
+  "category": "sounds"
+ },
+ {
+  "question": "How many bird recordings were made in January 2026?",
+  "referenceSql": "SELECT COUNT(*) AS recordings FROM sounds.recordings WHERE group_name = 'bird' AND recorded_on >= DATE '2026-01-01' AND recorded_on < DATE '2026-02-01'",
+  "category": "sounds"
+ },
+ {
+  "question": "Which fish species have more than one recording, and what call types do they have?",
+  "referenceSql": "SELECT species, COUNT(*) AS recordings, STRING_AGG(DISTINCT call_type, ', ' ORDER BY call_type) AS call_types FROM sounds.recordings WHERE group_name = 'fish' GROUP BY species HAVING COUNT(*) > 1 ORDER BY species",
+  "category": "sounds"
+ },
+ {
+  "question": "Which recordings have no country, and what group are they in?",
+  "referenceSql": "SELECT group_name, COUNT(*) AS recordings FROM sounds.recordings WHERE country IS NULL GROUP BY group_name ORDER BY group_name",
+  "category": "sounds"
+ }
+]

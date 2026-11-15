@@ -1,0 +1,7 @@
+{
+ "entities": {
+  "sounds:sounds.species": "One row per species that has at least one recording, with the number of Smithsonian NMNH (USNM) specimens held for it.",
+  "sounds:sounds.recordings": "One row per audio recording (a bird song or call, a fish sound), with who recorded it, where and when, the licence, and links to the audio file and its spectrogram image.",
+  "sounds:sounds.licenses": "One row per licence found on the recordings, with what it permits."
+ }
+}
