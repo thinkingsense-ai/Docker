@@ -45,6 +45,24 @@ the semantic layer should keep the two apart (observed metadata versus model-sug
 - Same caveats: 48 clips, 8 species, first run, clips are the ones the dataset's contributors considered good examples of the species. Not a field-accuracy figure.
 - Running it: BirdNET starts worker processes, so it must run as a script file with a main guard (a stdin script crashes with an unhelpful "producer exited" error).
 
+## Vector search in Postgres (pgvector, `vector_search.py`)
+
+The CLAP embeddings (512 numbers per clip) are loaded into `sounds.recording_embeddings` (`vector(512)`, cosine distance `<=>`) in a `pgvector/pgvector:pg16` database that also holds the sounds pack, so one SQL statement can rank by sound and filter or join on the curated metadata.
+Run `python vector_search.py` after `embed_audio.py` (needs Docker; it starts and removes its own container).
+
+| Test | Result |
+|---|---|
+| pgvector's top 5 against brute-force numpy (72 queries, then one hybrid query) | identical every time: the engine is exact |
+| Audio to audio, birds: same species among the 5 nearest recordings | 32% (chance about 7%) |
+| Audio to audio, fish: same species among the 5 nearest | 9% (24 recordings over 17 species: most have no same-species neighbour, so read this as "does not find them") |
+| Text to audio, "the song of a <bird>": precision at 5 | 30% (chance 8%); top hit right for 3 of 8 species; American Crow 4 of 5, Blue Jay and Song Sparrow 0 of 5 |
+| Hybrid: nearest to "a loud alarm call", birds in the USA, derivatives allowed, joined to specimen counts | correct rows and join; but 0 of the 5 are alarm calls (only 1 recording is labelled one, so this is not a fair test of the text) |
+
+- **The database part works; the embedding part is the limit.** CLAP is a general audio model and is the weak link: BirdNET gets the species right for 46 of 48 clips where CLAP's nearest neighbour manages about half. For species, search BirdNET's labels (the annotation table); use CLAP vectors for "sounds like this" and for kinds of sound that have no species label.
+- **Filters before ranking** (licence, country, group) are plain SQL and exact at this size. With millions of rows an HNSW or IVFFlat index makes the search approximate, and a filter that removes most rows can return fewer than the requested number; that needs testing at scale.
+- **What the semantic layer has to say about it:** a vector column is not a fact. The comment must say what the vector is, which model made it, that distances only compare vectors from the same model, and that a smaller distance means "sounds more alike", not "same species". `recordings.species` stays the answer to species questions.
+- **Licence:** the embeddings are derived from non-commercial recordings. They are not committed (`out/` is ignored); regenerate with `embed_audio.py`.
+
 ## Use cases to test (questions, with the answer checked against the manifest)
 
 1. **Structured only, over the new tables:** "How many recordings do we have per species, and from which countries?"; "Which bird recordings are alarm calls?"
@@ -60,7 +78,7 @@ top-3 contains the same species at least as often as the baseline above.
 
 ## Next steps
 
-- Load `recordings.csv` and `usnm_specimens.csv` into a new pack database and register it as a source; write the 5 to 10 questions above with reference SQL (use cases 1, 2, 7 need no model).
-- Add embeddings as a table (pgvector) and a small tool that returns the nearest neighbours (use cases 4, 5).
+- ~~Pack database and structured questions~~ done: `../sounds-pack`.
+- ~~Embeddings in pgvector~~ done (`vector_search.py`, section above). Open: let the app ask a vector question (a tool or connector that turns text into a query vector), and try a better audio model than CLAP for retrieval.
 - ~~Expose BirdNET as a model-annotation table~~ done: `birdnet_annotate.py` writes `manifest/birdnet_annotations.csv`; the table `sounds.model_annotations` in `../sounds-pack` joins it to the curated metadata (use case 3), with 7 questions in the benchmark.
 - Image embeddings for the spectrograms (use case 6).
