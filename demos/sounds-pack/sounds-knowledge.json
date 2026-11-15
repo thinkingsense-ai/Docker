@@ -2,6 +2,7 @@
  "entities": {
   "sounds:sounds.species": "One row per species that has at least one recording, with the number of Smithsonian NMNH (USNM) specimens held for it.",
   "sounds:sounds.recordings": "One row per audio recording (a bird song or call, a fish sound), with who recorded it, where and when, the licence, and links to the audio file and its spectrogram image.",
-  "sounds:sounds.licenses": "One row per licence found on the recordings, with what it permits."
+  "sounds:sounds.licenses": "One row per licence found on the recordings, with what it permits.",
+  "sounds:sounds.model_annotations": "Labels made by an audio model (BirdNET) for the bird recordings, up to 3 guesses per recording and species_scope. These are model output, not curated facts: the recordist's species in recordings.species is the reference, and a guess can be wrong even when its confidence is high. What the model 'said', 'labelled', 'got right' or 'got wrong' for a recording always means its best guess (rank 1); ranks 2 and 3 are alternatives and count only when a question asks about the top three."
  }
 }

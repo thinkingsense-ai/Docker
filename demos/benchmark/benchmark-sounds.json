@@ -281,5 +281,113 @@
    "Groups with no country-less recordings do not appear in the results.",
    "Results are ordered alphabetically by group name."
   ]
+ },
+ {
+  "id": "sounds-18",
+  "pack": "sounds",
+  "question": "In how many recordings does BirdNET's best guess, restricted to the expected species, match the species on record?",
+  "referenceSql": "SELECT COUNT(*) AS matching_recordings, (SELECT COUNT(*) FROM sounds.recordings WHERE group_name = 'bird') AS bird_recordings FROM sounds.model_annotations a JOIN sounds.recordings r ON r.recording_id = a.recording_id WHERE a.species_scope = 'expected' AND a.rank = 1 AND a.scientific_name = r.species",
+  "tags": [
+   "tables:2",
+   "join",
+   "model-annotations"
+  ],
+  "rules": [
+   "Use the model's best guess (rank 1) with species_scope 'expected'; a match is when the guessed scientific_name equals the recording's curated species.",
+   "Count matching recordings and also show the number of bird recordings."
+  ]
+ },
+ {
+  "id": "sounds-19",
+  "pack": "sounds",
+  "question": "Which recordings does BirdNET get wrong when restricted to the expected species, and what does it say instead?",
+  "referenceSql": "SELECT r.recording_id, r.species, a.scientific_name AS model_species, a.confidence FROM sounds.model_annotations a JOIN sounds.recordings r ON r.recording_id = a.recording_id WHERE a.species_scope = 'expected' AND a.rank = 1 AND a.scientific_name <> r.species ORDER BY r.recording_id",
+  "tags": [
+   "tables:2",
+   "join",
+   "model-annotations"
+  ],
+  "rules": [
+   "Use rank 1 with species_scope 'expected'; wrong means the guessed scientific_name differs from the curated species.",
+   "List the recording, curated species, guessed species and confidence."
+  ]
+ },
+ {
+  "id": "sounds-20",
+  "pack": "sounds",
+  "question": "For each bird species, how many recordings does BirdNET get right when restricted to the expected species, and how many Smithsonian specimens does the NMNH hold?",
+  "referenceSql": "SELECT r.species, COUNT(*) AS recordings, COUNT(*) FILTER (WHERE a.scientific_name = r.species) AS model_right, MAX(s.usnm_specimens) AS usnm_specimens FROM sounds.recordings r JOIN sounds.model_annotations a ON a.recording_id = r.recording_id AND a.species_scope = 'expected' AND a.rank = 1 JOIN sounds.species s ON s.species = r.species GROUP BY r.species ORDER BY r.species",
+  "tags": [
+   "tables:3",
+   "join",
+   "model-annotations",
+   "cross-source-style"
+  ],
+  "rules": [
+   "Use rank 1 with species_scope 'expected'; right means the guessed species equals the curated species.",
+   "One row per bird species: recordings, number the model got right, and the Smithsonian specimen count from the species table."
+  ]
+ },
+ {
+  "id": "sounds-21",
+  "pack": "sounds",
+  "question": "Which recordings does BirdNET label with a different species at a confidence of 0.8 or more when it chooses among all species?",
+  "referenceSql": "SELECT r.recording_id, r.species, a.scientific_name AS model_species, a.confidence FROM sounds.model_annotations a JOIN sounds.recordings r ON r.recording_id = a.recording_id WHERE a.species_scope = 'all' AND a.rank = 1 AND a.scientific_name <> r.species AND a.confidence >= 0.8 ORDER BY a.confidence DESC, r.recording_id",
+  "tags": [
+   "tables:2",
+   "join",
+   "model-annotations",
+   "threshold"
+  ],
+  "rules": [
+   "Use rank 1 with species_scope 'all' (the model unaided).",
+   "Only guesses that differ from the curated species and have confidence at or above 0.8; most confident first."
+  ]
+ },
+ {
+  "id": "sounds-22",
+  "pack": "sounds",
+  "question": "In how many recordings is the species on record not among BirdNET's top three guesses when it chooses among all species?",
+  "referenceSql": "SELECT COUNT(*) AS recordings FROM sounds.recordings r WHERE r.group_name = 'bird' AND NOT EXISTS (SELECT 1 FROM sounds.model_annotations a WHERE a.recording_id = r.recording_id AND a.species_scope = 'all' AND a.scientific_name = r.species)",
+  "tags": [
+   "tables:2",
+   "model-annotations",
+   "anti-join"
+  ],
+  "rules": [
+   "Use species_scope 'all' and any rank (top three): count bird recordings whose curated species is not among the model's three guesses."
+  ]
+ },
+ {
+  "id": "sounds-23",
+  "pack": "sounds",
+  "question": "Compare the average confidence of BirdNET's best guess when it is right and when it is wrong, restricted to the expected species.",
+  "referenceSql": "SELECT (a.scientific_name = r.species) AS model_right, COUNT(*) AS recordings, ROUND(AVG(a.confidence)::numeric, 3) AS avg_confidence FROM sounds.model_annotations a JOIN sounds.recordings r ON r.recording_id = a.recording_id WHERE a.species_scope = 'expected' AND a.rank = 1 GROUP BY 1 ORDER BY 1 DESC",
+  "tags": [
+   "tables:2",
+   "join",
+   "model-annotations",
+   "aggregate"
+  ],
+  "rules": [
+   "Use rank 1 with species_scope 'expected'; split recordings into model right and model wrong.",
+   "Report recordings and average confidence for each of the two groups."
+  ]
+ },
+ {
+  "id": "sounds-24",
+  "pack": "sounds",
+  "question": "How does BirdNET do on alarm calls compared with songs, restricted to the expected species?",
+  "referenceSql": "SELECT r.call_type, COUNT(*) AS recordings, COUNT(*) FILTER (WHERE a.scientific_name = r.species) AS model_right FROM sounds.model_annotations a JOIN sounds.recordings r ON r.recording_id = a.recording_id WHERE a.species_scope = 'expected' AND a.rank = 1 AND r.call_type IN ('alarm call', 'song') GROUP BY r.call_type ORDER BY r.call_type",
+  "tags": [
+   "tables:2",
+   "join",
+   "model-annotations",
+   "aggregate"
+  ],
+  "rules": [
+   "Use rank 1 with species_scope 'expected'; only recordings whose call_type is alarm call or song.",
+   "Per call type: recordings and how many the model got right."
+  ]
  }
 ]

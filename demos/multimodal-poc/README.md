@@ -62,5 +62,5 @@ top-3 contains the same species at least as often as the baseline above.
 
 - Load `recordings.csv` and `usnm_specimens.csv` into a new pack database and register it as a source; write the 5 to 10 questions above with reference SQL (use cases 1, 2, 7 need no model).
 - Add embeddings as a table (pgvector) and a small tool that returns the nearest neighbours (use cases 4, 5).
-- Expose BirdNET as a tool: a species label with confidence and alternatives as a model-annotation table, joined to the curated metadata (use case 3).
+- ~~Expose BirdNET as a model-annotation table~~ done: `birdnet_annotate.py` writes `manifest/birdnet_annotations.csv`; the table `sounds.model_annotations` in `../sounds-pack` joins it to the curated metadata (use case 3), with 7 questions in the benchmark.
 - Image embeddings for the spectrograms (use case 6).
