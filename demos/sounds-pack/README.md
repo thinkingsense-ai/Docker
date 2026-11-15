@@ -41,3 +41,27 @@ Seven questions about BirdNET's labels were added (best guess against the specie
 - **The new table did not disturb the old questions** (15, 14, 15 against 13 to 16 before): an extra table with annotated columns was not a distraction.
 - **Still failing, unchanged by this work:** the zero-row licence question and the fish "more than one recording" grouping (see above). Rules for the new questions in `../benchmark/benchmark-sounds.json` were written by hand, not drafted by a model.
 - **Judge:** haiku-5-5, as before. The v3/v4 runs used the same data and the same day's reference rows.
+
+## How far can annotations go? A ceiling run (24 questions, Sonnet 4.5, 3 runs)
+
+`experiments/ceiling-comments.sql` adds comments that state the business rules behind the three questions that fail in every other variant (zero rows is a valid answer; count per species, not per call type; both groups appear). A deliberately question-shaped upper bound, not shipped.
+
+| Variant | Runs (of 24) | Right in every run | Still failing |
+|---|---|---|---|
+| Rank-1 comment (shipped) | 22, 21, 22 | 21 | licence zero-row, fish grouping, no-country shape (1 of 3) |
+| + ceiling comments | **23, 23, 23** | **23** | fish grouping |
+
+- **Stating the rule fixes the zero-row licence question and the dropped bird group.** "Every licence here is non-commercial, so the answer is empty: say so" turns a hallucinated list into the right empty answer.
+- **It does not fix the fish grouping, even with the rule written out.** "Which fish species have more than one recording, and what call types do they have?" is still grouped by species and call type (a species whose two recordings have different call types disappears). The question's own words ("and what call types") pull the grouping; a comment cannot overrule that. That is a prompt or planner matter (Server#93), not an annotation matter.
+
+## A vector column in the pack (`experiments/make_vector_sql.py`, 5 questions, Sonnet 4.5, 3 runs each)
+
+`sounds.recording_embeddings` (pgvector, the CLAP audio vectors) added to the pack; questions anchored on a recording that is already in the table ("Which 5 recordings sound most like xc1072993?", the same-species share of those, the nearest that allows derivatives, species and country of the nearest 3, a count by group).
+
+| Variant | Runs (of 5) |
+|---|---|
+| Plain comments ("Audio embedding of each recording.") | 5, 5, 5 |
+| Comments that define the vector (model, distance, never select it, species is not the same as sound) | 5, 5, 5 |
+
+- **The first attempt failed for a reason nobody would guess from the column list:** the app connects with `currentSchema=sounds`, so pgvector's `<=>` operator, installed in `public`, is not found (`operator does not exist: public.vector <=> public.vector`), for the model's SQL and for the reference SQL alike. The extension has to be installed in the schema the app searches (`CREATE EXTENSION vector SCHEMA sounds`) or `public` added to the connection's search path. This is a deployment fact the semantic layer cannot describe, so the onboarding check has to catch it.
+- **With the operator visible, a recording-anchored similarity question needs no special annotation:** the model writes `ORDER BY embedding <=> (SELECT embedding ...)` unaided. The wording of the vector comments did not change the score at five questions. What it cannot do is a question phrased as text ("sounds like a crow alarm call"): that needs a query vector made from the text by the same model, which the app has no way to do yet.
