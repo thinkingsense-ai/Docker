@@ -9,6 +9,10 @@ export OMNIGATE_LLM_API_KEY=sk-ant-...
 docker compose --project-directory . -f demos/sounds-pack/docker-compose.sounds.yml up --build   # from the repository root
 ```
 
+**With audio vectors (optional, one command).** `demos/sounds-pack/up-with-vectors.sh [plain|defined]` starts the same pack on a pgvector Postgres with `sounds.recording_embeddings` (the CLAP vectors) loaded, so Ask can answer
+"Which 3 recordings sound most like xc1072993, and what species are they on record?" (checked live: it ranks by cosine distance and joins the curated species). The vectors are not committed (they derive from non-commercial recordings): the script makes them
+once with `../multimodal-poc/embed_audio.py` (needs `fetch_data.py` first, and torch + transformers). It cannot answer a question phrased only as text ("sounds like a crow alarm call"): the app has no way to turn text into a vector yet (Server#95). Note the example: the nearest recordings to an American Robin are a Song Sparrow and two chickadees, which is the 32% same-species result in the multimodal README, not a bug.
+
 `build_pack.py` regenerates `seed-sounds.sql` (with table and column comments, where the app reads descriptions), `demo-questions-sounds.json` (24 questions with reference SQL) and `sounds-knowledge.json` from `../multimodal-poc/manifest/`.
 Tables: `sounds.recordings`, `sounds.species`, `sounds.licenses`, and `sounds.model_annotations`.
 
