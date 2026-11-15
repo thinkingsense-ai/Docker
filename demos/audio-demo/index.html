@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Name That Sound</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#16202a;--mute:#5d6b7a;--line:#dde3ea;--accent:#1d6fd6;--accent-ink:#fff;--good:#1b7f4b;--warn:#a35a00;--bad:#b3261e;--bar:#cfe1f7}
+@media (prefers-color-scheme:dark){:root{--bg:#10151b;--card:#18202a;--ink:#e8edf2;--mute:#97a4b3;--line:#2a3542;--accent:#4a9bff;--accent-ink:#06121f;--good:#4cc38a;--warn:#e0a24a;--bad:#ff8a80;--bar:#23405f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:980px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:26px;margin:0 0 4px}h2{font-size:16px;margin:0 0 10px}.sub{color:var(--mute);margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+button,.btn{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 14px;cursor:pointer}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}button:disabled{opacity:.5;cursor:default}
+button.rec{border-color:var(--bad);color:var(--bad)}button.rec.on{background:var(--bad);color:#fff}
+audio{width:100%;max-width:520px}.hint{color:var(--mute);font-size:13px}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:10px 14px;color:var(--mute)}.drop.over{border-color:var(--accent);color:var(--ink)}
+.bars .b{display:grid;grid-template-columns:200px 1fr 130px;gap:10px;align-items:center;margin:4px 0}
+.bar{height:14px;border-radius:7px;background:var(--bar);position:relative;overflow:hidden}.bar i{display:block;height:100%;background:var(--accent)}
+.tag{white-space:nowrap;display:inline-block;font-size:12px;border-radius:99px;padding:1px 8px;border:1px solid var(--line);color:var(--mute);margin-right:4px}
+.tag.good{color:var(--good);border-color:var(--good)}.tag.warn{color:var(--warn);border-color:var(--warn)}.tag.bad{color:var(--bad);border-color:var(--bad)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
+.rc{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg)}.rc img{width:100%;height:84px;object-fit:cover;object-position:left center;border-radius:6px;background:#000}
+.rc audio{margin-top:6px;width:100%}.rc .t{font-weight:600}.kv{display:grid;grid-template-columns:150px 1fr;gap:4px 12px}.kv div:nth-child(odd){color:var(--mute)}
+.ask button{margin:0 8px 8px 0;text-align:left}.err{color:var(--bad)}.spin{color:var(--mute)}
+@media(max-width:640px){.bars .b{grid-template-columns:110px 1fr 110px}.kv{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<h1>Name That Sound</h1>
+<p class="sub">Play a bird sound, or bring your own clip, and see what an audio model makes of it, which recordings sound alike, and what the curated record says. Demo and research use only: the recordings and the BirdNET model are non-commercial.</p>
+
+<div class="card">
+  <div class="row">
+    <button class="primary" id="mystery">🎲 Mystery bird</button>
+    <button id="mysteryFish">🐟 Mystery fish</button>
+    <button id="pick">⬆ Upload a clip</button><input type="file" id="file" accept="audio/*,.wav,.mp3,.flac,.ogg" hidden>
+    <button class="rec" id="rec">● Record</button>
+    <span class="hint" id="status"></span>
+  </div>
+  <div class="drop" id="drop" style="margin-top:12px">…or drop an audio file here (wav, mp3, flac or ogg; first minute is used)</div>
+  <div id="player" style="margin-top:12px"></div>
+</div>
+
+<div id="out"></div>
+</main>
+<script>
+const $ = s => document.querySelector(s), esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let cfg = {ask_url: 'http://localhost:8080'}, samples = [], current = null, busy = false;
+fetch('/api/config').then(r => r.json()).then(c => cfg = c); fetch('/api/samples').then(r => r.json()).then(s => samples = s);
+const status = t => $('#status').textContent = t || '';
+
+function setPlayer(src, label) { $('#player').innerHTML = `<div class="hint">${esc(label)}</div><audio controls autoplay src="${src}"></audio>`; }
+async function identify(blob, exclude, label, src) {
+  if (busy) return; busy = true; setPlayer(src, label); $('#out').innerHTML = '<div class="card spin">Listening… (a few seconds)</div>'; status('');
+  try {
+    const r = await fetch('/api/identify' + (exclude ? '?exclude=' + exclude : ''), {method: 'POST', body: blob});
+    const j = await r.json(); if (!r.ok || j.error) throw new Error(j.error || r.statusText);
+    render(j, exclude);
+  } catch (e) { $('#out').innerHTML = `<div class="card err">${esc(e.message)}</div>`; }
+  busy = false;
+}
+async function mystery(group) {
+  const pool = samples.filter(s => s.group === group); if (!pool.length) return status('Still loading…');
+  const id = pool[Math.floor(Math.random() * pool.length)].id, blob = await (await fetch('/audio/' + id)).blob();
+  current = {id, mystery: true}; identify(blob, id, 'Mystery ' + group + ' (recording ' + id + ', species hidden until you reveal it)', '/audio/' + id);
+}
+function fromFile(f) { current = {id: null}; identify(f, null, f.name, URL.createObjectURL(f)); }
+$('#mystery').onclick = () => mystery('bird'); $('#mysteryFish').onclick = () => mystery('fish');
+$('#pick').onclick = () => $('#file').click(); $('#file').onchange = e => e.target.files[0] && fromFile(e.target.files[0]);
+const drop = $('#drop'); ['dragover', 'dragenter'].forEach(t => drop.addEventListener(t, e => {e.preventDefault(); drop.classList.add('over')}));
+['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => {e.preventDefault(); drop.classList.remove('over')}));
+drop.addEventListener('drop', e => e.dataTransfer.files[0] && fromFile(e.dataTransfer.files[0]));
+
+// Record from the microphone as WAV (no server-side decoding needed)
+let ctx, proc, stream, chunks = [], recording = false;
+$('#rec').onclick = async () => {
+  if (!recording) {
+    try { stream = await navigator.mediaDevices.getUserMedia({audio: true}); } catch (e) { return status('Microphone not available: ' + e.message); }
+    ctx = new AudioContext(); const src = ctx.createMediaStreamSource(stream); proc = ctx.createScriptProcessor(4096, 1, 1); chunks = [];
+    proc.onaudioprocess = e => { chunks.push(new Float32Array(e.inputBuffer.getChannelData(0))); if (chunks.length * 4096 / ctx.sampleRate > 30) $('#rec').click(); };
+    src.connect(proc); proc.connect(ctx.destination); recording = true; $('#rec').classList.add('on'); $('#rec').textContent = '■ Stop'; status('Recording (30 s max)…');
+  } else {
+    recording = false; proc.disconnect(); stream.getTracks().forEach(t => t.stop()); $('#rec').classList.remove('on'); $('#rec').textContent = '● Record'; status('');
+    const n = chunks.reduce((a, c) => a + c.length, 0), pcm = new Int16Array(n); let o = 0;
+    for (const c of chunks) for (const v of c) pcm[o++] = Math.max(-1, Math.min(1, v)) * 32767;
+    const sr = ctx.sampleRate, buf = new ArrayBuffer(44 + n * 2), dv = new DataView(buf), w = (p, s) => [...s].forEach((c, i) => dv.setUint8(p + i, c.charCodeAt(0)));
+    w(0, 'RIFF'); dv.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+    dv.setUint32(24, sr, true); dv.setUint32(28, sr * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true); w(36, 'data'); dv.setUint32(40, n * 2, true);
+    new Int16Array(buf, 44).set(pcm); const blob = new Blob([buf], {type: 'audio/wav'}); current = {id: null};
+    identify(blob, null, 'Your recording', URL.createObjectURL(blob));
+  }
+};
+
+const pct = c => Math.round(c * 100) + '%', conf = c => c >= .7 ? ['confident', 'good'] : c >= .4 ? ['unsure', 'warn'] : ['not confident', 'bad'];
+function bars(list) {
+  if (!list.length) return '<div class="hint">No bird detected above 1%.</div>';
+  return '<div class="bars">' + list.map(x => { const [t, k] = conf(x.confidence);
+    return `<div class="b"><div>${esc(x.common)}<div class="hint"><i>${esc(x.scientific)}</i></div></div><div class="bar"><i style="width:${x.confidence * 100}%"></i></div><div><b>${pct(x.confidence)}</b> <span class="tag ${k}">${t}</span></div></div>`; }).join('') + '</div>';
+}
+function card(n) {
+  return `<div class="rc"><img loading="lazy" src="${n.image}" alt="spectrogram"><div class="t">${esc(n.common || n.species)} <span class="tag">${esc(n.group)}</span>${n.similarity >= .995 ? '<span class="tag good">this exact recording</span>' : ''}</div>
+  <div class="hint"><i>${esc(n.species)}</i> · ${esc(n.call_type || 'unspecified')} · ${esc(n.country || 'no country on record')}${n.recorded_on ? ' · ' + esc(n.recorded_on) : ''}</div>
+  <audio controls preload="none" src="${n.audio}"></audio><div class="hint">sounds alike: ${n.similarity} · ${esc(n.license)} · <a href="${esc(n.source)}" target="_blank" rel="noopener">source</a></div></div>`;
+}
+function ask(q) { return `<button data-q="${esc(q)}">${esc(q)}</button>`; }
+function render(r, exclude) {
+  const best = r.birdnet_expected[0], all = r.birdnet_all[0], sp = r.species, sure = best && best.confidence >= .4;
+  let h = '<div class="card"><h2>1 · What BirdNET hears</h2>';
+  h += `<div class="hint" style="margin-bottom:6px">Choosing among the 8 species in this collection (the way you would with a place and season in mind):</div>${bars(r.birdnet_expected.slice(0, 3))}`;
+  h += `<div class="hint" style="margin:10px 0 4px">Choosing among all 11,560 species it knows (no prior):</div>${bars(r.birdnet_all.slice(0, 1))}`;
+  if (best && all && best.scientific !== all.scientific) h += `<div class="hint" style="margin-top:8px">⚠ The two answers differ. Restricting to the species you expect is usually right; an unaided answer can be confident and wrong (average confidence was almost the same for right and wrong answers in our test).</div>`;
+  if (!sure) h += `<div class="hint err" style="margin-top:8px">BirdNET is not confident this is a bird in the collection.${r.group.guess === 'fish' ? ' The sound model leans towards a fish sound (a weak hint: ' + r.group.margin + ' margin); BirdNET is built for birds.' : ''}</div>`;
+  h += '</div>';
+  if (current && current.mystery) h += `<div class="card"><h2>2 · Reveal</h2><div id="reveal"><button id="revealBtn">Show what the record says about this clip</button></div></div>`;
+  h += `<div class="card"><h2>${current && current.mystery ? '3' : '2'} · Recordings that sound most alike</h2><div class="hint" style="margin-bottom:8px">Nearest by sound (CLAP audio vectors). Alike sound is not the same species: in our test the nearest recording was the same species about half the time.</div><div class="grid">${r.nearest.map(card).join('')}</div></div>`;
+  if (sp) {
+    h += `<div class="card"><h2>${current && current.mystery ? '4' : '3'} · What the record says about ${esc(sp.common)} <i class="hint">(${esc(sp.scientific)})</i></h2><div class="kv">
+      <div>Recordings in the collection</div><div>${sp.recordings}</div><div>Where</div><div>${esc(sp.countries.join(', ') || 'no country')}</div>
+      <div>Call types</div><div>${esc(Object.entries(sp.call_types).map(([k, v]) => k + ' (' + v + ')').join(', '))}</div>
+      <div>Smithsonian NMNH specimens</div><div>${sp.usnm_specimens ?? 'n/a'}${sp.usnm_with_coordinates != null ? ' (' + sp.usnm_with_coordinates + ' with coordinates)' : ''}</div>
+      <div>Licence</div><div>${esc(sp.licenses.join(', '))} — <b>${sp.commercial_use ? 'commercial use allowed' : 'not for commercial use'}</b></div></div>`;
+    h += `<div class="ask" style="margin-top:14px"><div class="hint" style="margin-bottom:6px">Ask the data in Ask (copies the question, then opens Ask):</div>
+      ${ask('Which recordings of ' + sp.scientific + ' do we have, where were they recorded and under which licence?')}
+      ${ask('How many Smithsonian specimens does the NMNH hold for ' + sp.scientific + ', and how many of them have coordinates?')}
+      ${ask('Does BirdNET agree with the species on record for the ' + sp.scientific + ' recordings?')}
+      ${current && current.id ? ask('Which 3 recordings sound most like recording ' + current.id + ', and what species are they on record?') : ''}</div></div>`;
+  }
+  $('#out').innerHTML = h;
+  document.querySelectorAll('.ask button').forEach(b => b.onclick = () => { navigator.clipboard && navigator.clipboard.writeText(b.dataset.q); window.open(cfg.ask_url, '_blank'); status('Question copied: paste it into Ask.'); });
+  const rb = $('#revealBtn'); if (rb) rb.onclick = async () => {
+    const t = await (await fetch('/api/truth/' + current.id)).json(), ok = best && best.scientific === t.species;
+    $('#reveal').innerHTML = `<div class="kv"><div>Recordist's species</div><div><b>${esc(t.common || t.species)}</b> <i>(${esc(t.species)})</i> · ${esc(t.call_type || 'unspecified')} · ${esc(t.country || 'no country')} · recorded by ${esc(t.recordist)}</div>
+      <div>BirdNET (expected species)</div><div>${best ? esc(best.common) + ' ' + pct(best.confidence) : 'nothing'} — ${t.group === 'fish' ? '<span class="tag warn">BirdNET is built for birds</span>' : ok ? '<span class="tag good">agrees with the record</span>' : '<span class="tag bad">disagrees with the record</span>'}</div>
+      <div>BirdNET (all species)</div><div>${all ? esc(all.common) + ' ' + pct(all.confidence) : 'nothing'}</div></div><div class="hint" style="margin-top:6px">The record is the recordist's identification; the model's label never replaces it.</div>`; };
+}
+</script>
+</body>
+</html>

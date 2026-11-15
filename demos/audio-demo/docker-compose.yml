@@ -1,0 +1,12 @@
+# docker compose -f demos/audio-demo/docker-compose.yml up --build      -> http://localhost:8090
+# Needs demos/multimodal-poc/cache (fetch_data.py) and out/embeddings.npz (embed_audio.py) on the host; they are mounted read-only.
+# Model downloads (BirdNET, CLAP) are kept in the `models` volume so they happen once.
+services:
+  audio-demo:
+    build: .
+    ports: ["8090:8090"]
+    volumes:
+      - ../multimodal-poc:/poc:ro
+      - models:/models
+volumes:
+  models:
