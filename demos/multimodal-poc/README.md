@@ -63,6 +63,25 @@ Run `python vector_search.py` after `embed_audio.py` (needs Docker; it starts an
 - **What the semantic layer has to say about it:** a vector column is not a fact. The comment must say what the vector is, which model made it, that distances only compare vectors from the same model, and that a smaller distance means "sounds more alike", not "same species". `recordings.species` stays the answer to species questions.
 - **Licence:** the embeddings are derived from non-commercial recordings. They are not committed (`out/` is ignored); regenerate with `embed_audio.py`.
 
+## Image embeddings of the spectrograms (CLIP, `embed_images.py`)
+
+Each recording has a spectrogram picture (Xeno-canto draws its own; the fish ones come from the FishSounds repository). `embed_images.py` embeds them with CLIP `openai/clip-vit-base-patch32` (512 numbers, image and text in one space) and writes `out/image_embeddings.npz`.
+
+| Test | Result |
+|---|---|
+| Image to image, birds, same species as the nearest picture, CLIP's default centre crop | 25% (top 5: 20%) |
+| Same, whole picture squashed to a square | 15% |
+| Same, picture cut into square tiles and the vectors averaged | **29%** (top 5: 19%); fish 25% |
+| Audio only (CLAP), for comparison | birds 48% (top 5: 32%); fish 25% |
+| Audio and image similarity added (equal weight, or image weighted 0.25) | birds 48% or 46%, fish 25%: **no gain over audio alone** |
+| Bird versus fish, zero-shot from the picture ("a spectrogram of a bird song" or "of a fish sound") | 81% (chance 50%) |
+| Bird versus fish, nearest centroid on the picture vectors | **100%** |
+
+- **The pictures are not neutral.** Bird and fish pictures are drawn by different programs at different sizes (birds are wide strips about 8,500 by 475 pixels, fish about 2,300 by 1,200), so the vectors separate the two groups perfectly without hearing anything. That is the source's drawing style, not acoustics. A "similar spectrogram" search across sources would mostly return same-source pictures.
+- **Preprocessing matters as much as the model.** CLIP's default centre crop keeps only a sliver of a wide strip; squashing distorts it; tiling gave the best result. The vector's meaning therefore depends on a pipeline setting nobody sees in the column.
+- **A general image model is not a bird-sound model.** CLIP was trained on photographs, so 29% is only a little better than the audio model's 48% is good. For retrieval by sound, the audio vectors are the better route; spectrogram images are most useful as the thing a person looks at (the `image_url` column) and for a model that reads spectrograms (a bird-specific image model is untested).
+- **Nothing new from combining them** at this size (72 clips): do not add the image vector to a search just because it exists.
+
 ## Use cases to test (questions, with the answer checked against the manifest)
 
 1. **Structured only, over the new tables:** "How many recordings do we have per species, and from which countries?"; "Which bird recordings are alarm calls?"
@@ -81,4 +100,4 @@ top-3 contains the same species at least as often as the baseline above.
 - ~~Pack database and structured questions~~ done: `../sounds-pack`.
 - ~~Embeddings in pgvector~~ done (`vector_search.py`, section above). Open: let the app ask a vector question (a tool or connector that turns text into a query vector), and try a better audio model than CLAP for retrieval.
 - ~~Expose BirdNET as a model-annotation table~~ done: `birdnet_annotate.py` writes `manifest/birdnet_annotations.csv`; the table `sounds.model_annotations` in `../sounds-pack` joins it to the curated metadata (use case 3), with 7 questions in the benchmark.
-- Image embeddings for the spectrograms (use case 6).
+- ~~Image embeddings for the spectrograms~~ done (`embed_images.py`, section above). Open: an image model made for spectrograms, and a pgvector table for them.
