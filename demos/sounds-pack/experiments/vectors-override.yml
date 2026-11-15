@@ -1,0 +1,4 @@
+# Runs the sounds pack on a Postgres that has the pgvector extension (compose -f ... -f vectors-override.yml).
+services:
+  postgres:
+    image: pgvector/pgvector:pg16

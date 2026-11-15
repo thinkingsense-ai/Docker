@@ -8,7 +8,7 @@
 # --comments   also writes each table's description into the database (COMMENT ON TABLE ...), which is where the app reads descriptions for its prompts.
 # --strip      removes the seed's table comments after seeding (a baseline for a pack whose seed already carries them, such as BOM).
 # --extra-sql  runs FILE (SQL) after the seed, e.g. column comments to try.
-# Environment: BENCH_MODEL (default claude-haiku-5-5), OMNIGATE_RELEASE_TAG (default v0.10.17), BENCH_OUT (default /tmp/bench-out), JUDGE_MODEL (default claude-haiku-5-5).
+# Environment: EXTRA_COMPOSE (more compose file), BENCH_FILE (question set), BENCH_MODEL (default claude-haiku-5-5), OMNIGATE_RELEASE_TAG (default v0.10.17), BENCH_OUT (default /tmp/bench-out), JUDGE_MODEL (default claude-haiku-5-5).
 # Results land in $BENCH_OUT as <pack>_<variant>_<model>_r<N>.json (answers), j_..._r<N>.json (judged) and calls_...jsonl (every prompt and reply).
 # Needs: docker compose, python3 with the anthropic package, and free ports 8080 and 9099. Takes about 10 minutes per run (BOM 13).
 set -u
@@ -20,6 +20,8 @@ export BENCH_MODEL=${BENCH_MODEL:-claude-haiku-5-5}; OUT=${BENCH_OUT:-/tmp/bench
 TAG=${PACK}_${VAR}_${BENCH_MODEL#claude-}; CALLS=$OUT/calls_$TAG.jsonl; rm -f "$CALLS"
 BV=TREASURY_BANK_RETRIEVAL; [ "$PACK" = bom ] && BV=BOM_BANK_RETRIEVAL; [ "$PACK" = sounds ] && BV=SOUNDS_BANK_RETRIEVAL
 FILES=(-f "$ROOT/demos/$PACK-pack/docker-compose.$PACK.yml" -f "$HERE/override-proxy.yml")
+[ -n "${EXTRA_COMPOSE:-}" ] && FILES+=(-f "$EXTRA_COMPOSE")   # e.g. a different database image
+BENCH=${BENCH_FILE:-$ROOT/demos/benchmark/benchmark-$PACK.json}   # e.g. a different question set for the same pack
 if [ "$COMMENTS" = "--comments" ]; then
   python3 "$HERE/gen_comments.py" "$PACK" > "$OUT/comments-$PACK-pg.sql"
   { echo "services:"; echo "  postgres:"; echo "    volumes:"; echo "      - $OUT/comments-$PACK-pg.sql:/docker-entrypoint-initdb.d/02-comments.sql:ro"; } > "$OUT/comments-$PACK.yml"
@@ -37,13 +39,13 @@ cd "$ROOT" || exit 1
 echo "[$TAG] up $(date +%T)"
 env OMNIGATE_RELEASE_TAG=${OMNIGATE_RELEASE_TAG:-v0.10.17} $BV=false OMNIGATE_LLM_API_KEY="$ANTHROPIC_API_KEY" docker compose --project-directory . "${FILES[@]}" up --build -d > "$OUT/up-$TAG.log" 2>&1
 for i in $(seq 1 80); do n=$(docker ps --format '{{.Names}}' | grep -c "seed-"); [ "$n" = 0 ] && break; sleep 5; done
-python3 "$HERE/reference_rows.py" "$ROOT/demos/benchmark/benchmark-$PACK.json" "$OUT/ref_$PACK.json"
+python3 "$HERE/reference_rows.py" "$BENCH" "$OUT/ref_$PACK.json"
 for i in $(seq 1 "$RUNS"); do
-  python3 "$HERE/bench_run.py" "$ROOT/demos/benchmark/benchmark-$PACK.json" "$OUT/${TAG}_r$i.json" "$CALLS" | tail -1
+  python3 "$HERE/bench_run.py" "$BENCH" "$OUT/${TAG}_r$i.json" "$CALLS" | tail -1
   JUDGE_MODEL=${JUDGE_MODEL:-claude-haiku-5-5} python3 "$HERE/judge.py" "$OUT/ref_$PACK.json" "$OUT/${TAG}_r$i.json" "$OUT/j_${TAG}_r$i.json"
   echo "[$TAG] run $i done $(date +%T)"
 done
 KN=$(ls "$ROOT"/demos/$PACK-pack/*-knowledge.json | head -1)
-python3 "$HERE/context_report.py" "$ROOT/demos/benchmark/benchmark-$PACK.json" "$KN" "$OUT/${TAG}_r1.json" "$CALLS" | head -3
+python3 "$HERE/context_report.py" "$BENCH" "$KN" "$OUT/${TAG}_r1.json" "$CALLS" | head -3
 docker compose --project-directory . "${FILES[@]}" down -v 2>&1 | tail -1; pkill -f llmproxy.py
 echo "[$TAG] finished $(date +%T)"

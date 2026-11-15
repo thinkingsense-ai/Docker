@@ -1,0 +1,73 @@
+[
+ {
+  "id": "sounds-v1",
+  "pack": "sounds",
+  "question": "Which 5 recordings sound most like recording xc1072993?",
+  "referenceSql": "SELECT e.recording_id FROM sounds.recording_embeddings e WHERE e.recording_id <> 'xc1072993' ORDER BY e.embedding <=> (SELECT embedding FROM sounds.recording_embeddings WHERE recording_id = 'xc1072993') LIMIT 5",
+  "tags": [
+   "vector",
+   "tables:1"
+  ],
+  "rules": [
+   "Rank by cosine distance to the vector of xc1072993, nearest first, excluding the recording itself.",
+   "Return 5 recordings."
+  ]
+ },
+ {
+  "id": "sounds-v2",
+  "pack": "sounds",
+  "question": "Of the 5 recordings that sound most like xc1072993, how many are the same species as it?",
+  "referenceSql": "SELECT COUNT(*) FILTER (WHERE r.species = (SELECT species FROM sounds.recordings WHERE recording_id = 'xc1072993')) AS same_species FROM (SELECT recording_id FROM sounds.recording_embeddings WHERE recording_id <> 'xc1072993' ORDER BY embedding <=> (SELECT embedding FROM sounds.recording_embeddings WHERE recording_id = 'xc1072993') LIMIT 5) n JOIN sounds.recordings r USING (recording_id)",
+  "tags": [
+   "vector",
+   "tables:2",
+   "join"
+  ],
+  "rules": [
+   "The 5 nearest by cosine distance, excluding xc1072993 itself.",
+   "Count those whose curated species equals the species of xc1072993."
+  ]
+ },
+ {
+  "id": "sounds-v3",
+  "pack": "sounds",
+  "question": "Which recording that allows derivative works sounds most like xc1072993?",
+  "referenceSql": "SELECT e.recording_id FROM sounds.recording_embeddings e JOIN sounds.recordings r USING (recording_id) JOIN sounds.licenses l ON l.license = r.license WHERE e.recording_id <> 'xc1072993' AND l.allows_derivatives ORDER BY e.embedding <=> (SELECT embedding FROM sounds.recording_embeddings WHERE recording_id = 'xc1072993') LIMIT 1",
+  "tags": [
+   "vector",
+   "tables:3",
+   "join",
+   "filter"
+  ],
+  "rules": [
+   "Filter to recordings whose licence allows derivatives, then take the nearest to xc1072993 (not xc1072993 itself)."
+  ]
+ },
+ {
+  "id": "sounds-v4",
+  "pack": "sounds",
+  "question": "For each of the 3 recordings that sound most like xc1072993, show the species and country on record.",
+  "referenceSql": "SELECT r.recording_id, r.species, r.country FROM (SELECT recording_id FROM sounds.recording_embeddings WHERE recording_id <> 'xc1072993' ORDER BY embedding <=> (SELECT embedding FROM sounds.recording_embeddings WHERE recording_id = 'xc1072993') LIMIT 3) n JOIN sounds.recordings r USING (recording_id) ORDER BY r.recording_id",
+  "tags": [
+   "vector",
+   "tables:2",
+   "join"
+  ],
+  "rules": [
+   "The 3 nearest by cosine distance, excluding xc1072993; show curated species and country, not model labels."
+  ]
+ },
+ {
+  "id": "sounds-v5",
+  "pack": "sounds",
+  "question": "How many recordings have an audio embedding, by group?",
+  "referenceSql": "SELECT r.group_name, COUNT(*) AS embedded FROM sounds.recording_embeddings e JOIN sounds.recordings r USING (recording_id) GROUP BY r.group_name ORDER BY r.group_name",
+  "tags": [
+   "tables:2",
+   "aggregate"
+  ],
+  "rules": [
+   "Count embedding rows per group; never return the vectors."
+  ]
+ }
+]
