@@ -15,7 +15,8 @@ wrong from run to run.
 | `tools/reference_rows.py` | Runs the reference SQL on the running stack, so the answer key has the *same day's* data (the packs' dates move with the day they first start: an answer key from another day marks date questions wrong) |
 | `tools/judge.py` | A model grades each answer against the reference rows (same entities and figures; ignores order, extra columns, ids vs names, rounding) |
 | `tools/summarize.py`, `tools/context_report.py`, `tools/classify_failures.py` | Compare variants; check which tables and descriptions the model was shown; name the cause of each never-right question |
-| `tools/gen_comments.py` | Writes each table's description as `COMMENT ON TABLE` (see below) |
+| `tools/gen_comments.py` | Writes each table's description as `COMMENT ON TABLE` (see below); `--null` clears them |
+| `experiments/` | Column-level comment experiment on BOM (`bom-columns.json`, `gen_column_comments.py`, generated `bom-columns-A.sql` / `-AB.sql`) |
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
@@ -23,6 +24,9 @@ demos/benchmark/tools/run_variant.sh treasury base 3               # three runs,
 demos/benchmark/tools/run_variant.sh treasury comments 3 --comments  # the same, with the descriptions written into the database
 python3 demos/benchmark/tools/summarize.py /tmp/bench-out treasury_base_haiku-5-5 treasury_comments_haiku-5-5
 ```
+
+Optional flags: `--strip` removes the pack's own comments first, `--extra-sql FILE` applies more SQL after the seed (used for the column experiment). The model is set with `BENCH_MODEL`
+(default Haiku 5.5; the app's own default is `claude-sonnet-4-5`).
 
 Run at least three times per variant. Report the range, not one number. Need Docker, Python 3 with the `anthropic` package, free ports 8080 and 9099.
 About 10 minutes per run for Treasury and 13 for BOM; Haiku 5.5 costs a few cents per run.
@@ -48,6 +52,23 @@ Questions asked as in `benchmark-*.json` (5 with clarified wording), question ba
 - **Caveats.** Haiku 5.5 only. The descriptions were written by the people who wrote the data, so this is closer to a ceiling than to what a customer's own comments would give. Three runs
   per variant; the Treasury ranges do not overlap, the BOM ranges barely do. A control without the proxy (fresh stack, no comments) scored 15 and 13 on Treasury, about two questions above the proxied baseline;
   that difference is within the run-to-run spread, but treat absolute levels as uncertain by about two questions and trust the comparisons between variants run the same way.
+
+## Results on the app's default model (Sonnet 4.5, BOM, 2026-11-14/15)
+
+Same method, three runs per variant. Sonnet 4.5 does not think before answering, so none of its 170 SQL and planner calls was cut off.
+
+| BOM variant | Runs (of 24) | Right in every run | Never |
+|---|---|---|---|
+| No comments | 11, 12, 11 | 11 | 12 |
+| Table comments (shipped, Docker#176) | 13, 13, 13 | 12 | 9 |
+| + 55 column comments (units, flags, value lists, misleading columns) | 13, 13, 13 | 10 | 9 |
+| + column comments and composite definitions (a deliberate ceiling) | 14, 14, 14 | 13 | 9 |
+
+- **Table comments are confirmed on the default model** (about +1.7 over none, against +2.3 on Haiku 5.5): the direction holds, the size is smaller.
+- **Column comments add nothing in total.** The same 13 each run, but different questions: "which facilities are at 95% utilization" and the tariff BOM cost got worse, a "valid certificate" question went from 0 to 3 of 3.
+- **Even the composite definitions add one question.** Nine questions stay never-right in every variant: missing rules, wrong joins and output shape, which better column wording does not fix. The lever is in the app (retrieval and join planning, Server#93). Column comments were not shipped.
+- **Haiku 5.5 distorts this test.** The 5-family models think before answering and the app never asks for it, so the thinking uses the app's small output limits (256 to 2048 tokens): about 19% of BOM SQL and planner calls on Haiku 5.5 were cut off, and 50 calls limited to 256 tokens came back empty. A Haiku-based diagnosis of the failures is partly that artifact; the Sonnet 4.5 numbers above are not.
+- **Pack defects seen while classifying:** the BOM "longest lead time per product" question needs a tie-break (lowest part number) it never states.
 
 ## Defects in the pack questions found while building this
 

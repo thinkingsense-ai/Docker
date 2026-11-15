@@ -3,14 +3,18 @@
 #   stack up (question bank OFF, model calls through the logging proxy) -> reference rows -> N runs, each judged -> context report -> stack down
 #
 #   export ANTHROPIC_API_KEY=sk-ant-...
-#   demos/benchmark/tools/run_variant.sh <treasury|bom> <variant-name> <runs> [--comments]
+#   demos/benchmark/tools/run_variant.sh <treasury|bom> <variant-name> <runs> [--comments] [--strip] [--extra-sql FILE]
 #
-# --comments  also writes each table's description into the database (COMMENT ON TABLE ...), which is where the app reads descriptions for its prompts.
+# --comments   also writes each table's description into the database (COMMENT ON TABLE ...), which is where the app reads descriptions for its prompts.
+# --strip      removes the seed's table comments after seeding (a baseline for a pack whose seed already carries them, such as BOM).
+# --extra-sql  runs FILE (SQL) after the seed, e.g. column comments to try.
 # Environment: BENCH_MODEL (default claude-haiku-5-5), OMNIGATE_RELEASE_TAG (default v0.10.17), BENCH_OUT (default /tmp/bench-out), JUDGE_MODEL (default claude-haiku-5-5).
 # Results land in $BENCH_OUT as <pack>_<variant>_<model>_r<N>.json (answers), j_..._r<N>.json (judged) and calls_...jsonl (every prompt and reply).
 # Needs: docker compose, python3 with the anthropic package, and free ports 8080 and 9099. Takes about 10 minutes per run (BOM 13).
 set -u
-PACK=$1; VAR=$2; RUNS=$3; COMMENTS=${4:-}
+PACK=$1; VAR=$2; RUNS=$3; shift 3
+COMMENTS=""; STRIP=0; EXTRA_SQL=""
+while [ $# -gt 0 ]; do case "$1" in --comments) COMMENTS=--comments;; --strip) STRIP=1;; --extra-sql) EXTRA_SQL=$2; shift;; esac; shift; done
 HERE=$(cd "$(dirname "$0")" && pwd); ROOT=$(cd "$HERE/../../.." && pwd)
 export BENCH_MODEL=${BENCH_MODEL:-claude-haiku-5-5}; OUT=${BENCH_OUT:-/tmp/bench-out}; mkdir -p "$OUT"
 TAG=${PACK}_${VAR}_${BENCH_MODEL#claude-}; CALLS=$OUT/calls_$TAG.jsonl; rm -f "$CALLS"
@@ -25,6 +29,9 @@ if [ "$COMMENTS" = "--comments" ]; then
   fi
   FILES+=(-f "$OUT/comments-$PACK.yml")
 fi
+INIT=(); [ "$STRIP" = 1 ] && { python3 "$HERE/gen_comments.py" "$PACK" --null > "$OUT/strip-$PACK.sql"; INIT+=("$OUT/strip-$PACK.sql:/docker-entrypoint-initdb.d/08-strip.sql:ro"); }
+[ -n "$EXTRA_SQL" ] && INIT+=("$(cd "$(dirname "$EXTRA_SQL")" && pwd)/$(basename "$EXTRA_SQL"):/docker-entrypoint-initdb.d/09-extra.sql:ro")
+if [ ${#INIT[@]} -gt 0 ]; then { echo "services:"; echo "  postgres:"; echo "    volumes:"; for v in "${INIT[@]}"; do echo "      - $v"; done; } > "$OUT/init-$TAG.yml"; FILES+=(-f "$OUT/init-$TAG.yml"); fi
 pkill -f llmproxy.py 2>/dev/null; sleep 1; (nohup python3 "$HERE/llmproxy.py" 9099 "$CALLS" > "$OUT/proxy.log" 2>&1 &); sleep 1
 cd "$ROOT" || exit 1
 echo "[$TAG] up $(date +%T)"
