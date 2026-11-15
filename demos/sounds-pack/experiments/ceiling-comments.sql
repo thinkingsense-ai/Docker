@@ -1,0 +1,5 @@
+-- Ceiling experiment: comments that state the business rules behind the three questions that fail in every variant.
+-- They are deliberately close to the questions, so a gain here is an upper bound on what annotations can fix, not a shippable result.
+COMMENT ON TABLE sounds.recordings IS 'One row per audio recording (a bird song or call, a fish sound), with who recorded it, where and when, the licence, and links to the audio file and its spectrogram image. To count recordings per species, group by species alone: call_type describes one recording, and one species can have recordings of several call types. A question about "each group" must return a row for both groups, bird and fish, unless it names one.';
+COMMENT ON TABLE sounds.licenses IS 'One row per licence found on the recordings, with what it permits. Every licence here is non-commercial, so a question for recordings that can be used commercially has an empty answer: report that none can, and do not list recordings.';
+COMMENT ON COLUMN sounds.recordings.group_name IS 'bird or fish. Both groups exist in the data; an answer that is split by group shows both.';
