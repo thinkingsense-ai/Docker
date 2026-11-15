@@ -79,7 +79,7 @@ Each recording has a spectrogram picture (Xeno-canto draws its own; the fish one
 
 - **The pictures are not neutral.** Bird and fish pictures are drawn by different programs at different sizes (birds are wide strips about 8,500 by 475 pixels, fish about 2,300 by 1,200), so the vectors separate the two groups perfectly without hearing anything. That is the source's drawing style, not acoustics. A "similar spectrogram" search across sources would mostly return same-source pictures.
 - **Preprocessing matters as much as the model.** CLIP's default centre crop keeps only a sliver of a wide strip; squashing distorts it; tiling gave the best result. The vector's meaning therefore depends on a pipeline setting nobody sees in the column.
-- **A general image model is not a bird-sound model.** CLIP was trained on photographs, so 29% is only a little better than the audio model's 48% is good. For retrieval by sound, the audio vectors are the better route; spectrogram images are most useful as the thing a person looks at (the `image_url` column) and for a model that reads spectrograms (a bird-specific image model is untested).
+- **A general image model is not a bird-sound model.** CLIP was trained on photographs, so 29% is well below the audio model's 48%. For retrieval by sound, the audio vectors are the better route; spectrogram images are most useful as the thing a person looks at (the `image_url` column) and for a model that reads spectrograms (a bird-specific image model is untested).
 - **Nothing new from combining them** at this size (72 clips): do not add the image vector to a search just because it exists.
 
 ## Use cases to test (questions, with the answer checked against the manifest)
