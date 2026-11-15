@@ -16,6 +16,7 @@ wrong from run to run.
 | `tools/judge.py` | A model grades each answer against the reference rows (same entities and figures; ignores order, extra columns, ids vs names, rounding) |
 | `tools/summarize.py`, `tools/context_report.py`, `tools/classify_failures.py` | Compare variants; check which tables and descriptions the model was shown; name the cause of each never-right question |
 | `tools/gen_comments.py` | Writes each table's description as `COMMENT ON TABLE` (see below); `--null` clears them |
+| `free-form-annotation-report.pdf` | Six-page report of all the experiments below and what they mean for the governed ontology and federated queries |
 | `experiments/` | Column-level comment experiment on BOM (`bom-columns.json`, `gen_column_comments.py`, generated `bom-columns-A.sql` / `-AB.sql`) |
 
 ```bash
