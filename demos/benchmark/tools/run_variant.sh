@@ -18,7 +18,7 @@ while [ $# -gt 0 ]; do case "$1" in --comments) COMMENTS=--comments;; --strip) S
 HERE=$(cd "$(dirname "$0")" && pwd); ROOT=$(cd "$HERE/../../.." && pwd)
 export BENCH_MODEL=${BENCH_MODEL:-claude-haiku-5-5}; OUT=${BENCH_OUT:-/tmp/bench-out}; mkdir -p "$OUT"
 TAG=${PACK}_${VAR}_${BENCH_MODEL#claude-}; CALLS=$OUT/calls_$TAG.jsonl; rm -f "$CALLS"
-BV=TREASURY_BANK_RETRIEVAL; [ "$PACK" = bom ] && BV=BOM_BANK_RETRIEVAL
+BV=TREASURY_BANK_RETRIEVAL; [ "$PACK" = bom ] && BV=BOM_BANK_RETRIEVAL; [ "$PACK" = sounds ] && BV=SOUNDS_BANK_RETRIEVAL
 FILES=(-f "$ROOT/demos/$PACK-pack/docker-compose.$PACK.yml" -f "$HERE/override-proxy.yml")
 if [ "$COMMENTS" = "--comments" ]; then
   python3 "$HERE/gen_comments.py" "$PACK" > "$OUT/comments-$PACK-pg.sql"

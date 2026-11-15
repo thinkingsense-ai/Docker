@@ -1,0 +1,393 @@
+[
+ {
+  "id": "sounds-01",
+  "pack": "sounds",
+  "question": "How many recordings do we have for each bird species, most first?",
+  "referenceSql": "SELECT species, COUNT(*) AS recordings FROM sounds.recordings WHERE group_name = 'bird' GROUP BY species ORDER BY recordings DESC, species",
+  "tags": [
+   "tables:1",
+   "aggregate"
+  ],
+  "rules": [
+   "Only recordings whose group is 'bird' are counted; other animal groups are excluded.",
+   "A recording is counted as one row in the recordings table, with no deduplication by recordist, location, or date.",
+   "Counts are grouped by the species value as recorded, so each distinct species label is its own group.",
+   "Results are sorted by recording count from highest to lowest, with ties ordered alphabetically by species.",
+   "There is no time window or quality/status filter, so all recordings of any date or status are included."
+  ]
+ },
+ {
+  "id": "sounds-02",
+  "pack": "sounds",
+  "question": "Which countries do the bird recordings come from, and how many from each?",
+  "referenceSql": "SELECT country, COUNT(*) AS recordings FROM sounds.recordings WHERE group_name = 'bird' GROUP BY country ORDER BY recordings DESC, country",
+  "tags": [
+   "tables:1",
+   "aggregate"
+  ],
+  "rules": [
+   "Only recordings whose group is 'bird' are counted; other animal groups are excluded.",
+   "Each recording row counts as one recording, with no deduplication by species, recordist, or date.",
+   "Recordings are grouped by the country recorded on each recording, with no regional rollup.",
+   "Results are sorted by recording count from highest to lowest, with ties broken alphabetically by country.",
+   "Recordings with a missing country are not filtered out, so they may show up as their own group."
+  ]
+ },
+ {
+  "id": "sounds-03",
+  "pack": "sounds",
+  "question": "Which bird recordings are alarm calls?",
+  "referenceSql": "SELECT recording_id, species, country, recorded_on FROM sounds.recordings WHERE group_name = 'bird' AND call_type = 'alarm call' ORDER BY recording_id",
+  "tags": [
+   "tables:1"
+  ],
+  "rules": [
+   "Only recordings whose animal group is 'bird' are considered.",
+   "A recording counts as an alarm call when its call type is exactly 'alarm call'.",
+   "Both conditions must hold at once: the recording is of a bird and its call type is an alarm call.",
+   "Each recording is listed individually, with its ID, species, country, and recording date, and no aggregation is applied.",
+   "Results are ordered by recording ID."
+  ]
+ },
+ {
+  "id": "sounds-04",
+  "pack": "sounds",
+  "question": "How many species and how many recordings do we have in each group, birds and fish?",
+  "referenceSql": "SELECT group_name, COUNT(DISTINCT species) AS species, COUNT(*) AS recordings FROM sounds.recordings GROUP BY group_name ORDER BY group_name",
+  "tags": [
+   "tables:1",
+   "aggregate"
+  ],
+  "rules": [
+   "Results are grouped by the recording's group (e.g., birds, fish), one row per group, sorted alphabetically by group name.",
+   "Species count is the number of distinct species values within each group, so a species with many recordings counts once.",
+   "Recordings count is the total number of recording rows in each group, with no deduplication.",
+   "No filters are applied: all recordings are included regardless of date, quality, or status, and every group present in the data is returned (not only birds and fish).",
+   "Recordings with a missing species are not counted in the species total, though they still count as recordings."
+  ]
+ },
+ {
+  "id": "sounds-05",
+  "pack": "sounds",
+  "question": "Which fish recordings are grunts?",
+  "referenceSql": "SELECT recording_id, species, recorded_year FROM sounds.recordings WHERE group_name = 'fish' AND call_type = 'grunt' ORDER BY recording_id",
+  "tags": [
+   "tables:1"
+  ],
+  "rules": [
+   "Only recordings whose group is 'fish' are considered.",
+   "A recording counts as a grunt when its call type is exactly 'grunt'.",
+   "Each qualifying recording is listed individually (no aggregation), showing its ID, species, and recorded year.",
+   "Results are ordered by recording ID.",
+   "No date, species, or other filters are applied beyond group and call type."
+  ]
+ },
+ {
+  "id": "sounds-06",
+  "pack": "sounds",
+  "question": "For each bird species with a recording, how many Smithsonian specimens does the NMNH hold, and how many of them have coordinates?",
+  "referenceSql": "SELECT s.species, s.usnm_specimens, s.usnm_with_coordinates FROM sounds.species s WHERE s.group_name = 'bird' AND EXISTS (SELECT 1 FROM sounds.recordings r WHERE r.species = s.species) ORDER BY s.usnm_specimens DESC",
+  "tags": [
+   "tables:2",
+   "subquery-or-cte"
+  ],
+  "rules": [
+   "Only species classified in the 'bird' group are included.",
+   "A species qualifies only if at least one recording exists for it; species with no recordings are excluded.",
+   "Specimen count is the precomputed per-species count of Smithsonian NMNH (USNM) specimens, taken as stored rather than recalculated.",
+   "Coordinate count is the precomputed number of that species' USNM specimens that have coordinates, taken as stored.",
+   "Results are one row per species, ordered by specimen count from highest to lowest."
+  ]
+ },
+ {
+  "id": "sounds-07",
+  "pack": "sounds",
+  "question": "Which bird species has the most Smithsonian specimens, and how many recordings do we have of it?",
+  "referenceSql": "SELECT s.species, s.usnm_specimens, COUNT(r.recording_id) AS recordings FROM sounds.species s LEFT JOIN sounds.recordings r ON r.species = s.species WHERE s.group_name = 'bird' GROUP BY s.species, s.usnm_specimens ORDER BY s.usnm_specimens DESC LIMIT 1",
+  "tags": [
+   "tables:2",
+   "join",
+   "aggregate"
+  ],
+  "rules": [
+   "Only species classified as birds (group_name = 'bird') are considered.",
+   "Smithsonian specimen count is the precomputed usnm_specimens value stored for each species, not counted from individual records.",
+   "The top species is the one with the highest usnm_specimens; only one species is returned, and ties are broken arbitrarily.",
+   "Recordings are counted per species by matching recordings to the species name, counting each recording once by its recording ID.",
+   "A species with no recordings is still eligible and would show a recording count of 0."
+  ]
+ },
+ {
+  "id": "sounds-08",
+  "pack": "sounds",
+  "question": "What share of each bird species' Smithsonian specimens has coordinates, lowest first?",
+  "referenceSql": "SELECT species, ROUND(100.0 * usnm_with_coordinates / usnm_specimens, 1) AS pct_with_coordinates FROM sounds.species WHERE group_name = 'bird' ORDER BY pct_with_coordinates, species",
+  "tags": [
+   "tables:1"
+  ],
+  "rules": [
+   "Only species whose group is 'bird' are included.",
+   "Share of specimens with coordinates = Smithsonian (USNM) specimens with coordinates divided by total USNM specimens for that species, as a percentage.",
+   "The percentage is rounded to one decimal place.",
+   "One row per species, using the precomputed USNM specimen counts in the species table.",
+   "Sorted by percentage ascending (lowest first), with ties broken alphabetically by species name."
+  ]
+ },
+ {
+  "id": "sounds-09",
+  "pack": "sounds",
+  "question": "Which bird species have a recording but fewer than 1,500 Smithsonian specimens?",
+  "referenceSql": "SELECT species, usnm_specimens FROM sounds.species WHERE group_name = 'bird' AND usnm_specimens < 1500 ORDER BY usnm_specimens",
+  "tags": [
+   "tables:1"
+  ],
+  "rules": [
+   "Only species whose group is 'bird' are considered.",
+   "Smithsonian specimen count is taken from the species-level usnm_specimens field (USNM specimens per species).",
+   "Fewer than 1,500 means a strict threshold: usnm_specimens < 1500, so species with exactly 1,500 are excluded.",
+   "Having a recording is taken to be satisfied by the species being listed in the sounds species table; no separate recording check is applied.",
+   "Results are at species level, showing each species with its specimen count, sorted from fewest to most specimens."
+  ]
+ },
+ {
+  "id": "sounds-10",
+  "pack": "sounds",
+  "question": "Which recordings carry a licence that forbids derived works?",
+  "referenceSql": "SELECT r.recording_id, r.species, r.license FROM sounds.recordings r JOIN sounds.licenses l ON l.license = r.license WHERE NOT l.allows_derivatives ORDER BY r.recording_id",
+  "tags": [
+   "tables:2",
+   "join"
+  ],
+  "rules": [
+   "A recording's licence is looked up in the licences reference table by matching the licence code on the recording.",
+   "A licence forbids derived works when its 'allows derivatives' flag is false; those recordings are included.",
+   "Recordings whose licence is not found in the licences table are excluded, because the match is required.",
+   "Licences with an unknown (null) derivatives flag are not counted as forbidding derived works.",
+   "Output is one row per recording, showing its ID, species and licence, ordered by recording ID."
+  ]
+ },
+ {
+  "id": "sounds-11",
+  "pack": "sounds",
+  "question": "Which recordings can be used commercially?",
+  "referenceSql": "SELECT r.recording_id, r.species, r.license FROM sounds.recordings r JOIN sounds.licenses l ON l.license = r.license WHERE l.allows_commercial_use ORDER BY r.recording_id",
+  "tags": [
+   "tables:2",
+   "join"
+  ],
+  "rules": [
+   "A recording is usable commercially if its license, matched to the licenses reference table, is flagged as allowing commercial use.",
+   "Recordings whose license has no matching entry in the licenses table are excluded.",
+   "Recordings whose license does not allow commercial use are excluded.",
+   "Each qualifying recording is listed once with its ID, species, and license, ordered by recording ID."
+  ]
+ },
+ {
+  "id": "sounds-12",
+  "pack": "sounds",
+  "question": "How many recordings do we have under each licence?",
+  "referenceSql": "SELECT license, COUNT(*) AS recordings FROM sounds.recordings GROUP BY license ORDER BY recordings DESC, license",
+  "tags": [
+   "tables:1",
+   "aggregate"
+  ],
+  "rules": [
+   "A recording is counted as one row in the recordings table; every row counts, with no filtering by status, date, or quality.",
+   "Recordings are grouped by their licence value exactly as stored, so variants in spelling or case would be separate groups.",
+   "Recordings with no licence value (null) are grouped together as their own category rather than excluded.",
+   "Results are ordered by recording count from highest to lowest, with ties broken alphabetically by licence."
+  ]
+ },
+ {
+  "id": "sounds-13",
+  "pack": "sounds",
+  "question": "Who made the most bird recordings, and how many?",
+  "referenceSql": "SELECT recordist, COUNT(*) AS recordings FROM sounds.recordings WHERE group_name = 'bird' GROUP BY recordist ORDER BY recordings DESC, recordist LIMIT 1",
+  "tags": [
+   "tables:1",
+   "aggregate"
+  ],
+  "rules": [
+   "Only recordings classified in the 'bird' group are counted; other groups are excluded.",
+   "Each row in the recordings table counts as one recording, with no deduplication.",
+   "Recordings are grouped by recordist, and each recordist's total is the number of their bird recordings.",
+   "The top recordist is the one with the highest count; ties are broken alphabetically by recordist name.",
+   "Only a single recordist is returned, even if several are tied."
+  ]
+ },
+ {
+  "id": "sounds-14",
+  "pack": "sounds",
+  "question": "Which bird species were recorded in more than one country?",
+  "referenceSql": "SELECT species, COUNT(DISTINCT country) AS countries FROM sounds.recordings WHERE group_name = 'bird' GROUP BY species HAVING COUNT(DISTINCT country) > 1 ORDER BY countries DESC, species",
+  "tags": [
+   "tables:1",
+   "aggregate"
+  ],
+  "rules": [
+   "Only recordings whose group is 'bird' are considered; other animal groups are excluded.",
+   "Species is the grouping level; each species is evaluated across all of its recordings.",
+   "Country count per species is the number of distinct countries, so multiple recordings from the same country count once.",
+   "A species qualifies only if it has recordings from more than one distinct country (at least 2).",
+   "Results are ordered by number of countries, highest first, then by species name alphabetically."
+  ]
+ },
+ {
+  "id": "sounds-15",
+  "pack": "sounds",
+  "question": "How many bird recordings were made in January 2026?",
+  "referenceSql": "SELECT COUNT(*) AS recordings FROM sounds.recordings WHERE group_name = 'bird' AND recorded_on >= DATE '2026-01-01' AND recorded_on < DATE '2026-02-01'",
+  "tags": [
+   "tables:1",
+   "aggregate"
+  ],
+  "rules": [
+   "A bird recording is a record in the recordings table whose group is 'bird'.",
+   "Each recording record counts once; the count is of records, not distinct species, locations, or recorders.",
+   "January 2026 is defined by the recording date (when it was made, not uploaded), from 2026-01-01 inclusive to 2026-02-01 exclusive.",
+   "No other filters apply, such as quality, status, or duration."
+  ]
+ },
+ {
+  "id": "sounds-16",
+  "pack": "sounds",
+  "question": "Which fish species have more than one recording, and what call types do they have?",
+  "referenceSql": "SELECT species, COUNT(*) AS recordings, STRING_AGG(DISTINCT call_type, ', ' ORDER BY call_type) AS call_types FROM sounds.recordings WHERE group_name = 'fish' GROUP BY species HAVING COUNT(*) > 1 ORDER BY species",
+  "tags": [
+   "tables:1",
+   "aggregate"
+  ],
+  "rules": [
+   "Only recordings whose group is 'fish' are considered.",
+   "Each recording is one row in the recordings table, and recordings are counted per species.",
+   "A species qualifies only if it has more than one recording (count of 2 or more).",
+   "Call types are listed as the distinct call type values per species, so duplicates are removed, and they are sorted alphabetically and joined into one comma-separated list.",
+   "Results are grouped at the species level and ordered alphabetically by species."
+  ]
+ },
+ {
+  "id": "sounds-17",
+  "pack": "sounds",
+  "question": "Which recordings have no country, and what group are they in?",
+  "referenceSql": "SELECT group_name, COUNT(*) AS recordings FROM sounds.recordings WHERE country IS NULL GROUP BY group_name ORDER BY group_name",
+  "tags": [
+   "tables:1",
+   "aggregate"
+  ],
+  "rules": [
+   "A recording counts as having no country only when its country value is missing (null); empty strings or placeholder values like 'Unknown' are not treated as missing.",
+   "Recordings are classified by their group_name value, and results are grouped at the group level rather than listed individually.",
+   "Each group's figure is the number of country-less recordings in it (every matching recording counts once, no deduplication).",
+   "Groups with no country-less recordings do not appear in the results.",
+   "Results are ordered alphabetically by group name."
+  ]
+ },
+ {
+  "id": "sounds-18",
+  "pack": "sounds",
+  "question": "In how many recordings does BirdNET's best guess, restricted to the expected species, match the species on record?",
+  "referenceSql": "SELECT COUNT(*) AS matching_recordings, (SELECT COUNT(*) FROM sounds.recordings WHERE group_name = 'bird') AS bird_recordings FROM sounds.model_annotations a JOIN sounds.recordings r ON r.recording_id = a.recording_id WHERE a.species_scope = 'expected' AND a.rank = 1 AND a.scientific_name = r.species",
+  "tags": [
+   "tables:2",
+   "join",
+   "model-annotations"
+  ],
+  "rules": [
+   "Use the model's best guess (rank 1) with species_scope 'expected'; a match is when the guessed scientific_name equals the recording's curated species.",
+   "Count matching recordings and also show the number of bird recordings."
+  ]
+ },
+ {
+  "id": "sounds-19",
+  "pack": "sounds",
+  "question": "Which recordings does BirdNET get wrong when restricted to the expected species, and what does it say instead?",
+  "referenceSql": "SELECT r.recording_id, r.species, a.scientific_name AS model_species, a.confidence FROM sounds.model_annotations a JOIN sounds.recordings r ON r.recording_id = a.recording_id WHERE a.species_scope = 'expected' AND a.rank = 1 AND a.scientific_name <> r.species ORDER BY r.recording_id",
+  "tags": [
+   "tables:2",
+   "join",
+   "model-annotations"
+  ],
+  "rules": [
+   "Use rank 1 with species_scope 'expected'; wrong means the guessed scientific_name differs from the curated species.",
+   "List the recording, curated species, guessed species and confidence."
+  ]
+ },
+ {
+  "id": "sounds-20",
+  "pack": "sounds",
+  "question": "For each bird species, how many recordings does BirdNET get right when restricted to the expected species, and how many Smithsonian specimens does the NMNH hold?",
+  "referenceSql": "SELECT r.species, COUNT(*) AS recordings, COUNT(*) FILTER (WHERE a.scientific_name = r.species) AS model_right, MAX(s.usnm_specimens) AS usnm_specimens FROM sounds.recordings r JOIN sounds.model_annotations a ON a.recording_id = r.recording_id AND a.species_scope = 'expected' AND a.rank = 1 JOIN sounds.species s ON s.species = r.species GROUP BY r.species ORDER BY r.species",
+  "tags": [
+   "tables:3",
+   "join",
+   "model-annotations",
+   "cross-source-style"
+  ],
+  "rules": [
+   "Use rank 1 with species_scope 'expected'; right means the guessed species equals the curated species.",
+   "One row per bird species: recordings, number the model got right, and the Smithsonian specimen count from the species table."
+  ]
+ },
+ {
+  "id": "sounds-21",
+  "pack": "sounds",
+  "question": "Which recordings does BirdNET label with a different species at a confidence of 0.8 or more when it chooses among all species?",
+  "referenceSql": "SELECT r.recording_id, r.species, a.scientific_name AS model_species, a.confidence FROM sounds.model_annotations a JOIN sounds.recordings r ON r.recording_id = a.recording_id WHERE a.species_scope = 'all' AND a.rank = 1 AND a.scientific_name <> r.species AND a.confidence >= 0.8 ORDER BY a.confidence DESC, r.recording_id",
+  "tags": [
+   "tables:2",
+   "join",
+   "model-annotations",
+   "threshold"
+  ],
+  "rules": [
+   "Use rank 1 with species_scope 'all' (the model unaided).",
+   "Only guesses that differ from the curated species and have confidence at or above 0.8; most confident first."
+  ]
+ },
+ {
+  "id": "sounds-22",
+  "pack": "sounds",
+  "question": "In how many recordings is the species on record not among BirdNET's top three guesses when it chooses among all species?",
+  "referenceSql": "SELECT COUNT(*) AS recordings FROM sounds.recordings r WHERE r.group_name = 'bird' AND NOT EXISTS (SELECT 1 FROM sounds.model_annotations a WHERE a.recording_id = r.recording_id AND a.species_scope = 'all' AND a.scientific_name = r.species)",
+  "tags": [
+   "tables:2",
+   "model-annotations",
+   "anti-join"
+  ],
+  "rules": [
+   "Use species_scope 'all' and any rank (top three): count bird recordings whose curated species is not among the model's three guesses."
+  ]
+ },
+ {
+  "id": "sounds-23",
+  "pack": "sounds",
+  "question": "Compare the average confidence of BirdNET's best guess when it is right and when it is wrong, restricted to the expected species.",
+  "referenceSql": "SELECT (a.scientific_name = r.species) AS model_right, COUNT(*) AS recordings, ROUND(AVG(a.confidence)::numeric, 3) AS avg_confidence FROM sounds.model_annotations a JOIN sounds.recordings r ON r.recording_id = a.recording_id WHERE a.species_scope = 'expected' AND a.rank = 1 GROUP BY 1 ORDER BY 1 DESC",
+  "tags": [
+   "tables:2",
+   "join",
+   "model-annotations",
+   "aggregate"
+  ],
+  "rules": [
+   "Use rank 1 with species_scope 'expected'; split recordings into model right and model wrong.",
+   "Report recordings and average confidence for each of the two groups."
+  ]
+ },
+ {
+  "id": "sounds-24",
+  "pack": "sounds",
+  "question": "How does BirdNET do on alarm calls compared with songs, restricted to the expected species?",
+  "referenceSql": "SELECT r.call_type, COUNT(*) AS recordings, COUNT(*) FILTER (WHERE a.scientific_name = r.species) AS model_right FROM sounds.model_annotations a JOIN sounds.recordings r ON r.recording_id = a.recording_id WHERE a.species_scope = 'expected' AND a.rank = 1 AND r.call_type IN ('alarm call', 'song') GROUP BY r.call_type ORDER BY r.call_type",
+  "tags": [
+   "tables:2",
+   "join",
+   "model-annotations",
+   "aggregate"
+  ],
+  "rules": [
+   "Use rank 1 with species_scope 'expected'; only recordings whose call_type is alarm call or song.",
+   "Per call type: recordings and how many the model got right."
+  ]
+ }
+]

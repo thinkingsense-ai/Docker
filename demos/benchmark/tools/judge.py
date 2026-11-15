@@ -11,11 +11,17 @@ def show(cols, rows, n=40):
 def judge(question, ref, cand):
     msg = (f"Question: {question}\n\nREFERENCE: {show(ref.get('columns'), ref.get('rows') or [])}\n\n"
            f"CANDIDATE: {show(cand.get('columns'), cand.get('rows') or [])}\nCandidate error: {cand.get('error') or 'none'}")
-    r = client.messages.create(model=__import__("os").environ.get("JUDGE_MODEL","claude-sonnet-5-5"), max_tokens=3000, system=SYS,
-                               output_config={"effort": "low"}, messages=[{"role": "user", "content": msg}])
-    t = "".join(b.text for b in r.content if b.type == "text")
-    try: return json.loads(t[t.index("{"):t.rindex("}")+1])
-    except Exception: return {"verdict": "wrong", "reason": "judge parse: " + t[:80]}
+    import re, os
+    t = ""
+    for attempt in range(3):   # the reply is sometimes cut off or malformed: ask again rather than score a correct answer as wrong
+        r = client.messages.create(model=os.environ.get("JUDGE_MODEL", "claude-sonnet-5-5"), max_tokens=3000 * (attempt + 1), system=SYS,
+                                   output_config={"effort": "low"}, messages=[{"role": "user", "content": msg}])
+        t = "".join(b.text for b in r.content if b.type == "text")
+        try: return json.loads(t[t.index("{"):t.rindex("}") + 1])
+        except Exception: pass
+    m = re.search(r'"verdict"\s*:\s*"(\w+)"', t)   # a cut-off reply that still carries the verdict
+    if m: return {"verdict": m.group(1), "reason": "judge reply truncated: " + t[:160]}
+    return {"verdict": "wrong", "reason": "judge parse: " + t[:80]}
 if __name__ == "__main__":
     ref = {r["question"]: r for r in json.load(open(sys.argv[1]))}
     cands = json.load(open(sys.argv[2])); out = []
