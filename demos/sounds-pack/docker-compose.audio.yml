@@ -1,0 +1,21 @@
+# Optional add-on to the sounds pack: runs the audio service (BirdNET + CLAP, demos/audio-demo) beside the app and points the app at it, so a
+# clip attached in Ask ("Attach file": .wav .mp3 .flac .ogg .m4a) is identified and the answer cites the species, the nearest recordings and their licences.
+# The same service also serves the "Name That Sound" page at http://localhost:8090. Use it through the one-command script:
+#   demos/sounds-pack/up-with-vectors.sh --audio
+# Needs the audio cache and vectors on this machine (demos/multimodal-poc: fetch_data.py, embed_audio.py), and an app image that has audio upload (Server#100).
+# Attaching files also needs an admin to grant the user "upload files" (Admin > users); the first start downloads about 0.6 GB of models into the `audio-models` volume.
+services:
+  audio-service:
+    build: ./demos/audio-demo
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./demos/multimodal-poc:/poc:ro
+      - audio-models:/models
+  omnigate:
+    environment:
+      OMNIGATE_AUDIO_IDENTIFY_URL: http://audio-service:8090/api/identify
+    depends_on:
+      - audio-service
+volumes:
+  audio-models:
