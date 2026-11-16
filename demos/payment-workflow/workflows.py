@@ -1,4 +1,4 @@
-"""The payment-exception workflow (Temporal). Reads top to bottom as the design brief's flow:
+"""The payment-exception workflow (Temporal), for Treasury payments and for payment-blocked SAP invoices. Reads top to bottom as the design brief's flow:
 facts -> rules gate -> AI recommendation -> human approval bound to the exact payload -> governed write-back -> decision record.
 The workflow itself only decides and waits (so it is deterministic and survives restarts and days of waiting); all I/O is in activities.py."""
 import hashlib, json, os
@@ -40,21 +40,31 @@ class PaymentException:
             self.rejection = {"approver": approver, "reason": reason, "at": workflow.now().isoformat()}
 
     @workflow.run
-    async def run(self, payment_id: int) -> dict:
+    async def run(self, payment_id: int, source: str = "treasury") -> dict:
+        """`source` is "treasury" (a payment waiting for approval) or "sap" (a payment-blocked supplier invoice in SAP's sandbox); the flow is the same."""
+        sap = source == "sap"
         wid = workflow.info().workflow_id
-        facts = await workflow.execute_activity(A.gather_facts, payment_id, **RETRY)
-        gate = await workflow.execute_activity(A.rules_gate, facts, **RETRY)
+        facts = await workflow.execute_activity(A.sap_gather_facts if sap else A.gather_facts, payment_id, **RETRY)
+        gate = await workflow.execute_activity(A.sap_rules_gate if sap else A.rules_gate, facts, **RETRY)
         rec = await workflow.execute_activity(A.recommend, args=[facts, gate], **RETRY)
-        p = facts["payment"]
-        record = {"decision_id": wid, "payment_id": payment_id, "facts": facts, "rules": gate, "recommendation": rec, "started_at": workflow.now().isoformat()}
+        record = {"decision_id": wid, "payment_id": payment_id, "source": source, "facts": facts, "rules": gate, "recommendation": rec, "started_at": workflow.now().isoformat()}
         if rec["recommendation"] == ESCALATE:                      # nothing is written; a person takes it from here
             self.state = {"stage": "escalated", "recommendation": rec, "gate": gate}
             record.update(outcome="escalated to a person", action=None, approvals=[])
             await workflow.execute_activity(A.record_decision, record, **RETRY); return {"outcome": record["outcome"]}
-        action = {"type": rec["recommendation"], "payment_id": payment_id, "invoice_id": int(p["invoice_id"]), "amount": p["amount"], "currency": p["currency"], "idempotency_key": wid}
+        if sap:
+            inv = facts["invoice"]
+            action = {"type": rec["recommendation"], "system": "sap", "payment_id": payment_id, "invoice_id": int(inv["SupplierInvoice"]), "fiscal_year": inv["FiscalYear"],
+                      "amount": inv["InvoiceGrossAmount"], "currency": inv["DocumentCurrency"], "idempotency_key": wid}
+            summary = {"vendor": inv["InvoicingParty"], "invoice_no": inv["SupplierInvoice"], "amount": inv["InvoiceGrossAmount"], "currency": inv["DocumentCurrency"], "initiated_by": "(not in SAP's header)"}
+        else:
+            p = facts["payment"]
+            action = {"type": rec["recommendation"], "payment_id": payment_id, "invoice_id": int(p["invoice_id"]), "amount": p["amount"], "currency": p["currency"], "idempotency_key": wid}
+            summary = {"vendor": (facts.get("invoice") or {}).get("vendor"), "invoice_no": (facts.get("invoice") or {}).get("invoice_no"), "amount": p["amount"], "currency": p["currency"],
+                       "amount_usd": p["amount_usd"], "initiated_by": p["initiated_by"]}
         action["payload_hash"] = payload_hash(action)
-        self.state = {"stage": "awaiting_approval", "payload_hash": action["payload_hash"], "action": action, "recommendation": rec, "gate": gate, "approvals_required": gate["approvals_required"],
-                      "facts_summary": {"vendor": (facts.get("invoice") or {}).get("vendor"), "invoice_no": (facts.get("invoice") or {}).get("invoice_no"), "amount": p["amount"], "currency": p["currency"], "amount_usd": p["amount_usd"], "initiated_by": p["initiated_by"]}}
+        self.state = {"stage": "awaiting_approval", "source": source, "payload_hash": action["payload_hash"], "action": action, "recommendation": rec, "gate": gate,
+                      "approvals_required": gate["approvals_required"], "facts_summary": summary}
         try:
             await workflow.wait_condition(lambda: self.rejection is not None or len(self.approvals) >= gate["approvals_required"], timeout=APPROVAL_TIMEOUT)
         except TimeoutError:
