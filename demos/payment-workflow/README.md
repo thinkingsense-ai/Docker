@@ -28,6 +28,14 @@ docker compose --project-directory . -f demos/treasury-pack/docker-compose.treas
 - `WRITE_BACK=live` sends approved actions to the mock ERP; the default `dry-run` shows the call it would send. `APPROVAL_TIMEOUT_MINUTES` (default 2880) is how long an approval may wait before the workflow escalates.
 - Stop and wipe: `... down -v`. Tests (no Docker): `python3 -m unittest discover -s demos/payment-workflow/tests`. Check the record: `python3 demos/payment-workflow/decisions.py verify` (with `DECISIONS_FILE` set).
 
+## Ask and the workflow in one page (the demo bridge)
+
+The inbox page has an **Ask** box. A question goes to the app's real Ask API (the inbox backend signs in as the pack's demo user, `ASK_USER` / `ASK_PASSWORD`), and the answer comes back with its rows. When the rows have a `payment_id` column, each row gets a
+**Workflow** cell: an "Analyse with AI" button, or the workflow's state, and the workflow's card (recommendation, rules, Approve / Reject) appears under the table. Each question also links to the same conversation in Ask (`ASK_PUBLIC_URL`, default http://localhost:8080).
+Try: "Which waiting payments are on an invoice that is already paid?", then click Analyse on a row and approve from the card.
+
+This is a bridge, not the product: Ask itself knows nothing about workflows (its own page has no action button or card, and it cannot be framed or called from a browser page of another origin, so the inbox backend makes the call). Building it into Ask needs a Server change: a workflow API, a result-row action and an inline card in the Ask web app.
+
 ## Try this (the pack's seven pending payments)
 
 | Payment | What is wrong | What to expect |

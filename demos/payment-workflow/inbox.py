@@ -1,7 +1,7 @@
 """The approval inbox, http://localhost:8085. Lists the payments waiting for approval (read through thinking sense), starts a workflow per exception, shows each one's
 recommendation, rules and evidence, takes approve / reject from a named person, and shows the decision record. Demo only: the person types their name; a real deployment
 puts this behind the customer's single sign-on and ties the approver to the signed-in identity."""
-import asyncio, json, os, threading
+import asyncio, json, os, threading, urllib.request, urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from temporalio.client import Client
 from temporalio.exceptions import WorkflowAlreadyStartedError
@@ -12,6 +12,37 @@ LOOP = asyncio.new_event_loop(); threading.Thread(target=LOOP.run_forever, daemo
 run = lambda coro: asyncio.run_coroutine_threadsafe(coro, LOOP).result(120)
 CLIENT = run(Client.connect(os.environ.get("TEMPORAL_ADDRESS", "temporal:7233")))
 wid = lambda pid: "payment-%d" % int(pid)
+
+# --- Ask bridge: the page's question box calls the app's real Ask API (/api/ask) from here, signed in as a demo user, and gets the answer and rows back.
+# (The browser cannot call Ask directly: it is another origin, it sends a cross-site guard header, and it refuses to be framed.)
+ASK_URL = facts.ASK_URL; ASK_USER = os.environ.get("ASK_USER", "demo"); ASK_PASSWORD = os.environ.get("ASK_PASSWORD", "demo")
+ASK_PUBLIC_URL = os.environ.get("ASK_PUBLIC_URL", "http://localhost:8080").rstrip("/")
+_cookie = {"v": None}
+def _ask_login():
+    req = urllib.request.Request(ASK_URL + "/app/login", json.dumps({"username": ASK_USER, "password": ASK_PASSWORD}).encode(), {"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        _cookie["v"] = (r.headers.get("Set-Cookie") or "").split(";")[0]
+def ask(question, conversation_id=None):
+    for attempt in (1, 2):
+        if not _cookie["v"]: _ask_login()
+        body = {"question": question}
+        if conversation_id: body["conversationId"] = conversation_id
+        req = urllib.request.Request(ASK_URL + "/api/ask", json.dumps(body).encode(), {"Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest", "Cookie": _cookie["v"]})
+        try:
+            done = {}; cid = conversation_id
+            with urllib.request.urlopen(req, timeout=180) as r:
+                for raw in r:
+                    line = raw.decode("utf-8", "replace").strip()
+                    if not line.startswith("data:"): continue
+                    try: d = json.loads(line[5:])
+                    except ValueError: continue
+                    cid = d.get("conversationId", cid)
+                    if "error" in d and d.get("step") in (None, "error"): return {"error": str(d["error"])[:300], "conversationId": cid}
+                    if d.get("step") == "done": done = d
+            return {"answer": done.get("answer"), "columns": done.get("columns") or [], "rows": done.get("rows") or [], "conversationId": cid, "askUrl": ASK_PUBLIC_URL}
+        except urllib.error.HTTPError as e:
+            if e.code in (401, 403) and attempt == 1: _cookie["v"] = None; continue      # session expired: sign in again once
+            raise
 
 async def _state(pid):
     h = CLIENT.get_workflow_handle(wid(pid))
@@ -58,6 +89,7 @@ class H(BaseHTTPRequestHandler):
         try:
             b = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
             if self.path == "/api/start": self._send(200, run(_start(b["payment_id"])))
+            elif self.path == "/api/ask": self._send(200, ask(str(b.get("question", "")).strip()[:500], b.get("conversationId")))
             elif self.path == "/api/decide": run(_signal(b["payment_id"], str(b.get("approver", "")).strip(), b["action"], b.get("hash", ""), b.get("reason"))); self._send(200, {"sent": True})
             else: self._send(404, {"error": "not found"})
         except Exception as e: self._send(500, {"error": str(e)[:300]})
