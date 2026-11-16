@@ -26,6 +26,9 @@ services:
       WRITE_BACK: ${WRITE_BACK:-dry-run}             # dry-run: show the exact ERP call, send nothing. live: send it to the mock ERP.
       APPROVAL_TIMEOUT_MINUTES: ${APPROVAL_TIMEOUT_MINUTES:-2880}
       DECISIONS_FILE: /data/decisions.jsonl
+      ASK_USER: demo                                  # the inbox's question box signs in to Ask as this user (the pack's documented demo login)
+      ASK_PASSWORD: demo
+      ASK_PUBLIC_URL: ${ASK_PUBLIC_URL:-http://localhost:8080}
     volumes: [workflow-data:/data]
   inbox:
     build: ./demos/payment-workflow
