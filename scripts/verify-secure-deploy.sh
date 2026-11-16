@@ -4,6 +4,7 @@
 #   verify-secure-deploy.sh [--legacy-agent] https://<load-balancer> <admin-api-token>     (or http://<lb>:8080 if HTTPS is off)
 # HTTPS deployments use a self-signed certificate unless one was supplied, so the checks do not verify the certificate (curl -k);
 # set VERIFY_CA=<ca.pem> to verify it against a CA instead.
+# The federated-query check tries each demo pack's first table (or runs VERIFY_SQL, a statement of your own, if set).
 # Exits non-zero if any check fails. App v0.10.5+ requires a credential on /mcp/agent (Server#17); on v0.10.4 and
 # earlier it answered anonymously, so run with --legacy-agent to report it instead of asserting.
 LEGACY=0; [ "$1" = --legacy-agent ] && { LEGACY=1; shift; }
@@ -23,8 +24,19 @@ check "Ask app page is up"                  200 "$(code "$BASE/")"
 for p in /api/config /metrics /mcp/; do check "anonymous $p refused" 401 "$(code "$BASE$p")"; done
 check "anonymous /api/query refused"        401 "$(code -X POST -H 'Content-Type: application/json' -d '{"sql":"select 1"}' "$BASE/api/query")"
 check "wrong token refused"                 401 "$(code -X POST -H 'Authorization: Bearer wrong' -H 'Content-Type: application/json' -d '{"sql":"select 1"}' "$BASE/api/query")"
-body=$(curl -s "${CURL_TLS[@]}" -m 60 -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"sql":"SELECT COUNT(*) AS n FROM suppliers.suppliers"}' "$BASE/api/query")
-if echo "$body" | grep -q '"success" *: *true'; then printf 'PASS  %-46s %s\n' "admin token runs a federated query" "$(echo "$body" | head -c 120)"; else printf 'FAIL  admin token query: %s\n' "$(echo "$body" | head -c 200)"; fail=1; fi
+# The federated-query check needs one real table, and which one exists depends on the demo pack the deployment was given. Unless VERIFY_SQL is set, try each pack's first
+# table in turn (supply-chain, IT risk, BOM, Treasury, all-packs) and pass on the first that answers; a deployment with none of them fails and shows every reason.
+run_sql() { curl -s "${CURL_TLS[@]}" -m 60 -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d "{\"sql\":\"$1\"}" "$BASE/api/query"; }
+if [ -n "${VERIFY_SQL:-}" ]; then PROBES=("$VERIFY_SQL")
+else PROBES=("SELECT COUNT(*) AS n FROM suppliers.suppliers" "SELECT COUNT(*) AS n FROM risk.business_services" "SELECT COUNT(*) AS n FROM bom.suppliers" "SELECT COUNT(*) AS n FROM treasury.entities" "SELECT COUNT(*) AS n FROM pg.suppliers.suppliers"); fi
+ok=0; why=""
+for sql in "${PROBES[@]}"; do
+  body=$(run_sql "$sql")
+  if echo "$body" | grep -q '"success" *: *true'; then printf 'PASS  %-46s %s\n' "admin token runs a federated query" "$sql -> $(echo "$body" | head -c 100)"; ok=1; break; fi
+  why="$why
+        $sql -> $(echo "$body" | head -c 150)"
+done
+if [ $ok = 0 ]; then printf 'FAIL  admin token runs a federated query; none of the probes worked (set VERIFY_SQL to a query for this deployment):%s\n' "$why"; fail=1; fi
 if [ $LEGACY = 1 ]; then printf 'INFO  anonymous /mcp/agent/ (open before v0.10.5)         %s\n' "$(code "$BASE/mcp/agent/")"
 else check "anonymous /mcp/agent refused" 401 "$(code -X POST -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' "$BASE/mcp/agent/")"; fi
 exit $fail

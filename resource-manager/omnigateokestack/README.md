@@ -91,7 +91,7 @@ closed on the load balancer. Your address is `https://<load-balancer>/`.
   choice; with a certificate for a name, browse by that name).
 - **Switches:** **Serve HTTPS** (on) and **HTTPS only** (on, closes 8080). Turn HTTPS off only if something in front of OmniGate already provides it;
   turn HTTPS only off to also allow plain HTTP on 8080.
-- **Scripts:** `verify-secure-deploy.sh` and the switch scripts accept the self-signed certificate (`curl -k`); `VERIFY_CA=<ca.pem>` verifies against a CA.
+- **Scripts:** `verify-secure-deploy.sh` and the switch scripts accept the self-signed certificate (`curl -k`); `VERIFY_CA=<ca.pem>` verifies against a CA. `verify-secure-deploy.sh` finds a table to query by trying each demo pack's first table (supply-chain, IT risk, BOM, Treasury, all-packs); `VERIFY_SQL="SELECT ..."` runs your own statement instead (needed for a deployment with other data).
 - **Not covered yet:** certificate renewal (a supplied certificate needs replacing before it expires) and automatic certificates for a hostname (Let's Encrypt).
 
 For internal testing, `scripts/enable-https-oke.sh --stack-id <stack ocid>` swaps the automatic certificate for one from a local test CA
