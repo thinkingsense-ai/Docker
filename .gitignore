@@ -8,3 +8,6 @@
 
 __pycache__/
 *.pyc
+
+# local secrets (the SAP sandbox key for demos/sap-spike)
+demos/sap-spike/.env
