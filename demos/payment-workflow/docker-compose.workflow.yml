@@ -18,6 +18,7 @@ services:
     command: ["python", "worker.py"]
     depends_on: [temporal, omnigate]
     restart: unless-stopped
+    extra_hosts: ["host.docker.internal:host-gateway"]
     environment: &wf
       TEMPORAL_ADDRESS: temporal:7233
       ASK_URL: http://omnigate:8080
@@ -29,6 +30,10 @@ services:
       ASK_USER: demo                                  # the inbox's question box signs in to Ask as this user (the pack's documented demo login)
       ASK_PASSWORD: demo
       ASK_PUBLIC_URL: ${ASK_PUBLIC_URL:-http://localhost:8080}
+      # The SAP tab (see ../sap-spike): SAP's public sandbox key, and the SAP spike app the inbox's Ask box calls for that tab. Both optional; the tab needs both.
+      SAP_API_KEY: ${SAP_API_KEY:-}
+      SAP_ASK_URL: ${SAP_ASK_URL:-http://host.docker.internal:8087}
+      SAP_ASK_PUBLIC_URL: ${SAP_ASK_PUBLIC_URL:-http://localhost:8087}
     volumes: [workflow-data:/data]
   inbox:
     build: ./demos/payment-workflow
@@ -36,6 +41,7 @@ services:
     depends_on: [temporal, omnigate]
     restart: unless-stopped
     ports: ["8085:8085"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
     environment: *wf
     volumes: [workflow-data:/data]
 volumes:
