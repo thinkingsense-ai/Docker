@@ -1,0 +1,56 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Payment approvals</title>
+<style>
+:root{--bg:#f6f7f8;--card:#fff;--ink:#16202a;--dim:#5b6773;--line:#dde2e6;--acc:#0f766e;--warn:#b45309;--bad:#b91c1c;--ok:#15803d}
+@media(prefers-color-scheme:dark){:root{--bg:#10161b;--card:#18212a;--ink:#e6ecf1;--dim:#93a1ad;--line:#2b3742;--acc:#2dd4bf;--warn:#fbbf24;--bad:#f87171;--ok:#4ade80}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,sans-serif}
+main{max-width:980px;margin:0 auto;padding:20px 16px 60px}h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:28px 0 8px}
+.sub{color:var(--dim);margin:0 0 14px}.me{display:flex;gap:8px;align-items:center;margin:10px 0 18px}.me input{padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:10px 0}.row{display:flex;gap:12px;flex-wrap:wrap;align-items:baseline;justify-content:space-between}
+.pill{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;border:1px solid var(--line);color:var(--dim);margin-right:6px}.pill.warn{color:var(--warn);border-color:var(--warn)}.pill.ok{color:var(--ok);border-color:var(--ok)}.pill.bad{color:var(--bad);border-color:var(--bad)}
+button{font:inherit;padding:6px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}button.go{background:var(--acc);color:#fff;border-color:var(--acc)}button.no{color:var(--bad);border-color:var(--bad)}
+ul{margin:6px 0 6px 18px;padding:0}small,.dim{color:var(--dim)}code{font-size:12px;word-break:break-all}table{border-collapse:collapse;width:100%}td,th{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:top}
+</style></head><body><main>
+<h1>Payment approvals</h1><p class="sub">Payments waiting for approval, read through thinking sense. The AI recommends; a named person approves. Nothing is written to the ERP until the approvals are in, and by default the write is a dry run.</p>
+<div class="me"><label for="who">You are</label><input id="who" placeholder="your name, e.g. m.okafor" autocomplete="off"><small>Demo only: a real deployment ties this to single sign-on.</small></div>
+<h2>Waiting for approval</h2><div id="pending"><p class="dim">Loading…</p></div>
+<h2>Decision record <small id="chain"></small></h2><div id="decisions"></div>
+</main><script>
+const $=s=>document.querySelector(s), esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const who=$('#who'); try{who.value=localStorage.getItem('who')||''}catch(e){} who.oninput=()=>{try{localStorage.setItem('who',who.value)}catch(e){}};
+const post=(u,b)=>fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json());
+const money=(a,c)=>Number(a).toLocaleString(undefined,{maximumFractionDigits:2})+' '+c;
+function card(p){
+  const w=p.workflow, st=w&&w.stage, flags=p.flags.map(f=>`<span class="pill warn">${esc(f)}</span>`).join('');
+  let body='';
+  if(!w) body=`<button class="go" onclick="start(${p.payment_id})">Analyse with AI</button>`;
+  else if(st==='starting') body='<p class="dim">Gathering facts and asking for a recommendation…</p>';
+  else if(w.recommendation){
+    const r=w.recommendation, g=w.gate;
+    body=`<p><b>AI recommends: ${esc(r.recommendation)}</b> <span class="pill">confidence ${Math.round((r.confidence||0)*100)}%</span><span class="pill">${esc(r.model)}</span></p>
+      <ul>${(r.reasons||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
+      ${(r.checks_to_do||[]).length?`<p class="dim">To check: ${(r.checks_to_do).map(esc).join('; ')}</p>`:''}
+      ${g.blocks.length?`<p><span class="pill bad">rules</span>${g.blocks.map(esc).join('; ')}</p>`:''}
+      ${g.notes.length?`<p><span class="pill">rules</span>${g.notes.map(esc).join('; ')}</p>`:''}`;
+    if(st==='awaiting_approval'){
+      const a=w.action, have=(w.approvals||[]).map(x=>x.approver);
+      body+=`<p class="dim">Action: <code>${esc(a.type)} payment ${a.payment_id}</code> · approvals ${have.length} of ${w.approvals_required}${have.length?' ('+have.map(esc).join(', ')+')':''} · payload <code>${esc(w.payload_hash.slice(0,16))}…</code></p>
+        <p><button class="go" onclick="decide(${p.payment_id},'approve','${w.payload_hash}')">Approve ${esc(a.type)}</button> <button class="no" onclick="decide(${p.payment_id},'reject','')">Reject</button></p>
+        ${(w.ignored||[]).map(i=>`<p class="dim">Ignored: ${esc(i.approver)} (${esc(i.why)})</p>`).join('')}`;
+    } else body+=`<p><span class="pill ${st==='done'?'ok':st==='rejected'?'bad':''}">${esc(st)}</span> ${w.write_back?'<code>'+esc(JSON.stringify(w.write_back.would_send||w.write_back.sent)).slice(0,300)+'</code>':''}</p>`;
+  }
+  return `<div class="card"><div class="row"><b>Payment ${p.payment_id} · ${esc(p.vendor)}</b><span>${money(p.amount,p.currency)} <small>(${money(p.amount_usd,'USD')})</small></span></div>
+    <div class="dim">invoice ${esc(p.invoice_no)} (${esc(p.invoice_status)}) · initiated by ${esc(p.initiated_by)}</div><div style="margin:6px 0">${flags}</div>${body}</div>`;
+}
+async function refresh(){
+  try{const [p,d]=await Promise.all([fetch('/api/pending').then(r=>r.json()),fetch('/api/decisions').then(r=>r.json())]);
+    if(p.error)throw new Error(p.error);
+    $('#pending').innerHTML=p.length?p.map(card).join(''):'<p class="dim">Nothing is waiting.</p>';
+    $('#chain').textContent='· hash chain '+d.chain;
+    $('#decisions').innerHTML=d.records.length?`<table><tr><th>Payment</th><th>Outcome</th><th>AI said</th><th>Hash</th></tr>${d.records.slice().reverse().map(r=>`<tr><td>${r.body.payment_id}</td><td>${esc(r.body.outcome)}</td><td>${esc(r.body.recommendation.recommendation)}</td><td><code>${r.hash.slice(0,10)}</code></td></tr>`).join('')}</table>`:'<p class="dim">No decisions yet.</p>';
+  }catch(e){$('#pending').innerHTML='<p class="dim">Could not load: '+esc(e.message)+'</p>'}
+}
+async function start(id){await post('/api/start',{payment_id:id});refresh()}
+async function decide(id,action,hash){if(!who.value.trim()){alert('Type your name first.');who.focus();return}
+  const reason=action==='reject'?prompt('Reason for rejecting?','')||'':'';await post('/api/decide',{payment_id:id,approver:who.value,action,hash,reason});setTimeout(refresh,600)}
+refresh();setInterval(refresh,4000);
+</script></body></html>
