@@ -1,0 +1,40 @@
+# The payment-exception workflow example, added to the Treasury pack (see README.md). From the repository root:
+#   export OMNIGATE_LLM_API_KEY=sk-ant-...        # for the app's Ask; the recommendation step also uses it (without it a rule-based fallback answers)
+#   docker compose --project-directory . -f demos/treasury-pack/docker-compose.treasury.yml -f demos/payment-workflow/docker-compose.workflow.yml up --build
+# Approval inbox http://localhost:8085 · Temporal UI http://localhost:8233 · Ask http://localhost:8080 (demo / demo)
+services:
+  temporal:
+    image: temporalio/temporal:1.5.1
+    user: "0"                                        # the dev server keeps its SQLite file in the volume, which is root-owned
+    command: ["server", "start-dev", "--ip", "0.0.0.0", "--db-filename", "/data/temporal.db"]
+    ports: ["8233:8233"]
+    volumes: [temporal-data:/data]
+  erp-mock:
+    build: ./demos/payment-workflow
+    command: ["python", "erp_mock.py", "8086"]
+    ports: ["8086:8086"]
+  worker:
+    build: ./demos/payment-workflow
+    command: ["python", "worker.py"]
+    depends_on: [temporal, omnigate]
+    restart: unless-stopped
+    environment: &wf
+      TEMPORAL_ADDRESS: temporal:7233
+      ASK_URL: http://omnigate:8080
+      ERP_URL: http://erp-mock:8086
+      OMNIGATE_LLM_API_KEY: ${OMNIGATE_LLM_API_KEY:-}
+      WRITE_BACK: ${WRITE_BACK:-dry-run}             # dry-run: show the exact ERP call, send nothing. live: send it to the mock ERP.
+      APPROVAL_TIMEOUT_MINUTES: ${APPROVAL_TIMEOUT_MINUTES:-2880}
+      DECISIONS_FILE: /data/decisions.jsonl
+    volumes: [workflow-data:/data]
+  inbox:
+    build: ./demos/payment-workflow
+    command: ["python", "inbox.py"]
+    depends_on: [temporal, omnigate]
+    restart: unless-stopped
+    ports: ["8085:8085"]
+    environment: *wf
+    volumes: [workflow-data:/data]
+volumes:
+  temporal-data:
+  workflow-data:
