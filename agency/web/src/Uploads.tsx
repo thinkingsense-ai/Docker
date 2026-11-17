@@ -64,7 +64,9 @@ function ImageSummary({ r }: { r: Record<string, any> }) {
   )
 }
 
-function Card({ u, onAsk, onDelete }: { u: Upload; onAsk: (q: string) => void; onDelete: () => void }) {
+function Card({ u, onAsk, onDelete, canShare, onShare }: { u: Upload; onAsk: (q: string) => void; onDelete?: () => void; canShare?: boolean; onShare?: (on: boolean) => void }) {
+  const [asking, setAsking] = useState(false)
+  const mine = u.mine !== false
   return (
     <article className="answer" aria-label={`Upload ${u.name}`}>
       <h2 className="q">{u.name} <span className="tag">{u.kind}</span>{u.nonCommercial && <span className="tag caution">non-commercial</span>}</h2>
@@ -72,7 +74,15 @@ function Card({ u, onAsk, onDelete }: { u: Upload; onAsk: (q: string) => void; o
       {u.notes.length > 0 && <ul className="warnings">{u.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>}
       {u.licence && <p className="muted small">{u.licence}</p>}
       {u.askPrompts.length > 0 && <div className="follow"><span className="muted small">Ask about this:</span>{u.askPrompts.map((p) => <button key={p} className="chip" onClick={() => onAsk(p)}>{p}</button>)}</div>}
-      <p className="muted small">Private to you. The file was not kept; this record expires {new Date(u.expiresAt).toLocaleTimeString()}. <button className="link" onClick={onDelete}>Delete now</button></p>
+      {!mine && <p className="muted small">Shared by {u.sharedBy}{u.sharedAt ? ` at ${new Date(u.sharedAt).toLocaleTimeString()}` : ''} with everyone who can use {u.workspaceId}. Read-only. Any location in the file is hidden from you. Expires {new Date(u.expiresAt).toLocaleTimeString()}.</p>}
+      {mine && <p className="muted small">{u.shared ? `Shared with everyone who can use ${u.workspaceId}.` : 'Private to you.'} The file was not kept; this record expires {new Date(u.expiresAt).toLocaleTimeString()}.{' '}
+        {onDelete && <button className="link" onClick={onDelete}>Delete now</button>}</p>}
+      {mine && canShare && onShare && (u.shared
+        ? <p className="small"><button className="link" onClick={() => onShare(false)}>Stop sharing</button></p>
+        : asking
+          ? <div className="confirm small" role="group" aria-label="Confirm sharing"><p>Everyone who can use <strong>{u.workspaceId}</strong> will see this record, including its preview. Sharing does not extend how long it lasts, and a location in a picture is hidden from them.</p>
+              <button onClick={() => { setAsking(false); onShare(true) }}>Share</button> <button className="link" onClick={() => setAsking(false)}>Cancel</button></div>
+          : <p className="small">{u.workspaceId ? <button className="link" onClick={() => setAsking(true)}>Share with {u.workspaceId}…</button> : <span className="muted">Not made inside a pack, so it cannot be shared.</span>}</p>)}
     </article>
   )
 }
@@ -81,14 +91,16 @@ export default function Uploads({ workspaceId, onAsk, onSignedOut }: Props) {
   const [adapters, setAdapters] = useState<Adapter[]>([])
   const [accept, setAccept] = useState<string[]>([])
   const [ups, setUps] = useState<Upload[]>([])
+  const [shared, setShared] = useState<Upload[]>([])
+  const [sharing, setSharing] = useState('off')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [over, setOver] = useState(false)
   const input = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    api.adapters().then((a) => { setAdapters(a.adapters); setAccept(a.accept) }).catch(() => {})
-    api.uploads().then((u) => setUps(u.uploads)).catch(() => {})
+    api.adapters().then((a) => { setAdapters(a.adapters); setAccept(a.accept); setSharing(a.sharing ?? 'off') }).catch(() => {})
+    api.uploads().then((u) => { setUps(u.uploads); setShared(u.shared ?? []) }).catch(() => {})
   }, [])
 
   if (accept.length === 0) return adapters.length ? <p className="muted small">Uploads are off: {adapters.map((a) => `${a.title} ${a.reason ?? 'is disabled'}`).join('; ')}.</p> : null
@@ -113,7 +125,9 @@ export default function Uploads({ workspaceId, onAsk, onSignedOut }: Props) {
         {adapters.filter((a) => a.enabled && a.nonCommercial).map((a) => <p key={a.id} className="warn">{a.title}: {a.licence}</p>)}
       </div>
       {err && <p role="alert" className="error">{err}</p>}
-      {ups.map((u) => <Card key={u.id} u={u} onAsk={onAsk} onDelete={() => api.deleteUpload(u.id).then(() => setUps((x) => x.filter((y) => y.id !== u.id))).catch((e) => setErr(e.message))} />)}
+      {ups.map((u) => <Card key={u.id} u={u} onAsk={onAsk} canShare={sharing === 'workspace'} onShare={(on) => api.shareUpload(u.id, on).then((r) => setUps((x) => x.map((y) => (y.id === r.id ? r : y)))).catch((e) => setErr(e.message))} onDelete={() => api.deleteUpload(u.id).then(() => setUps((x) => x.filter((y) => y.id !== u.id))).catch((e) => setErr(e.message))} />)}
+      {sharing === 'workspace' && <p className="small"><button className="link" onClick={() => api.uploads().then((u) => setShared(u.shared ?? [])).catch((e) => setErr(e.message))}>Check for uploads shared with you</button></p>}
+      {shared.length > 0 && <><h2>Shared with you</h2>{shared.map((u) => <Card key={u.id} u={u} onAsk={onAsk} />)}</>}
     </section>
   )
 }

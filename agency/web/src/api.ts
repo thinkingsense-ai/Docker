@@ -27,6 +27,7 @@ export interface Adapter { id: string; title: string; kind?: string; enabled: bo
 export interface Upload {
   id: string; name: string; kind: string; adapter: string; workspaceId: string | null; nonCommercial: boolean; licence: string | null
   notes: string[]; askPrompts: string[]; result: Record<string, any> | null; expiresAt: number
+  mine?: boolean; shared?: boolean; sharedBy?: string; sharedAt?: number | null
 }
 
 export class ApiError extends Error {
@@ -55,8 +56,9 @@ export const api = {
   conversations: () => call<{ conversations: ConversationSummary[] }>('GET', '/conversations'),
   conversation: (id: string) => call<{ success: boolean; title?: string; turns?: Turn[]; error?: string }>('GET', '/conversations/get?id=' + encodeURIComponent(id)),
   preferences: () => call<{ pack?: string }>('GET', '/preferences'),
-  adapters: () => call<{ adapters: Adapter[]; accept: string[] }>('GET', '/adapters'),
-  uploads: () => call<{ uploads: Upload[] }>('GET', '/uploads'),
+  adapters: () => call<{ adapters: Adapter[]; accept: string[]; sharing?: string }>('GET', '/adapters'),
+  uploads: () => call<{ uploads: Upload[]; shared?: Upload[]; sharing?: string }>('GET', '/uploads'),
+  shareUpload: (id: string, shared: boolean) => call<Upload>('POST', '/uploads/' + encodeURIComponent(id) + '/share', { shared }),
   deleteUpload: (id: string) => call<unknown>('DELETE', '/uploads/' + encodeURIComponent(id)),
   setPreference: (pack: string | null) => call<{ pack?: string }>('POST', '/preferences', { pack }),
 }

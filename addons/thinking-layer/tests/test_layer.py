@@ -6,7 +6,7 @@ import adapters, app, decisions, tools, uploads
 from upstream import Upstream
 
 class Fake:
-    namespaces = [{"id": "treasury", "name": "Treasury"}]; packs = [{"id": "bom"}]; ask_posts = []; ns_posts = []; ask_status = 200; can_upload = True
+    namespaces = [{"id": "treasury", "name": "Treasury"}]; packs = [{"id": "bom"}]; ask_posts = []; ns_posts = []; ask_status = 200; can_upload = True; user_ns = {}
 
 class FakeServer(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
@@ -14,14 +14,19 @@ class FakeServer(BaseHTTPRequestHandler):
         b = json.dumps(o).encode(); self.send_response(code); self.send_header("Content-Type", "application/json"); self.send_header("Content-Length", str(len(b)))
         for k, v in extra: self.send_header(k, v)
         self.end_headers(); self.wfile.write(b)
-    def authed(self): return "omnigate_app_session=srv-cookie" in (self.headers.get("Cookie") or "")
+    COOKIES = {"srv-cookie": "alice", "srv-bob": "bob", "srv-carol": "carol"}
+    def user(self):
+        for part in (self.headers.get("Cookie") or "").split(";"):
+            k, _, v = part.strip().partition("=")
+            if k == "omnigate_app_session": return self.COOKIES.get(v)
+    def authed(self): return self.user() is not None
     def csrf_ok(self): return not self.headers.get("Cookie") or bool(self.headers.get("X-Requested-With"))
     def do_GET(self):
         p = self.path
         if p == "/app/public-config": return self._j(200, {"llmConfigured": True})
         if not self.authed(): return self._j(401, {"error": "not logged in"})
-        if p == "/app/whoami": return self._j(200, {"username": "alice", "canSeeSql": True, "canUploadFiles": Fake.can_upload})
-        if p == "/app/namespaces": return self._j(200, {"success": True, "namespaces": Fake.namespaces})
+        if p == "/app/whoami": return self._j(200, {"username": self.user(), "canSeeSql": True, "canUploadFiles": Fake.can_upload})
+        if p == "/app/namespaces": return self._j(200, {"success": True, "namespaces": Fake.user_ns.get(self.user(), Fake.namespaces)})
         if p.startswith("/app/starter-questions"): return self._j(200, {"success": True, "packs": Fake.packs, "items": [{"question": "q?", "origin": "approved"}], "asked": p})
         if p == "/app/conversations": return self._j(200, {"conversations": [{"id": "c1", "title": "T", "updatedAtMillis": 1}]})
         if p.startswith("/app/conversations/get"): return self._j(200, {"success": True, "id": "c1", "turns": [], "asked": p})
@@ -31,7 +36,8 @@ class FakeServer(BaseHTTPRequestHandler):
     def do_POST(self):
         n = int(self.headers.get("Content-Length") or 0); b = json.loads(self.rfile.read(n) or b"{}")
         if self.path == "/app/login":
-            if b.get("username") == "alice" and b.get("password") == "pw": return self._j(200, {"success": True}, [("Set-Cookie", "omnigate_app_session=srv-cookie; Path=/; HttpOnly")])
+            ck = {"alice": "srv-cookie", "bob": "srv-bob", "carol": "srv-carol"}.get(b.get("username"))
+            if ck and b.get("password") == "pw": return self._j(200, {"success": True}, [("Set-Cookie", "omnigate_app_session=%s; Path=/; HttpOnly" % ck)])
             return self._j(200, {"success": False, "error": "bad credentials"})
         if not self.csrf_ok(): return self._j(403, {"error": "cross-site request refused"})
         if not self.authed(): return self._j(401, {})
@@ -47,7 +53,7 @@ class FakeServer(BaseHTTPRequestHandler):
         self._j(404, {})
 
 class FakeAdapter(BaseHTTPRequestHandler):
-    ingests = []; fail = None
+    ingests = []; fail = None; gps = False
     def log_message(self, *a): pass
     def _j(self, code, o):
         b = json.dumps(o).encode(); self.send_response(code); self.send_header("Content-Type", "application/json"); self.send_header("Content-Length", str(len(b))); self.end_headers(); self.wfile.write(b)
@@ -57,7 +63,7 @@ class FakeAdapter(BaseHTTPRequestHandler):
     def do_POST(self):
         body = self.rfile.read(int(self.headers.get("Content-Length") or 0)); FakeAdapter.ingests.append((self.headers.get("X-Filename"), len(body)))
         if FakeAdapter.fail: return self._j(FakeAdapter.fail, {"error": "bad audio"})
-        self._j(200, {"result": {"top": "Cardinalis cardinalis"}, "notes": ["n"], "licence": "NC", "askPrompts": ["How many recordings of Cardinalis cardinalis?"]})
+        self._j(200, {"result": {"top": "Cardinalis cardinalis", **({"gps": {"lat": 1, "lon": 2}} if FakeAdapter.gps else {})}, "notes": ["n"] + (["The file carries a GPS location (1, 2)."] if FakeAdapter.gps else []), "licence": "NC", "askPrompts": ["How many recordings of Cardinalis cardinalis?"]})
 
 def serve(handler):
     s = ThreadingHTTPServer(("127.0.0.1", 0), handler); threading.Thread(target=s.serve_forever, daemon=True).start(); return s
@@ -83,7 +89,7 @@ class LayerTests(unittest.TestCase):
     def tearDownClass(cls): cls.fake.shutdown(); cls.adapter.shutdown(); cls.layer.shutdown()
     def setUp(self):
         Fake.namespaces = [{"id": "treasury", "name": "Treasury"}]; Fake.packs = [{"id": "bom"}]; Fake.ask_posts = []; Fake.ns_posts = []; Fake.ask_status = 200
-        Fake.can_upload = True; FakeAdapter.ingests = []; FakeAdapter.fail = None
+        Fake.can_upload = True; Fake.user_ns = {}; os.environ.pop("AGENCY_UPLOAD_SHARING", None); os.environ.pop("AGENCY_UPLOAD_ADMINS", None); FakeAdapter.ingests = []; FakeAdapter.fail = None
         app.ADAPTERS = adapters.Registry("http://127.0.0.1:%d" % self.adapter.server_port); app.UPLOADS = uploads.Store(1.0)
         app.SESSIONS.clear(); os.environ.pop("AGENCY_SCOPE_HINT", None); os.environ.pop("AGENCY_DECISION_FILE", None)
         self.c = Client(self.layer.server_port)
@@ -234,6 +240,70 @@ class LayerTests(unittest.TestCase):
         self.assertEqual(self.up()[0], 429)
         for r in app.UPLOADS.rows.values(): r["expiresAtEpoch"] = 0
         self.assertEqual(self.J(self.c.call("GET", "/uploads")[1])["uploads"], [])
+
+    def who(self, name):
+        c = Client(self.layer.server_port); s, raw, _ = c.call("POST", "/login", {"username": name, "password": "pw"}); self.assertEqual(s, 200, raw); return c
+
+    def gps_upload(self, c, wid="treasury"):
+        FakeAdapter.gps = True; r = self.J(c.call("POST", "/uploads?name=clip.wav&workspaceId=%s" % wid, b"RIFFxxxx")[1]); FakeAdapter.gps = False; return r["id"]
+
+    def test_sharing_is_off_by_default_and_records_stay_private(self):
+        a, b = self.who("alice"), self.who("bob"); rid = self.gps_upload(a)
+        s, raw, _ = a.call("POST", "/uploads/%s/share" % rid, {"shared": True}); self.assertEqual((s, self.J(raw)["error"]["code"]), (409, "sharing_off"))
+        d = self.J(b.call("GET", "/uploads")[1]); self.assertEqual((d["sharing"], d["shared"], d["uploads"]), ("off", [], []))
+        self.assertEqual(self.J(a.call("GET", "/adapters")[1])["sharing"], "off")
+
+    def test_shared_record_is_read_only_redacted_and_limited_to_the_workspace(self):
+        os.environ["AGENCY_UPLOAD_SHARING"] = "workspace"; Fake.user_ns = {"alice": [{"id": "treasury"}], "bob": [{"id": "treasury"}], "carol": [{"id": "bom"}]}
+        a, b, c = self.who("alice"), self.who("bob"), self.who("carol"); rid = self.gps_upload(a)
+        self.assertEqual(self.J(b.call("GET", "/uploads")[1])["shared"], [])                         # private until shared
+        s, raw, _ = a.call("POST", "/uploads/%s/share" % rid, {"shared": True}); r = self.J(raw); self.assertEqual(s, 200, raw)
+        self.assertTrue(r["shared"] and r["mine"] and r["sharedBy"] == "alice" and r["sharedAt"]); self.assertIn("gps", r["result"])               # the owner still sees the location
+        d = self.J(b.call("GET", "/uploads")[1]); self.assertEqual([x["id"] for x in d["shared"]], [rid]); v = d["shared"][0]
+        self.assertEqual((v["mine"], v["sharedBy"], v["workspaceId"]), (False, "alice", "treasury")); self.assertNotIn("gps", v["result"]); self.assertFalse(any("GPS" in n for n in v["notes"]))
+        self.assertEqual(self.c.call("GET", "/uploads")[0], 401); self.assertEqual(self.J(c.call("GET", "/uploads")[1])["shared"], [])        # carol cannot use Treasury
+        self.assertEqual(c.call("GET", "/uploads/" + rid)[0], 404); self.assertEqual(b.call("GET", "/uploads/" + rid)[0], 200)
+        self.assertEqual(b.call("DELETE", "/uploads/" + rid)[0], 404); self.assertEqual(b.call("POST", "/uploads/%s/share" % rid, {"shared": False})[0], 404)   # read-only to them
+        a.call("POST", "/uploads/%s/share" % rid, {"shared": False}); self.assertEqual(self.J(b.call("GET", "/uploads")[1])["shared"], []); self.assertEqual(b.call("GET", "/uploads/" + rid)[0], 404)
+
+    def test_losing_the_workspace_or_turning_sharing_off_hides_it_again(self):
+        os.environ["AGENCY_UPLOAD_SHARING"] = "workspace"; Fake.user_ns = {"alice": [{"id": "treasury"}], "bob": [{"id": "treasury"}]}
+        a, b = self.who("alice"), self.who("bob"); rid = self.gps_upload(a); a.call("POST", "/uploads/%s/share" % rid, {"shared": True})
+        Fake.user_ns["bob"] = [{"id": "bom"}]; self.assertEqual(self.J(b.call("GET", "/uploads")[1])["shared"], [])               # the Server's rule changed
+        Fake.user_ns["bob"] = [{"id": "treasury"}]; self.assertEqual(len(self.J(b.call("GET", "/uploads")[1])["shared"]), 1)
+        os.environ["AGENCY_UPLOAD_SHARING"] = "off"; self.assertEqual(self.J(b.call("GET", "/uploads")[1])["shared"], [])
+
+    def test_sharing_never_widens_access(self):
+        os.environ["AGENCY_UPLOAD_SHARING"] = "workspace"; Fake.user_ns = {"alice": [{"id": "bom"}]}
+        a = self.who("alice"); rid = self.gps_upload(a, "treasury")                                  # uploaded into a Workspace she cannot use
+        s, raw, _ = a.call("POST", "/uploads/%s/share" % rid, {"shared": True}); self.assertEqual((s, self.J(raw)["error"]["code"]), (403, "workspace_not_yours"))
+        rid2 = self.J(a.call("POST", "/uploads?name=x.wav", b"RIFFxxxx")[1])["id"]                    # no Workspace given and no all-data Workspace: nothing to share into
+        s, raw, _ = a.call("POST", "/uploads/%s/share" % rid2, {"shared": True}); self.assertEqual((s, self.J(raw)["error"]["code"]), (400, "no_workspace"))
+        self.assertEqual(a.call("POST", "/uploads/%s/share" % rid, {"shared": "yes"})[0], 400)
+        Fake.can_upload = False; self.assertEqual(self.who("bob").call("POST", "/uploads?name=x.wav&workspaceId=treasury", b"RIFFxxxx")[0], 403)      # sharing does not grant uploads
+
+    def test_upload_without_a_workspace_goes_to_all_data_when_there_is_one(self):
+        os.environ["AGENCY_UPLOAD_SHARING"] = "workspace"; Fake.user_ns = {"alice": [{"id": "all-data"}]}
+        a = self.who("alice"); r = self.J(a.call("POST", "/uploads?name=x.wav", b"RIFFxxxx")[1]); self.assertEqual(r["workspaceId"], "all-data")
+
+    def test_upload_admins_can_unshare_and_delete_shared_records_but_not_read_private_ones(self):
+        os.environ["AGENCY_UPLOAD_SHARING"] = "workspace"; os.environ["AGENCY_UPLOAD_ADMINS"] = "carol"; Fake.user_ns = {"alice": [{"id": "treasury"}], "carol": [{"id": "bom"}]}
+        a, c = self.who("alice"), self.who("carol"); private, shared = self.gps_upload(a), self.gps_upload(a); a.call("POST", "/uploads/%s/share" % shared, {"shared": True})
+        d = self.J(c.call("GET", "/uploads")[1]); self.assertEqual([x["id"] for x in d["shared"]], [shared]); self.assertEqual(c.call("GET", "/uploads/" + private)[0], 404)
+        self.assertEqual(c.call("DELETE", "/uploads/" + private)[0], 404); self.assertEqual(c.call("POST", "/uploads/%s/share" % private, {"shared": False})[0], 404)
+        self.assertEqual(c.call("POST", "/uploads/%s/share" % shared, {"shared": True})[0], 404)           # an admin cannot share on someone's behalf
+        self.assertEqual(c.call("POST", "/uploads/%s/share" % shared, {"shared": False})[0], 200); self.assertFalse(self.J(a.call("GET", "/uploads/" + shared)[1])["shared"])
+        a.call("POST", "/uploads/%s/share" % shared, {"shared": True}); self.assertEqual(c.call("DELETE", "/uploads/" + shared)[0], 200); self.assertEqual(a.call("GET", "/uploads/" + shared)[0], 404)
+
+    def test_sharing_does_not_extend_expiry_and_expired_records_vanish(self):
+        os.environ["AGENCY_UPLOAD_SHARING"] = "workspace"; Fake.user_ns = {"alice": [{"id": "treasury"}], "bob": [{"id": "treasury"}]}
+        a, b = self.who("alice"), self.who("bob"); rid = self.gps_upload(a); before = app.UPLOADS.rows[rid]["expiresAtEpoch"]
+        a.call("POST", "/uploads/%s/share" % rid, {"shared": True}); self.assertEqual(app.UPLOADS.rows[rid]["expiresAtEpoch"], before)
+        app.UPLOADS.rows[rid]["expiresAtEpoch"] = 0; self.assertEqual(self.J(b.call("GET", "/uploads")[1])["shared"], [])
+
+    def test_share_needs_the_csrf_header(self):
+        os.environ["AGENCY_UPLOAD_SHARING"] = "workspace"; self.signin(); rid = self.J(self.up()[1])["id"]
+        c = http.client.HTTPConnection("127.0.0.1", self.layer.server_port); c.request("POST", "/uploads/%s/share" % rid, b"{}", {"Cookie": self.c.cookie}); self.assertEqual(c.getresponse().status, 403)
 
     def test_delete_needs_the_csrf_header(self):
         self.signin(); rid = self.J(self.up()[1])["id"]
