@@ -28,6 +28,28 @@ docker compose --project-directory . -f demos/treasury-pack/docker-compose.treas
 - `WRITE_BACK=live` sends approved actions to the mock ERP; the default `dry-run` shows the call it would send. `APPROVAL_TIMEOUT_MINUTES` (default 2880) is how long an approval may wait before the workflow escalates.
 - Stop and wipe: `... down -v`. Tests: `python3 -m unittest discover -s demos/payment-workflow/tests` (26; the SAP write-back test runs only where the Temporal library is installed, e.g. `docker run --rm -v "$PWD/demos/payment-workflow":/app -w /app treasury-pack-worker python -m unittest discover -s tests`). Check the record: `python3 demos/payment-workflow/decisions.py verify` (with `DECISIONS_FILE` set).
 
+## Behind the app's own workflow API (the gateway)
+
+The app (v0.10.19 and later, **commercial edition only**) has a workflow API of its own: Ask and Agency start, approve and reject runs through it, and it talks to an engine over a small HTTP contract (`OMNIGATE_WORKFLOW_ENGINE=http://...`, documented in the Server repo's `docs/workflows-api.md`, "Engine gateway contract"). `gateway.py` is that engine in front of this Temporal workflow, so the same runs show up in Ask, in Agency and in the approval inbox (the Temporal workflow id is `payment-<id>` in all three: one payment, one run).
+
+```bash
+export WORKFLOW_GATEWAY_TOKEN=$(openssl rand -hex 24)      # shared secret between the app and the gateway; the gateway refuses to start without one
+export OMNIGATE_RELEASE_TAG=v0.10.19
+docker compose --project-directory . -f demos/treasury-pack/docker-compose.treasury.yml -f demos/payment-workflow/docker-compose.workflow.yml \
+               -f demos/payment-workflow/docker-compose.gateway.yml up --build
+```
+
+Then an admin grants `canStartWorkflows` to the people who may start runs and `canApprove` to those who approve (Admin > users). The app's manifest is `manifest.gateway.json` (one definition, `payment-exception`, key `payment_id`). The free edition ignores the setting and the routes do not exist.
+
+- **What it does.** `POST /runs` starts the workflow (idempotent: the same payment returns the same run), `GET /runs/{id}` and `GET /runs?stage=awaiting_approval` read its state, `POST /runs/{id}/signal` delivers an approval or rejection. The app has already checked grants, the initiator, repeat approvals and the payload hash; the gateway re-checks them (a Temporal signal is fire-and-forget, so a bad one would be silently ignored) and answers with the app's own refusal codes. `gateway_map.py` holds the mapping and is unit-tested without Temporal.
+- **Real recommendation, real facts.** The run's facts come through the app's governed query path, the rules gate and the recommendation (the model, or the rule-based fallback labelled `rules-only`) are this workflow's own; nothing is canned.
+- **Stages.** The app's stages are facts, rules, recommendation, awaiting approval, approved, written back and rejected. The workflow can also end as `escalated` (the model chose "escalate": nothing is written) or `expired` (no decision before the deadline). The app has no stage for those, so the gateway reports them as `rejected` by the user `engine` with the reason spelled out. It reads a little oddly in the UI; a proper stage needs an app change.
+- **Required approvals** come from this workflow's rules (one, or two above the dual-approval limit), not from the manifest's `requiredApprovals`, which is only informational.
+- **Two decision records.** The app keeps its own hash-chained record of starts, approvals and refusals; this workflow keeps its own (`decisions.py`) of the decision's inputs and outcome. They are not merged.
+- **A run started in the inbox** has no starter the app knows, so it shows "(started in the approval inbox)" and nobody is barred as initiator at the app level (the workflow still bars whoever initiated the payment itself, and the AI).
+- **Security.** Bearer token on every route but `/health`, constant-time compare; no published port, so only the app reaches it. It can decide the fate of payments for anyone who reaches it: keep it on a private network. It does not hold admin rights itself, but the worker still reads the data with the app's admin token (the Server#102 limit above).
+- **Not covered.** Only Treasury payments (not the SAP tab), dry-run write-back (live goes to the mock ERP), no sign-in on the inbox, not on the cloud charts yet. Tests: `python3 -m unittest discover -s demos/payment-workflow/tests` (47, no Temporal needed for the gateway's 21).
+
 ## On a cloud stack (an opt-in add-on, first slice)
 
 The four stack charts can run this workflow as one extra pod beside the app. **Not yet on the deploy forms**: today it is a chart value, `paymentWorkflow.enabled=true` (with `demoDataset=treasury`), so it is for people who deploy the chart themselves or for the next step that adds the form switch.

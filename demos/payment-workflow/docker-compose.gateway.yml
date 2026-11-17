@@ -1,0 +1,24 @@
+# Puts the Temporal payment-exception workflow behind the app's own workflow API, so Ask and Agency start, approve and reject runs that really run on Temporal.
+# Add it to the Treasury pack and the workflow example. From the repository root:
+#   export WORKFLOW_GATEWAY_TOKEN=$(openssl rand -hex 24)          # shared secret between the app and the gateway (required)
+#   export OMNIGATE_RELEASE_TAG=v0.10.19                            # the first release with the workflow API
+#   docker compose --project-directory . -f demos/treasury-pack/docker-compose.treasury.yml -f demos/payment-workflow/docker-compose.workflow.yml \
+#                  -f demos/payment-workflow/docker-compose.gateway.yml up --build
+# The workflow API is a COMMERCIAL-edition feature: on the free edition these settings are ignored and the routes do not exist.
+# The gateway has no published port (only the app reaches it), and refuses to start without the token.
+services:
+  gateway:
+    build: ./demos/payment-workflow
+    command: ["python", "gateway.py"]
+    depends_on: [temporal, worker]
+    restart: unless-stopped
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      GATEWAY_TOKEN: ${WORKFLOW_GATEWAY_TOKEN:?set WORKFLOW_GATEWAY_TOKEN to a random secret of at least 16 characters}
+  omnigate:
+    volumes:
+      - ./demos/payment-workflow/manifest.gateway.json:/etc/omnigate/workflows.json:ro
+    environment:
+      OMNIGATE_WORKFLOW_ENGINE: http://gateway:8094
+      OMNIGATE_WORKFLOW_ENGINE_TOKEN: ${WORKFLOW_GATEWAY_TOKEN:?set WORKFLOW_GATEWAY_TOKEN}
+      OMNIGATE_WORKFLOW_MANIFEST: /etc/omnigate/workflows.json
