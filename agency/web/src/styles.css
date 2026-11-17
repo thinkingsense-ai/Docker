@@ -75,3 +75,7 @@ th { position: sticky; top: 0; background: var(--chip) } th.num, td.num { text-a
 .scroll { overflow-x: auto; max-width: 100%; margin: 8px 0 }
 
 .preview { white-space: pre-wrap; max-height: 12em; overflow: auto; background: var(--chip); padding: 8px; border-radius: 6px }
+
+.thumb { display: block; max-width: 192px; max-height: 192px; border-radius: 6px; border: 1px solid var(--line); margin: 6px 0 }
+.swatch { display: inline-flex; align-items: center; gap: 4px; margin-right: 12px }
+.swatch i { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--line); display: inline-block }

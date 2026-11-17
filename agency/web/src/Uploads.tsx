@@ -50,11 +50,25 @@ function DocSummary({ r }: { r: Record<string, any> }) {
   )
 }
 
+function ImageSummary({ r }: { r: Record<string, any> }) {
+  const ex = Object.entries((r.exif ?? {}) as Record<string, string>), cols: any[] = r.colours ?? []
+  const label: Record<string, string> = { cameraMake: 'Camera make', cameraModel: 'Camera model', software: 'Software', takenAt: 'Taken', modifiedAt: 'Modified' }
+  return (
+    <div className="img">
+      {r.thumbnail && <img src={r.thumbnail} alt={`Small preview of ${r.name}`} className="thumb" />}
+      <p>{r.format} · {r.width} × {r.height} ({r.megapixels} MP){r.frames > 1 ? ` · ${r.frames} frames` : ''}{r.transparent ? ' · transparent areas' : ''}</p>
+      {ex.length > 0 ? <ul className="small">{ex.map(([k, v]) => <li key={k}>{label[k] ?? k}: {v}</li>)}</ul> : <p className="muted small">No camera or date metadata.</p>}
+      {r.gps && <p className="warn small">Location in the file: {r.gps.lat}, {r.gps.lon}</p>}
+      {cols.length > 0 && <p className="small"><span className="muted">Dominant colours: </span>{cols.map((c) => <span key={c.hex} className="swatch"><i style={{ background: c.hex }} aria-hidden="true" /> {c.hex} {Math.round(c.share * 100)}%</span>)}</p>}
+    </div>
+  )
+}
+
 function Card({ u, onAsk, onDelete }: { u: Upload; onAsk: (q: string) => void; onDelete: () => void }) {
   return (
     <article className="answer" aria-label={`Upload ${u.name}`}>
       <h2 className="q">{u.name} <span className="tag">{u.kind}</span>{u.nonCommercial && <span className="tag caution">non-commercial</span>}</h2>
-      {u.kind === 'audio' && u.result ? <AudioSummary r={u.result} /> : u.kind === 'table' && u.result ? <TableSummary r={u.result} /> : u.kind === 'document' && u.result ? <DocSummary r={u.result} /> : u.result && <pre className="small">{JSON.stringify(u.result, null, 2)}</pre>}
+      {u.kind === 'audio' && u.result ? <AudioSummary r={u.result} /> : u.kind === 'table' && u.result ? <TableSummary r={u.result} /> : u.kind === 'document' && u.result ? <DocSummary r={u.result} /> : u.kind === 'image' && u.result ? <ImageSummary r={u.result} /> : u.result && <pre className="small">{JSON.stringify(u.result, null, 2)}</pre>}
       {u.notes.length > 0 && <ul className="warnings">{u.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>}
       {u.licence && <p className="muted small">{u.licence}</p>}
       {u.askPrompts.length > 0 && <div className="follow"><span className="muted small">Ask about this:</span>{u.askPrompts.map((p) => <button key={p} className="chip" onClick={() => onAsk(p)}>{p}</button>)}</div>}
