@@ -1,0 +1,9 @@
+# Adds the document adapter and points the layer at it. From the repository root, together with a pack stack and the layer file:
+#   AGENCY_ADAPTERS=http://document-adapter:8092 docker compose --project-directory . -f <pack compose> -f addons/thinking-layer/docker-compose.layer.yml -f addons/document-adapter/docker-compose.document.yml up --build
+# For both table and document adapters: AGENCY_ADAPTERS=http://table-adapter:8091,http://document-adapter:8092 and both compose files.
+services:
+  document-adapter:
+    build: addons/document-adapter
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
