@@ -1,0 +1,38 @@
+{
+  "id": "manufacturing",
+  "title": "Manufacturing sourcing",
+  "summary": "Parts, bills of materials, supplier capabilities and quotes, added to the supply-chain schemas.",
+  "demoDataset": null,
+  "extends": "supply-chain",
+  "sources": [
+    {
+      "id": "pg",
+      "schemas": [
+        "suppliers",
+        "inventory",
+        "procurement"
+      ]
+    }
+  ],
+  "seeds": [
+    "resource-manager/omnigateaksstack/helm/omnigate/files/seed-manufacturing.sql"
+  ],
+  "questions": {
+    "file": "demos/all-packs/demo-questions-all-packs.json",
+    "category": "manufacturing"
+  },
+  "modalities": [
+    "table"
+  ],
+  "needsEmbeddingModel": false,
+  "inAllPacks": true,
+  "editions": [
+    "free",
+    "commercial"
+  ],
+  "licence": {
+    "data": "synthetic",
+    "nonCommercial": false
+  },
+  "capabilities": []
+}

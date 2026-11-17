@@ -1,0 +1,45 @@
+{
+  "id": "treasury",
+  "title": "Treasury",
+  "summary": "Cash, payables, hedges, debt and an agent action log across Postgres and MariaDB.",
+  "demoDataset": "treasury",
+  "extends": null,
+  "sources": [
+    {
+      "id": "pg",
+      "schemas": [
+        "treasury"
+      ]
+    },
+    {
+      "id": "mdb",
+      "schemas": [
+        "erp"
+      ]
+    }
+  ],
+  "seeds": [
+    "resource-manager/omnigateaksstack/helm/omnigate/files/seed-treasury-postgres.sql",
+    "resource-manager/omnigateaksstack/helm/omnigate/files/seed-treasury-mariadb.sql"
+  ],
+  "questions": {
+    "file": "demos/all-packs/demo-questions-all-packs.json",
+    "category": "treasury"
+  },
+  "modalities": [
+    "table"
+  ],
+  "needsEmbeddingModel": true,
+  "inAllPacks": true,
+  "editions": [
+    "free",
+    "commercial"
+  ],
+  "licence": {
+    "data": "synthetic",
+    "nonCommercial": false
+  },
+  "capabilities": [
+    "workflow:payment-exceptions"
+  ]
+}

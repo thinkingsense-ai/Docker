@@ -1,0 +1,40 @@
+{
+  "id": "smithsonian",
+  "title": "Smithsonian Open Access sample",
+  "summary": "A sample of Smithsonian Open Access records and a museum directory.",
+  "demoDataset": null,
+  "extends": null,
+  "sources": [
+    {
+      "id": "pg",
+      "schemas": [
+        "smithsonian"
+      ]
+    },
+    {
+      "id": "files",
+      "schemas": [
+        "museums"
+      ]
+    }
+  ],
+  "seeds": [],
+  "questions": {
+    "file": "demos/all-packs/demo-questions-all-packs.json",
+    "category": "smithsonian"
+  },
+  "modalities": [
+    "table"
+  ],
+  "needsEmbeddingModel": false,
+  "inAllPacks": true,
+  "editions": [
+    "free",
+    "commercial"
+  ],
+  "licence": {
+    "data": "Smithsonian Open Access (CC0 records only in the sample)",
+    "nonCommercial": false
+  },
+  "capabilities": []
+}

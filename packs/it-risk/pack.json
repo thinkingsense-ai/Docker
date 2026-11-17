@@ -1,0 +1,43 @@
+{
+  "id": "it-risk",
+  "title": "IT and operational risk",
+  "summary": "Risk register, incidents, vendors and vulnerabilities across Postgres and MariaDB.",
+  "demoDataset": "it-risk",
+  "extends": null,
+  "sources": [
+    {
+      "id": "pg",
+      "schemas": [
+        "risk"
+      ]
+    },
+    {
+      "id": "mdb",
+      "schemas": [
+        "security"
+      ]
+    }
+  ],
+  "seeds": [
+    "resource-manager/omnigateaksstack/helm/omnigate/files/seed-it-risk-postgres.sql",
+    "resource-manager/omnigateaksstack/helm/omnigate/files/seed-it-risk-mariadb.sql"
+  ],
+  "questions": {
+    "file": "demos/all-packs/demo-questions-all-packs.json",
+    "category": "it-risk"
+  },
+  "modalities": [
+    "table"
+  ],
+  "needsEmbeddingModel": false,
+  "inAllPacks": true,
+  "editions": [
+    "free",
+    "commercial"
+  ],
+  "licence": {
+    "data": "synthetic",
+    "nonCommercial": false
+  },
+  "capabilities": []
+}
