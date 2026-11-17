@@ -194,3 +194,18 @@ networkPolicy:
 configEncryption:
   enabled: true
   key: ""
+
+# Opt-in demo add-on (off by default): the payment-exception workflow from demos/payment-workflow, as one extra pod (a Temporal dev server, the workflow worker,
+# the approval inbox and a mock ERP). It needs demoDataset=treasury, is for the free edition only (a deployment holding a signed licence renders nothing), and is
+# PRIVATE: the inbox is a ClusterIP Service with no sign-in, reached with `kubectl port-forward svc/<release>-payment-workflow 8085:8085`. The code comes from a
+# ConfigMap and runs on the stock python image; the Temporal SDK is installed from PyPI when the pod starts. Nothing is ever written to a real ERP.
+paymentWorkflow:
+  enabled: false
+  pythonImage: docker.io/library/python:3.12-slim
+  # Temporal CLI image (its dev server), v1.5.1, pinned by digest.
+  temporalImage: docker.io/temporalio/temporal@sha256:597a5dbbcc6e7716b326dde4a51622d5ea0879eb0cf06ff8a94381361d0a987d
+  temporalSdkVersion: "1.30.0"
+  storageSize: 1Gi
+  approvalTimeoutMinutes: 2880
+  # dry-run: an approved action only shows the call it would send. live: it goes to the mock ERP in the pod (still nothing real).
+  writeBack: dry-run

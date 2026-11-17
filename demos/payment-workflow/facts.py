@@ -4,7 +4,9 @@ import json, os, urllib.request
 ASK_URL = os.environ.get("ASK_URL", "http://omnigate:8080").rstrip("/")
 
 def query(sql):
-    req = urllib.request.Request(ASK_URL + "/api/query", json.dumps({"sql": sql}).encode(), {"Content-Type": "application/json"})
+    headers = {"Content-Type": "application/json"}
+    if os.environ.get("ASK_ADMIN_TOKEN"): headers["Authorization"] = "Bearer " + os.environ["ASK_ADMIN_TOKEN"]      # a secured deployment (the cloud stacks) wants it on /api/query
+    req = urllib.request.Request(ASK_URL + "/api/query", json.dumps({"sql": sql}).encode(), headers)
     with urllib.request.urlopen(req, timeout=60) as r: res = json.load(r)
     if not res.get("success"): raise RuntimeError("query failed: %s" % res.get("error"))
     cols = res["columns"]; return [dict(zip(cols, row)) for row in res["rows"]]
