@@ -10,6 +10,8 @@ Play a bird sound, or bring your own clip, and see what an audio model makes of 
 - **What the record says:** for the species BirdNET picked: recordings, countries, call types, Smithsonian NMNH specimen count, licence ("not for commercial use"), and four ready questions to ask the data in Ask (copied to the clipboard, then Ask opens).
 - **A fish clip** shows the limits honestly: BirdNET is built for birds, so it finds nothing or something weak, and the page says it is not confident.
 
+**As a thinking-layer adapter.** The service also answers `GET /adapter` (manifest) and `POST /ingest` (raw file, `X-Filename`), so Agency's drop zone can use it: see [addons/thinking-layer](../../addons/thinking-layer/README.md). The record keeps top 3 among the collection's species, the unaided top 1, the 5 nearest recordings, notes, the licence and four questions for the data; with a best guess under 30% (a demo constant, not calibrated) it says so and offers no species questions. No audio file or spectrogram is returned to Agency yet.
+
 **Run it** (needs the data from `../multimodal-poc`: `fetch_data.py`, then `embed_audio.py`; torch, transformers, birdnet, soundfile, scipy)
 
 ```bash

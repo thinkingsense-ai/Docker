@@ -5,12 +5,12 @@ answer with an evidence block, reads the decision record, and lists the MCP tool
 Environment: SERVER_URL (default http://omnigate:8080), PACKS_CATALOGUE, AGENCY_DECISION_FILE (the Server's OMNIGATE_WORKFLOW_DECISION_FILE, shared read-only),
 AGENCY_SCOPE_HINT=on to add the pack's data sets to the question when no Workspace exists (off by default: its effect on accuracy is not measured),
 AGENCY_SESSION_HOURS (default 8), AGENCY_WEB_DIST (the built Agency UI, served at / when the folder exists), AGENCY_PREFS_FILE (per-user preferences, kept in
-memory when unset), PORT (default 8097).
+memory when unset), AGENCY_ADAPTERS (comma-separated adapter base URLs), AGENCY_UPLOAD_HOURS (record lifetime, default 1), PORT (default 8097).
 The layer logs no question text and no file content."""
 import json, mimetypes, os, secrets, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs, quote
-import catalogue, decisions, tools
+import adapters, catalogue, decisions, tools, uploads
 from evidence import Evidence
 from upstream import Upstream, Unauthorized
 
@@ -22,6 +22,8 @@ SESSION_SECONDS = float(os.environ.get("AGENCY_SESSION_HOURS", "8")) * 3600
 MAX_SESSIONS = 500
 SESSIONS = {}; SESSIONS_LOCK = threading.Lock()
 WEB_DIST = os.environ.get("AGENCY_WEB_DIST", "/app/web")
+ADAPTERS = adapters.Registry()
+UPLOADS = uploads.Store(float(os.environ.get("AGENCY_UPLOAD_HOURS", "1")))
 PREFS = {}; PREFS_LOCK = threading.Lock(); PREF_KEYS = {"pack": 80}                         # the only preferences kept, with a length limit each
 
 
@@ -109,9 +111,22 @@ class H(BaseHTTPRequestHandler):
             if u.path == "/conversations": return self.passthrough("/app/conversations")
             if u.path == "/conversations/get": return self.passthrough("/app/conversations/get?id=" + quote((q.get("id") or [""])[0], safe=""))
             if u.path == "/preferences": return self.preferences(None)
+            if u.path == "/adapters": return self.list_adapters()
+            if u.path == "/uploads": return self.my_uploads(None)
+            if u.path.startswith("/uploads/"): return self.my_uploads(u.path[9:])
             if not WEB_DIST or not os.path.isdir(WEB_DIST) or u.path.startswith(("/api/", "/app/")): return self.err(404, "not_found", "No such route.")
             self.static(u.path)
         except ValueError as e: self.err(400, "bad_request", str(e))
+
+    def do_DELETE(self):
+        u = urlparse(self.path)
+        if self.headers.get("Cookie") and not self.headers.get("X-Requested-With"):
+            return self.err(403, "cross_site_refused", "A state-changing request that carries a session cookie must also send the header X-Requested-With.")
+        if not u.path.startswith("/uploads/"): return self.err(404, "not_found", "No such route.")
+        t, s = self.need_session()
+        if not s: return
+        if UPLOADS.delete(s.username, u.path[9:]): return self.send(200, {"deleted": True})
+        self.err(404, "upload_not_found", "No such upload.")
 
     def do_POST(self):
         u = urlparse(self.path)
@@ -122,8 +137,45 @@ class H(BaseHTTPRequestHandler):
             if u.path == "/logout": return self.logout()
             if u.path == "/ask": return self.ask()
             if u.path == "/preferences": return self.preferences(self.body())
+            if u.path == "/uploads": return self.upload(parse_qs(u.query))
             self.err(404, "not_found", "No such route.")
         except ValueError as e: self.err(400, "bad_request", str(e))
+
+    # -- adapters and uploads ------------------------------------------------------------------------------------------------------------------------------
+    def list_adapters(self):
+        t, s = self.need_session()
+        if not s: return
+        self.send(200, {"adapters": [{k: v for k, v in m.items()} for m in ADAPTERS.manifests()], "accept": ADAPTERS.accept_list()})
+
+    def my_uploads(self, rid):
+        t, s = self.need_session()
+        if not s: return
+        if rid is None: return self.send(200, {"uploads": UPLOADS.mine(s.username)})
+        r = UPLOADS.get(s.username, rid)
+        self.send(200, r) if r else self.err(404, "upload_not_found", "No such upload.")
+
+    def upload(self, q):
+        """Raw file body; query: name, workspaceId. Checks the type and size from the headers before reading a byte of the body."""
+        t, s = self.need_session()
+        if not s: return
+        name = ((q.get("name") or [""])[0])[:200]; wid = (q.get("workspaceId") or [""])[0] or None; mime = self.headers.get("Content-Type")
+        if not name: return self.err(400, "bad_request", "name is required.")
+        manifest, url = ADAPTERS.find(name, mime)
+        if not manifest: return self.err(415, "unsupported_type", "No enabled adapter reads this type.", accepted=ADAPTERS.accept_list())
+        n = int(self.headers.get("Content-Length") or 0)
+        if n <= 0: return self.err(400, "bad_request", "The file is empty.")
+        if n > int(manifest.get("maxBytes") or 40_000_000): return self.err(413, "too_large", "That file is larger than this adapter accepts.", maxBytes=manifest.get("maxBytes"))
+        try: code, w = SERVER.json("GET", "/app/whoami", s.cookie)
+        except Unauthorized: return self.lost(t)
+        except OSError: return self.err(502, "server_unreachable", "The OmniGate Server could not be reached.")
+        if not w.get("canUploadFiles"): return self.err(403, "missing_grant", "Your account has no permission to upload files (an admin grants it under Admin > users).")
+        data = self.rfile.read(n)
+        try: ing = ADAPTERS.ingest(url, name, mime, data)
+        except adapters.AdapterError as e: return self.err(e.status, "adapter_refused" if e.status != 502 else "adapter_unavailable", e.message)
+        finally: data = None                                                # the file is not kept
+        rec = UPLOADS.add(s.username, name, wid, manifest, ing)
+        if rec is None: return self.err(429, "too_many_uploads", "You have %d uploads; delete one first." % uploads.MAX_PER_USER)
+        self.send(200, rec)
 
     def static(self, path):
         root = os.path.realpath(WEB_DIST); f = os.path.realpath(os.path.join(root, path.lstrip("/") or "index.html"))

@@ -6,7 +6,7 @@ import io, json, mimetypes, os, random, sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 import numpy as np, soundfile as sf
-import engine
+import engine, adapter
 HERE = os.path.dirname(os.path.abspath(__file__)); CACHE = os.path.join(engine.POC, "cache"); ASK = os.environ.get("ASK_URL", "http://localhost:8080")
 class H(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
@@ -26,6 +26,8 @@ class H(BaseHTTPRequestHandler):
         u = urlparse(self.path); p = u.path
         try:
             if p in ("/", "/index.html"): return self.send(200, open(os.path.join(HERE, "index.html"), "rb").read(), "text/html; charset=utf-8")
+            if p == "/adapter": return self.send(200, adapter.MANIFEST)
+            if p == "/health": return self.send(200, {"ok": True})
             if p == "/api/config": return self.send(200, {"ask_url": ASK})
             if p == "/api/samples": return self.send(200, engine.sample_list())
             if p.startswith("/api/truth/"): return self.send(200, engine.truth(p.rsplit("/", 1)[1]))
@@ -37,6 +39,7 @@ class H(BaseHTTPRequestHandler):
         except Exception as e: self.send(500, {"error": str(e)})
     def do_POST(self):
         u = urlparse(self.path)
+        if u.path == "/ingest": return self.ingest()
         if u.path != "/api/identify": return self.send(404, {"error": "not found"})
         try:
             n = int(self.headers.get("Content-Length", 0))
@@ -45,6 +48,20 @@ class H(BaseHTTPRequestHandler):
             x = x.mean(1)[: sr * 60]                                  # first minute at most
             self.send(200, engine.identify(x, sr, exclude=(parse_qs(u.query).get("exclude") or [None])[0]))
         except Exception as e: self.send(400, {"error": "Could not read that audio (use wav, mp3, flac or ogg): %s" % str(e)[:120]})
+    def ingest(self):
+        """Adapter contract: raw file body, X-Filename header; returns the layer's ingest record. Nothing is stored."""
+        name = self.headers.get("X-Filename", "")
+        if not adapter.accepts(name, self.headers.get("Content-Type")): return self.send(415, {"error": "Not an audio type this adapter reads (wav, mp3, flac, ogg)."})
+        try:
+            n = int(self.headers.get("Content-Length", 0))
+            if n > adapter.MAX_BYTES: return self.send(413, {"error": "File too large (40 MB max)."})
+            x, sr = sf.read(io.BytesIO(self.rfile.read(n)), dtype="float32", always_2d=True)
+            x = x.mean(1)[: sr * 60]
+            self.send(200, adapter.record(engine.identify(x, sr), name))
+        except ValueError as e: self.send(422, {"error": str(e)})
+        except Exception as e: self.send(400, {"error": "Could not read that audio: %s" % str(e)[:120]})
+
+
 def main():
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8090
     print("loading models...", flush=True); engine.state(); print("http://localhost:%d" % port, flush=True)

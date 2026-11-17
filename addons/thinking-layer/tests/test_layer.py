@@ -2,11 +2,11 @@
 import http.client, json, os, sys, tempfile, threading, unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, os.path.dirname(HERE))
-import app, decisions, tools
+import adapters, app, decisions, tools, uploads
 from upstream import Upstream
 
 class Fake:
-    namespaces = [{"id": "treasury", "name": "Treasury"}]; packs = [{"id": "bom"}]; ask_posts = []; ns_posts = []; ask_status = 200
+    namespaces = [{"id": "treasury", "name": "Treasury"}]; packs = [{"id": "bom"}]; ask_posts = []; ns_posts = []; ask_status = 200; can_upload = True
 
 class FakeServer(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
@@ -20,7 +20,7 @@ class FakeServer(BaseHTTPRequestHandler):
         p = self.path
         if p == "/app/public-config": return self._j(200, {"llmConfigured": True})
         if not self.authed(): return self._j(401, {"error": "not logged in"})
-        if p == "/app/whoami": return self._j(200, {"username": "alice", "canSeeSql": True})
+        if p == "/app/whoami": return self._j(200, {"username": "alice", "canSeeSql": True, "canUploadFiles": Fake.can_upload})
         if p == "/app/namespaces": return self._j(200, {"success": True, "namespaces": Fake.namespaces})
         if p.startswith("/app/starter-questions"): return self._j(200, {"success": True, "packs": Fake.packs, "items": [{"question": "q?", "origin": "approved"}], "asked": p})
         if p == "/app/conversations": return self._j(200, {"conversations": [{"id": "c1", "title": "T", "updatedAtMillis": 1}]})
@@ -46,6 +46,19 @@ class FakeServer(BaseHTTPRequestHandler):
             return
         self._j(404, {})
 
+class FakeAdapter(BaseHTTPRequestHandler):
+    ingests = []; fail = None
+    def log_message(self, *a): pass
+    def _j(self, code, o):
+        b = json.dumps(o).encode(); self.send_response(code); self.send_header("Content-Type", "application/json"); self.send_header("Content-Length", str(len(b))); self.end_headers(); self.wfile.write(b)
+    def do_GET(self):
+        if self.path == "/adapter": return self._j(200, {"id": "fake-audio", "title": "Fake", "kind": "audio", "accepts": {"extensions": [".wav"], "mime": ["audio/wav"]}, "maxBytes": 1000, "nonCommercial": True})
+        self._j(404, {})
+    def do_POST(self):
+        body = self.rfile.read(int(self.headers.get("Content-Length") or 0)); FakeAdapter.ingests.append((self.headers.get("X-Filename"), len(body)))
+        if FakeAdapter.fail: return self._j(FakeAdapter.fail, {"error": "bad audio"})
+        self._j(200, {"result": {"top": "Cardinalis cardinalis"}, "notes": ["n"], "licence": "NC", "askPrompts": ["How many recordings of Cardinalis cardinalis?"]})
+
 def serve(handler):
     s = ThreadingHTTPServer(("127.0.0.1", 0), handler); threading.Thread(target=s.serve_forever, daemon=True).start(); return s
 
@@ -53,10 +66,11 @@ class Client:
     def __init__(self, port): self.port, self.cookie = port, None
     def call(self, method, path, body=None, headers=None):
         c = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10); h = dict(headers or {})
-        if method == "POST": h.setdefault("X-Requested-With", "test")
+        if method in ("POST", "DELETE"): h.setdefault("X-Requested-With", "test")
         if self.cookie: h["Cookie"] = self.cookie
         if body is not None: h["Content-Type"] = "application/json"
-        c.request(method, path, json.dumps(body) if body is not None else None, h); r = c.getresponse(); raw = r.read().decode()
+        if isinstance(body, bytes): h["Content-Type"] = (headers or {}).get("Content-Type", "audio/wav")
+        c.request(method, path, body if isinstance(body, bytes) else (json.dumps(body) if body is not None else None), h); r = c.getresponse(); raw = r.read().decode()
         sc = r.getheader("Set-Cookie")
         if sc and sc.startswith("agency_session=") and "Max-Age=0" not in sc: self.cookie = sc.split(";")[0]
         return r.status, raw, r
@@ -64,11 +78,13 @@ class Client:
 class LayerTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.fake = serve(FakeServer); cls.layer = serve(app.H); app.SERVER = Upstream("http://127.0.0.1:%d" % cls.fake.server_port)
+        cls.fake = serve(FakeServer); cls.adapter = serve(FakeAdapter); cls.layer = serve(app.H); app.SERVER = Upstream("http://127.0.0.1:%d" % cls.fake.server_port)
     @classmethod
-    def tearDownClass(cls): cls.fake.shutdown(); cls.layer.shutdown()
+    def tearDownClass(cls): cls.fake.shutdown(); cls.adapter.shutdown(); cls.layer.shutdown()
     def setUp(self):
         Fake.namespaces = [{"id": "treasury", "name": "Treasury"}]; Fake.packs = [{"id": "bom"}]; Fake.ask_posts = []; Fake.ns_posts = []; Fake.ask_status = 200
+        Fake.can_upload = True; FakeAdapter.ingests = []; FakeAdapter.fail = None
+        app.ADAPTERS = adapters.Registry("http://127.0.0.1:%d" % self.adapter.server_port); app.UPLOADS = uploads.Store(1.0)
         app.SESSIONS.clear(); os.environ.pop("AGENCY_SCOPE_HINT", None); os.environ.pop("AGENCY_DECISION_FILE", None)
         self.c = Client(self.layer.server_port)
     def signin(self):
@@ -77,7 +93,7 @@ class LayerTests(unittest.TestCase):
 
     def test_tools_are_generated_from_the_contract_and_never_include_approval(self):
         names = [t["name"] for t in tools.tool_list()]
-        self.assertEqual(names, ["list_packs", "ask", "get_decisions", "status"])
+        self.assertEqual(names, ["list_packs", "ask", "get_decisions", "status", "list_adapters", "list_uploads"])
         self.assertFalse([n for n in names if "approve" in n or "reject" in n])
         s, raw, _ = self.c.call("GET", "/tools"); self.assertEqual([t["name"] for t in self.J(raw)["tools"]], names)
 
@@ -184,6 +200,44 @@ class LayerTests(unittest.TestCase):
         d = self.J(self.c.call("POST", "/ask", {"question": "q", "workspaceId": None})[1])
         self.assertEqual(Fake.ns_posts[-1], "all-data"); self.assertEqual(d["evidence"]["workspace"], "all-data"); self.assertEqual(d["evidence"]["scopeEnforcedBy"], "none")
         Fake.namespaces = [{"id": "treasury"}]; self.c.call("POST", "/ask", {"question": "q", "workspaceId": None}); self.assertIsNone(Fake.ns_posts[-1])   # no such Workspace: the default
+
+    def up(self, name="clip.wav", body=b"RIFFxxxx", **kw): return self.c.call("POST", "/uploads?name=%s&workspaceId=sounds" % name, body, kw.get("headers"))
+
+    def test_adapters_list_and_unreachable_adapter_is_disabled(self):
+        self.assertEqual(self.c.call("GET", "/adapters")[0], 401); self.signin()
+        d = self.J(self.c.call("GET", "/adapters")[1]); self.assertEqual(d["accept"], [".wav"]); self.assertTrue(d["adapters"][0]["nonCommercial"])
+        app.ADAPTERS = adapters.Registry("http://127.0.0.1:1"); d = self.J(self.c.call("GET", "/adapters")[1])
+        self.assertFalse(d["adapters"][0]["enabled"]); self.assertEqual(d["accept"], [])
+
+    def test_upload_ingests_keeps_no_file_and_is_private_to_the_owner(self):
+        self.assertEqual(self.up()[0], 401); self.signin()
+        s, raw, _ = self.up(); r = self.J(raw); self.assertEqual(s, 200, raw)
+        self.assertEqual((r["kind"], r["adapter"], r["workspaceId"], r["nonCommercial"]), ("audio", "fake-audio", "sounds", True)); self.assertNotIn("owner", r)
+        self.assertEqual(FakeAdapter.ingests, [("clip.wav", 8)])
+        self.assertEqual(self.J(self.c.call("GET", "/uploads")[1])["uploads"][0]["id"], r["id"]); self.assertEqual(self.c.call("GET", "/uploads/" + r["id"])[0], 200)
+        self.assertNotIn(b"RIFF", json.dumps(app.UPLOADS.rows).encode())                 # only the derived record is held
+        app.UPLOADS.rows[r["id"]]["owner"] = "bob"                                           # someone else's record looks like a missing one
+        self.assertEqual(self.c.call("GET", "/uploads/" + r["id"])[0], 404); self.assertEqual(self.c.call("DELETE", "/uploads/" + r["id"])[0], 404)
+        app.UPLOADS.rows[r["id"]]["owner"] = "alice"; self.assertEqual(self.c.call("DELETE", "/uploads/" + r["id"])[0], 200); self.assertEqual(self.c.call("GET", "/uploads/" + r["id"])[0], 404)
+
+    def test_upload_refusals_happen_before_the_body_is_read(self):
+        self.signin()
+        s, raw, _ = self.up("doc.pdf", headers={"Content-Type": "application/pdf"}); self.assertEqual(s, 415); self.assertEqual(self.J(raw)["error"]["detail"]["accepted"], [".wav"])
+        self.assertEqual(self.up(body=b"x" * 1001)[0], 413); self.assertEqual(FakeAdapter.ingests, [])
+        Fake.can_upload = False; s, raw, _ = self.up(); self.assertEqual((s, self.J(raw)["error"]["code"]), (403, "missing_grant")); self.assertEqual(FakeAdapter.ingests, [])
+        Fake.can_upload = True; FakeAdapter.fail = 422; s, raw, _ = self.up(); self.assertEqual((s, self.J(raw)["error"]["message"]), (422, "bad audio"))
+        self.assertEqual(self.J(self.c.call("GET", "/uploads")[1])["uploads"], [])        # a refused file leaves no record
+
+    def test_upload_limits_and_expiry(self):
+        self.signin()
+        for _ in range(uploads.MAX_PER_USER): self.assertEqual(self.up()[0], 200)
+        self.assertEqual(self.up()[0], 429)
+        for r in app.UPLOADS.rows.values(): r["expiresAtEpoch"] = 0
+        self.assertEqual(self.J(self.c.call("GET", "/uploads")[1])["uploads"], [])
+
+    def test_delete_needs_the_csrf_header(self):
+        self.signin(); rid = self.J(self.up()[1])["id"]
+        c = http.client.HTTPConnection("127.0.0.1", self.layer.server_port); c.request("DELETE", "/uploads/" + rid, headers={"Cookie": self.c.cookie}); self.assertEqual(c.getresponse().status, 403)
 
     def test_static_ui_is_served_with_spa_fallback_and_no_path_escape(self):
         d = tempfile.mkdtemp(); os.makedirs(d + "/assets"); open(d + "/index.html", "w").write("<html>agency</html>"); open(d + "/assets/a.js", "w").write("x=1")
