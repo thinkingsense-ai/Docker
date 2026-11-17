@@ -176,6 +176,17 @@ spec:
             # template (license.yaml), outside the checksum annotations, so changing it does not roll the pods.
             - name: OMNIGATE_LICENSE_FILE
               value: /etc/omnigate-license/license
+{{- if and .Values.paymentWorkflow.enabled .Values.paymentWorkflow.gateway.enabled }}
+            - name: OMNIGATE_WORKFLOW_ENGINE
+              value: "http://{{ include "omnigate.fullname" . }}-payment-workflow:8094"
+            - name: OMNIGATE_WORKFLOW_ENGINE_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "omnigate.fullname" . }}-payment-workflow
+                  key: GATEWAY_TOKEN
+            - name: OMNIGATE_WORKFLOW_MANIFEST
+              value: /etc/omnigate-workflows/workflows.json
+{{- end }}
 {{- if include "omnigate.tlsCustom" . }}
             - name: OMNIGATE_TLS_KEYSTORE
               value: /etc/omnigate-tls/omnigate.p12
@@ -209,6 +220,11 @@ spec:
             - name: license
               mountPath: /etc/omnigate-license
               readOnly: true
+{{- if and .Values.paymentWorkflow.enabled .Values.paymentWorkflow.gateway.enabled }}
+            - name: workflows
+              mountPath: /etc/omnigate-workflows
+              readOnly: true
+{{- end }}
 {{- if include "omnigate.tlsCustom" . }}
             - name: tls
               mountPath: /etc/omnigate-tls
@@ -235,6 +251,11 @@ spec:
           secret:
             secretName: {{ include "omnigate.fullname" . }}-omnigate-license
             optional: true
+{{- if and .Values.paymentWorkflow.enabled .Values.paymentWorkflow.gateway.enabled }}
+        - name: workflows
+          configMap:
+            name: {{ include "omnigate.fullname" . }}-workflow-manifest
+{{- end }}
 {{- if include "omnigate.tlsCustom" . }}
         - name: tls
           secret:

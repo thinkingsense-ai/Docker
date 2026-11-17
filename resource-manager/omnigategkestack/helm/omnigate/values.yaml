@@ -209,3 +209,9 @@ paymentWorkflow:
   approvalTimeoutMinutes: 2880
   # dry-run: an approved action only shows the call it would send. live: it goes to the mock ERP in the pod (still nothing real).
   writeBack: dry-run
+  # Commercial edition only: put the workflow behind the app's own workflow API (Ask and Agency start, show and decide the runs). Needs a signed licence
+  # (omnigate.license) and omnigate.adminApiToken; there is NO inbox in this mode; only the app's pods can reach the gateway (port 8094, bearer token). The app must be
+  # restarted once after a first licence activation. token: leave empty to derive one from omnigate.adminApiToken.
+  gateway:
+    enabled: false
+    token: ""

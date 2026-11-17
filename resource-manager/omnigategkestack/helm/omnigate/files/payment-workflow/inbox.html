@@ -34,7 +34,7 @@ function card(p){
   const w=p.workflow, st=w&&w.stage, flags=p.flags.map(f=>`<span class="pill warn">${esc(f)}</span>`).join('');
   let body='';
   if(!w) body=`<button class="go" onclick="start(${p.payment_id})">Analyse with AI</button>`;
-  else if(st==='starting') body='<p class="dim">Gathering facts and asking for a recommendation…</p>';
+  else if(st==='starting'||st==='facts'||st==='rules'||st==='recommendation') body='<p class="dim">Gathering facts and asking for a recommendation…</p>';
   else if(w.recommendation){
     const r=w.recommendation, g=w.gate;
     body=`<p><b>AI recommends: ${esc(r.recommendation)}</b> <span class="pill">confidence ${Math.round((r.confidence||0)*100)}%</span><span class="pill">${esc(r.model)}</span></p>

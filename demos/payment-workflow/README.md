@@ -56,7 +56,7 @@ The four stack charts can run this workflow as one extra pod beside the app. **N
 
 - **What runs.** One pod with four containers: a Temporal dev server, the workflow worker, the approval inbox and the mock ERP, sharing a 1 Gi volume (Temporal's database and the decision record). Memory requests total about 450 Mi. The code is not in an image: it comes from a ConfigMap and runs on the stock `python:3.12-slim` image, and the Temporal SDK (`temporalio` 1.30.0) is installed from PyPI when the pod starts, so the cluster needs outbound access to PyPI.
 - **Private.** The inbox has no sign-in (you type a name), so it is a ClusterIP Service and nothing outside the cluster reaches it. Open it with `kubectl port-forward svc/<release>-payment-workflow 8085:8085` and browse to http://localhost:8085. A network policy blocks all other inbound traffic to the pod (where the cluster enforces policies; `port-forward` is unaffected).
-- **Free edition only, Treasury data only.** A deployment that holds a signed licence renders nothing; any other data set than `treasury` stops the install with a clear message (all-packs is not supported yet).
+- **Free edition only, Treasury data only** (unless you use gateway mode below). A deployment that holds a signed licence renders nothing; any other data set than `treasury` stops the install with a clear message (all-packs is not supported yet).
 - **Holds admin rights.** It reads the Treasury pack through the app's internal address with the admin API token, because the app has no narrower credential for reads yet (Server#102). That is the main reason it is private. The recommendation step uses the stack's model key; without one it falls back to the rule-based answer.
 - **The Ask box and the SAP tab are off.** They need the Ask password, which the chart never holds. Nothing is written to a real ERP: an approved action shows the call it would send, or goes to the mock ERP in the pod.
 - **Hardened like the app.** Non-root (uid 10001), read-only root filesystem, no capabilities, no privilege escalation, seccomp default.
@@ -65,6 +65,25 @@ The four stack charts can run this workflow as one extra pod beside the app. **N
 
 **Tested.** All 20 renders (4 charts x 5 data sets) are byte-identical to `main` with the add-on off, with the random passwords pinned; the add-on renders on all four charts; `helm lint` passes; and `tests/pod-smoke.sh` runs the four containers under the same security settings against a Treasury stack (SDK install, Temporal, worker, the inbox reading 7 payments through the app, a workflow started and approved, the decision chain intact). That script found one real failure: Temporal stops under uid 10001 unless `$USER` is set (the chart now sets it).
 **Not tested.** A real cluster: probes, volume binding, the network policy, scheduling and the licence gate through the cluster's own licence Secret. The deploy-form switch and any public, signed-in access are not built.
+
+### Gateway mode on a cloud stack (commercial edition)
+
+For a deployment that holds a signed licence, the same pod can sit behind the app's own workflow API (see "Behind the app's own workflow API" above) instead of the inbox:
+
+```bash
+helm upgrade --install omnigate ./helm/omnigate --reuse-values \
+  --set demoDataset=treasury --set paymentWorkflow.enabled=true --set paymentWorkflow.gateway.enabled=true
+# then, once: restart the app so it picks the engine up  (kubectl rollout restart deployment/<release>-omnigate; the chart rolls it anyway when its settings change)
+```
+
+- **Needs** a signed licence (`omnigate.license`, or one installed with `scripts/set-licence.sh`) and `omnigate.adminApiToken`; the chart stops with a clear message without them, and without `paymentWorkflow.enabled`. The app decides its edition **when it starts**, so after a first licence activation the app must be restarted once.
+- **What changes.** The pod runs Temporal, the worker, a **gateway** (port 8094) and the mock ERP; **there is no inbox** (it has no sign-in and the app's own sign-in replaces it). The app gets `OMNIGATE_WORKFLOW_ENGINE`, the token and a manifest ConfigMap (one definition, `payment-exception`). People then start, approve and reject runs in Ask or Agency, with their own grants.
+- **Private by construction.** The gateway Service is a ClusterIP; the network policy (where the cluster enforces it) lets only the app's pods reach port 8094; every call needs a bearer token. The token is derived from `omnigate.adminApiToken` (stable across upgrades, different per deployment) unless you set `paymentWorkflow.gateway.token` (16+ characters). The gateway container does not get the admin token; the worker still does (Server#102).
+- **Decision record.** The app keeps its own record in memory and mirrors every event to its audit log (`WORKFLOW_DECISION`); no decision file is set on the cloud stacks. The workflow's own record is on the pod's volume. They are not merged.
+- **Several app replicas (OKE cluster mode)** share one Temporal, so runs are shared; each replica keeps its own in-memory decision record.
+- **Changing the manifest** (a ConfigMap the app reads at start) needs an app restart.
+
+**Tested.** The pod's containers (Temporal, worker, gateway, ERP mock) run under the chart's exact security settings beside a live app with `tests/pod-smoke-gateway.sh` (16 checks: token refused or short, start through the app, real facts, `missing_grant`, stale hash, an approval, a dry run, the decision record). `helm template` and `helm lint` pass on all four charts in gateway mode, every failure case gives its message, and all 20 default renders are unchanged. **Not tested:** a real cluster (probes, volume binding, the network policy, the Secret and ConfigMap wiring, pod scheduling), and the licence-to-commercial path: the only test licence on hand expired on 2026-10-17 and a new one cannot be signed here, so the tests emulated the edition with the app's own `OMNIGATE_EDITION` variable (which the chart does not set).
 
 ## Ask and the workflow in one page (the demo bridge)
 
