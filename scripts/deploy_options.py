@@ -29,6 +29,10 @@ CANONICAL = ["supply-chain", "manufacturing", "it-risk", "smithsonian", "bom", "
 # Selections rendered with helm on every `check`/`generate`: the cost model must predict what each one costs, and each must render on the four charts.
 SAMPLE_SELECTIONS = [["supply-chain"], ["manufacturing"], ["bom", "treasury"], ["it-risk", "treasury"], ["it-risk", "bom"], ["supply-chain", "bom"], ["supply-chain", "treasury"],
                      ["manufacturing", "bom", "treasury"], ["supply-chain", "it-risk", "bom", "treasury"], ["supply-chain", "manufacturing", "it-risk", "bom", "treasury"]]
+# Found by running the app against the composed stacks (2026-11-17, app v0.10.19): not caused by the charts, and shown to anyone who selects both packs.
+KNOWN_ISSUES = [{"packs": ["it-risk", "treasury"], "text": "With both MariaDB databases registered (security from IT & operational risk, erp from Treasury), 2 of the 12 IT & operational risk approved questions fail: their cross-source SQL "
+                 "(mdb.security.vendors joined to pg.risk) is rejected with \"Column 'tier' not found in table 'v'\". All six packs together behave the same; one MariaDB database alone does not. "
+                 "Reported by the app's planner, consistent with the two `vendors` tables colliding; not yet reported to the Server team."}]
 FIT_NOTE = "Measured 2026-11-13 on AWS (eks-stack-v1.0.32, default t4g.medium): 2048 Mi of memory requests used 83% of what the node could give, so there is no room for a second large workload."
 
 
@@ -134,6 +138,7 @@ def build(renders, mixes=None):
         "excluded": [{"id": p["id"], "reason": "Docker only: " + ("non-commercial data and models" if p["licence"].get("nonCommercial") else "not built for the cloud stacks")} for p in ms if p not in cloud_packs(ms)],
         "configurations": [dict(demoDataset=ds, packs=ids, **r[ds]) for ds, ids in cfg.items()],
         "verifiedSelections": [dict(v, memoryMi=v["memoryMi"]) for v in verified],
+        "knownIssues": KNOWN_ISSUES,
         "fit": FIT_NOTE,
         "rules": [
             "The charts take a list of packs (demoDatasets) and compose any mix of them. One pack or all six gives exactly the stack the matching demoDataset always gave; any other mix is deployed the all-packs way (one connector per kind, schemas discovered) holding only the chosen packs and their approved questions.",
@@ -169,7 +174,8 @@ def resolve(ids, opts=None):
     order = [i for i in CANONICAL if i in sel] + sorted(i for i in sel if i not in CANONICAL)
     return {"selected": sorted(sel), "supported": supported, "demoDatasets": order if supported else None, "demoDataset": cfg if supported else None, "components": ["base"] + needs,
             "memoryRequestsMi": tot["memoryMi"], "cpuRequestsMilli": tot["cpuMilli"], "diskGi": tot["diskGi"], "problems": problems, "notes": notes,
-            "paymentWorkflowAddOn": sel == ["treasury"]}
+            "paymentWorkflowAddOn": sel == ["treasury"],
+            "warnings": [k["text"] for k in o.get("knownIssues", []) if set(k["packs"]) <= set(sel)]}
 
 
 def text(o): return json.dumps(o, indent=2, ensure_ascii=False) + "\n"

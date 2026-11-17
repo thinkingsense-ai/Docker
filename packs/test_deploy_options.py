@@ -122,6 +122,11 @@ class T(unittest.TestCase):
         self.assertEqual(r["memoryRequestsMi"], 2048)                                                                       # no more memory than treasury alone
         self.assertEqual(D.resolve(["bom"], O)["memoryRequestsMi"], 1792); self.assertEqual(D.resolve(["treasury"], O)["memoryRequestsMi"], 2048)
 
+    def test_a_known_issue_is_shown_only_to_selections_that_contain_its_packs(self):
+        both = D.resolve(["it-risk", "treasury"], O); self.assertTrue(both["supported"]); self.assertTrue(any("Column 'tier'" in w for w in both["warnings"]))
+        self.assertTrue(D.resolve([p["id"] for p in O["packs"]], O)["warnings"])
+        for sel in (["it-risk", "bom"], ["treasury", "bom"], ["it-risk"], ["treasury"]): self.assertEqual(D.resolve(sel, O)["warnings"], [], sel)
+
     def test_the_list_follows_the_charts_order_whatever_order_it_was_given(self):
         self.assertEqual(D.resolve(["treasury", "bom", "supply-chain"], O)["demoDatasets"], ["supply-chain", "bom", "treasury"])
 
