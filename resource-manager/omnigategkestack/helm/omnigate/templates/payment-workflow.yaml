@@ -1,3 +1,6 @@
+{{- if and .Values.paymentWorkflow.gateway.enabled (not .Values.paymentWorkflow.enabled) }}
+{{- fail "paymentWorkflow.gateway.enabled needs paymentWorkflow.enabled=true" }}
+{{- end }}
 {{- if .Values.paymentWorkflow.enabled }}
 {{- if ne .Values.demoDataset "treasury" }}
 {{- fail "paymentWorkflow.enabled needs demoDataset=treasury: the demo reads the Treasury pack's tables (all-packs is not supported yet)" }}
@@ -6,8 +9,17 @@
 {{- $licName := printf "%s-omnigate-license" $fullname }}
 {{- $existing := lookup "v1" "Secret" .Release.Namespace $licName }}
 {{- $licensed := or .Values.omnigate.license (and $existing $existing.data (hasKey $existing.data "license") (ne (index $existing.data "license") "")) }}
-{{- /* A demo for the free edition only: a deployment that holds a signed (commercial) licence renders nothing here. */ -}}
-{{- if not $licensed }}
+{{- $gw := .Values.paymentWorkflow.gateway.enabled }}
+{{- if and $gw (not $licensed) }}
+{{- fail "paymentWorkflow.gateway.enabled puts the workflow behind the app's own workflow API, which is a commercial-edition feature: set omnigate.license (or install a licence with scripts/set-licence.sh) first, and restart the app once after a first activation" }}
+{{- end }}
+{{- if and $gw (not .Values.paymentWorkflow.gateway.token) (not .Values.omnigate.adminApiToken) }}
+{{- fail "paymentWorkflow.gateway.enabled needs omnigate.adminApiToken (the gateway token is derived from it) or paymentWorkflow.gateway.token" }}
+{{- end }}
+{{- $token := .Values.paymentWorkflow.gateway.token | default (printf "workflow-gateway:%s:%s" $fullname .Values.omnigate.adminApiToken | sha256sum) }}
+{{- /* Two modes. Default (free edition): the demo with its own approval inbox, rendered only when NO licence is held. Gateway mode (commercial edition): no inbox; the app's own
+       authenticated workflow API starts and decides the runs, and reaches this pod through the gateway on port 8094. */ -}}
+{{- if or $gw (not $licensed) }}
 # The payment-exception workflow, as an opt-in demo add-on (see demos/payment-workflow in the Docker repository): a Temporal dev server, the worker
 # that runs the workflow, the approval inbox and a mock ERP, in ONE pod that shares one small volume (Temporal's database and the decision record).
 # The code is not in an image: it comes from the ConfigMap below and runs on the stock python image, with the Temporal SDK installed at pod start.
@@ -15,6 +27,10 @@
 # PRIVATE on purpose: the inbox has no sign-in (you type a name), so it is a ClusterIP Service and nothing outside the cluster can reach it. Reach it with
 #   kubectl port-forward svc/{{ $fullname }}-payment-workflow 8085:8085        then open http://localhost:8085
 # It reads the Treasury pack through the app's internal address with the admin API token, so it holds admin rights: a reason to keep it private.
+{{- if $gw }}
+# GATEWAY MODE (paymentWorkflow.gateway.enabled, commercial edition): there is NO inbox. A gateway container answers the app's workflow engine contract on port 8094;
+# only the app's pods may reach it (network policy, where enforced) and every call carries a bearer token the app and the gateway both read from the Secret below.
+{{- end }}
 # Nothing is ever sent to a real ERP: an approved action shows the call it would send (dry run), or goes to the mock ERP in the pod.
 apiVersion: v1
 kind: Secret
@@ -26,6 +42,20 @@ metadata:
 stringData:
   ASK_ADMIN_TOKEN: {{ .Values.omnigate.adminApiToken | quote }}
   OMNIGATE_LLM_API_KEY: {{ .Values.omnigate.llmApiKey | quote }}
+{{- if $gw }}
+  GATEWAY_TOKEN: {{ $token | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fullname }}-workflow-manifest
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: payment-workflow
+data:
+  workflows.json: |
+{{ .Files.Get "files/payment-workflow/manifest.gateway.json" | indent 4 }}
+{{- end }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -73,7 +103,7 @@ spec:
         app.kubernetes.io/component: payment-workflow
       annotations:
         checksum/src: {{ (.Files.Glob "files/payment-workflow/*").AsConfig | sha256sum }}
-        checksum/secret: {{ printf "%s%s" .Values.omnigate.adminApiToken .Values.omnigate.llmApiKey | sha256sum }}
+        checksum/secret: {{ printf "%s%s%s" .Values.omnigate.adminApiToken .Values.omnigate.llmApiKey (ternary $token "" $gw) | sha256sum }}
     spec:
       securityContext:
         runAsNonRoot: true
@@ -146,6 +176,34 @@ spec:
             - { name: pylib, mountPath: /pylib, readOnly: true }
             - { name: data, mountPath: /data }
             - { name: tmp, mountPath: /tmp }
+{{- if $gw }}
+        - name: gateway
+          image: {{ .Values.paymentWorkflow.pythonImage }}
+          command: ["python", "/app/gateway.py"]
+          workingDir: /app
+          env:
+            - { name: PYTHONPATH, value: "/pylib:/app" }
+            - { name: PYTHONDONTWRITEBYTECODE, value: "1" }
+            - { name: HOME, value: /tmp }
+            - { name: TEMPORAL_ADDRESS, value: "localhost:7233" }
+            - { name: GATEWAY_PORT, value: "8094" }
+            - name: GATEWAY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $fullname }}-payment-workflow
+                  key: GATEWAY_TOKEN
+          ports:
+            - { name: gateway, containerPort: 8094 }
+          readinessProbe:
+            httpGet: { path: /health, port: 8094 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          securityContext: *locked
+          resources:
+            requests: { cpu: 25m, memory: 64Mi }
+            limits: { memory: 160Mi }
+          volumeMounts: *mounts
+{{- else }}
         - name: inbox
           image: {{ .Values.paymentWorkflow.pythonImage }}
           command: ["python", "/app/inbox.py"]
@@ -165,6 +223,7 @@ spec:
             requests: { cpu: 50m, memory: 96Mi }
             limits: { memory: 256Mi }
           volumeMounts: *mounts
+{{- end }}
         - name: erp-mock
           image: {{ .Values.paymentWorkflow.pythonImage }}
           command: ["python", "/app/erp_mock.py", "8086"]
@@ -202,11 +261,16 @@ spec:
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: payment-workflow
   ports:
+{{- if $gw }}
+    - { name: gateway, port: 8094, targetPort: 8094 }
+{{- else }}
     - { name: inbox, port: 8085, targetPort: 8085 }
+{{- end }}
 {{- if .Values.networkPolicy.enabled }}
 ---
-# Nothing else in the cluster has any reason to call the workflow pod (its parts talk over localhost), so it takes no inbound traffic. kubectl
-# port-forward is not affected by this. Enforced only where the cluster's network plugin enforces policies (see "Network policy" in the stack README).
+# Nothing else in the cluster has any reason to call the workflow pod (its parts talk over localhost), so it takes no inbound traffic, except in gateway mode, where
+# the app's own pods may reach the gateway port and nothing else may. kubectl port-forward is not affected by this. Enforced only where the cluster's network plugin
+# enforces policies (see "Network policy" in the stack README).
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -221,7 +285,18 @@ spec:
       app.kubernetes.io/component: payment-workflow
   policyTypes:
     - Ingress
+{{- if $gw }}
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ .Release.Name }}
+              app.kubernetes.io/component: omnigate
+      ports:
+        - { protocol: TCP, port: 8094 }
+{{- else }}
   ingress: []
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

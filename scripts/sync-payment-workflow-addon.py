@@ -7,7 +7,7 @@ each chart's values.yaml has the paymentWorkflow block.
 import os, shutil, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, "demos/payment-workflow")
-RUNTIME = ["activities.py", "decisions.py", "erp_mock.py", "facts.py", "inbox.html", "inbox.py", "recommend.py", "rules.py", "sap_facts.py", "sap_rules.py", "temporal_wait.py", "worker.py", "workflows.py"]
+RUNTIME = ["activities.py", "decisions.py", "erp_mock.py", "facts.py", "inbox.html", "inbox.py", "recommend.py", "rules.py", "sap_facts.py", "sap_rules.py", "temporal_wait.py", "worker.py", "workflows.py", "gateway.py", "gateway_map.py", "manifest.gateway.json"]
 CHARTS = ["resource-manager/omnigateeksstack/helm-deployer-lambda/omnigate-chart", "resource-manager/omnigateokestack/helm/omnigate", "resource-manager/omnigategkestack/helm/omnigate", "resource-manager/omnigateaksstack/helm/omnigate"]
 VALUES = '''
 # Opt-in demo add-on (off by default): the payment-exception workflow from demos/payment-workflow, as one extra pod (a Temporal dev server, the workflow worker,
@@ -25,6 +25,13 @@ paymentWorkflow:
   # dry-run: an approved action only shows the call it would send. live: it goes to the mock ERP in the pod (still nothing real).
   writeBack: dry-run
 '''
+GATEWAY = '''  # Commercial edition only: put the workflow behind the app's own workflow API (Ask and Agency start, show and decide the runs). Needs a signed licence
+  # (omnigate.license) and omnigate.adminApiToken; there is NO inbox in this mode; only the app's pods can reach the gateway (port 8094, bearer token). The app must be
+  # restarted once after a first licence activation. token: leave empty to derive one from omnigate.adminApiToken.
+  gateway:
+    enabled: false
+    token: ""
+'''
 def want(path, content):  # (path, bytes) -> True if the file already holds it
     return os.path.exists(path) and open(path, "rb").read() == content
 def main(check):
@@ -41,7 +48,12 @@ def main(check):
         vp = os.path.join(base, "values.yaml"); v = open(vp).read()
         if "\npaymentWorkflow:\n" not in v:
             bad.append(os.path.relpath(vp, ROOT))
-            if not check: open(vp, "w").write(v.rstrip("\n") + "\n" + VALUES)
+            if not check: open(vp, "w").write(v.rstrip("\n") + "\n" + VALUES + GATEWAY)
+        elif "\n  gateway:\n" not in v:
+            bad.append(os.path.relpath(vp, ROOT))
+            if not check:
+                assert "\n  writeBack: dry-run\n" in v, vp
+                open(vp, "w").write(v.replace("\n  writeBack: dry-run\n", "\n  writeBack: dry-run\n" + GATEWAY, 1))
     if check:
         print("out of date:\n  " + "\n  ".join(bad) if bad else "the four charts are in sync"); return 1 if bad else 0
     print("updated %d files" % len(bad)); return 0
