@@ -73,3 +73,5 @@ th { position: sticky; top: 0; background: var(--chip) } th.num, td.num { text-a
 .aud p { margin: 2px 0 } .aud ul { margin: 2px 0; padding-left: 18px }
 
 .scroll { overflow-x: auto; max-width: 100%; margin: 8px 0 }
+
+.preview { white-space: pre-wrap; max-height: 12em; overflow: auto; background: var(--chip); padding: 8px; border-radius: 6px }

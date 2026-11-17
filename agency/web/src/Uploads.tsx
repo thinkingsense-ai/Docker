@@ -38,11 +38,23 @@ function TableSummary({ r }: { r: Record<string, any> }) {
   )
 }
 
+function DocSummary({ r }: { r: Record<string, any> }) {
+  const heads: any[] = r.headings ?? [], terms: any[] = r.topTerms ?? []
+  return (
+    <div className="doc">
+      <p>{String(r.format).toUpperCase()}: {Number(r.words).toLocaleString()} words{r.format === 'pdf' ? `, ${r.pages} pages` : ''}, {r.chunks} passages of about 800 characters</p>
+      {heads.length > 0 && <><p className="muted small">Headings</p><ul className="small">{heads.map((h, i) => <li key={i} style={{ marginLeft: (h.level - 1) * 14 }}>{h.text}</li>)}</ul></>}
+      {terms.length > 0 && <p className="small"><span className="muted">Most frequent words: </span>{terms.map((t) => `${t[0]} (${t[1]})`).join(', ')}</p>}
+      {r.preview && <pre className="small preview">{r.preview}</pre>}
+    </div>
+  )
+}
+
 function Card({ u, onAsk, onDelete }: { u: Upload; onAsk: (q: string) => void; onDelete: () => void }) {
   return (
     <article className="answer" aria-label={`Upload ${u.name}`}>
       <h2 className="q">{u.name} <span className="tag">{u.kind}</span>{u.nonCommercial && <span className="tag caution">non-commercial</span>}</h2>
-      {u.kind === 'audio' && u.result ? <AudioSummary r={u.result} /> : u.kind === 'table' && u.result ? <TableSummary r={u.result} /> : u.result && <pre className="small">{JSON.stringify(u.result, null, 2)}</pre>}
+      {u.kind === 'audio' && u.result ? <AudioSummary r={u.result} /> : u.kind === 'table' && u.result ? <TableSummary r={u.result} /> : u.kind === 'document' && u.result ? <DocSummary r={u.result} /> : u.result && <pre className="small">{JSON.stringify(u.result, null, 2)}</pre>}
       {u.notes.length > 0 && <ul className="warnings">{u.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>}
       {u.licence && <p className="muted small">{u.licence}</p>}
       {u.askPrompts.length > 0 && <div className="follow"><span className="muted small">Ask about this:</span>{u.askPrompts.map((p) => <button key={p} className="chip" onClick={() => onAsk(p)}>{p}</button>)}</div>}
