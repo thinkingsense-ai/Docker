@@ -26,7 +26,7 @@ Non-goals: replacing Ask; an admin console; a second query planner; storing cust
 IDs are stable so tests and PRs can cite them. "Server" means the OmniGate Server APIs as released; a requirement that needs a Server change says so.
 
 ### 3.1 Sign-in and session
-- FR-1 Sign in with the Server's business-user login (local accounts or SSO); Agency stores no passwords.
+- FR-1 Sign in with the Server's business-user login (local accounts or SSO); Agency stores no passwords. Agency has its **own Server login**: its layer signs the user in at the Server's business-user login and holds that session itself, so the Workspace chosen in Agency is separate from the one chosen in Ask (decision, section 10).
 - FR-2 The caller's identity is forwarded on every call; Agency never widens access. A 401/403 from Server is shown as such, not retried as another user.
 - FR-3 Shows who is signed in, the edition (free/commercial) and the Server version.
 
@@ -35,7 +35,7 @@ IDs are stable so tests and PRs can cite them. "Server" means the OmniGate Serve
 - FR-5 "Loaded" means the pack's Workspace exists on this Server and its sources answer; a pack that is described but not loaded is shown disabled with the reason.
 - FR-6 Selecting a card selects the Workspace (Server session Workspace where shared, else sent with each request) and changes starters, upload options and workflow list together; one line says what changed.
 - FR-7 "All data" is a distinct card with a visible accuracy warning (free-form accuracy across six packs was not measured).
-- FR-8 The choice is remembered per user (server-side preference; `localStorage` only as fallback) and set by `?pack=<id>`.
+- FR-8 The choice is remembered per user and set by `?pack=<id>`. The Server has no per-user preference store (see section 10), so the layer keeps a small preference table keyed by the Server username; `localStorage` is only a fallback.
 
 ### 3.3 Asking
 - FR-9 A question box sends the question with the Workspace and optional attachments; shows progress while the Server plans and runs steps (the Server's own events), and a cancel control.
@@ -48,7 +48,8 @@ IDs are stable so tests and PRs can cite them. "Server" means the OmniGate Serve
 
 ### 3.4 Uploads and modalities
 - FR-16 A drop zone accepts only types some enabled adapter handles; the list comes from the adapter catalogue, not a constant in the page.
-- FR-17 Each upload becomes an **upload record** (id, name, kind, adapter, derived rows/vectors, licence note, owner, expiry). Records are private to the uploader unless shared.
+- FR-17 Each upload becomes an **upload record** (id, name, kind, adapter, derived rows/vectors, licence note, owner, expiry). Records are private to the uploader unless sharing is on (FR-17a).
+- FR-17a **Sharing within the group.** An admin setting `uploadSharing` (`off` default, `workspace`) lets an uploader share a record with the other members of the Workspace it was uploaded in; a shared record is read-only to them, shows who shared it and when, and can be unshared or deleted by its owner and by an admin. Only users with the Server's `canUploadFiles` grant can upload; sharing never extends a grant or a Workspace's access rules. Ask's own uploads are conversation-only and visible to no one else, so this is new behaviour in Agency, not a copy of an Ask setting.
 - FR-18 After ingest the page offers "ask about this" prompts that name the upload record; the question and the derived data go to the Server like any other.
 - FR-19 Audio: an identify action returning BirdNET top 3 restricted to the pack's species vs unaided, nearest recordings from vector search with spectrogram and player (reuses `demos/audio-demo`). Marked demo-only, non-commercial.
 - FR-20 Image, document and table adapters follow the same contract. An adapter that is not enabled is not offered. Accuracy claims are shown only where measured (image-to-species vectors were 29%, so no accuracy language there).
@@ -128,17 +129,21 @@ Only: upload records and their expiry, per-user preferences, a cache of the pack
 
 ## 9. Phases (each its own PR)
 
+0. Licence file and terms for Agency (and the Docker repo), text from counsel.
 1. Done: pack manifests, catalogue, Workspace config (Docker#197).
 2. Layer skeleton: `/packs`, `/status`, `/ask` pass-through with the evidence block, `/decisions`, MCP tool list generated from the contract.
-3. Agency UI slice 1: pack cards, ask, evidence pane, conversations.
+3. Agency UI slice 1 (React + Vite): pack cards, ask, evidence pane, conversations.
 4. Adapters: audio moved behind the contract, then table, then document.
 5. Workflows inline and queue; Docker compose service and cloud add-on chart entry (private).
 6. Deploy-form pack multi-select on the four clouds; Server#109 to #111 adopted as they land.
 
-## 10. Open decisions
+## 10. Decisions (2026-11-17) and what is still open
 
-1. UI stack: single page with no build step (like the audio demo; fewer moving parts, harder to grow) or React + Vite (like Ask). Proposed default: no build step for slice 1, revisit at phase 4.
-2. Where preferences live until the Server has a per-user store (the layer's small database vs browser only).
-3. Whether Agency gets its own Server login client or reuses Ask's session cookie through the ingress (affects shared Workspace state; see "Serving").
-4. Licence of Agency itself: needs counsel's answer on the free-edition terms before any public release.
-5. Whether upload records may be shared between users, and the default expiry.
+Decided:
+1. **UI stack: React + TypeScript + Vite**, the same toolchain as Ask (not Ask's code; see agency-design.md on licensing). The UI lives in the Docker repo under `agency/web`, is built in the layer's Dockerfile and served by the layer.
+2. **Per-user store:** the Server has none that I could find: its per-user data is the session (login and chosen Workspace), `AppUserAccess` (three grants: see SQL, see sources, upload files), and conversations. No preference or settings route turned up in a code search (read, not run). So Agency keeps its own small preference table in the layer, keyed by Server username. A Server PR is optional later, if Kumar wants preferences shared by Ask and Agency.
+3. **Own login:** Agency signs in to the Server itself (FR-1). Consequence: Ask and Agency do not share a Workspace unless both are reached on one origin through the ingress.
+4. **Licence file:** Agency (and ideally the whole Docker repo) gets a LICENSE and a short terms note before any public release. The text is for counsel to choose; this spec does not pick it. Phase 0 below.
+5. **Upload sharing within the Workspace's group**, controlled by an admin setting (FR-17a). Default `off`. Open: the default expiry of a shared record, and whether an admin can see all records or only shared ones.
+
+Still open: the Server-side items filed as Server#109 to #111; counsel's answers on non-commercial adapters; whether the free edition limits the number of shared uploads.
