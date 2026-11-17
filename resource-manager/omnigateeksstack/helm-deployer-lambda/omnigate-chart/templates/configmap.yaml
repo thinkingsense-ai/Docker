@@ -26,14 +26,16 @@ data:
   # all-packs: no schema-to-source rules. Every schema of each source is discovered and addressed connector.schema.table (pg.risk.incidents,
   # mdb.security.vendors, files.museums); a rule here would rewrite the schema part to the source name and break cross-source questions.
   OMNIGATE_FEDERATION_AUTO_DISCOVER_SCHEMAS: "true"
-  OMNIGATE_FEDERATION_SCHEMA_INCLUDE: "suppliers,inventory,procurement,risk,smithsonian,security,museums,bom,treasury,erp"
+  OMNIGATE_FEDERATION_SCHEMA_INCLUDE: {{ include "omnigate.federationSchemas" . | quote }}
+{{- if include "omnigate.embedding" . }}
   # Serve an approved question's saved SQL when a new question matches it closely (the packs' questions are checked to run).
   OMNIGATE_QUESTION_BANK_RETRIEVAL_ENABLED: "true"
   # The embedding model runs as its own Deployment (packs.yaml): question matching, the subject vocabulary and vector search call it there.
   OMNIGATE_EMBEDDING_REMOTE_HOST: {{ include "omnigate.embedHost" . | quote }}
   OMNIGATE_EMBEDDING_REMOTE_PORT: "8090"
+{{- end }}
 {{- else }}
-  OMNIGATE_ROUTER_SCHEMA_RULES: {{ default "suppliers:suppliers,inventory:inventory,procurement:procurement" (get (dict "it-risk" "risk:risk,security:security" "bom" "bom:bom" "treasury" "treasury:treasury,erp:erp") .Values.demoDataset) | quote }}
+  OMNIGATE_ROUTER_SCHEMA_RULES: {{ default "suppliers:suppliers,inventory:inventory,procurement:procurement" (get (dict "it-risk" "risk:risk,security:security" "bom" "bom:bom" "treasury" "treasury:treasury,erp:erp") (include "omnigate.dataset" .)) | quote }}
 {{- if include "omnigate.embedding" . }}
   # bom and treasury: serve an approved question's saved SQL when a new question matches it; the embedding model runs as its own Deployment (packs.yaml).
   OMNIGATE_QUESTION_BANK_RETRIEVAL_ENABLED: "true"
@@ -72,7 +74,7 @@ data:
 {{ .Files.Get "files/seed-supply-chain.sql" | indent 4 }}
 ---
 {{- end }}
-{{- if and .Values.manufacturingDemo.enabled (not (include "omnigate.standalone" .)) }}
+{{- if include "omnigate.manufacturing" . }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -95,17 +97,25 @@ metadata:
   labels:
     {{- include "omnigate.labels" . | nindent 4 }}
 data:
+{{- if include "omnigate.has" (dict "ctx" . "pack" "supply-chain") }}
   01-seed-supply-chain.sql: |
 {{ .Files.Get "files/seed-supply-chain.sql" | indent 4 }}
+{{- end }}
+{{- if include "omnigate.has" (dict "ctx" . "pack" "it-risk") }}
   02-seed-it-risk-postgres.sql: |
 {{ .Files.Get "files/seed-it-risk-postgres.sql" | indent 4 }}
+{{- end }}
+{{- if include "omnigate.has" (dict "ctx" . "pack" "bom") }}
   03-seed-bom.sql: |
 {{ .Files.Get "files/seed-bom.sql" | indent 4 }}
+{{- end }}
+{{- if include "omnigate.has" (dict "ctx" . "pack" "treasury") }}
   04-seed-treasury-postgres.sql: |
 {{ .Files.Get "files/seed-treasury-postgres.sql" | indent 4 }}
 {{- end }}
+{{- end }}
 
-{{- if eq .Values.demoDataset "bom" }}
+{{- if eq (include "omnigate.dataset" .) "bom" }}
 ---
 # The BOM / sourcing pack (demos/bom-pack): one Postgres schema, `bom`. Run by the image's first-start entrypoint on an empty volume.
 apiVersion: v1
@@ -118,7 +128,7 @@ data:
   seed-bom.sql: |
 {{ .Files.Get "files/seed-bom.sql" | indent 4 }}
 {{- end }}
-{{- if eq .Values.demoDataset "treasury" }}
+{{- if eq (include "omnigate.dataset" .) "treasury" }}
 ---
 # The Treasury pack (demos/treasury-pack), Postgres half: the `treasury` schema. The ERP half is the `erp` MariaDB database below.
 apiVersion: v1
@@ -132,7 +142,7 @@ data:
 {{ .Files.Get "files/seed-treasury-postgres.sql" | indent 4 }}
 {{- end }}
 {{- if include "omnigate.hasMariadb" . }}
-{{- if eq .Values.demoDataset "it-risk" }}
+{{- if eq (include "omnigate.dataset" .) "it-risk" }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -152,14 +162,14 @@ metadata:
   labels:
     {{- include "omnigate.labels" . | nindent 4 }}
 data:
-  {{ ternary "01-seed-treasury.sql" "01-seed-it-risk.sql" (eq .Values.demoDataset "treasury") }}: |
-{{ .Files.Get (ternary "files/seed-treasury-mariadb.sql" "files/seed-it-risk-mariadb.sql" (eq .Values.demoDataset "treasury")) | indent 4 }}
+  {{ ternary "01-seed-treasury.sql" "01-seed-it-risk.sql" (eq (include "omnigate.erpOnly" .) "true") }}: |
+{{ .Files.Get (ternary "files/seed-treasury-mariadb.sql" "files/seed-it-risk-mariadb.sql" (eq (include "omnigate.erpOnly" .) "true")) | indent 4 }}
   # The image grants the account it creates (MARIADB_USER) everything on the database; narrow that to SELECT.
   02-readonly.sql: |
     REVOKE ALL PRIVILEGES ON {{ include "omnigate.mariadbDatabase" . }}.* FROM '{{ .Values.mariadb.readOnlyUser }}'@'%';
     GRANT SELECT ON {{ include "omnigate.mariadbDatabase" . }}.* TO '{{ .Values.mariadb.readOnlyUser }}'@'%';
     FLUSH PRIVILEGES;
-{{- if include "omnigate.packs" . }}
+{{- if and (include "omnigate.packs" .) (include "omnigate.has" (dict "ctx" . "pack" "treasury")) (include "omnigate.has" (dict "ctx" . "pack" "it-risk")) }}
   # all-packs also holds the Treasury pack's ERP database (`erp`) next to `security`: the same SELECT-only account reads it.
   03-seed-treasury-erp.sql: |
 {{ .Files.Get "files/seed-treasury-mariadb.sql" | indent 4 }}

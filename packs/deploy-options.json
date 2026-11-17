@@ -178,7 +178,8 @@
     {
       "demoDataset": "supply-chain",
       "packs": [
-        "supply-chain"
+        "supply-chain",
+        "manufacturing"
       ],
       "memoryMi": 1280,
       "cpuMilli": 600,
@@ -226,10 +227,116 @@
       "diskGi": 10
     }
   ],
+  "verifiedSelections": [
+    {
+      "packs": [
+        "supply-chain"
+      ],
+      "memoryMi": 1280,
+      "cpuMilli": 600,
+      "diskGi": 7
+    },
+    {
+      "packs": [
+        "manufacturing"
+      ],
+      "memoryMi": 1280,
+      "cpuMilli": 600,
+      "diskGi": 7
+    },
+    {
+      "packs": [
+        "bom",
+        "treasury"
+      ],
+      "memoryMi": 2048,
+      "cpuMilli": 950,
+      "diskGi": 9
+    },
+    {
+      "packs": [
+        "it-risk",
+        "treasury"
+      ],
+      "memoryMi": 2048,
+      "cpuMilli": 950,
+      "diskGi": 9
+    },
+    {
+      "packs": [
+        "it-risk",
+        "bom"
+      ],
+      "memoryMi": 2048,
+      "cpuMilli": 950,
+      "diskGi": 9
+    },
+    {
+      "packs": [
+        "supply-chain",
+        "bom"
+      ],
+      "memoryMi": 1792,
+      "cpuMilli": 850,
+      "diskGi": 7
+    },
+    {
+      "packs": [
+        "supply-chain",
+        "treasury"
+      ],
+      "memoryMi": 2048,
+      "cpuMilli": 950,
+      "diskGi": 9
+    },
+    {
+      "packs": [
+        "manufacturing",
+        "bom",
+        "treasury"
+      ],
+      "memoryMi": 2048,
+      "cpuMilli": 950,
+      "diskGi": 9
+    },
+    {
+      "packs": [
+        "supply-chain",
+        "it-risk",
+        "bom",
+        "treasury"
+      ],
+      "memoryMi": 2048,
+      "cpuMilli": 950,
+      "diskGi": 9
+    },
+    {
+      "packs": [
+        "supply-chain",
+        "manufacturing",
+        "it-risk",
+        "bom",
+        "treasury"
+      ],
+      "memoryMi": 2048,
+      "cpuMilli": 950,
+      "diskGi": 9
+    }
+  ],
+  "knownIssues": [
+    {
+      "packs": [
+        "it-risk",
+        "treasury"
+      ],
+      "text": "With both MariaDB databases registered (security from IT & operational risk, erp from Treasury), 2 of the 12 IT & operational risk approved questions fail: their cross-source SQL (mdb.security.vendors joined to pg.risk) is rejected with \"Column 'tier' not found in table 'v'\". All six packs together behave the same; one MariaDB database alone does not. Reported by the app's planner, consistent with the two `vendors` tables colliding; not yet reported to the Server team."
+    }
+  ],
   "fit": "Measured 2026-11-13 on AWS (eks-stack-v1.0.32, default t4g.medium): 2048 Mi of memory requests used 83% of what the node could give, so there is no room for a second large workload.",
   "rules": [
-    "The charts deploy one pack or all six. Any other mix is not supported yet (the charts hold five hand-written configurations, not a composer).",
-    "A pack that extends another needs it: manufacturing adds tables to the supply-chain schemas.",
+    "The charts take a list of packs (demoDatasets) and compose any mix of them. One pack or all six gives exactly the stack the matching demoDataset always gave; any other mix is deployed the all-packs way (one connector per kind, schemas discovered) holding only the chosen packs and their approved questions.",
+    "The Smithsonian pack (object store, loader, vocabulary) is only deployed together with all six packs for now.",
+    "A pack that extends another needs it: manufacturing adds tables to the supply-chain schemas, so it brings supply-chain along.",
     "Cost is the base plus each component a selected pack needs, once. Adding a pack to a selection that already needs a component costs nothing in memory.",
     "Free edition: at most 3 data sources. The packs share one Postgres connector, one MariaDB and one object store, so no mix goes over; supply-chain registers its three schemas as its three.",
     "The payment-workflow add-on needs the treasury pack on its own (all packs is not supported yet)."

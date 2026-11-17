@@ -116,6 +116,12 @@ manufacturingDemo:
 #   "treasury" corporate cash and treasury across two systems: Postgres (`treasury`, 13 tables) and MariaDB (`erp`, 4 tables), 24 trusted
 #              questions, four of them joining the two (demos/treasury-pack).
 # Like it-risk they replace the supply-chain data rather than add to it, and are read on a fresh install only.
+# Which packs a new install gets, as a list (read on a fresh install only, like demoDataset). Packs: supply-chain, manufacturing (adds tables to the
+# supply-chain schemas, so it brings supply-chain along), it-risk, bom, treasury, and smithsonian (only together with all of them for now). Empty (the default)
+# means demoDataset below rules, exactly as before. One pack, or all six, gives the same stack as the matching demoDataset; any other mix is deployed
+# the all-packs way (one connector per kind, schemas discovered) holding only the chosen packs. `python3 scripts/deploy_options.py resolve <packs>` says
+# what a selection costs.
+demoDatasets: []
 demoDataset: supply-chain
 # "all-packs" loads every demo pack at once -- supply chain, manufacturing, IT & operational risk, the Smithsonian Open Access sample, BOM & sourcing and Treasury -- behind
 # the free edition's three data sources: one Postgres source (`pg`, five schemas), one MariaDB source (`mdb`, the `security` database) and the
