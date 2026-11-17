@@ -22,7 +22,9 @@ class FakeServer(BaseHTTPRequestHandler):
         if not self.authed(): return self._j(401, {"error": "not logged in"})
         if p == "/app/whoami": return self._j(200, {"username": "alice", "canSeeSql": True})
         if p == "/app/namespaces": return self._j(200, {"success": True, "namespaces": Fake.namespaces})
-        if p == "/app/starter-questions": return self._j(200, {"success": True, "packs": Fake.packs})
+        if p.startswith("/app/starter-questions"): return self._j(200, {"success": True, "packs": Fake.packs, "items": [{"question": "q?", "origin": "approved"}], "asked": p})
+        if p == "/app/conversations": return self._j(200, {"conversations": [{"id": "c1", "title": "T", "updatedAtMillis": 1}]})
+        if p.startswith("/app/conversations/get"): return self._j(200, {"success": True, "id": "c1", "turns": [], "asked": p})
         if p == "/app/workflows/definitions": return self._j(404, {})
         if p == "/app/workflows/runs/run-1": return self._j(200, {"id": "run-1"})
         return self._j(404, {})
@@ -157,5 +159,34 @@ class LayerTests(unittest.TestCase):
         self.assertEqual(self.c.call("GET", "/decisions")[0], 400)
         os.environ["AGENCY_DECISION_FILE"] = self._decision_file(tamper=True)
         d = self.J(self.c.call("GET", "/decisions?runId=run-1")[1]); self.assertFalse(d["chainValid"]); self.assertEqual(d["firstBadSeq"], 2)
+
+    def test_starters_conversations_pass_through_and_need_sign_in(self):
+        for path in ("/starters", "/conversations", "/conversations/get?id=c1", "/preferences"): self.assertEqual(self.c.call("GET", path)[0], 401, path)
+        self.signin()
+        d = self.J(self.c.call("GET", "/starters?pack=treasury")[1]); self.assertEqual(d["items"][0]["origin"], "approved"); self.assertIn("pack=treasury", d["asked"])
+        self.assertEqual(self.c.call("GET", "/starters?pack=nope")[0], 404)                  # only catalogue ids are forwarded
+        self.assertEqual(self.J(self.c.call("GET", "/conversations")[1])["conversations"][0]["id"], "c1")
+        d = self.J(self.c.call("GET", "/conversations/get?id=c%2F1%26x")[1]); self.assertIn("id=c%2F1%26x", d["asked"])     # the id is encoded, not spliced into the Server path
+
+    def test_preferences_are_per_user_validated_and_persisted(self):
+        f = tempfile.NamedTemporaryFile(suffix=".json", delete=False); f.close(); os.unlink(f.name)
+        os.environ["AGENCY_PREFS_FILE"] = f.name; app.PREFS.clear(); self.addCleanup(os.environ.pop, "AGENCY_PREFS_FILE", None)
+        self.signin(); self.assertEqual(self.J(self.c.call("GET", "/preferences")[1]), {})
+        self.assertEqual(self.J(self.c.call("POST", "/preferences", {"pack": "treasury"})[1]), {"pack": "treasury"})
+        self.assertEqual(json.load(open(f.name)), {"alice": {"pack": "treasury"}})
+        self.assertEqual(self.c.call("POST", "/preferences", {"theme": "x"})[0], 400)        # unknown key
+        self.assertEqual(self.c.call("POST", "/preferences", {"pack": "x" * 81})[0], 400)    # too long
+        self.assertEqual(self.J(self.c.call("POST", "/preferences", {"pack": None})[1]), {})
+        app.PREFS.clear(); app.load_prefs(); self.assertEqual(app.PREFS["alice"], {})
+
+    def test_static_ui_is_served_with_spa_fallback_and_no_path_escape(self):
+        d = tempfile.mkdtemp(); os.makedirs(d + "/assets"); open(d + "/index.html", "w").write("<html>agency</html>"); open(d + "/assets/a.js", "w").write("x=1")
+        with open(os.path.join(os.path.dirname(d), "secret.txt"), "w") as sf: sf.write("secret"); app.WEB_DIST = d; self.addCleanup(setattr, app, "WEB_DIST", "/nonexistent")
+        s, raw, r = self.c.call("GET", "/"); self.assertEqual((s, raw), (200, "<html>agency</html>")); self.assertIn("default-src 'self'", r.getheader("Content-Security-Policy"))
+        self.assertEqual(self.c.call("GET", "/assets/a.js")[1], "x=1")
+        self.assertEqual(self.c.call("GET", "/some/deep/link")[1], "<html>agency</html>")      # unknown path -> the page
+        s, raw, _ = self.c.call("GET", "/..%2Fsecret.txt"); self.assertNotIn("secret", raw)
+        s, raw, _ = self.c.call("GET", "/app/whoami"); self.assertEqual(s, 404)                 # never the page for Server-owned prefixes
+        self.assertEqual(self.c.call("GET", "/health")[0], 200)                                 # API routes win over the page
 
 if __name__ == "__main__": unittest.main()
