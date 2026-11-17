@@ -138,7 +138,7 @@ Agency, not enforced by Server" in the evidence block), so the design works as a
 On the four cloud forms, replace the single dropdown with a **multi-select of packs** driven by the manifests: each option shows size,
 memory need and edition badge; incompatible combinations are blocked with the reason. Measured (packs/deploy-options.json), the two limits first assumed barely bind: memory is the base (1280 Mi) plus each component a pack needs
 once (MariaDB +256, embedding model +512, object store 0), so any mix containing treasury requests 2048 Mi, the same as all six packs (83% of the default AWS node, 2026-11-13), and the packs
-share one Postgres, one MariaDB and one object store, so no mix goes over the free edition's 3 data sources. What blocks a mix today is the charts, which deploy one pack or all six; the form's `demoDataset` value becomes a list. Back-compat: a single value still works and
+share one Postgres, one MariaDB and one object store, so no mix goes over the free edition's 3 data sources. The charts now compose any mix from a `demoDatasets` list (the Smithsonian pack only with all six); the forms are the remaining step; the form's `demoDataset` value becomes a list. Back-compat: a single value still works and
 `all-packs` expands to the list. A later step lets an operator add or remove a pack on a running stack (re-seed that pack only), which
 is not possible today because the choice is "fresh install only".
 

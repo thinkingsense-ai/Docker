@@ -129,9 +129,9 @@ command exits 1 and this container waits forever (found in the first live deploy
 {{- end -}}
 
 {{- /* The all-packs demo set: every demo pack at once (supply chain, manufacturing, IT & operational risk, Smithsonian). */ -}}
-{{- define "omnigate.packs" -}}{{- if eq .Values.demoDataset "all-packs" }}true{{ end -}}{{- end -}}
+{{- define "omnigate.packs" -}}{{- if or (eq (include "omnigate.dataset" .) "all-packs") (eq (include "omnigate.dataset" .) "mix") }}true{{ end -}}{{- end -}}
 {{- /* The MariaDB database (`security`) is part of the IT & operational risk pack, on its own or inside all-packs. */ -}}
-{{- define "omnigate.hasMariadb" -}}{{- if or (eq .Values.demoDataset "it-risk") (eq .Values.demoDataset "treasury") (eq .Values.demoDataset "all-packs") }}true{{ end -}}{{- end -}}
+{{- define "omnigate.hasMariadb" -}}{{- if or (eq (include "omnigate.dataset" .) "it-risk") (eq (include "omnigate.dataset" .) "treasury") (eq (include "omnigate.dataset" .) "all-packs") (and (eq (include "omnigate.dataset" .) "mix") (or (include "omnigate.has" (dict "ctx" . "pack" "it-risk")) (include "omnigate.has" (dict "ctx" . "pack" "treasury")))) }}true{{ end -}}{{- end -}}
 {{- define "omnigate.embedHost" -}}
 {{- printf "%s-packs-embed" (include "omnigate.fullname" .) -}}
 {{- end -}}
@@ -172,14 +172,14 @@ must not start before both are there. Runs before ensure-readonly-role so that r
 {{- end -}}
 
 {{- /* Standalone demo sets that replace the supply-chain data: it-risk, bom (BOM / sourcing), treasury (cash, payables, hedges, debt). */ -}}
-{{- define "omnigate.standalone" -}}{{- if or (eq .Values.demoDataset "it-risk") (eq .Values.demoDataset "bom") (eq .Values.demoDataset "treasury") }}true{{ end -}}{{- end -}}
+{{- define "omnigate.standalone" -}}{{- if or (eq (include "omnigate.dataset" .) "it-risk") (eq (include "omnigate.dataset" .) "bom") (eq (include "omnigate.dataset" .) "treasury") }}true{{ end -}}{{- end -}}
 {{- /* The MariaDB database the app reads: `erp` for the treasury pack, `security` for the IT & operational risk pack. */ -}}
-{{- define "omnigate.mariadbDatabase" -}}{{ ternary "erp" "security" (eq .Values.demoDataset "treasury") }}{{- end -}}
-{{- define "omnigate.mariadbSeedName" -}}{{ ternary "seed-treasury-mariadb" "seed-it-risk-mariadb" (eq .Values.demoDataset "treasury") }}{{- end -}}
-{{- define "omnigate.postgresSeedName" -}}{{- if include "omnigate.packs" . }}seed-packs-postgres{{ else if eq .Values.demoDataset "it-risk" }}seed-it-risk-postgres{{ else if eq .Values.demoDataset "bom" }}seed-bom-postgres{{ else if eq .Values.demoDataset "treasury" }}seed-treasury-postgres{{ else }}seed-supply-chain{{ end -}}{{- end -}}
+{{- define "omnigate.mariadbDatabase" -}}{{ ternary "erp" "security" (eq (include "omnigate.erpOnly" .) "true") }}{{- end -}}
+{{- define "omnigate.mariadbSeedName" -}}{{ ternary "seed-treasury-mariadb" "seed-it-risk-mariadb" (eq (include "omnigate.erpOnly" .) "true") }}{{- end -}}
+{{- define "omnigate.postgresSeedName" -}}{{- if include "omnigate.packs" . }}seed-packs-postgres{{ else if eq (include "omnigate.dataset" .) "it-risk" }}seed-it-risk-postgres{{ else if eq (include "omnigate.dataset" .) "bom" }}seed-bom-postgres{{ else if eq (include "omnigate.dataset" .) "treasury" }}seed-treasury-postgres{{ else }}seed-supply-chain{{ end -}}{{- end -}}
 
 {{- /* The embedding model Deployment and question matching (approved questions served from their saved SQL): all-packs, and the bom and treasury sets. */ -}}
-{{- define "omnigate.embedding" -}}{{- if or (eq .Values.demoDataset "all-packs") (eq .Values.demoDataset "bom") (eq .Values.demoDataset "treasury") }}true{{ end -}}{{- end -}}
+{{- define "omnigate.embedding" -}}{{- if or (eq (include "omnigate.dataset" .) "all-packs") (eq (include "omnigate.dataset" .) "bom") (eq (include "omnigate.dataset" .) "treasury") (and (eq (include "omnigate.dataset" .) "mix") (or (include "omnigate.has" (dict "ctx" . "pack" "bom")) (include "omnigate.has" (dict "ctx" . "pack" "treasury")))) }}true{{ end -}}{{- end -}}
 {{- /* Waits for the embedding model to answer before the app starts (the bom and treasury sets; all-packs has this inside packsWaitInit). */ -}}
 {{- define "omnigate.embedWaitInit" -}}
 - name: wait-for-embedding-model
@@ -188,4 +188,69 @@ must not start before both are there. Runs before ensure-readonly-role so that r
     - sh
     - -c
     - until wget -q -O /dev/null http://{{ include "omnigate.embedHost" . }}:8090/health; do echo "waiting for the embedding model"; sleep 3; done
+{{- end -}}
+
+{{- /*
+Pack selection (phase 6). `demoDatasets` is a list of packs; when it is empty the single `demoDataset` string rules, exactly as before. A selection is checked, put in a
+fixed order, and mapped back onto the five configurations the charts always had where it equals one: `omnigate.dataset` answers supply-chain, it-risk, bom, treasury or
+all-packs for those, and "mix" for any other combination, which is deployed the all-packs way (one connector per kind, schemas discovered) holding only the chosen packs.
+*/ -}}
+{{- define "omnigate.selection" -}}
+{{- if .Values.demoDatasets -}}
+{{- $known := list "supply-chain" "manufacturing" "it-risk" "smithsonian" "bom" "treasury" -}}
+{{- $sel := list -}}
+{{- range .Values.demoDatasets -}}
+{{- if not (has . $known) -}}{{- fail (printf "demoDatasets: %q is not a pack the charts can deploy (known: %s)" . (join ", " $known)) -}}{{- end -}}
+{{- $sel = append $sel . -}}
+{{- end -}}
+{{- if and (has "manufacturing" $sel) (not (has "supply-chain" $sel)) -}}{{- $sel = append $sel "supply-chain" -}}{{- end -}}
+{{- $out := list -}}
+{{- range $known -}}{{- if has . $sel -}}{{- $out = append $out . -}}{{- end -}}{{- end -}}
+{{- if and (has "smithsonian" $out) (ne (len $out) (len $known)) -}}{{- fail "demoDatasets: the Smithsonian pack (object store, loader, vocabulary) is only deployed together with all six packs for now; leave it out of a smaller selection or select every pack" -}}{{- end -}}
+{{- toJson $out -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "omnigate.dataset" -}}
+{{- $sel := include "omnigate.selection" . -}}
+{{- if not $sel -}}{{ .Values.demoDataset }}
+{{- else -}}
+{{- $l := $sel | fromJsonArray -}}
+{{- if eq (len $l) 6 -}}all-packs
+{{- else if and (eq (len $l) 1) (has (first $l) (list "supply-chain" "it-risk" "bom" "treasury")) -}}{{ first $l }}
+{{- else if and (has "supply-chain" $l) (le (len $l) 2) (not (has "it-risk" $l)) (not (has "bom" $l)) (not (has "treasury" $l)) -}}supply-chain
+{{- else -}}mix
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{- /* Is this pack part of the deployment? Called as (include "omnigate.has" (dict "ctx" . "pack" "bom")). Prints "true" or nothing. */ -}}
+{{- define "omnigate.has" -}}
+{{- $sel := include "omnigate.selection" .ctx -}}
+{{- if $sel -}}{{- if has .pack ($sel | fromJsonArray) -}}true{{- end -}}
+{{- else if eq .ctx.Values.demoDataset "all-packs" -}}true
+{{- else if eq .ctx.Values.demoDataset .pack -}}true
+{{- end -}}
+{{- end -}}
+
+{{- /* Manufacturing tables and questions: with a selection, whether manufacturing is in it; without one, the old `manufacturingDemo.enabled` on the data sets that are not standalone. */ -}}
+{{- define "omnigate.manufacturing" -}}
+{{- if include "omnigate.selection" . -}}{{ include "omnigate.has" (dict "ctx" . "pack" "manufacturing") }}
+{{- else if and .Values.manufacturingDemo.enabled (not (include "omnigate.standalone" .)) -}}true
+{{- end -}}
+{{- end -}}
+
+{{- /* The object store, loader and Smithsonian vocabulary: all-packs only for now. */ -}}
+{{- define "omnigate.hasSmithsonian" -}}{{- if and (include "omnigate.packs" .) (include "omnigate.has" (dict "ctx" . "pack" "smithsonian")) }}true{{ end -}}{{- end -}}
+
+{{- /* The Treasury pack without the IT & risk pack: the MariaDB holds only `erp`. */ -}}
+{{- define "omnigate.erpOnly" -}}{{- if or (eq (include "omnigate.dataset" .) "treasury") (and (eq (include "omnigate.dataset" .) "mix") (include "omnigate.has" (dict "ctx" . "pack" "treasury")) (not (include "omnigate.has" (dict "ctx" . "pack" "it-risk")))) }}true{{ end -}}{{- end -}}
+
+{{- /* The schemas the federation planner may discover, in the order the all-packs set always listed them. */ -}}
+{{- define "omnigate.federationSchemas" -}}
+{{- $out := list -}}
+{{- range $p := list (list "suppliers" "supply-chain") (list "inventory" "supply-chain") (list "procurement" "supply-chain") (list "risk" "it-risk") (list "smithsonian" "smithsonian") (list "security" "it-risk") (list "museums" "smithsonian") (list "bom" "bom") (list "treasury" "treasury") (list "erp" "treasury") -}}
+{{- if include "omnigate.has" (dict "ctx" $ "pack" (index $p 1)) -}}{{- $out = append $out (index $p 0) -}}{{- end -}}
+{{- end -}}
+{{- join "," $out -}}
 {{- end -}}

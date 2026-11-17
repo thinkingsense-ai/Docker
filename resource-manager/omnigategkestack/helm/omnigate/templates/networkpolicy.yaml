@@ -28,7 +28,7 @@ spec:
             matchLabels:
               app.kubernetes.io/instance: {{ .Release.Name }}
               app.kubernetes.io/component: omnigate
-{{- if include "omnigate.packs" . }}
+{{- if include "omnigate.hasSmithsonian" . }}
         - podSelector:
             matchLabels:
               app.kubernetes.io/instance: {{ .Release.Name }}

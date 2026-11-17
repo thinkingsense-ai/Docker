@@ -1,23 +1,29 @@
 {{- if .Values.seedDemoQuestions.enabled }}
 {{- $fullname := include "omnigate.fullname" . }}
 {{- $questions := .Files.Get "files/demo-questions.json" | fromJsonArray }}
-{{- if and .Values.manufacturingDemo.enabled (not (include "omnigate.standalone" .)) }}
+{{- if include "omnigate.manufacturing" . }}
 {{- $questions = concat $questions (.Files.Get "files/demo-questions-manufacturing.json" | fromJsonArray) }}
 {{- end }}
-{{- if (eq .Values.demoDataset "it-risk") }}
+{{- if (eq (include "omnigate.dataset" .) "it-risk") }}
 {{- $questions = .Files.Get "files/demo-questions-it-risk.json" | fromJsonArray }}
 {{- end }}
-{{- if (eq .Values.demoDataset "bom") }}
+{{- if (eq (include "omnigate.dataset" .) "bom") }}
 {{- $questions = .Files.Get "files/demo-questions-bom.json" | fromJsonArray }}
 {{- end }}
-{{- if (eq .Values.demoDataset "treasury") }}
+{{- if (eq (include "omnigate.dataset" .) "treasury") }}
 {{- $questions = .Files.Get "files/demo-questions-treasury.json" | fromJsonArray }}
 {{- end }}
 {{- $knowledge := "" }}
-{{- if (eq .Values.demoDataset "bom") }}{{- $knowledge = .Files.Get "files/knowledge-bom.json" }}{{- end }}
-{{- if (eq .Values.demoDataset "treasury") }}{{- $knowledge = .Files.Get "files/knowledge-treasury.json" }}{{- end }}
+{{- if (eq (include "omnigate.dataset" .) "bom") }}{{- $knowledge = .Files.Get "files/knowledge-bom.json" }}{{- end }}
+{{- if (eq (include "omnigate.dataset" .) "treasury") }}{{- $knowledge = .Files.Get "files/knowledge-treasury.json" }}{{- end }}
 {{- if include "omnigate.packs" . }}
 {{- $questions = .Files.Get "files/demo-questions-all-packs.json" | fromJsonArray }}
+{{- if eq (include "omnigate.dataset" .) "mix" }}
+{{- /* A mix keeps only the approved questions of the packs it holds (the question file's `category` is the pack id). */ -}}
+{{- $kept := list }}
+{{- range $questions }}{{- if include "omnigate.has" (dict "ctx" $ "pack" .category) }}{{- $kept = append $kept . }}{{- end }}{{- end }}
+{{- $questions = $kept }}
+{{- end }}
 {{- end }}
 # Approves a few trusted questions for the seeded supply-chain demo (files/demo-questions.json), so the
 # Ask app's first screen offers questions that this data can answer. With an empty question bank the app

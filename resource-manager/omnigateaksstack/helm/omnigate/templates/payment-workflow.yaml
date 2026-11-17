@@ -2,8 +2,8 @@
 {{- fail "paymentWorkflow.gateway.enabled needs paymentWorkflow.enabled=true" }}
 {{- end }}
 {{- if .Values.paymentWorkflow.enabled }}
-{{- if ne .Values.demoDataset "treasury" }}
-{{- fail "paymentWorkflow.enabled needs demoDataset=treasury: the demo reads the Treasury pack's tables (all-packs is not supported yet)" }}
+{{- if ne (include "omnigate.dataset" .) "treasury" }}
+{{- fail "paymentWorkflow.enabled needs the Treasury pack on its own (demoDataset=treasury, or demoDatasets=[treasury]): the demo reads the Treasury pack's tables (a mix or all-packs is not supported yet)" }}
 {{- end }}
 {{- $fullname := include "omnigate.fullname" . }}
 {{- $licName := printf "%s-omnigate-license" $fullname }}

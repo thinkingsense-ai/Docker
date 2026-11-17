@@ -109,16 +109,32 @@ class T(unittest.TestCase):
     def test_a_workload_the_cost_model_does_not_know_fails_the_build(self):
         with self.assertRaises(SystemExit): D.measure(SAMPLE.replace("name: rel-postgres", "name: rel-newthing"))
 
-    def test_one_pack_and_all_packs_are_deployable_today(self):
-        for p in ("supply-chain", "it-risk", "bom", "treasury"):
-            r = D.resolve([p], O); self.assertTrue(r["supported"], p); self.assertEqual(r["demoDataset"], p)
+    def test_one_pack_and_all_packs_give_the_stack_the_matching_dataset_always_gave(self):
+        for p in ("it-risk", "bom", "treasury"):
+            r = D.resolve([p], O); self.assertTrue(r["supported"], p); self.assertEqual((r["demoDataset"], r["demoDatasets"]), (p, [p]))
+        r = D.resolve(["supply-chain", "manufacturing"], O); self.assertEqual(r["demoDataset"], "supply-chain")           # the default supply-chain stack always carried manufacturing
         r = D.resolve([p["id"] for p in O["packs"]], O); self.assertEqual((r["supported"], r["demoDataset"], r["memoryRequestsMi"]), (True, "all-packs", 2048))
+        self.assertEqual(r["demoDatasets"], D.CANONICAL)
 
-    def test_a_mix_is_reported_with_its_real_cost_and_the_reason(self):
-        r = D.resolve(["bom", "treasury"], O)
-        self.assertFalse(r["supported"]); self.assertIsNone(r["demoDataset"]); self.assertEqual(r["memoryRequestsMi"], 2048)          # no more memory than treasury alone
-        self.assertTrue(any("not supported yet" in x for x in r["problems"]))
+    def test_a_mix_is_deployable_with_its_real_cost_and_the_list_to_give_the_chart(self):
+        r = D.resolve(["treasury", "bom"], O)
+        self.assertTrue(r["supported"]); self.assertIsNone(r["demoDataset"]); self.assertEqual(r["demoDatasets"], ["bom", "treasury"]); self.assertEqual(r["problems"], [])
+        self.assertEqual(r["memoryRequestsMi"], 2048)                                                                       # no more memory than treasury alone
         self.assertEqual(D.resolve(["bom"], O)["memoryRequestsMi"], 1792); self.assertEqual(D.resolve(["treasury"], O)["memoryRequestsMi"], 2048)
+
+    def test_the_list_follows_the_charts_order_whatever_order_it_was_given(self):
+        self.assertEqual(D.resolve(["treasury", "bom", "supply-chain"], O)["demoDatasets"], ["supply-chain", "bom", "treasury"])
+
+    def test_smithsonian_only_comes_with_all_six(self):
+        for sel in (["smithsonian"], ["bom", "smithsonian"], ["supply-chain", "it-risk", "bom", "treasury", "smithsonian"]):
+            r = D.resolve(sel, O); self.assertFalse(r["supported"], sel); self.assertTrue(any("only deployed together with all" in x for x in r["problems"]), sel)
+            self.assertIsNone(r["demoDatasets"])
+
+    def test_every_verified_selection_is_deployable_and_its_cost_is_what_resolve_says(self):
+        self.assertGreaterEqual(len(O["verifiedSelections"]), 8)
+        for v in O["verifiedSelections"]:
+            r = D.resolve(v["packs"], O); self.assertTrue(r["supported"], v["packs"])
+            self.assertEqual((r["memoryRequestsMi"], r["cpuRequestsMilli"], r["diskGi"]), (v["memoryMi"], v["cpuMilli"], v["diskGi"]), v["packs"])
 
     def test_adding_a_pack_that_needs_no_new_component_costs_nothing(self):
         self.assertEqual(D.resolve(["treasury", "bom"], O)["memoryRequestsMi"], D.resolve(["treasury"], O)["memoryRequestsMi"])

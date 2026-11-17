@@ -8,7 +8,8 @@
 The cost of a selection is NOT the sum of its packs: it is the base (the app and Postgres) plus each COMPONENT a selected pack needs once (MariaDB for a pack with an `mdb`
 source, the embedding model for a pack that needs one, the object store for a `files` source). The component costs are measured from `helm template` on the four charts
 (requests of the long-running workloads, and volume sizes), and the formula is checked against every configuration the charts render today, so a chart change that moves a number
-fails `check`. The charts can deploy ONE pack or ALL of them; any other mix is reported as not supported yet, with the reason."""
+fails `check`. The charts take a list of packs (`demoDatasets`) and compose any mix of them, except that the Smithsonian pack (object store, loader, vocabulary) is only deployed
+with all six; every mix in SAMPLE_SELECTIONS is rendered with helm and its measured cost must equal the cost this model predicts."""
 import json, os, re, shutil, subprocess, sys
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
@@ -24,6 +25,10 @@ COMPONENT_OF = {"mariadb": lambda p: any(s["id"] == "mdb" for s in p["sources"])
                 "objectStore": lambda p: any(s["id"] == "files" for s in p["sources"])}
 COMPONENT_TEXT = {"base": "the app and Postgres", "mariadb": "MariaDB (a pack with an mdb source)", "embedding": "the embedding model (approved questions are only matched with it)",
                   "objectStore": "the in-cluster object store and its loader (the museum directory)"}
+CANONICAL = ["supply-chain", "manufacturing", "it-risk", "smithsonian", "bom", "treasury"]          # the order the charts put a selection in
+# Selections rendered with helm on every `check`/`generate`: the cost model must predict what each one costs, and each must render on the four charts.
+SAMPLE_SELECTIONS = [["supply-chain"], ["manufacturing"], ["bom", "treasury"], ["it-risk", "treasury"], ["it-risk", "bom"], ["supply-chain", "bom"], ["supply-chain", "treasury"],
+                     ["manufacturing", "bom", "treasury"], ["supply-chain", "it-risk", "bom", "treasury"], ["supply-chain", "manufacturing", "it-risk", "bom", "treasury"]]
 FIT_NOTE = "Measured 2026-11-13 on AWS (eks-stack-v1.0.32, default t4g.medium): 2048 Mi of memory requests used 83% of what the node could give, so there is no room for a second large workload."
 
 
@@ -72,9 +77,10 @@ def measure(rendered):
             "byComponent": {k: {"memoryMi": round(v[0]), "cpuMilli": round(v[1]), "diskGi": round(v[2])} for k, v in sorted(by.items())}}
 
 
-def helm_render(chart, dataset):
-    r = subprocess.run(["helm", "template", "rel", os.path.join(ROOT, chart), "--set", USERS, "--set", "demoDataset=" + dataset], capture_output=True, text=True)
-    if r.returncode: raise SystemExit("helm template failed for %s/%s: %s" % (chart, dataset, r.stderr.strip()[:300]))
+def helm_render(chart, dataset=None, selection=None):
+    sel = ["--set", "demoDatasets={%s}" % ",".join(selection)] if selection else ["--set", "demoDataset=" + dataset]
+    r = subprocess.run(["helm", "template", "rel", os.path.join(ROOT, chart), "--set", USERS] + sel, capture_output=True, text=True)
+    if r.returncode: raise SystemExit("helm template failed for %s/%s: %s" % (chart, dataset or selection, r.stderr.strip()[:300]))
     return r.stdout
 
 
@@ -86,10 +92,10 @@ def components_of(pack_ids, ms):
 def cloud_packs(ms): return [p for p in ms if p["inAllPacks"] and not (set(p["editions"]) <= {"docker"})]
 
 
-def derive(ms, renders):
+def derive(ms, renders, mixes=None):
     """Component costs from the renders, and the check that base + components reproduces every render. `renders` is {cloud: {dataset: measure()}}."""
     cloud = {p["id"]: p for p in cloud_packs(ms)}
-    cfg = {"supply-chain": ["supply-chain"], "it-risk": ["it-risk"], "bom": ["bom"], "treasury": ["treasury"], "all-packs": sorted(cloud)}
+    cfg = {"supply-chain": ["supply-chain", "manufacturing"], "it-risk": ["it-risk"], "bom": ["bom"], "treasury": ["treasury"], "all-packs": sorted(cloud)}
     for c, rs in renders.items():
         if rs != renders[next(iter(renders))]: raise SystemExit("the four charts do not request the same resources for the same data set (%s differs)" % c)
     r = renders[next(iter(renders))]
@@ -104,12 +110,21 @@ def derive(ms, renders):
             if r[ds]["byComponent"][c] != comp[c]: raise SystemExit("%s: component %s costs %s there but %s in %s: the cost model is wrong or a chart changed" % (ds, c, r[ds]["byComponent"][c], comp[c], "its first render"))
         want = {k: sum(comp[c][k] for c in needs) for k in KEYS}
         if {k: r[ds][k] for k in KEYS} != want: raise SystemExit("components give %s for %s, the chart renders %s" % (want, ds, {k: r[ds][k] for k in KEYS}))
-    return comp, cfg, {ds: {k: v for k, v in x.items() if k != "byComponent"} for ds, x in r.items()}
+    verified = []
+    for sel, rs in (mixes or {}).items():
+        ids = sel.split(",")
+        for c, m in rs.items():
+            needs = ["base"] + components_of(ids, ms)
+            if sorted(m["byComponent"]) != sorted(needs): raise SystemExit("[%s] on the %s chart renders the components %s but the model predicts %s" % (sel, c, sorted(m["byComponent"]), sorted(needs)))
+            want = {k: sum(comp[n][k] for n in needs) for k in KEYS}
+            if {k: m[k] for k in KEYS} != want: raise SystemExit("[%s] on the %s chart costs %s but the model predicts %s" % (sel, c, {k: m[k] for k in KEYS}, want))
+        verified.append({"packs": ids, **{k: next(iter(rs.values()))[k] for k in KEYS}})
+    return comp, cfg, {ds: {k: v for k, v in x.items() if k != "byComponent"} for ds, x in r.items()}, verified
 
 
-def build(renders):
+def build(renders, mixes=None):
     ms = P.load_manifests(); cat = {e["id"]: e for e in json.loads(P.catalogue(ms))["packs"]}
-    comp, cfg, r = derive(ms, renders)
+    comp, cfg, r, verified = derive(ms, renders, mixes)
     return {
         "note": "Generated by scripts/deploy_options.py from packs/*/pack.json and `helm template` of the four charts. Do not edit; run `python3 scripts/deploy_options.py generate`.",
         "components": {k: dict(v, what=COMPONENT_TEXT[k]) for k, v in comp.items()},
@@ -118,10 +133,12 @@ def build(renders):
                    "editions": p["editions"], "licence": p["licence"]} for p in cloud_packs(ms)],
         "excluded": [{"id": p["id"], "reason": "Docker only: " + ("non-commercial data and models" if p["licence"].get("nonCommercial") else "not built for the cloud stacks")} for p in ms if p not in cloud_packs(ms)],
         "configurations": [dict(demoDataset=ds, packs=ids, **r[ds]) for ds, ids in cfg.items()],
+        "verifiedSelections": [dict(v, memoryMi=v["memoryMi"]) for v in verified],
         "fit": FIT_NOTE,
         "rules": [
-            "The charts deploy one pack or all six. Any other mix is not supported yet (the charts hold five hand-written configurations, not a composer).",
-            "A pack that extends another needs it: manufacturing adds tables to the supply-chain schemas.",
+            "The charts take a list of packs (demoDatasets) and compose any mix of them. One pack or all six gives exactly the stack the matching demoDataset always gave; any other mix is deployed the all-packs way (one connector per kind, schemas discovered) holding only the chosen packs and their approved questions.",
+            "The Smithsonian pack (object store, loader, vocabulary) is only deployed together with all six packs for now.",
+            "A pack that extends another needs it: manufacturing adds tables to the supply-chain schemas, so it brings supply-chain along.",
             "Cost is the base plus each component a selected pack needs, once. Adding a pack to a selection that already needs a component costs nothing in memory.",
             "Free edition: at most 3 data sources. The packs share one Postgres connector, one MariaDB and one object store, so no mix goes over; supply-chain registers its three schemas as its three.",
             "The payment-workflow add-on needs the treasury pack on its own (all packs is not supported yet).",
@@ -130,7 +147,7 @@ def build(renders):
 
 
 def resolve(ids, opts=None):
-    """What the selection would cost and whether the charts can deploy it. Pure: reads packs/deploy-options.json."""
+    """What the selection would cost and whether the charts can deploy it, and the `demoDatasets` list to give the chart. Pure: reads packs/deploy-options.json."""
     o = opts or json.load(open(OUT)); by = {p["id"]: p for p in o["packs"]}; problems, notes = [], []
     sel = list(dict.fromkeys(ids))
     for i in list(sel):
@@ -146,11 +163,11 @@ def resolve(ids, opts=None):
     for c in needs:
         for k in tot: tot[k] += o["components"][c][k]
     allp = sorted(by)
+    if "smithsonian" in sel and len(sel) != len(allp): problems.append("smithsonian: the Smithsonian pack (object store, loader, vocabulary) is only deployed together with all %d packs for now" % len(allp))
     cfg = next((c["demoDataset"] for c in o["configurations"] if sorted(c["packs"]) == sorted(sel)), None)
-    supported = cfg is not None and not problems
-    if cfg is None and sel and not problems:
-        problems.append("%s: the charts deploy one pack or all %d; this mix is not supported yet" % (" + ".join(sorted(sel)), len(allp)))
-    return {"selected": sorted(sel), "supported": supported, "demoDataset": cfg if supported else None, "components": ["base"] + needs,
+    supported = bool(sel) and not problems
+    order = [i for i in CANONICAL if i in sel] + sorted(i for i in sel if i not in CANONICAL)
+    return {"selected": sorted(sel), "supported": supported, "demoDatasets": order if supported else None, "demoDataset": cfg if supported else None, "components": ["base"] + needs,
             "memoryRequestsMi": tot["memoryMi"], "cpuRequestsMilli": tot["cpuMilli"], "diskGi": tot["diskGi"], "problems": problems, "notes": notes,
             "paymentWorkflowAddOn": sel == ["treasury"]}
 
@@ -160,7 +177,9 @@ def text(o): return json.dumps(o, indent=2, ensure_ascii=False) + "\n"
 
 def measured():
     if not shutil.which("helm"): return None
-    return {c: {ds: measure(helm_render(ch, ds)) for ds in DATASETS} for c, ch in CHARTS.items()}
+    base = {c: {ds: measure(helm_render(ch, ds)) for ds in DATASETS} for c, ch in CHARTS.items()}
+    mixes = {",".join(sel): {c: measure(helm_render(ch, selection=sel)) for c, ch in CHARTS.items()} for sel in SAMPLE_SELECTIONS}
+    return base, mixes
 
 
 def main(argv):
@@ -173,7 +192,7 @@ def main(argv):
         if cmd == "generate": print("helm is needed to generate"); return 1
         if cur is None: print("packs/deploy-options.json is missing (and helm is not installed to make it)"); return 1
         print("ok (helm not installed: the file was not re-measured)"); return 0
-    want = text(build(m))
+    want = text(build(*m))
     if cmd == "generate":
         open(OUT, "w").write(want); print("wrote packs/deploy-options.json"); return 0
     if cur is None or text(cur) != want: print("out of date (run: python3 scripts/deploy_options.py generate)"); return 1
