@@ -141,6 +141,22 @@ a default node, 83% of requests measured); the form's `demoDataset` value become
 `all-packs` expands to the list. A later step lets an operator add or remove a pack on a running stack (re-seed that pack only), which
 is not possible today because the choice is "fresh install only".
 
+## Serving Ask and Agency together
+
+Server serves one web app: `SpaResourceHandler` serves the folder named by `OMNIGATE_WEB_DIST_DIR` at `/`, and any path it does not recognise falls
+back to Ask's `index.html`. Paths starting `/api/`, `/app/`, `/auth/`, `/scim/`, `/mcp`, `/metrics`, `/console`, `/logout` and `/admin/login` are left to
+Server's own routes. There is no setting for a second app at a prefix, so Server alone cannot serve Agency today.
+
+| Option | How | Server change | Workspace shared between the apps |
+|---|---|---|---|
+| 1. Sibling container with its own proxy (start here) | The Agency service serves its UI and forwards `/app/*` and `/api/*` to Server; one extra compose service and port | None | No: Agency signs in on its own, so each app keeps its own Workspace |
+| 2. One URL through the ingress or load balancer | Ask on `/`, Agency on `/agency`; Server's own paths go to Server | None | Yes, when both reach Server on the same origin (one login cookie; the Workspace lives in the session) |
+| 3. Server serves both | A second dist folder and mount prefix, for example `OMNIGATE_EXTRA_WEB=/agency=/opt/agency` | Yes (PR for Kumar) | Yes |
+
+Plan: option 1 for the demo and the compose files, option 2 as a path rule on the four cloud load balancers if wanted, and a Server issue for option 3
+so customers get one container and one port later. Because packs are generated Workspaces (above), Ask's existing Workspace dropdown shows them
+with no Ask change, so Ask users benefit as soon as the manifests generate the config.
+
 ## Agency UI, first slice
 
 A single front-end, no build step to start (as the audio demo), served by the layer:
