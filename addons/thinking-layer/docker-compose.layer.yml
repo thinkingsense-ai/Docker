@@ -1,0 +1,16 @@
+# Adds the thinking layer beside any pack stack. From the repository root:
+#   docker compose --project-directory . -f demos/treasury-pack/docker-compose.treasury.yml -f addons/thinking-layer/docker-compose.layer.yml up --build
+# Layer on http://localhost:8097 (own sign-in with the Server's business-user logins, for example demo / demo on the packs).
+services:
+  thinking-layer:
+    build:
+      context: .
+      dockerfile: addons/thinking-layer/Dockerfile
+    depends_on: [omnigate]
+    ports: ["8097:8097"]
+    environment:
+      SERVER_URL: http://omnigate:8080
+      AGENCY_SCOPE_HINT: ${AGENCY_SCOPE_HINT:-off}
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]

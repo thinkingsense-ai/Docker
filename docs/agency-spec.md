@@ -91,7 +91,7 @@ All calls carry the caller's credentials (cookie or bearer). JSON unless noted. 
 | `GET /decisions` | `?runId=` | records plus `chainValid` |
 | `GET /status` | | see FR-30 |
 
-`evidence` = `{ workspace, scopeEnforcedBy: "server"|"agency", sources:[{id,schemas,tables}], origin: "approved"|"generated", sql, steps, elapsedMs, warnings[] }`.
+`evidence` = `{ workspace, scopeEnforcedBy: "server-backends"|"agency-hint"|"none", sources:[{id}], intendedSources, checks:[{id,status}], model, origin: "approved"|"generated", sql, steps, elapsedMs, warnings[] }`.
 
 Adapter interface (each adapter its own container): `accepts(mime, ext)`, `ingest(file, context) -> { rows, vectors, notes, licence }`, `health()`.
 
