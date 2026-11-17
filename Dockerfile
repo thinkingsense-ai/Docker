@@ -27,12 +27,12 @@ COPY --from=fetch /fetch/web/dist ./web/dist
 ENV OMNIGATE_WEB_DIST_DIR=/app/web/dist
 
 # Real architecture decision, changed from this image's own earlier version: the local reasoning
-# model(s) (Qwen2.5-3B-Instruct for the agentic tier, SmolLM3-3B for Semantic Router's fast tier)
+# model(s) (Qwen3-4B-Instruct-2507 for the agentic tier, SmolLM3-3B for Semantic Router's fast tier)
 # and the TabPFN predictive-intelligence sidecar are NO LONGER bundled into this image -- each is
 # its own real Docker Compose sidecar container now (see sidecars/llama/Dockerfile and
 # sidecars/tabpfn/Dockerfile), the same pattern this repo's own Postgres service already
 # establishes. Real, deliberate tradeoffs of this change, stated plainly:
-#   - This image is now genuinely smaller (no ~2GB Qwen model, no SmolLM3 model, no llama-server
+#   - This image is now genuinely smaller (no ~2.5GB Qwen model, no SmolLM3 model, no llama-server
 #     binary bundled here at all) -- faster to pull, faster to rebuild on an unrelated code change.
 #   - "Runs privately, out of the box, zero configuration" (this image's own earlier framing) is
 #     now "runs privately, out of the box, with the sidecar compose file" instead -- a real,

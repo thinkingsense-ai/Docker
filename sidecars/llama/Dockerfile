@@ -2,16 +2,20 @@
 # container OmniGate connects to over the network (OMNIGATE_ASSISTANT_REMOTE_HOST=<service name>
 # or OMNIGATE_FAST_ASSISTANT_REMOTE_HOST=<service name>), the same pattern Postgres already has in
 # this repo's compose fixtures, instead of OmniGate spawning the model subprocess itself. One
-# image, parameterized by MODEL_URL, used for BOTH the agentic-tier model (Qwen2.5-3B-Instruct)
+# image, parameterized by MODEL_URL, used for BOTH the agentic-tier model (Qwen3-4B-Instruct-2507)
 # and the fast-tier model (SmolLM3-3B) -- they're structurally identical containers (one
 # llama-server binary + one model file), just different build-arg values in docker-compose.yml.
 #
-# Real license diligence per model, not guessed (see the root Dockerfile's own comments, which
-# this file's fetch logic is copied from): Qwen2.5-3B-Instruct-GGUF is Alibaba's own "Qwen
-# RESEARCH LICENSE AGREEMENT" (non-commercial only, required attribution -- see NOTICE-qwen.txt);
-# SmolLM3-3B/unsloth's own GGUF quant are both real Apache-2.0, no non-commercial restriction.
+# Real license diligence per model, not guessed: Qwen3-4B-Instruct-2507 (Alibaba's weights) and
+# unsloth's GGUF quantisation of it are both Apache-2.0 per their Hugging Face model cards (checked
+# 2026-11-17), and so are SmolLM3-3B and unsloth's quant of it: no non-commercial restriction on any
+# of them. The agentic-tier default used to be Qwen2.5-3B-Instruct, which is under Alibaba's Qwen
+# RESEARCH LICENSE AGREEMENT (non-commercial only); it was replaced for that reason. See NOTICE-qwen.txt.
 ARG LLAMA_CPP_TAG=b10809
 ARG MODEL_URL
+# Optional -- the expected SHA-256 of the downloaded model. When set, the build stops if the file differs (the models come from a third party's
+# Hugging Face repository, so pin them). docker-compose.yml sets it for both models.
+ARG MODEL_SHA256
 # Optional -- a pre-converted GGUF LoRA adapter to bake into this image (see
 # training/convert_lora_to_gguf.sh in the Server repo for producing one from a trained PEFT/
 # Unsloth adapter directory). Leave unset for base-model-only inference, unchanged from before
@@ -23,6 +27,7 @@ ARG LORA_GGUF_URL
 FROM eclipse-temurin:17-jre-noble AS fetch
 ARG LLAMA_CPP_TAG
 ARG MODEL_URL
+ARG MODEL_SHA256
 ARG LORA_GGUF_URL
 ARG TARGETARCH
 WORKDIR /fetch
@@ -40,6 +45,7 @@ RUN ARCH="${TARGETARCH:-$(uname -m | sed -e 's/x86_64/amd64/' -e 's/aarch64/arm6
       "https://github.com/ggml-org/llama.cpp/releases/download/${LLAMA_CPP_TAG}/llama-${LLAMA_CPP_TAG}-bin-${LLAMA_ARCH}.tar.gz" \
     && mkdir -p llama && tar -xzf llama.tar.gz -C llama --strip-components=1 && rm llama.tar.gz \
     && curl -fsSL -o model.gguf "${MODEL_URL}" \
+    && if [ -n "${MODEL_SHA256}" ]; then echo "${MODEL_SHA256}  model.gguf" | sha256sum -c -; fi \
     && if [ -n "${LORA_GGUF_URL}" ]; then curl -fsSL -o lora.gguf "${LORA_GGUF_URL}"; else touch lora.gguf; fi
 
 FROM eclipse-temurin:17-jre-noble
@@ -59,9 +65,7 @@ COPY --from=fetch /fetch/model.gguf /opt/model.gguf
 COPY --from=fetch /fetch/lora.gguf /opt/lora.gguf
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
-# Required attribution text for the Qwen RESEARCH LICENSE AGREEMENT, per the root Dockerfile's own
-# NOTICE-qwen.txt -- harmless to include even when this image is built with MODEL_URL pointing at
-# the (Apache-2.0, no attribution required) SmolLM3 model instead.
+# Which models this image can hold, and under what licence (see NOTICE-qwen.txt).
 COPY NOTICE-qwen.txt /opt/NOTICE-qwen.txt
 
 ENV LLAMA_PORT=8090
