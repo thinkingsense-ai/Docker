@@ -115,7 +115,7 @@ What Server does and does not do today (read from `Namespace`, `NamespaceStore`,
 | Need | Today | Gap |
 |---|---|---|
 | Limit the planner to a pack's data | Workspace scopes by **backend** (data source) only | Packs share one connector (`pg`) with auto-discovered schemas, so a backend list cannot separate supply chain from Treasury. Needs `backend.schema` entries in a Workspace (Server PR), or one backend per pack, which the free edition's three data sources forbids |
-| Pick the pack's approved questions | Question bank is filtered by `category`, not Workspace | Bank retrieval and starters should follow the Workspace (Server PR; until then the layer maps Workspace id to category) |
+| Pick the pack's approved questions | Starter questions already follow the session's Workspace (`AppQuestionBankRoutes.starterQuestions` shows an approved question only when its SQL names a table in the Workspace's catalogue), so they inherit the Workspace's granularity: backend only. The pack picker's grouping is by `category`. Whether answer-time retrieval is filtered the same way was not traced | Schema-level Workspaces (Server#109) fix the granularity; retrieval to be confirmed with Kumar (Server#110) |
 | Pack-specific description for the planner | Not in Workspace | Domain text per Workspace (Server PR; today only database comments reach the SQL prompt) |
 | Access per pack | Workspace `access` (roles, attributes, members) | Already there |
 | MCP tools per pack | `mcpServerIds` recorded, **not enforced** in Ask | Enforcement (Server) |
