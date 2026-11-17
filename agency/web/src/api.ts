@@ -4,7 +4,7 @@ export interface Pack {
   id: string; title: string; summary: string; sources: Source[]; tables: number | null
   questions: { approved: number; crossSource: number }; modalities: string[]; needsEmbeddingModel: boolean
   capabilities: string[]; editions: string[]; licence: { data?: string; nonCommercial?: boolean }
-  loaded: boolean | null; loadedReason?: string | null
+  loaded: 'workspace' | 'category' | null; loadedReason?: string | null   // the layer's wording: a Workspace exists, only approved questions exist, or unknown
 }
 export interface Evidence {
   workspace: string; pack: string | null; scopeEnforcedBy: 'server-backends' | 'agency-hint' | 'none'

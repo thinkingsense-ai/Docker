@@ -45,7 +45,7 @@ export default function App() {
     Promise.all([api.packs(), api.preferences().catch(() => ({} as { pack?: string }))]).then(([p, pref]) => {
       setPacks(p.packs); setPackNote(p.note)
       const want = new URLSearchParams(location.search).get('pack') ?? pref.pack ?? lsGet()
-      const ok = p.packs.find((x) => x.id === want && x.loaded !== false)
+      const ok = p.packs.find((x) => x.id === want)
       setPack(ok ? ok.id : null)
     }).catch(guard)
     api.conversations().then((c) => setConvs(c.conversations ?? [])).catch(() => {})

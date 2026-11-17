@@ -179,6 +179,12 @@ class LayerTests(unittest.TestCase):
         self.assertEqual(self.J(self.c.call("POST", "/preferences", {"pack": None})[1]), {})
         app.PREFS.clear(); app.load_prefs(); self.assertEqual(app.PREFS["alice"], {})
 
+    def test_all_data_uses_the_all_data_workspace_when_it_exists(self):
+        self.signin(); Fake.namespaces = [{"id": "treasury"}, {"id": "all-data"}]
+        d = self.J(self.c.call("POST", "/ask", {"question": "q", "workspaceId": None})[1])
+        self.assertEqual(Fake.ns_posts[-1], "all-data"); self.assertEqual(d["evidence"]["workspace"], "all-data"); self.assertEqual(d["evidence"]["scopeEnforcedBy"], "none")
+        Fake.namespaces = [{"id": "treasury"}]; self.c.call("POST", "/ask", {"question": "q", "workspaceId": None}); self.assertIsNone(Fake.ns_posts[-1])   # no such Workspace: the default
+
     def test_static_ui_is_served_with_spa_fallback_and_no_path_escape(self):
         d = tempfile.mkdtemp(); os.makedirs(d + "/assets"); open(d + "/index.html", "w").write("<html>agency</html>"); open(d + "/assets/a.js", "w").write("x=1")
         with open(os.path.join(os.path.dirname(d), "secret.txt"), "w") as sf: sf.write("secret"); app.WEB_DIST = d; self.addCleanup(setattr, app, "WEB_DIST", "/nonexistent")

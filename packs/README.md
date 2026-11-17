@@ -10,7 +10,7 @@ deploy forms, the Ask/Agency picker and Claude's tools will read in later phases
 |---|---|
 | `<id>/pack.json` | The hand-written manifest |
 | `catalogue.json` | Generated: manifests plus counts computed from the seeds and question files (tables, approved questions, questions joining two sources) |
-| `workspaces.yaml` | Generated: a Workspace entry per pack in the all-packs stack, in the format of `OMNIGATE_NAMESPACE_CONFIG` |
+| `workspaces.yaml` | Generated: an `all-data` Workspace (every backend) plus one per pack in the all-packs stack. Load it with the admin call `PUT /api/config/groups` and body `{"yaml": ...}`; it is a config-store key, not an environment variable. Without `all-data` the Server's Default workspace is empty once every backend is grouped |
 | `test_packs.py` | Tests |
 
 ```bash

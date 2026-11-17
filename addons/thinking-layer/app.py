@@ -16,6 +16,7 @@ from upstream import Upstream, Unauthorized
 
 VERSION = "0.1.0"
 COOKIE = "agency_session"
+ALL_DATA = "all-data"
 SERVER = Upstream(os.environ.get("SERVER_URL", "http://omnigate:8080"))
 SESSION_SECONDS = float(os.environ.get("AGENCY_SESSION_HOURS", "8")) * 3600
 MAX_SESSIONS = 500
@@ -227,10 +228,11 @@ class H(BaseHTTPRequestHandler):
         with s.lock:
             try:
                 target, scope = None, "none"
+                _, a = SERVER.json("GET", "/app/namespaces", s.cookie); have = {n["id"] for n in a.get("namespaces", [])}
                 if pack:
-                    _, a = SERVER.json("GET", "/app/namespaces", s.cookie)
-                    if pack["id"] in {n["id"] for n in a.get("namespaces", [])}: target, scope = pack["id"], "server-backends"
+                    if pack["id"] in have: target, scope = pack["id"], "server-backends"
                     elif os.environ.get("AGENCY_SCOPE_HINT") == "on": scope = "agency-hint"; question = question.strip() + hint_for(pack)
+                elif ALL_DATA in have: target = ALL_DATA              # once packs are Workspaces the Server's Default one is empty; All data is its own Workspace
                 if s.workspace != target:                                    # None selects the default ("all data") Workspace, as the Ask app's "All groups" does
                     code, r = SERVER.json("POST", "/app/session/namespace", s.cookie, {"namespaceId": target})
                     if code != 200 or not r.get("success"): return self.err(409, "workspace_refused", str(r.get("error") or "The Server refused the Workspace."), workspaceId=target)

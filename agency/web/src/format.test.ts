@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { loadedText } from './PackCards'
 import { badges, formatCell, isNumeric, scopeLine } from './format'
 
 describe('formatCell', () => {
@@ -28,5 +29,13 @@ describe('badges and scope', () => {
     expect(scopeLine('agency-hint')).toContain('not enforced')
     expect(scopeLine('server-backends')).toContain('enforced by the Server')
     expect(scopeLine('none')).toContain('All data')
+  })
+})
+
+describe('loadedText', () => {
+  it('words the layer\'s three states', () => {
+    expect(loadedText('workspace')).toContain('own Workspace')
+    expect(loadedText('category')).toContain('no Workspace')
+    expect(loadedText(null)).toContain('unknown')
   })
 })
