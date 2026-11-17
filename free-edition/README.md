@@ -110,10 +110,8 @@ four). See [`fixtures/supply-chain/DOCKER-USAGE.md`](fixtures/supply-chain/DOCKE
 
 ## A fully private option: no external API key needed
 
-This image also bundles a real local model — no data ever leaves the container, no API key, no
-internet access required for it to answer questions. Set `OMNIGATE_LLM_MODE=local-only`. See
-[`docs/local-model.md`](docs/local-model.md) for the license terms (research/non-commercial use
-for the bundled model — commercial alternatives are listed there) and memory requirements
+The quick-start compose file also runs a real local model in a sidecar — no data leaves your machine and no API key is needed to answer questions. Set `OMNIGATE_LLM_MODE=local-only`. See
+[`docs/local-model.md`](docs/local-model.md) for the licence (the local model is Apache-2.0) and memory requirements
 (give Docker at least 8GB).
 
 ## What's here
@@ -124,7 +122,7 @@ for the bundled model — commercial alternatives are listed there) and memory r
 - `docker-compose.yml` — the local stack: seeded Postgres + local-model sidecars + ThinkingSense.
 - `docker/seed.sql` — the demo seed data.
 - `fixtures/` — the bigger multi-database demo (see above).
-- `NOTICE-qwen.txt` — license attribution for the bundled local model.
+- `NOTICE-qwen.txt` — the local models used by the quick-start, with their licences.
 
 ## Upgrading
 

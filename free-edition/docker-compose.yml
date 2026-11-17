@@ -9,7 +9,7 @@
 #
 # Usage:
 #   docker compose up --build
-# First run downloads real model weights into each sidecar image (Qwen ~2GB, SmolLM3 ~2GB, plus
+# First run downloads real model weights into each sidecar image (Qwen ~2.5GB, SmolLM3 ~2GB, plus
 # TabPFN's own ~29MB checkpoint on its first real prediction) -- expect several minutes. Then open
 # http://localhost:8080/, log in demo/demo, and ask a real supply-chain question, e.g. "List each
 # purchase order whose shipment status is exactly IN_TRANSIT and its supplier's country."
@@ -40,15 +40,18 @@ services:
       timeout: 5s
       retries: 10
 
-  # Agentic-tier reasoning model -- Qwen2.5-3B-Instruct, real, non-commercial-only license (see
-  # sidecars/llama/Dockerfile's own comment) -- the free/dev-only default this stack itself
-  # already is. Exposes the OpenAI-/v1/chat/completions-compatible API llama-server speaks.
+  # Agentic-tier reasoning model -- Qwen3-4B-Instruct-2507, real Apache-2.0 (Alibaba's weights; the GGUF
+  # quantisation is Unsloth's, also Apache-2.0), so commercially usable. It replaced Qwen2.5-3B-Instruct,
+  # whose Qwen Research License is non-commercial only (see sidecars/llama/Dockerfile's own comment).
+  # The service keeps the name qwen-model, which OMNIGATE_ASSISTANT_REMOTE_HOST and the docs refer to.
+  # Exposes the OpenAI-/v1/chat/completions-compatible API llama-server speaks.
   qwen-model:
     build:
       context: sidecars/llama
       dockerfile: Dockerfile
       args:
-        MODEL_URL: https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf
+        MODEL_URL: https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/Qwen3-4B-Instruct-2507-Q4_K_M.gguf
+        MODEL_SHA256: 3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597
     # Real, optional LoRA adapter serving -- see sidecars/llama/entrypoint.sh's own comment for the
     # full precedence order. Mount a real GGUF adapter (converted from a trained
     # com.omnigate.training adapter via the Server repo's training/convert_lora_to_gguf.sh) here,
@@ -71,6 +74,7 @@ services:
       dockerfile: Dockerfile
       args:
         MODEL_URL: https://huggingface.co/unsloth/SmolLM3-3B-GGUF/resolve/main/SmolLM3-3B-Q4_K_M.gguf
+        MODEL_SHA256: 4de907d2d388a5508fb7cb443a06effe14cce3518b0a78d3bdd9e74d9edce989
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8090/health"]
       interval: 10s

@@ -244,10 +244,8 @@ Postgres only in this version; Azure Blob uses a different code path than the ot
 
 ## A fully private option: no external API key needed
 
-This image also bundles a real local model — no data ever leaves the container, no API key, no
-internet access required for it to answer questions. Set `OMNIGATE_LLM_MODE=local-only`. See
-[`docs/local-model.md`](docs/local-model.md) for the license terms (research/non-commercial use
-for the bundled model — commercial alternatives are listed there) and memory requirements
+The quick-start compose file also runs a real local model in a sidecar — no data leaves your machine and no API key is needed to answer questions. Set `OMNIGATE_LLM_MODE=local-only`. See
+[`docs/local-model.md`](docs/local-model.md) for the licence (the local model is Apache-2.0) and memory requirements
 (give Docker at least 8GB).
 
 ## What's here
@@ -260,7 +258,7 @@ for the bundled model — commercial alternatives are listed there) and memory r
 - `fixtures/` — the bigger multi-database demo (see above).
 - `addons/tpch-demo/` — the ~1GB TPC-H dataset add-on (see above).
 - `scripts/enable-tpch-demo.sh` — one-command entry point for the TPC-H add-on.
-- `NOTICE-qwen.txt` — license attribution for the bundled local model.
+- `NOTICE-qwen.txt` — the local models used by the quick-start, with their licences.
 
 ## Upgrading
 

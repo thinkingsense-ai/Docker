@@ -1,12 +1,10 @@
-This image bundles Qwen2.5-3B-Instruct (quantized, GGUF format) as its local reasoning engine.
+Local models used by the free-edition quick-start (each is downloaded when you build the sidecar images; none ships in this repository):
 
-Qwen is licensed under the Qwen RESEARCH LICENSE AGREEMENT, Copyright (c) Alibaba Cloud. All
-Rights Reserved.
+- Qwen3-4B-Instruct-2507, by Alibaba Cloud (Qwen team), the agentic-tier reasoning model. Licensed under the Apache License 2.0.
+  https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507
+  The quantised GGUF file is Unsloth's conversion (also Apache License 2.0): https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF
+- SmolLM3-3B, by Hugging Face, the fast-tier model. Licensed under the Apache License 2.0 (GGUF conversion by Unsloth).
+  https://huggingface.co/HuggingFaceTB/SmolLM3-3B
 
-The Qwen RESEARCH LICENSE AGREEMENT grants use, reproduction, distribution, and modification
-rights FOR NON-COMMERCIAL PURPOSES ONLY (research or evaluation). This free/developer image is
-distributed for exactly that purpose. Commercial use of Qwen requires a separate license from
-Alibaba Cloud -- see https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/blob/main/LICENSE for
-the full agreement.
-
-Built with Qwen.
+Apache License 2.0: https://www.apache.org/licenses/LICENSE-2.0 . Neither model carries a non-commercial restriction.
+The quick-start used to use Qwen2.5-3B-Instruct, which is under Alibaba's Qwen Research License (non-commercial only); it was replaced for that reason.
