@@ -132,7 +132,7 @@ Only: upload records and their expiry, per-user preferences, a cache of the pack
 0. Licence file and terms for Agency (and the Docker repo), text from counsel.
 1. Done: pack manifests, catalogue, Workspace config (Docker#197).
 2. Layer skeleton: `/packs`, `/status`, `/ask` pass-through with the evidence block, `/decisions`, MCP tool list generated from the contract.
-3. Agency UI slice 1 (React + Vite): pack cards, ask, evidence pane, conversations.
+3. Done in slice 1 (React + Vite, `agency/web`): sign-in, pack cards, ask with progress and cancel, evidence pane, starters, conversations (list and reopen), remembered pack. Not in slice 1: feedback, export, dashboards, status page, uploads, workflows (later phases).
 4. Adapters: audio moved behind the contract, then table, then document.
 5. Workflows inline and queue; Docker compose service and cloud add-on chart entry (private).
 6. Deploy-form pack multi-select on the four clouds; Server#109 to #111 adopted as they land.

@@ -4,11 +4,12 @@ answer with an evidence block, reads the decision record, and lists the MCP tool
 
 Environment: SERVER_URL (default http://omnigate:8080), PACKS_CATALOGUE, AGENCY_DECISION_FILE (the Server's OMNIGATE_WORKFLOW_DECISION_FILE, shared read-only),
 AGENCY_SCOPE_HINT=on to add the pack's data sets to the question when no Workspace exists (off by default: its effect on accuracy is not measured),
-AGENCY_SESSION_HOURS (default 8), PORT (default 8097).
+AGENCY_SESSION_HOURS (default 8), AGENCY_WEB_DIST (the built Agency UI, served at / when the folder exists), AGENCY_PREFS_FILE (per-user preferences, kept in
+memory when unset), PORT (default 8097).
 The layer logs no question text and no file content."""
-import json, os, secrets, threading, time
+import json, mimetypes, os, secrets, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, quote
 import catalogue, decisions, tools
 from evidence import Evidence
 from upstream import Upstream, Unauthorized
@@ -19,6 +20,22 @@ SERVER = Upstream(os.environ.get("SERVER_URL", "http://omnigate:8080"))
 SESSION_SECONDS = float(os.environ.get("AGENCY_SESSION_HOURS", "8")) * 3600
 MAX_SESSIONS = 500
 SESSIONS = {}; SESSIONS_LOCK = threading.Lock()
+WEB_DIST = os.environ.get("AGENCY_WEB_DIST", "/app/web")
+PREFS = {}; PREFS_LOCK = threading.Lock(); PREF_KEYS = {"pack": 80}                         # the only preferences kept, with a length limit each
+
+
+def load_prefs():
+    path = os.environ.get("AGENCY_PREFS_FILE")
+    if path and os.path.isfile(path):
+        try: PREFS.update(json.load(open(path)))
+        except (OSError, ValueError): pass
+
+
+def save_prefs():
+    path = os.environ.get("AGENCY_PREFS_FILE")
+    if path:
+        try: tmp = path + ".tmp"; json.dump(PREFS, open(tmp, "w")); os.replace(tmp, path)
+        except OSError: pass
 
 
 class Session:
@@ -87,7 +104,12 @@ class H(BaseHTTPRequestHandler):
             if u.path == "/packs": return self.packs()
             if u.path == "/whoami": return self.whoami()
             if u.path == "/decisions": return self.decisions((q.get("runId") or [""])[0])
-            self.err(404, "not_found", "No such route.")
+            if u.path == "/starters": return self.starters((q.get("pack") or [""])[0])
+            if u.path == "/conversations": return self.passthrough("/app/conversations")
+            if u.path == "/conversations/get": return self.passthrough("/app/conversations/get?id=" + quote((q.get("id") or [""])[0], safe=""))
+            if u.path == "/preferences": return self.preferences(None)
+            if not WEB_DIST or not os.path.isdir(WEB_DIST) or u.path.startswith(("/api/", "/app/")): return self.err(404, "not_found", "No such route.")
+            self.static(u.path)
         except ValueError as e: self.err(400, "bad_request", str(e))
 
     def do_POST(self):
@@ -98,8 +120,46 @@ class H(BaseHTTPRequestHandler):
             if u.path == "/login": return self.login()
             if u.path == "/logout": return self.logout()
             if u.path == "/ask": return self.ask()
+            if u.path == "/preferences": return self.preferences(self.body())
             self.err(404, "not_found", "No such route.")
         except ValueError as e: self.err(400, "bad_request", str(e))
+
+    def static(self, path):
+        root = os.path.realpath(WEB_DIST); f = os.path.realpath(os.path.join(root, path.lstrip("/") or "index.html"))
+        if not f.startswith(root + os.sep) or not os.path.isfile(f): f = os.path.join(root, "index.html")          # single-page app: unknown paths get the page
+        try:
+            with open(f, "rb") as fh: data = fh.read()
+        except OSError: return self.err(404, "not_found", "No such file.")
+        kind = mimetypes.guess_type(f)[0] or "application/octet-stream"
+        self.send_response(200); self.send_header("Content-Type", kind); self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-cache" if f.endswith(".html") else "public, max-age=31536000, immutable"); self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Content-Security-Policy", "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'"); self.end_headers(); self.wfile.write(data)
+
+    def passthrough(self, path):
+        t, s = self.need_session()
+        if not s: return
+        try: code, data = SERVER.json("GET", path, s.cookie)
+        except Unauthorized: return self.lost(t)
+        except OSError: return self.err(502, "server_unreachable", "The OmniGate Server could not be reached.")
+        self.send(code, data)
+
+    def starters(self, pack):
+        if pack and pack not in {p["id"] for p in catalogue.load()}: return self.err(404, "unknown_pack", "No such pack: %s" % pack)
+        self.passthrough("/app/starter-questions" + ("?pack=" + quote(pack, safe="") if pack else ""))
+
+    def preferences(self, body):
+        t, s = self.need_session()
+        if not s: return
+        with PREFS_LOCK:
+            mine = PREFS.setdefault(s.username, {})
+            if body is not None:
+                for k, v in body.items():
+                    if k not in PREF_KEYS: return self.err(400, "bad_request", "Unknown preference: %s" % k)
+                    if v is None: mine.pop(k, None)
+                    elif isinstance(v, str) and len(v) <= PREF_KEYS[k]: mine[k] = v
+                    else: return self.err(400, "bad_request", "Preference %s must be a string of at most %d characters." % (k, PREF_KEYS[k]))
+                save_prefs()
+            self.send(200, dict(mine))
 
     # -- sign-in -------------------------------------------------------------------------------------------------------------------------------------------
     def login(self):
@@ -215,7 +275,7 @@ class H(BaseHTTPRequestHandler):
 
 
 def main():
-    port = int(os.environ.get("PORT", "8097")); ThreadingHTTPServer(("0.0.0.0", port), H).serve_forever()
+    load_prefs(); port = int(os.environ.get("PORT", "8097")); ThreadingHTTPServer(("0.0.0.0", port), H).serve_forever()
 
 
 if __name__ == "__main__": main()

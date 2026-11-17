@@ -3,3 +3,5 @@ reference/
 certs/
 .git/
 *.md
+agency/web/node_modules
+agency/web/dist
