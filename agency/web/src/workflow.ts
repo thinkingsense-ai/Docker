@@ -1,0 +1,59 @@
+// Types and wording for workflow runs (the Server's v0.10.19 API as relayed by the layer). Pure, so it is unit-tested.
+export interface Definition { id: string; title: string; entity?: string; keyField: string | null; approverGroup?: string; requiredApprovals: number }
+export interface Rule { name: string; passed: boolean; detail: string }
+export interface Run {
+  id: string; definition: string; key: string; title: string; initiator: string; stage: string; stageOrder: string[]
+  recommendation: { action: string; reason: string; source?: string } | null; rules: Rule[]; evidence: Record<string, unknown>
+  approvals: { user: string; at: string }[]; requiredApprovals: number; payloadHash: string | null
+  rejection: { user: string; reason: string; at: string } | null
+  writeBack: { mode: string; status: string; call: string; at: string } | null
+  createdAt?: string; updatedAt?: string; you: { canApprove: boolean; reason: string | null }
+}
+export interface DecisionEntry { seq: number; ts: string; type: string; actor: string; details: Record<string, unknown> }
+export interface Decisions { chainValid: boolean; firstBadSeq: number | null; totalEntries: number; entries: DecisionEntry[] }
+
+export const TERMINAL = ['written_back', 'rejected']
+
+const STAGE: Record<string, string> = {
+  facts: 'Gathering facts', rules: 'Checking rules', recommendation: 'Preparing a recommendation', awaiting_approval: 'Waiting for approval',
+  approved: 'Approved', written_back: 'Done (dry run)', rejected: 'Rejected',
+}
+export const stageLabel = (s: string) => STAGE[s] ?? s
+
+// The Server's refusal codes in plain words (spec FR-26). Used for a refused click and for the reason a button is disabled.
+const REASON: Record<string, string> = {
+  missing_grant: 'Your account has no permission for this. An admin grants it under Admin > users.',
+  initiator_cannot_approve: 'You started this run, so someone else has to approve it.',
+  non_human_identity: 'Only a person can approve; this account is an automated identity.',
+  already_approved: 'You have already approved this run. A different person has to give the next approval.',
+  not_an_approver: 'You are not on the approver list for this workflow.',
+  not_awaiting_approval: 'This run is not waiting for approval any more.',
+  payload_hash_mismatch: 'The facts changed since you opened this card. It has been reloaded: read it again before approving.',
+  engine_unavailable: 'The workflow engine could not be reached. Try again in a moment.',
+  unknown_run: 'That run no longer exists.',
+  workflows_off: 'Workflows are off on this Server: they need the commercial edition and an enabled workflow engine.',
+}
+export const reasonText = (code: string | null | undefined) => (code ? REASON[code] ?? `Refused (${code}).` : '')
+
+export const shortHash = (h: string | null) => (h ? h.slice(0, 12) + '…' : 'not available yet')
+
+export function dryRunLine(w: Run['writeBack']): string {
+  if (!w) return ''
+  return w.mode === 'dry_run' ? `Dry run: this would call ${w.call}. Nothing was sent to any system.` : `Write-back (${w.mode}, ${w.status}): ${w.call}`
+}
+
+export function approvalLine(r: Run): string {
+  const names = r.approvals.map((a) => a.user)
+  return `${r.approvals.length} of ${r.requiredApprovals} approvals${names.length ? ` (${names.join(', ')})` : ''}`
+}
+
+/** Which result columns can start a workflow: a column named like a definition's key field, and the definition. Matching is case-insensitive on the exact name. */
+export function startable(columns: string[], defs: Definition[]): { column: number; def: Definition }[] {
+  const out: { column: number; def: Definition }[] = []
+  for (const d of defs) {
+    if (!d.keyField) continue
+    const j = columns.findIndex((c) => c.toLowerCase() === d.keyField!.toLowerCase())
+    if (j >= 0) out.push({ column: j, def: d })
+  }
+  return out
+}

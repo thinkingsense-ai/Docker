@@ -4,6 +4,8 @@ import Login from './Login'
 import PackCards from './PackCards'
 import Answer from './Answer'
 import Uploads from './Uploads'
+import { Queue } from './Workflows'
+import type { Definition } from './workflow'
 
 const STEP_LABEL: Record<string, string> = {
   understanding: 'Understanding the question', planned: 'Planning which sources to use', sql: 'Writing the query', check: 'Checking the query',
@@ -31,6 +33,10 @@ export default function App() {
   const [steps, setSteps] = useState<ProgressEvent[]>([])
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [grants, setGrants] = useState<{ canStart: boolean; canApprove: boolean }>({ canStart: false, canApprove: false })
+  const [defs, setDefs] = useState<Definition[]>([])
+  const [view, setView] = useState<'ask' | 'approvals'>('ask')
+  const [waiting, setWaiting] = useState<number | null>(null)
   const abort = useRef<AbortController | null>(null)
   const bottom = useRef<HTMLDivElement>(null)
 
@@ -38,6 +44,17 @@ export default function App() {
   const guard = useCallback((e: unknown) => { if (e instanceof ApiError && e.status === 401) signedOut(); else setErr((e as Error).message) }, [signedOut])
 
   useEffect(() => { api.whoami().then((w) => setUser(w.username ?? w.layerUser ?? 'signed in')).catch(() => setUser(null)) }, [])
+
+  // workflows: only when the Server has them on (status) and this user holds a workflow grant (whoami); the Server enforces both again on every call
+  const refreshWaiting = useCallback(() => { api.workflowQueue().then((q) => setWaiting(q.count)).catch(() => setWaiting(null)) }, [])
+  useEffect(() => {
+    if (!user || !status?.workflows?.available) { setGrants({ canStart: false, canApprove: false }); setDefs([]); return }
+    api.whoami().then((w) => {
+      const g = { canStart: w.canStartWorkflows === true, canApprove: w.canApprove === true }; setGrants(g)
+      if (g.canStart || g.canApprove) api.workflowDefinitions().then((d) => setDefs(d.definitions)).catch(() => setDefs([]))
+      if (g.canApprove) refreshWaiting()
+    }).catch(() => {})
+  }, [user, status, refreshWaiting])
 
   // after sign-in: status, packs, the remembered pack (URL, then the layer's preference, then localStorage)
   useEffect(() => {
@@ -107,8 +124,17 @@ export default function App() {
         {convs.length === 0 && <p className="muted small">No conversations yet.</p>}
         <ul>{convs.map((c) => <li key={c.id}><button className={'link' + (c.id === convId ? ' on' : '')} onClick={() => open(c.id)}>{c.title || 'Untitled'}</button></li>)}</ul>
         <p className="muted small">The Server lists conversations per user, not per domain.</p>
+        {grants.canApprove && (
+          <>
+            <h2>Approvals</h2>
+            <button className={'link' + (view === 'approvals' ? ' on' : '')} onClick={() => setView(view === 'approvals' ? 'ask' : 'approvals')}>
+              {view === 'approvals' ? 'Back to questions' : `Waiting for me${waiting ? ` (${waiting})` : ''}`}</button>
+          </>
+        )}
       </nav>
       <main>
+        {view === 'approvals' && <Queue me={user} onSignedOut={signedOut} onCount={setWaiting} />}
+        {view === 'ask' && <>
         {packNote && <p className="muted small">{packNote}</p>}
         <PackCards packs={packs} selected={pack} onSelect={choose} compact={turns.length > 0 || busy} />
         <p className="muted small" role="status" aria-live="polite">{changed}</p>
@@ -121,7 +147,7 @@ export default function App() {
           </section>
         )}
         <Uploads workspaceId={pack} onAsk={send} onSignedOut={signedOut} />
-        {turns.map((t, i) => <Answer key={i} a={t.answer} question={t.question} onFollow={send} />)}
+        {turns.map((t, i) => <Answer key={i} a={t.answer} question={t.question} onFollow={send} wf={defs.length ? { defs, canStart: grants.canStart, me: user, onSignedOut: signedOut, onChange: refreshWaiting } : undefined} />)}
         {busy && (
           <div className="progress" role="status" aria-live="polite">
             <ol>{steps.map((s, i) => <li key={i}>{STEP_LABEL[s.step] ?? s.step}</li>)}{steps.length === 0 && <li>Sending the question…</li>}</ol>
@@ -135,6 +161,7 @@ export default function App() {
           <input id="q" value={q} onChange={(e) => setQ(e.target.value)} placeholder={pack ? `Ask about ${packs.find((p) => p.id === pack)?.title ?? pack}` : 'Ask about any of your data'} maxLength={4000} disabled={busy} />
           <button className="primary" disabled={busy || !q.trim()}>Ask</button>
         </form>
+        </>}
       </main>
     </div>
   )
