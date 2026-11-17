@@ -99,7 +99,7 @@ the three can no longer disagree.
 
 ### 2. A pack is a Workspace
 
-Server already has the right construct: a **Workspace** (`Namespace`, `OMNIGATE_NAMESPACE_CONFIG`). Every question is asked in exactly one Workspace
+Server already has the right construct: a **Workspace** (`Namespace`; its YAML is a config-store key `OMNIGATE_NAMESPACE_CONFIG` set live with the admin call `PUT /api/config/groups`, not an environment variable). Every question is asked in exactly one Workspace
 (`AskRoute` refuses a question without one), and a Workspace carries a name, a set of backends, an access rule (roles, attributes, members), its own
 LLM settings and an MCP-server allowlist. The Ask app has a Workspace dropdown, but today it is barely used: a stack has only the computed
 `default` Workspace, so the dropdown offers nothing, while the *pack* picker is a separate control that only reorders starter questions. Two
