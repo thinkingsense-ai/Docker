@@ -1,0 +1,9 @@
+# Adds the image adapter and points the layer at it. From the repository root, together with a pack stack and the layer file:
+#   AGENCY_ADAPTERS=http://image-adapter:8093 docker compose --project-directory . -f <pack compose> -f addons/thinking-layer/docker-compose.layer.yml -f addons/image-adapter/docker-compose.image.yml up --build
+# All adapters: AGENCY_ADAPTERS=http://table-adapter:8091,http://document-adapter:8092,http://image-adapter:8093 with each compose file.
+services:
+  image-adapter:
+    build: addons/image-adapter
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
