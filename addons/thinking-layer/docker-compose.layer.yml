@@ -11,6 +11,7 @@ services:
     environment:
       SERVER_URL: http://omnigate:8080
       AGENCY_SCOPE_HINT: ${AGENCY_SCOPE_HINT:-off}
+      AGENCY_ADAPTERS: ${AGENCY_ADAPTERS:-}
     read_only: true
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]

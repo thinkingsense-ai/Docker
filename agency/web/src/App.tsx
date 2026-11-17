@@ -3,6 +3,7 @@ import { api, ask, ApiError, type Answer as A, type ConversationSummary, type Pa
 import Login from './Login'
 import PackCards from './PackCards'
 import Answer from './Answer'
+import Uploads from './Uploads'
 
 const STEP_LABEL: Record<string, string> = {
   understanding: 'Understanding the question', planned: 'Planning which sources to use', sql: 'Writing the query', check: 'Checking the query',
@@ -119,6 +120,7 @@ export default function App() {
                 <li key={s.question}><button className="chip" onClick={() => send(s.question)}>{s.question}<span className={'tag ' + s.origin}>{s.origin}</span></button></li>))}</ul>}
           </section>
         )}
+        <Uploads workspaceId={pack} onAsk={send} onSignedOut={signedOut} />
         {turns.map((t, i) => <Answer key={i} a={t.answer} question={t.question} onFollow={send} />)}
         {busy && (
           <div className="progress" role="status" aria-live="polite">

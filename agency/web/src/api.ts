@@ -23,6 +23,12 @@ export interface Status {
   workflows?: { available: boolean; note: string }; decisions: { readable: boolean }; scopeHint: boolean
 }
 
+export interface Adapter { id: string; title: string; kind?: string; enabled: boolean; reason?: string; nonCommercial?: boolean; licence?: string; notes?: string; maxBytes?: number; accepts: { extensions: string[]; mime: string[] } }
+export interface Upload {
+  id: string; name: string; kind: string; adapter: string; workspaceId: string | null; nonCommercial: boolean; licence: string | null
+  notes: string[]; askPrompts: string[]; result: Record<string, any> | null; expiresAt: number
+}
+
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string) { super(message) }
 }
@@ -49,6 +55,9 @@ export const api = {
   conversations: () => call<{ conversations: ConversationSummary[] }>('GET', '/conversations'),
   conversation: (id: string) => call<{ success: boolean; title?: string; turns?: Turn[]; error?: string }>('GET', '/conversations/get?id=' + encodeURIComponent(id)),
   preferences: () => call<{ pack?: string }>('GET', '/preferences'),
+  adapters: () => call<{ adapters: Adapter[]; accept: string[] }>('GET', '/adapters'),
+  uploads: () => call<{ uploads: Upload[] }>('GET', '/uploads'),
+  deleteUpload: (id: string) => call<unknown>('DELETE', '/uploads/' + encodeURIComponent(id)),
   setPreference: (pack: string | null) => call<{ pack?: string }>('POST', '/preferences', { pack }),
 }
 
@@ -93,4 +102,13 @@ export async function ask(question: string, workspaceId: string | null, conversa
   if (f.step !== 'done') throw new ApiError(200, f.step, f.step === 'approval_needed' ? 'This question needs an approval before it can run.' : 'The question was stopped.')
   return { answer: f.answer ?? '', columns: f.columns ?? [], rows: f.rows ?? [], sql: f.sql ?? null, conversationId: f.conversationId ?? null,
            suggestedQuestions: f.suggestedQuestions, truncated: f.truncated, evidence }
+}
+
+export async function uploadFile(file: File, workspaceId: string | null): Promise<Upload> {
+  const q = 'name=' + encodeURIComponent(file.name) + (workspaceId ? '&workspaceId=' + encodeURIComponent(workspaceId) : '')
+  const res = await fetch('/uploads?' + q, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': file.type || 'application/octet-stream', 'X-Requested-With': 'agency' }, body: file })
+  let data: any = {}
+  try { data = await res.json() } catch { /* non-JSON */ }
+  if (!res.ok) throw new ApiError(res.status, data?.error?.code ?? 'error', data?.error?.message ?? `Upload failed (HTTP ${res.status}).`)
+  return data as Upload
 }

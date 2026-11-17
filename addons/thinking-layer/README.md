@@ -14,6 +14,7 @@ What works now:
 | `GET /starters?pack=`, `GET /conversations`, `GET /conversations/get?id=` | Pass-through to the Server's starter questions (only catalogue pack ids are forwarded) and the signed-in user's conversations; the id is URL-encoded |
 | `GET/POST /preferences` | Per-user preference (`pack` only, validated) keyed by Server username; in memory, or a JSON file when `AGENCY_PREFS_FILE` is set |
 | `GET /` and other non-API paths | The built Agency UI from `AGENCY_WEB_DIST` (single-page fallback, path-escape safe, CSP `default-src 'self'`); never for `/app/` or `/api/` |
+| `GET /adapters`, `POST /uploads?name=&workspaceId=` (raw body), `GET /uploads[/id]`, `DELETE /uploads/id` | Upload adapters (below) and the caller's own upload records |
 | `GET /status`, `GET /tools`, `GET /health` | Reachability, whether the workflow routes exist (the free edition answers 404), and the tool list generated from `contract.json` |
 
 Run the tests (a fake Server stands in): `python3 -m unittest discover -s addons/thinking-layer/tests` from the repository root.
@@ -26,4 +27,5 @@ Things to know:
 - **Edition.** The Server does not report its edition to business users; `/status` infers "workflows available" from the workflow route answering.
 - The layer logs no question text and no file content. Sessions are in memory (a restart signs everyone out).
 - The UI is `agency/web` (see its README); the Dockerfile builds it and the layer serves it on the same port.
-- Not built yet: uploads, search, workflow start/queue/approve (phases 4 and 5), MCP `tools/call`.
+- **Adapters** are separate services named in `AGENCY_ADAPTERS` (comma-separated base URLs; request bodies never name one, so no caller-chosen fetches). An adapter answers `GET /adapter` (manifest: id, title, kind, accepted extensions and MIME types, `maxBytes`, `nonCommercial`, licence, notes) and `POST /ingest` (raw file body, `X-Filename`) with `{result, notes, licence, askPrompts}`. The layer checks the type and size from headers before reading the body, requires the user's `canUploadFiles` grant (from `/app/whoami`), forwards the file, **drops it**, and keeps only the derived record, private to the uploader, for `AGENCY_UPLOAD_HOURS` (default 1; 20 per user; in memory). An unreachable adapter is listed disabled and uploads are off. Sharing within a Workspace (spec FR-17a) is not built. The first adapter is `demos/audio-demo` (`/adapter`, `/ingest`); run it with `AGENCY_ADAPTERS=http://audio-service:8090` beside `demos/sounds-pack/docker-compose.audio.yml`. `upload_file` is not an MCP tool (a model cannot hand over file bytes).
+- Not built yet: search, workflow start/queue/approve (phases 4 and 5; table and document adapters), MCP `tools/call`.
