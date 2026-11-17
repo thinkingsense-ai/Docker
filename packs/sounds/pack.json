@@ -1,0 +1,39 @@
+{
+  "id": "sounds",
+  "title": "Bird and fish sounds",
+  "summary": "Recordings, species, licences and model annotations, with audio vectors (Docker only).",
+  "demoDataset": null,
+  "extends": null,
+  "sources": [
+    {
+      "id": "pg",
+      "schemas": [
+        "sounds"
+      ]
+    }
+  ],
+  "seeds": [
+    "demos/sounds-pack/seed-sounds.sql"
+  ],
+  "questions": {
+    "file": "demos/sounds-pack/demo-questions-sounds.json",
+    "category": "sounds"
+  },
+  "modalities": [
+    "table",
+    "audio",
+    "vector"
+  ],
+  "needsEmbeddingModel": false,
+  "inAllPacks": false,
+  "editions": [
+    "docker"
+  ],
+  "licence": {
+    "data": "Xeno-canto and FishSounds recordings, non-commercial licences",
+    "nonCommercial": true
+  },
+  "capabilities": [
+    "audio-identify"
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "id": "bom",
+  "title": "Manufacturing BOM and sourcing",
+  "summary": "Products, assemblies, parts, facilities, certifications and engineering changes in one Postgres schema.",
+  "demoDataset": "bom",
+  "extends": null,
+  "sources": [
+    {
+      "id": "pg",
+      "schemas": [
+        "bom"
+      ]
+    }
+  ],
+  "seeds": [
+    "resource-manager/omnigateaksstack/helm/omnigate/files/seed-bom.sql"
+  ],
+  "questions": {
+    "file": "demos/all-packs/demo-questions-all-packs.json",
+    "category": "bom"
+  },
+  "modalities": [
+    "table"
+  ],
+  "needsEmbeddingModel": true,
+  "inAllPacks": true,
+  "editions": [
+    "free",
+    "commercial"
+  ],
+  "licence": {
+    "data": "synthetic",
+    "nonCommercial": false
+  },
+  "capabilities": []
+}
