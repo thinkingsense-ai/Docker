@@ -52,6 +52,12 @@ Try: "Which waiting payments are on an invoice that is already paid?", then clic
 
 This is a bridge, not the product: Ask itself knows nothing about workflows (its own page has no action button or card, and it cannot be framed or called from a browser page of another origin, so the inbox backend makes the call). Building it into Ask needs a Server change: a workflow API, a result-row action and an inline card in the Ask web app.
 
+## The Server's own workflow API (app v0.10.19 and later)
+
+Since v0.10.19 the Server has a workflow API of its own (`docs/workflows-api.md` in the Server repository): approvals as the signed-in user, grants (`canStartWorkflows`, `canApprove`), refusals made by the Server before it signals an engine, a hash-chained decision record, and a Workflow column, approval card and "Waiting for me" queue in Ask. It is **off by default and commercial edition only** (on the free edition the routes answer 404), and today it runs on a built-in simulator whose recommendation and rules are canned text from a manifest. This folder's Temporal demo is a different thing: it runs real facts and a real model, but outside the Server. The Server documents a gateway contract (`OMNIGATE_WORKFLOW_ENGINE=https://gateway`) where an engine like this one could sit behind its API; that is not built.
+
+`tests/server-workflow-api.py` is a black-box test of that API against a running stack (27 checks: access, start and idempotence, the stages, every approval refusal, rejection, write-back as a dry run, and the decision record, whose hash chain it recomputes from the file itself instead of trusting the Server's own verifier). To run it you need a commercial-edition stack with the local engine and the payment-exception manifest, and users alice (starts), bob and carol (approve), dave (no grants) and treasury-agent with the password `pw`; set `OMNIGATE_WORKFLOW_NONHUMAN_USERS=treasury-agent` or its non-human check fails, because the Server only knows a short list of reserved names (`ai`, `agent`, `bot`, `service`, `system`, `recommender`, `machine`) by default. `OMNIGATE_APP_USERS` separates users with `;`, not `,`.
+
 ## The same workflow on SAP data
 
 The inbox has a **Source** switch: **SAP blocked invoices** runs the same flow on the supplier invoices that carry a payment block in SAP's public API sandbox (S/4HANA Cloud sample data, read-only; see `../sap-spike`). It needs the SAP spike app running (`demos/sap-spike/run.sh`, Ask on :8087, with the Server REST-source changes) and your sandbox key:
