@@ -3,20 +3,20 @@ recommendation, rules and evidence, takes approve / reject from a named person, 
 puts this behind the customer's single sign-on and ties the approver to the signed-in identity."""
 import asyncio, json, os, threading, urllib.request, urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from temporalio.client import Client
+import temporal_wait
 from temporalio.exceptions import WorkflowAlreadyStartedError
 import decisions, facts, sap_facts, sap_rules
 from workflows import PaymentException
 
 LOOP = asyncio.new_event_loop(); threading.Thread(target=LOOP.run_forever, daemon=True).start()
 run = lambda coro: asyncio.run_coroutine_threadsafe(coro, LOOP).result(120)
-CLIENT = run(Client.connect(os.environ.get("TEMPORAL_ADDRESS", "temporal:7233")))
+CLIENT = run(temporal_wait.connect())
 wid = lambda pid, source="treasury": ("sap-invoice-%d" if source == "sap" else "payment-%d") % int(pid)
 
 # --- Ask bridge: the page's question box calls the app's real Ask API (/api/ask) from here, signed in as a demo user, and gets the answer and rows back.
 # (The browser cannot call Ask directly: it is another origin, it sends a cross-site guard header, and it refuses to be framed.)
 ASK_URLS = {"treasury": facts.ASK_URL, "sap": os.environ.get("SAP_ASK_URL", "").rstrip("/")}     # the SAP tab asks the SAP spike app (../sap-spike), a separate app
-ASK_USER = os.environ.get("ASK_USER", "demo"); ASK_PASSWORD = os.environ.get("ASK_PASSWORD", "demo")
+ASK_USER = os.environ.get("ASK_USER", "demo"); ASK_PASSWORD = os.environ.get("ASK_PASSWORD", "")      # empty (the cloud add-on): the Ask box is off. The compose file sets demo / demo.
 ASK_PUBLIC_URL = os.environ.get("ASK_PUBLIC_URL", "http://localhost:8080").rstrip("/"); SAP_ASK_PUBLIC_URL = os.environ.get("SAP_ASK_PUBLIC_URL", "http://localhost:8087").rstrip("/")
 _cookie = {}
 def _ask_login(source):
@@ -24,7 +24,7 @@ def _ask_login(source):
     with urllib.request.urlopen(req, timeout=30) as r:
         _cookie[source] = (r.headers.get("Set-Cookie") or "").split(";")[0]
 def ask(question, conversation_id=None, source="treasury"):
-    if not ASK_URLS.get(source): return {"error": "no Ask app is configured for %s (set SAP_ASK_URL)" % source}
+    if not ASK_URLS.get(source) or not ASK_PASSWORD: return {"error": "the Ask box is not set up for %s on this deployment" % source}
     for attempt in (1, 2):
         if not _cookie.get(source): _ask_login(source)
         body = {"question": question}
@@ -99,6 +99,7 @@ class H(BaseHTTPRequestHandler):
         try:
             if self.path == "/": self._send(200, PAGE, "text/html")
             elif self.path.split("?")[0] == "/api/pending": self._send(200, pending("sap" if "source=sap" in self.path else "treasury"))
+            elif self.path == "/api/config": self._send(200, {"ask": bool(ASK_URLS["treasury"] and ASK_PASSWORD), "sap": bool(os.environ.get("SAP_API_KEY") and ASK_URLS["sap"] and ASK_PASSWORD), "writeBack": os.environ.get("WRITE_BACK", "dry-run")})
             elif self.path == "/api/decisions": self._send(200, {"records": decisions.read(), "chain": decisions.verify()})
             else: self._send(404, {"error": "not found"})
         except Exception as e: self._send(500, {"error": str(e)[:300]})

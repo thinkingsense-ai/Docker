@@ -1,0 +1,227 @@
+{{- if .Values.paymentWorkflow.enabled }}
+{{- if ne .Values.demoDataset "treasury" }}
+{{- fail "paymentWorkflow.enabled needs demoDataset=treasury: the demo reads the Treasury pack's tables (all-packs is not supported yet)" }}
+{{- end }}
+{{- $fullname := include "omnigate.fullname" . }}
+{{- $licName := printf "%s-omnigate-license" $fullname }}
+{{- $existing := lookup "v1" "Secret" .Release.Namespace $licName }}
+{{- $licensed := or .Values.omnigate.license (and $existing $existing.data (hasKey $existing.data "license") (ne (index $existing.data "license") "")) }}
+{{- /* A demo for the free edition only: a deployment that holds a signed (commercial) licence renders nothing here. */ -}}
+{{- if not $licensed }}
+# The payment-exception workflow, as an opt-in demo add-on (see demos/payment-workflow in the Docker repository): a Temporal dev server, the worker
+# that runs the workflow, the approval inbox and a mock ERP, in ONE pod that shares one small volume (Temporal's database and the decision record).
+# The code is not in an image: it comes from the ConfigMap below and runs on the stock python image, with the Temporal SDK installed at pod start.
+#
+# PRIVATE on purpose: the inbox has no sign-in (you type a name), so it is a ClusterIP Service and nothing outside the cluster can reach it. Reach it with
+#   kubectl port-forward svc/{{ $fullname }}-payment-workflow 8085:8085        then open http://localhost:8085
+# It reads the Treasury pack through the app's internal address with the admin API token, so it holds admin rights: a reason to keep it private.
+# Nothing is ever sent to a real ERP: an approved action shows the call it would send (dry run), or goes to the mock ERP in the pod.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $fullname }}-payment-workflow
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: payment-workflow
+stringData:
+  ASK_ADMIN_TOKEN: {{ .Values.omnigate.adminApiToken | quote }}
+  OMNIGATE_LLM_API_KEY: {{ .Values.omnigate.llmApiKey | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fullname }}-payment-workflow-src
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: payment-workflow
+data:
+{{ (.Files.Glob "files/payment-workflow/*").AsConfig | indent 2 }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $fullname }}-payment-workflow
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: payment-workflow
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: {{ .Values.storageClassName }}
+  resources:
+    requests:
+      storage: {{ .Values.paymentWorkflow.storageSize }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-payment-workflow
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: payment-workflow
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate          # one ReadWriteOnce volume: the old pod must let go of it first
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: payment-workflow
+  template:
+    metadata:
+      labels:
+        {{- include "omnigate.labels" . | nindent 8 }}
+        app.kubernetes.io/component: payment-workflow
+      annotations:
+        checksum/src: {{ (.Files.Glob "files/payment-workflow/*").AsConfig | sha256sum }}
+        checksum/secret: {{ printf "%s%s" .Values.omnigate.adminApiToken .Values.omnigate.llmApiKey | sha256sum }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: install-sdk
+          image: {{ .Values.paymentWorkflow.pythonImage }}
+          command: ["pip", "install", "--no-cache-dir", "--disable-pip-version-check", "--target", "/pylib", "temporalio=={{ .Values.paymentWorkflow.temporalSdkVersion }}"]
+          env:
+            - name: HOME
+              value: /tmp
+          securityContext: &locked
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - { name: pylib, mountPath: /pylib }
+            - { name: tmp, mountPath: /tmp }
+      containers:
+        - name: temporal
+          image: {{ .Values.paymentWorkflow.temporalImage }}
+          args: ["server", "start-dev", "--ip", "0.0.0.0", "--headless", "--db-filename", "/data/temporal.db"]
+          env:
+            - name: HOME
+              value: /tmp
+            - name: USER          # uid 10001 has no passwd entry; without $USER the server stops at "user: Current requires cgo or $USER set"
+              value: temporal
+          ports:
+            - { name: temporal, containerPort: 7233 }
+          readinessProbe:
+            tcpSocket: { port: 7233 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          securityContext: *locked
+          resources:
+            requests: { cpu: 100m, memory: 192Mi }
+            limits: { memory: 512Mi }
+          volumeMounts:
+            - { name: data, mountPath: /data }
+            - { name: tmp, mountPath: /tmp }
+        - name: worker
+          image: {{ .Values.paymentWorkflow.pythonImage }}
+          command: ["python", "/app/worker.py"]
+          workingDir: /app
+          env: &env
+            - { name: PYTHONPATH, value: "/pylib:/app" }
+            - { name: PYTHONDONTWRITEBYTECODE, value: "1" }
+            - { name: HOME, value: /tmp }
+            - { name: TEMPORAL_ADDRESS, value: "localhost:7233" }
+            - { name: ASK_URL, value: "http://{{ $fullname }}-omnigate-internal:8080" }
+            - { name: ERP_URL, value: "http://localhost:8086" }
+            - { name: WRITE_BACK, value: {{ .Values.paymentWorkflow.writeBack | quote }} }
+            - { name: APPROVAL_TIMEOUT_MINUTES, value: {{ .Values.paymentWorkflow.approvalTimeoutMinutes | quote }} }
+            - { name: DECISIONS_FILE, value: /data/decisions.jsonl }
+            - { name: ASK_USER, value: "" }       # the Ask box needs the Ask password, which the chart never holds: it stays off here
+          envFrom:
+            - secretRef:
+                name: {{ $fullname }}-payment-workflow
+          securityContext: *locked
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { memory: 384Mi }
+          volumeMounts: &mounts
+            - { name: src, mountPath: /app, readOnly: true }
+            - { name: pylib, mountPath: /pylib, readOnly: true }
+            - { name: data, mountPath: /data }
+            - { name: tmp, mountPath: /tmp }
+        - name: inbox
+          image: {{ .Values.paymentWorkflow.pythonImage }}
+          command: ["python", "/app/inbox.py"]
+          workingDir: /app
+          env: *env
+          envFrom:
+            - secretRef:
+                name: {{ $fullname }}-payment-workflow
+          ports:
+            - { name: inbox, containerPort: 8085 }
+          readinessProbe:
+            httpGet: { path: /api/config, port: 8085 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          securityContext: *locked
+          resources:
+            requests: { cpu: 50m, memory: 96Mi }
+            limits: { memory: 256Mi }
+          volumeMounts: *mounts
+        - name: erp-mock
+          image: {{ .Values.paymentWorkflow.pythonImage }}
+          command: ["python", "/app/erp_mock.py", "8086"]
+          workingDir: /app
+          env:
+            - { name: PYTHONDONTWRITEBYTECODE, value: "1" }
+          securityContext: *locked
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 96Mi }
+          volumeMounts:
+            - { name: src, mountPath: /app, readOnly: true }
+      volumes:
+        - name: src
+          configMap:
+            name: {{ $fullname }}-payment-workflow-src
+        - name: pylib
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ $fullname }}-payment-workflow
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}-payment-workflow
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: payment-workflow
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: payment-workflow
+  ports:
+    - { name: inbox, port: 8085, targetPort: 8085 }
+{{- if .Values.networkPolicy.enabled }}
+---
+# Nothing else in the cluster has any reason to call the workflow pod (its parts talk over localhost), so it takes no inbound traffic. kubectl
+# port-forward is not affected by this. Enforced only where the cluster's network plugin enforces policies (see "Network policy" in the stack README).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $fullname }}-payment-workflow
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: payment-workflow
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: payment-workflow
+  policyTypes:
+    - Ingress
+  ingress: []
+{{- end }}
+{{- end }}
+{{- end }}

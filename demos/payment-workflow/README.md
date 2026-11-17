@@ -28,6 +28,22 @@ docker compose --project-directory . -f demos/treasury-pack/docker-compose.treas
 - `WRITE_BACK=live` sends approved actions to the mock ERP; the default `dry-run` shows the call it would send. `APPROVAL_TIMEOUT_MINUTES` (default 2880) is how long an approval may wait before the workflow escalates.
 - Stop and wipe: `... down -v`. Tests: `python3 -m unittest discover -s demos/payment-workflow/tests` (26; the SAP write-back test runs only where the Temporal library is installed, e.g. `docker run --rm -v "$PWD/demos/payment-workflow":/app -w /app treasury-pack-worker python -m unittest discover -s tests`). Check the record: `python3 demos/payment-workflow/decisions.py verify` (with `DECISIONS_FILE` set).
 
+## On a cloud stack (an opt-in add-on, first slice)
+
+The four stack charts can run this workflow as one extra pod beside the app. **Not yet on the deploy forms**: today it is a chart value, `paymentWorkflow.enabled=true` (with `demoDataset=treasury`), so it is for people who deploy the chart themselves or for the next step that adds the form switch.
+
+- **What runs.** One pod with four containers: a Temporal dev server, the workflow worker, the approval inbox and the mock ERP, sharing a 1 Gi volume (Temporal's database and the decision record). Memory requests total about 450 Mi. The code is not in an image: it comes from a ConfigMap and runs on the stock `python:3.12-slim` image, and the Temporal SDK (`temporalio` 1.30.0) is installed from PyPI when the pod starts, so the cluster needs outbound access to PyPI.
+- **Private.** The inbox has no sign-in (you type a name), so it is a ClusterIP Service and nothing outside the cluster reaches it. Open it with `kubectl port-forward svc/<release>-payment-workflow 8085:8085` and browse to http://localhost:8085. A network policy blocks all other inbound traffic to the pod (where the cluster enforces policies; `port-forward` is unaffected).
+- **Free edition only, Treasury data only.** A deployment that holds a signed licence renders nothing; any other data set than `treasury` stops the install with a clear message (all-packs is not supported yet).
+- **Holds admin rights.** It reads the Treasury pack through the app's internal address with the admin API token, because the app has no narrower credential for reads yet (Server#102). That is the main reason it is private. The recommendation step uses the stack's model key; without one it falls back to the rule-based answer.
+- **The Ask box and the SAP tab are off.** They need the Ask password, which the chart never holds. Nothing is written to a real ERP: an approved action shows the call it would send, or goes to the mock ERP in the pod.
+- **Hardened like the app.** Non-root (uid 10001), read-only root filesystem, no capabilities, no privilege escalation, seccomp default.
+
+**Keeping the four charts in step.** The charts hold copies. Edit the source in this folder, then run `scripts/sync-payment-workflow-addon.py` (it copies the Python files, the inbox page and `chart/payment-workflow.yaml` into each chart and adds the `paymentWorkflow` values); `--check` fails if any chart is out of date.
+
+**Tested.** All 20 renders (4 charts x 5 data sets) are byte-identical to `main` with the add-on off, with the random passwords pinned; the add-on renders on all four charts; `helm lint` passes; and `tests/pod-smoke.sh` runs the four containers under the same security settings against a Treasury stack (SDK install, Temporal, worker, the inbox reading 7 payments through the app, a workflow started and approved, the decision chain intact). That script found one real failure: Temporal stops under uid 10001 unless `$USER` is set (the chart now sets it).
+**Not tested.** A real cluster: probes, volume binding, the network policy, scheduling and the licence gate through the cluster's own licence Secret. The deploy-form switch and any public, signed-in access are not built.
+
 ## Ask and the workflow in one page (the demo bridge)
 
 The inbox page has an **Ask** box. A question goes to the app's real Ask API (the inbox backend signs in as the pack's demo user, `ASK_USER` / `ASK_PASSWORD`), and the answer comes back with its rows. When the rows have a `payment_id` column, each row gets a

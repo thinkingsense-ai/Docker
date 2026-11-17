@@ -18,9 +18,10 @@ ul{margin:6px 0 6px 18px;padding:0}small,.dim{color:var(--dim)}code{font-size:12
 <h1>Payment approvals</h1><p class="sub" id="subline">Payments waiting for approval, read through thinking sense. The AI recommends; a named person approves. Nothing is written to the ERP until the approvals are in, and by default the write is a dry run.</p>
 <div class="me"><label for="who">You are</label><input id="who" placeholder="your name, e.g. m.okafor" autocomplete="off"><small>Demo only: a real deployment ties this to single sign-on.</small></div>
 <div class="me" id="srcbar"><span>Source</span><button class="chip go" id="src-treasury" onclick="setSource('treasury')">Treasury payments</button><button class="chip" id="src-sap" onclick="setSource('sap')">SAP blocked invoices</button><small id="srcnote"></small></div>
-<h2>Ask</h2>
+<div id="askwrap"><h2>Ask</h2>
 <div class="ask"><input id="q" placeholder="Ask a question about the payments, e.g. which payments are on an invoice that is already paid?" autocomplete="off"><button class="go" id="askbtn" onclick="ask()">Ask</button></div>
 <div class="chips" id="chips"></div><div id="thread"></div>
+</div>
 <h2 id="queueh">Waiting for approval</h2><div id="pending"><p class="dim">Loading…</p></div>
 <h2>Decision record <small id="chain"></small></h2><div id="decisions"></div>
 </main><script>
@@ -101,5 +102,10 @@ function paintThread(full){
       return h+'</div>'}).join('')}
   box.querySelectorAll('[data-act]').forEach(td=>{td.innerHTML=actCell(td.dataset.act)});
   box.querySelectorAll('[data-slots]').forEach(el=>{el.innerHTML=el.dataset.slots.split(',').filter(x=>PENDING[x]&&PENDING[x].workflow).map(x=>card(PENDING[x])).join('')})}
+fetch('/api/config').then(r=>r.json()).then(c=>{
+  if(!c.ask){const w=$('#askwrap'); if(w) w.style.display='none'}
+  if(!c.sap){const b=$('#src-sap'); if(b) b.style.display='none'; const t=$('#src-treasury'); if(t) t.style.display='none'; const n=$('#srcnote'); if(n) n.style.display='none'; const bar=$('#srcbar'); if(bar) bar.style.display='none'}
+  if(c.writeBack){const n=document.createElement('p'); n.className='dim'; n.innerHTML='<small>Write-back mode: <b>'+esc(c.writeBack)+'</b>'+(c.writeBack==='dry-run'?' (an approved action shows the call it would send; nothing is sent)':'')+'</small>'; const h=document.querySelector('h1'); h&&h.insertAdjacentElement('afterend',n)}
+}).catch(()=>{});
 refresh();setInterval(refresh,4000);
 </script></body></html>
