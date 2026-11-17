@@ -97,18 +97,37 @@ Each pack ships `pack.json` next to its seed (the numbers below are illustrative
 The catalogue is the union of installed manifests. It is the single source for the deploy form, the UI picker and the Claude tool list, so
 the three can no longer disagree.
 
-### 2. A scope, not a filter
+### 2. A pack is a Workspace
 
-Choosing a pack sets the **scope of the question**: which sources and schemas the planner may use, which approved questions are retrieved, and
-which upload types and workflows are offered. `all-packs` is an explicit "All data" scope, not a pack. Scope is sent with every `POST /ask`
-and shown in the answer's evidence block ("answered from: treasury, 2 sources"), so a wrong-pack answer is visible. It maps to a Server Workspace
-(the existing namespace construct) where the Server can enforce it; where it cannot, the layer narrows the question and says so.
+Server already has the right construct: a **Workspace** (`Namespace`, `OMNIGATE_NAMESPACE_CONFIG`). Every question is asked in exactly one Workspace
+(`AskRoute` refuses a question without one), and a Workspace carries a name, a set of backends, an access rule (roles, attributes, members), its own
+LLM settings and an MCP-server allowlist. The Ask app has a Workspace dropdown, but today it is barely used: a stack has only the computed
+`default` Workspace, so the dropdown offers nothing, while the *pack* picker is a separate control that only reorders starter questions. Two
+controls, one of them inert.
+
+Proposal: **one concept, the Workspace, is the pack.** Each pack manifest generates a Workspace entry (id = pack id, name = title, the pack's
+backends, access from the manifest) and the picker is the Workspace selector. Choosing "Treasury" then really tells Server the domain of the
+question: which data the planner may see, who may use it, and which model settings apply. `All data` is the computed default Workspace.
+Agency sends the Workspace id with every `POST /ask` and shows it in the evidence block ("answered in: Treasury").
+
+What Server does and does not do today (read from `Namespace`, `NamespaceStore`, `NamespaceConfig`; not yet exercised with packs):
+
+| Need | Today | Gap |
+|---|---|---|
+| Limit the planner to a pack's data | Workspace scopes by **backend** (data source) only | Packs share one connector (`pg`) with auto-discovered schemas, so a backend list cannot separate supply chain from Treasury. Needs `backend.schema` entries in a Workspace (Server PR), or one backend per pack, which the free edition's three data sources forbids |
+| Pick the pack's approved questions | Question bank is filtered by `category`, not Workspace | Bank retrieval and starters should follow the Workspace (Server PR; until then the layer maps Workspace id to category) |
+| Pack-specific description for the planner | Not in Workspace | Domain text per Workspace (Server PR; today only database comments reach the SQL prompt) |
+| Access per pack | Workspace `access` (roles, attributes, members) | Already there |
+| MCP tools per pack | `mcpServerIds` recorded, **not enforced** in Ask | Enforcement (Server) |
+
+Until the Server changes land, Agency narrows the question itself (adds the pack's schemas and domain text to the request and says "scope applied by
+Agency, not enforced by Server" in the evidence block), so the design works as a demo and tightens when Server enforces it.
 
 ### 3. A picker that explains itself
 
 - Always shown when two or more packs are installed (not only when categories happen to differ), as cards with title, one line, size
   ("24 approved questions, 2 sources"), badges (free / commercial, non-commercial data, needs embedding model), and a "loaded / not loaded" state.
-- Selecting a card changes the scope, the starter questions, the upload targets and the workflow list together, and says so in one line.
+- Selecting a card selects the Workspace and changes the starter questions, the upload targets and the workflow list together, and says so in one line.
 - A first-class **All data** card, with a visible warning about accuracy across packs (measured: free-form answers across six packs were not
   benchmarked).
 - The choice is remembered per user on the server (thinking-layer preference), with `localStorage` only as a fallback; deep links carry
@@ -137,13 +156,13 @@ Decision on stack (plain HTML + small JS vs React + Vite) is open; the contract 
 - **Licensing.** Agency code is ours. Demo data and models in the audio and image adapters are non-commercial; those adapters stay Docker-only
   and badged until counsel answers the register's questions. The workflow part (Temporal MIT, invented data) is the low-risk candidate for cloud.
 - **Server gaps this will expose** (to file for Kumar as they appear): governed SQL against REST sources (Server#102), a text-to-vector tool
-  (Server#95), per-pack scoping that Server enforces rather than the layer, and an accepted upload type for adapter output.
+  (Server#95), `backend.schema` entries and domain text in a Workspace, question-bank retrieval that follows the Workspace, enforcement of `mcpServerIds`, and an accepted upload type for adapter output.
 - **Edition.** The workflow API is commercial only; in the free edition Agency uses the Temporal demo behind the same contract.
 - **Not measured.** Accuracy of free-form questions under pack scope versus all data; the scope narrowing is expected to help, not shown.
 
 ## Proposed phases (each its own PR)
 
-1. Pack manifests for the five existing packs + catalogue endpoint + this note's schema (no behaviour change; byte-identical charts).
+1. Pack manifests for the five existing packs + catalogue endpoint + generated Workspace config (no behaviour change; byte-identical charts) and a Server issue/PR for schema-level Workspaces.
 2. Thinking layer skeleton: `/packs`, `/ask` (pass-through with scope), `/decisions`; MCP tool list generated from the contract.
 3. Agency UI first slice (questions, pack cards, evidence).
 4. Upload adapters: audio (existing demo moved behind the contract), then table and document.
