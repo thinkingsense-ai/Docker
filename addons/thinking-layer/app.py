@@ -5,7 +5,7 @@ answer with an evidence block, reads the decision record, and lists the MCP tool
 Environment: SERVER_URL (default http://omnigate:8080), PACKS_CATALOGUE, AGENCY_DECISION_FILE (the Server's OMNIGATE_WORKFLOW_DECISION_FILE, shared read-only),
 AGENCY_SCOPE_HINT=on to add the pack's data sets to the question when no Workspace exists (off by default: its effect on accuracy is not measured),
 AGENCY_SESSION_HOURS (default 8), AGENCY_WEB_DIST (the built Agency UI, served at / when the folder exists), AGENCY_PREFS_FILE (per-user preferences, kept in
-memory when unset), AGENCY_ADAPTERS (comma-separated adapter base URLs), AGENCY_UPLOAD_HOURS (record lifetime, default 1), PORT (default 8097).
+memory when unset), AGENCY_ADAPTERS (comma-separated adapter base URLs), AGENCY_UPLOAD_HOURS (record lifetime, default 1), AGENCY_UPLOAD_SHARING (off, the default, or workspace), AGENCY_UPLOAD_ADMINS (comma-separated Server usernames who may unshare or delete shared records), PORT (default 8097).
 The layer logs no question text and no file content."""
 import json, mimetypes, os, secrets, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -24,6 +24,10 @@ SESSIONS = {}; SESSIONS_LOCK = threading.Lock()
 WEB_DIST = os.environ.get("AGENCY_WEB_DIST", "/app/web")
 ADAPTERS = adapters.Registry()
 UPLOADS = uploads.Store(float(os.environ.get("AGENCY_UPLOAD_HOURS", "1")))
+def sharing(): return "workspace" if os.environ.get("AGENCY_UPLOAD_SHARING", "off").strip().lower() == "workspace" else "off"
+def upload_admin(user): return user in {u.strip() for u in os.environ.get("AGENCY_UPLOAD_ADMINS", "").split(",") if u.strip()}
+
+
 PREFS = {}; PREFS_LOCK = threading.Lock(); PREF_KEYS = {"pack": 80}                         # the only preferences kept, with a length limit each
 
 
@@ -125,7 +129,7 @@ class H(BaseHTTPRequestHandler):
         if not u.path.startswith("/uploads/"): return self.err(404, "not_found", "No such route.")
         t, s = self.need_session()
         if not s: return
-        if UPLOADS.delete(s.username, u.path[9:]): return self.send(200, {"deleted": True})
+        if UPLOADS.delete(s.username, u.path[9:], upload_admin(s.username)): return self.send(200, {"deleted": True})
         self.err(404, "upload_not_found", "No such upload.")
 
     def do_POST(self):
@@ -138,6 +142,7 @@ class H(BaseHTTPRequestHandler):
             if u.path == "/ask": return self.ask()
             if u.path == "/preferences": return self.preferences(self.body())
             if u.path == "/uploads": return self.upload(parse_qs(u.query))
+            if u.path.startswith("/uploads/") and u.path.endswith("/share"): return self.share(u.path[9:-6], self.body())
             self.err(404, "not_found", "No such route.")
         except ValueError as e: self.err(400, "bad_request", str(e))
 
@@ -145,13 +150,43 @@ class H(BaseHTTPRequestHandler):
     def list_adapters(self):
         t, s = self.need_session()
         if not s: return
-        self.send(200, {"adapters": [{k: v for k, v in m.items()} for m in ADAPTERS.manifests()], "accept": ADAPTERS.accept_list()})
+        self.send(200, {"adapters": [{k: v for k, v in m.items()} for m in ADAPTERS.manifests()], "accept": ADAPTERS.accept_list(), "sharing": sharing()})
+
+    def my_workspaces(self, t, s):
+        """The Workspaces this user's OWN Server session lists: the Server's access rules, not the layer's, decide who may see a shared record."""
+        _, a = SERVER.json("GET", "/app/namespaces", s.cookie)
+        return {n["id"] for n in a.get("namespaces", [])}
 
     def my_uploads(self, rid):
         t, s = self.need_session()
         if not s: return
-        if rid is None: return self.send(200, {"uploads": UPLOADS.mine(s.username)})
-        r = UPLOADS.get(s.username, rid)
+        admin, mode = upload_admin(s.username), sharing()
+        try: have = self.my_workspaces(t, s) if mode == "workspace" else None
+        except Unauthorized: return self.lost(t)
+        except OSError: return self.err(502, "server_unreachable", "The OmniGate Server could not be reached.")
+        if rid is None:
+            out = {"uploads": UPLOADS.mine(s.username), "sharing": mode, "shared": UPLOADS.shared_with(s.username, have, admin) if have is not None else []}
+            return self.send(200, out)
+        r = UPLOADS.get(s.username, rid, have, admin and mode == "workspace")
+        self.send(200, r) if r else self.err(404, "upload_not_found", "No such upload.")
+
+    def share(self, rid, body):
+        """Owner shares a record with the people who can use its Workspace, or takes it back. Never extends access: the owner must themselves have the Workspace."""
+        t, s = self.need_session()
+        if not s: return
+        on = body.get("shared")
+        if not isinstance(on, bool): return self.err(400, "bad_request", "shared must be true or false.")
+        admin = upload_admin(s.username)
+        if sharing() != "workspace" and on: return self.err(409, "sharing_off", "Sharing uploads is off on this deployment (AGENCY_UPLOAD_SHARING).")
+        rec = UPLOADS.owned(s.username, rid)
+        if on:
+            if rec is None: return self.err(404, "upload_not_found", "No such upload.")
+            if not rec["workspaceId"]: return self.err(400, "no_workspace", "This upload was not made inside a Workspace, so there is nobody to share it with.")
+            try:
+                if rec["workspaceId"] not in self.my_workspaces(t, s): return self.err(403, "workspace_not_yours", "You can only share into a Workspace you can use yourself.")
+            except Unauthorized: return self.lost(t)
+            except OSError: return self.err(502, "server_unreachable", "The OmniGate Server could not be reached.")
+        r = UPLOADS.set_shared(s.username, rid, on, admin)
         self.send(200, r) if r else self.err(404, "upload_not_found", "No such upload.")
 
     def upload(self, q):
@@ -173,6 +208,9 @@ class H(BaseHTTPRequestHandler):
         try: ing = ADAPTERS.ingest(url, name, mime, data)
         except adapters.AdapterError as e: return self.err(e.status, "adapter_refused" if e.status != 502 else "adapter_unavailable", e.message)
         finally: data = None                                                # the file is not kept
+        if wid is None and sharing() == "workspace":                               # All data is a Workspace of its own when the stack has one (see ask())
+            try: wid = ALL_DATA if ALL_DATA in self.my_workspaces(t, s) else None
+            except (Unauthorized, OSError): wid = None
         rec = UPLOADS.add(s.username, name, wid, manifest, ing)
         if rec is None: return self.err(429, "too_many_uploads", "You have %d uploads; delete one first." % uploads.MAX_PER_USER)
         self.send(200, rec)

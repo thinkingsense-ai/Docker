@@ -12,6 +12,8 @@ services:
       SERVER_URL: http://omnigate:8080
       AGENCY_SCOPE_HINT: ${AGENCY_SCOPE_HINT:-off}
       AGENCY_ADAPTERS: ${AGENCY_ADAPTERS:-}
+      AGENCY_UPLOAD_SHARING: ${AGENCY_UPLOAD_SHARING:-off}
+      AGENCY_UPLOAD_ADMINS: ${AGENCY_UPLOAD_ADMINS:-}
     read_only: true
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
