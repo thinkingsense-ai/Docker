@@ -69,7 +69,7 @@ function Card({ u, onAsk, onDelete, canShare, onShare }: { u: Upload; onAsk: (q:
   const mine = u.mine !== false
   return (
     <article className="answer" aria-label={`Upload ${u.name}`}>
-      <h2 className="q">{u.name} <span className="tag">{u.kind}</span>{u.nonCommercial && <span className="tag caution">non-commercial</span>}</h2>
+      <h2 className="q">{u.name} <span className={`tag kind-${u.kind}`}>{u.kind}</span>{u.nonCommercial && <span className="tag caution">non-commercial</span>}</h2>
       {u.kind === 'audio' && u.result ? <AudioSummary r={u.result} /> : u.kind === 'table' && u.result ? <TableSummary r={u.result} /> : u.kind === 'document' && u.result ? <DocSummary r={u.result} /> : u.kind === 'image' && u.result ? <ImageSummary r={u.result} /> : u.result && <pre className="small">{JSON.stringify(u.result, null, 2)}</pre>}
       {u.notes.length > 0 && <ul className="warnings">{u.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>}
       {u.licence && <p className="muted small">{u.licence}</p>}
