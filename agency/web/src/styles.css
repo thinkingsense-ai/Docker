@@ -86,3 +86,14 @@ th { position: sticky; top: 0; background: var(--chip) } th.num, td.num { text-a
 .swatch i { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--line); display: inline-block }
 
 .tag.kind-audio { background: var(--k-audio) } .tag.kind-table { background: var(--k-table) } .tag.kind-document { background: var(--k-document) } .tag.kind-image { background: var(--k-image) }
+
+.run { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 8px }
+.run h3 { margin: 0; font-size: .95rem }
+.stages { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; flex-wrap: wrap; font-size: .8rem }
+.stages li { padding: 2px 10px; border-radius: 999px; background: var(--chip); color: var(--muted) }
+.stages li.past { color: var(--ink) } .stages li.now { background: var(--fill); color: var(--accent-ink); font-weight: 700 }
+.facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 4px 12px; margin: 0 } .facts div { display: grid } .facts dt { color: var(--muted) } .facts dd { margin: 0 }
+.rules { margin: 0; padding-left: 1.1rem } .rec { margin: 0 } .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap }
+.actions input { flex: 1; min-width: 200px; padding: .4rem .6rem; border: 1px solid var(--edge); border-radius: 8px; background: var(--panel) }
+.actions button:not(.primary):not(.link) { background: var(--chip); border: 1px solid var(--edge); border-radius: 8px; padding: .4rem .8rem }
+.run code { background: var(--chip); padding: 0 4px; border-radius: 4px }

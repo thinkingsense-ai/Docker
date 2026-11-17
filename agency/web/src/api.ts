@@ -46,6 +46,8 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
   return data as T
 }
 
+import type { Decisions, Definition, Run } from './workflow'
+
 export const api = {
   login: (username: string, password: string) => call<{ username: string }>('POST', '/login', { username, password }),
   logout: () => call<unknown>('POST', '/logout', {}),
@@ -60,6 +62,13 @@ export const api = {
   uploads: () => call<{ uploads: Upload[]; shared?: Upload[]; sharing?: string }>('GET', '/uploads'),
   shareUpload: (id: string, shared: boolean) => call<Upload>('POST', '/uploads/' + encodeURIComponent(id) + '/share', { shared }),
   deleteUpload: (id: string) => call<unknown>('DELETE', '/uploads/' + encodeURIComponent(id)),
+  workflowDefinitions: () => call<{ definitions: Definition[] }>('GET', '/workflows/definitions'),
+  workflowQueue: () => call<{ runs: Run[]; count: number }>('GET', '/workflows/queue'),
+  workflowRun: (id: string) => call<{ run: Run }>('GET', '/workflows/' + encodeURIComponent(id)),
+  startWorkflow: (definition: string, key: string) => call<{ created: boolean; run: Run }>('POST', '/workflows/start', { definition, key }),
+  approveWorkflow: (id: string, payloadHash: string) => call<{ run: Run }>('POST', '/workflows/' + encodeURIComponent(id) + '/approve', { payloadHash }),
+  rejectWorkflow: (id: string, reason: string) => call<{ run: Run }>('POST', '/workflows/' + encodeURIComponent(id) + '/reject', { reason }),
+  decisions: (runId: string) => call<Decisions>('GET', '/decisions?runId=' + encodeURIComponent(runId)),
   setPreference: (pack: string | null) => call<{ pack?: string }>('POST', '/preferences', { pack }),
 }
 

@@ -6,7 +6,7 @@ import adapters, app, decisions, tools, uploads
 from upstream import Upstream
 
 class Fake:
-    namespaces = [{"id": "treasury", "name": "Treasury"}]; packs = [{"id": "bom"}]; ask_posts = []; ns_posts = []; ask_status = 200; can_upload = True; user_ns = {}
+    namespaces = [{"id": "treasury", "name": "Treasury"}]; packs = [{"id": "bom"}]; ask_posts = []; ns_posts = []; ask_status = 200; can_upload = True; user_ns = {}; wf_off = False; wf_refuse = None; wf_posts = []
 
 class FakeServer(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
@@ -30,8 +30,11 @@ class FakeServer(BaseHTTPRequestHandler):
         if p.startswith("/app/starter-questions"): return self._j(200, {"success": True, "packs": Fake.packs, "items": [{"question": "q?", "origin": "approved"}], "asked": p})
         if p == "/app/conversations": return self._j(200, {"conversations": [{"id": "c1", "title": "T", "updatedAtMillis": 1}]})
         if p.startswith("/app/conversations/get"): return self._j(200, {"success": True, "id": "c1", "turns": [], "asked": p})
-        if p == "/app/workflows/definitions": return self._j(404, {})
-        if p == "/app/workflows/runs/run-1": return self._j(200, {"id": "run-1"})
+        if p.startswith("/app/workflows/") and Fake.wf_off: return self._j(404, {})
+        if p == "/app/workflows/definitions": return self._j(200, {"definitions": [{"id": "payment-exception", "title": "Payment exception", "keyField": "payment_id", "requiredApprovals": 2}]})
+        if p == "/app/workflows/queue": return self._j(200, {"runs": [{"id": "run-1", "stage": "awaiting_approval"}], "count": 1})
+        if p == "/app/workflows/runs/run-1": return self._j(200, {"run": {"id": "run-1", "stage": "awaiting_approval", "payloadHash": "ab" * 32, "you": {"canApprove": True, "reason": None}}})
+        if p.startswith("/app/workflows/runs/"): return self._j(404, {"success": False, "error": "No such run", "code": "unknown_run"})
         return self._j(404, {})
     def do_POST(self):
         n = int(self.headers.get("Content-Length") or 0); b = json.loads(self.rfile.read(n) or b"{}")
@@ -42,6 +45,11 @@ class FakeServer(BaseHTTPRequestHandler):
         if not self.csrf_ok(): return self._j(403, {"error": "cross-site request refused"})
         if not self.authed(): return self._j(401, {})
         if self.path == "/app/logout": return self._j(200, {"success": True})
+        if self.path.startswith("/app/workflows/"):
+            if Fake.wf_off: return self._j(404, {})
+            Fake.wf_posts.append((self.path, b, self.user()))
+            if Fake.wf_refuse: st, code, extra = Fake.wf_refuse; return self._j(st, dict({"success": False, "error": "refused: " + code, "code": code}, **extra))
+            return self._j(201 if self.path.endswith("/start") else 200, {"created": True, "run": {"id": "run-1", "stage": "facts"}})
         if self.path == "/app/session/namespace": Fake.ns_posts.append(b["namespaceId"]); return self._j(200, {"success": True})
         if self.path == "/api/ask":
             if Fake.ask_status != 200: return self._j(Fake.ask_status, {})
@@ -89,7 +97,7 @@ class LayerTests(unittest.TestCase):
     def tearDownClass(cls): cls.fake.shutdown(); cls.adapter.shutdown(); cls.layer.shutdown()
     def setUp(self):
         Fake.namespaces = [{"id": "treasury", "name": "Treasury"}]; Fake.packs = [{"id": "bom"}]; Fake.ask_posts = []; Fake.ns_posts = []; Fake.ask_status = 200
-        Fake.can_upload = True; Fake.user_ns = {}; os.environ.pop("AGENCY_UPLOAD_SHARING", None); os.environ.pop("AGENCY_UPLOAD_ADMINS", None); FakeAdapter.ingests = []; FakeAdapter.fail = None
+        Fake.can_upload = True; Fake.user_ns = {}; Fake.wf_off = False; Fake.wf_refuse = None; Fake.wf_posts = []; os.environ.pop("AGENCY_UPLOAD_SHARING", None); os.environ.pop("AGENCY_UPLOAD_ADMINS", None); FakeAdapter.ingests = []; FakeAdapter.fail = None
         app.ADAPTERS = adapters.Registry("http://127.0.0.1:%d" % self.adapter.server_port); app.UPLOADS = uploads.Store(1.0)
         app.SESSIONS.clear(); os.environ.pop("AGENCY_SCOPE_HINT", None); os.environ.pop("AGENCY_DECISION_FILE", None)
         self.c = Client(self.layer.server_port)
@@ -99,7 +107,7 @@ class LayerTests(unittest.TestCase):
 
     def test_tools_are_generated_from_the_contract_and_never_include_approval(self):
         names = [t["name"] for t in tools.tool_list()]
-        self.assertEqual(names, ["list_packs", "ask", "get_decisions", "status", "list_adapters", "list_uploads"])
+        self.assertEqual(names, ["list_packs", "ask", "get_decisions", "status", "list_adapters", "list_uploads", "list_workflow_definitions", "list_workflows", "get_workflow_run"])
         self.assertFalse([n for n in names if "approve" in n or "reject" in n])
         s, raw, _ = self.c.call("GET", "/tools"); self.assertEqual([t["name"] for t in self.J(raw)["tools"]], names)
 
@@ -162,7 +170,7 @@ class LayerTests(unittest.TestCase):
         self.assertEqual(self.c.call("GET", "/whoami")[0], 401)
 
     def test_status_reports_workflows_unavailable_on_the_free_edition(self):
-        self.signin(); d = self.J(self.c.call("GET", "/status")[1])
+        Fake.wf_off = True; self.signin(); d = self.J(self.c.call("GET", "/status")[1])
         self.assertTrue(d["server"]["reachable"]); self.assertFalse(d["workflows"]["available"]); self.assertIn("404", d["workflows"]["note"])
 
     def _decision_file(self, tamper=False):
@@ -300,6 +308,50 @@ class LayerTests(unittest.TestCase):
         a, b = self.who("alice"), self.who("bob"); rid = self.gps_upload(a); before = app.UPLOADS.rows[rid]["expiresAtEpoch"]
         a.call("POST", "/uploads/%s/share" % rid, {"shared": True}); self.assertEqual(app.UPLOADS.rows[rid]["expiresAtEpoch"], before)
         app.UPLOADS.rows[rid]["expiresAtEpoch"] = 0; self.assertEqual(self.J(b.call("GET", "/uploads")[1])["shared"], [])
+
+    def test_workflow_routes_relay_as_the_signed_in_user_and_only_the_allowed_fields(self):
+        self.assertEqual(self.c.call("GET", "/workflows/queue")[0], 401); self.signin()
+        d = self.J(self.c.call("GET", "/workflows/definitions")[1]); self.assertEqual(d["definitions"][0]["keyField"], "payment_id")
+        self.assertEqual(self.J(self.c.call("GET", "/workflows/queue")[1])["count"], 1)
+        self.assertEqual(self.J(self.c.call("GET", "/workflows/run-1")[1])["run"]["stage"], "awaiting_approval")
+        s, raw, _ = self.c.call("POST", "/workflows/start", {"definition": "payment-exception", "key": 35, "user": "mallory", "initiator": "x"}); self.assertEqual(s, 201, raw)
+        self.assertEqual(Fake.wf_posts[-1], ("/app/workflows/start", {"definition": "payment-exception", "key": "35"}, "alice"))      # no field that names a user goes upstream
+        self.c.call("POST", "/workflows/run-1/approve", {"payloadHash": "ab" * 32, "user": "mallory"}); self.assertEqual(Fake.wf_posts[-1], ("/app/workflows/runs/run-1/approve", {"payloadHash": "ab" * 32}, "alice"))
+        self.c.call("POST", "/workflows/run-1/reject", {"reason": "  not verified  "}); self.assertEqual(Fake.wf_posts[-1], ("/app/workflows/runs/run-1/reject", {"reason": "not verified"}, "alice"))
+
+    def test_workflow_input_is_checked_before_anything_is_sent(self):
+        self.signin()
+        for path, body in (("/workflows/start", {}), ("/workflows/start", {"definition": "d"}), ("/workflows/start", {"definition": "d", "key": ""}), ("/workflows/start", {"definition": ["d"], "key": "1"}),
+                           ("/workflows/run-1/approve", {}), ("/workflows/run-1/approve", {"payloadHash": "not hex!"}), ("/workflows/run-1/approve", {"payloadHash": "ab"}),
+                           ("/workflows/run-1/reject", {}), ("/workflows/run-1/reject", {"reason": "   "}), ("/workflows/run-1/reject", {"reason": "x" * 1001})):
+            self.assertEqual(self.c.call("POST", path, body)[0], 400, (path, body))
+        self.assertEqual(Fake.wf_posts, [])
+        for bad in ("../x", "a/b", "run 1", "x" * 81): self.assertEqual(self.c.call("GET", "/workflows/" + bad.replace(" ", "%20"))[0], 404)
+        self.assertEqual(self.c.call("POST", "/workflows/run-1/delete", {})[0], 404)
+
+    def test_server_refusals_keep_their_codes_and_status(self):
+        self.signin()
+        for st, code, extra in ((403, "missing_grant", {"grant": "canApprove"}), (403, "initiator_cannot_approve", {}), (403, "non_human_identity", {}), (403, "already_approved", {}),
+                                (409, "payload_hash_mismatch", {}), (409, "not_awaiting_approval", {}), (502, "engine_unavailable", {})):
+            Fake.wf_refuse = (st, code, extra); s, raw, _ = self.c.call("POST", "/workflows/run-1/approve", {"payloadHash": "ab" * 32}); e = self.J(raw)["error"]
+            self.assertEqual((s, e["code"]), (st, code)); self.assertIn(code, e["message"])
+            if extra: self.assertEqual(e["detail"], extra)
+
+    def test_workflows_off_is_a_clear_404_and_a_lost_server_session_signs_out(self):
+        self.signin(); Fake.wf_off = True
+        for m, p, b in (("GET", "/workflows/definitions", None), ("GET", "/workflows/queue", None), ("POST", "/workflows/start", {"definition": "d", "key": "1"})):
+            s, raw, _ = self.c.call(m, p, b); self.assertEqual((s, self.J(raw)["error"]["code"]), (404, "workflows_off"))
+        Fake.wf_off = False; app.SESSIONS[next(iter(app.SESSIONS))].cookie = "gone"
+        self.assertEqual(self.c.call("GET", "/workflows/queue")[0], 401)
+
+    def test_approving_and_starting_are_never_tools(self):
+        ops = {o["name"]: o for o in tools.load_contract()["operations"]}
+        for n in ("approve_workflow", "reject_workflow", "start_workflow"): self.assertTrue(ops[n]["implemented"] and not ops[n]["tool"], n)
+        names = [t["name"] for t in tools.tool_list()]; self.assertFalse([n for n in names if "approve" in n or "reject" in n or "start" in n])
+
+    def test_workflow_posts_need_the_csrf_header(self):
+        self.signin(); c = http.client.HTTPConnection("127.0.0.1", self.layer.server_port)
+        c.request("POST", "/workflows/run-1/approve", json.dumps({"payloadHash": "ab" * 32}), {"Cookie": self.c.cookie, "Content-Type": "application/json"}); self.assertEqual(c.getresponse().status, 403); self.assertEqual(Fake.wf_posts, [])
 
     def test_share_needs_the_csrf_header(self):
         os.environ["AGENCY_UPLOAD_SHARING"] = "workspace"; self.signin(); rid = self.J(self.up()[1])["id"]

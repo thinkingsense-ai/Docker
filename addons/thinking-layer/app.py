@@ -116,6 +116,9 @@ class H(BaseHTTPRequestHandler):
             if u.path == "/conversations/get": return self.passthrough("/app/conversations/get?id=" + quote((q.get("id") or [""])[0], safe=""))
             if u.path == "/preferences": return self.preferences(None)
             if u.path == "/adapters": return self.list_adapters()
+            if u.path == "/workflows/definitions": return self.wf("GET", "/app/workflows/definitions")
+            if u.path == "/workflows/queue": return self.wf("GET", "/app/workflows/queue")
+            if u.path.startswith("/workflows/"): return self.wf_run(u.path[11:], "GET")
             if u.path == "/uploads": return self.my_uploads(None)
             if u.path.startswith("/uploads/"): return self.my_uploads(u.path[9:])
             if not WEB_DIST or not os.path.isdir(WEB_DIST) or u.path.startswith(("/api/", "/app/")): return self.err(404, "not_found", "No such route.")
@@ -143,6 +146,8 @@ class H(BaseHTTPRequestHandler):
             if u.path == "/preferences": return self.preferences(self.body())
             if u.path == "/uploads": return self.upload(parse_qs(u.query))
             if u.path.startswith("/uploads/") and u.path.endswith("/share"): return self.share(u.path[9:-6], self.body())
+            if u.path == "/workflows/start": return self.wf_start(self.body())
+            if u.path.startswith("/workflows/") and u.path.endswith(("/approve", "/reject")): return self.wf_run(u.path[11:].rsplit("/", 1)[0], u.path.rsplit("/", 1)[1], self.body())
             self.err(404, "not_found", "No such route.")
         except ValueError as e: self.err(400, "bad_request", str(e))
 
@@ -348,6 +353,42 @@ class H(BaseHTTPRequestHandler):
             ev.see(e)
             if e.get("step") == "done": out({"step": "evidence", "evidence": ev.build(time.time())})   # before the terminal frame, so done stays last
             out(e)
+
+    # -- workflows (the Server's workflow API, v0.10.19: commercial edition, off unless the operator enabled an engine) --------------------------------------
+    def wf(self, method, path, body=None):
+        """Relay one workflow call as the signed-in user. The Server enforces every rule (grants, initiator, hash, duplicates); the layer only reshapes errors and never names a user."""
+        t, s = self.need_session()
+        if not s: return
+        try: code, d = SERVER.json(method, path, s.cookie, body)
+        except Unauthorized: return self.lost(t)
+        except OSError: return self.err(502, "server_unreachable", "The OmniGate Server could not be reached.")
+        if code < 400: return self.send(code, d)
+        if not isinstance(d, dict) or not d.get("code"):
+            if code == 404: return self.err(404, "workflows_off", "Workflows are off on this Server: they need the commercial edition and an operator-enabled workflow engine.")
+            return self.err(code, "server_error", "The Server refused the request (HTTP %d)." % code)
+        detail = {k: d[k] for k in ("grant",) if k in d}
+        self.err(code, d["code"], str(d.get("error") or d["code"]), **detail)
+
+    RUN_ID = __import__("re").compile(r"^[A-Za-z0-9_-]{1,80}$")
+
+    def wf_run(self, rid, action, body=None):
+        if not self.RUN_ID.match(rid): return self.err(404, "unknown_run", "No such run.")
+        if action == "GET": return self.wf("GET", "/app/workflows/runs/" + rid)
+        if action == "approve":
+            h = (body or {}).get("payloadHash")
+            if not isinstance(h, str) or not 8 <= len(h) <= 128 or not all(c in "0123456789abcdefABCDEF" for c in h): return self.err(400, "bad_request", "payloadHash must be the run's hash (hex).")
+            return self.wf("POST", "/app/workflows/runs/%s/approve" % rid, {"payloadHash": h})
+        if action == "reject":
+            r = (body or {}).get("reason")
+            if not isinstance(r, str) or not r.strip() or len(r) > 1000: return self.err(400, "bad_request", "reason is required (up to 1000 characters).")
+            return self.wf("POST", "/app/workflows/runs/%s/reject" % rid, {"reason": r.strip()})
+        self.err(404, "not_found", "No such route.")
+
+    def wf_start(self, body):
+        d, k = (body or {}).get("definition"), (body or {}).get("key")
+        if isinstance(k, (int, float)) and not isinstance(k, bool): k = str(k)
+        if not isinstance(d, str) or not d.strip() or len(d) > 100 or not isinstance(k, str) or not k.strip() or len(k) > 200: return self.err(400, "bad_request", "definition and key are required.")
+        self.wf("POST", "/app/workflows/start", {"definition": d.strip(), "key": k.strip()})
 
     # -- decisions -----------------------------------------------------------------------------------------------------------------------------------------
     def decisions(self, run_id):

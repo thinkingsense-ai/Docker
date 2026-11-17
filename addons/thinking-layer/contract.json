@@ -124,15 +124,115 @@
       }
     },
     {
+      "name": "list_workflow_definitions",
+      "method": "GET",
+      "path": "/workflows/definitions",
+      "implemented": true,
+      "tool": true,
+      "description": "Workflow definitions the caller may start or approve (needs the Server's commercial edition and a workflow grant; answers 404 workflows_off otherwise).",
+      "input": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
       "name": "list_workflows",
       "method": "GET",
       "path": "/workflows/queue",
-      "implemented": false,
-      "tool": false,
-      "phase": 5,
-      "description": "Runs waiting for the caller. Approving is deliberately never a tool.",
+      "implemented": true,
+      "tool": true,
+      "description": "Runs waiting for the caller's approval. Read-only: approving is deliberately never a tool.",
       "input": {
-        "type": "object"
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "get_workflow_run",
+      "method": "GET",
+      "path": "/workflows/{id}",
+      "implemented": true,
+      "tool": true,
+      "description": "One workflow run: stage, rules, evidence, AI recommendation, approvals and the payload hash. Visible only if the Server lets the caller see it.",
+      "input": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "name": "start_workflow",
+      "method": "POST",
+      "path": "/workflows/start",
+      "implemented": true,
+      "tool": false,
+      "description": "Start a run for an entity key (needs canStartWorkflows). Not a tool: starting creates a record that people must then approve, so it stays a human action in a person's session.",
+      "input": {
+        "type": "object",
+        "required": [
+          "definition",
+          "key"
+        ],
+        "properties": {
+          "definition": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "name": "approve_workflow",
+      "method": "POST",
+      "path": "/workflows/{id}/approve",
+      "implemented": true,
+      "tool": false,
+      "description": "Approve a run, bound to its payload hash (needs canApprove; the Server refuses the initiator, non-human identities, a repeat and a stale hash). Never a tool.",
+      "input": {
+        "type": "object",
+        "required": [
+          "id",
+          "payloadHash"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "payloadHash": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "name": "reject_workflow",
+      "method": "POST",
+      "path": "/workflows/{id}/reject",
+      "implemented": true,
+      "tool": false,
+      "description": "Reject a run with a reason (needs canApprove, or be the initiator withdrawing). Never a tool.",
+      "input": {
+        "type": "object",
+        "required": [
+          "id",
+          "reason"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
       }
     }
   ],
