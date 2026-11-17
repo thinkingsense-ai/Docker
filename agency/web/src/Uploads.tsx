@@ -18,11 +18,31 @@ function AudioSummary({ r }: { r: Record<string, any> }) {
   )
 }
 
+function TableSummary({ r }: { r: Record<string, any> }) {
+  const cols: any[] = r.columns ?? [], rows: string[][] = r.preview ?? []
+  const range = (c: any) => (c.min !== undefined ? `${c.min} to ${c.max}` : c.top ? c.top.map((t: any[]) => `${t[0]} (${t[1]})`).join(', ') : '')
+  return (
+    <div className="tbl">
+      <p>{Number(r.rowsInFile).toLocaleString()} rows, {cols.length} columns{r.truncated ? ` (first ${Number(r.rowsRead).toLocaleString()} read)` : ''}</p>
+      <div className="scroll"><table className="small">
+        <caption className="muted">Column types are guesses from the values.</caption>
+        <thead><tr><th scope="col">Column</th><th scope="col">Type</th><th scope="col">Empty</th><th scope="col">Distinct</th><th scope="col">Range or common values</th></tr></thead>
+        <tbody>{cols.map((c) => <tr key={c.name}><th scope="row">{c.name}</th><td>{c.type}</td><td className="num">{c.nulls}</td><td className="num">{c.distinct}</td><td>{range(c)}</td></tr>)}</tbody>
+      </table></div>
+      {rows.length > 0 && <div className="scroll"><table className="small">
+        <caption className="muted">First {rows.length} rows</caption>
+        <thead><tr>{cols.map((c) => <th key={c.name} scope="col">{c.name}</th>)}</tr></thead>
+        <tbody>{rows.map((row, i) => <tr key={i}>{row.map((v, j) => <td key={j}>{v}</td>)}</tr>)}</tbody>
+      </table></div>}
+    </div>
+  )
+}
+
 function Card({ u, onAsk, onDelete }: { u: Upload; onAsk: (q: string) => void; onDelete: () => void }) {
   return (
     <article className="answer" aria-label={`Upload ${u.name}`}>
       <h2 className="q">{u.name} <span className="tag">{u.kind}</span>{u.nonCommercial && <span className="tag caution">non-commercial</span>}</h2>
-      {u.kind === 'audio' && u.result ? <AudioSummary r={u.result} /> : u.result && <pre className="small">{JSON.stringify(u.result, null, 2)}</pre>}
+      {u.kind === 'audio' && u.result ? <AudioSummary r={u.result} /> : u.kind === 'table' && u.result ? <TableSummary r={u.result} /> : u.result && <pre className="small">{JSON.stringify(u.result, null, 2)}</pre>}
       {u.notes.length > 0 && <ul className="warnings">{u.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>}
       {u.licence && <p className="muted small">{u.licence}</p>}
       {u.askPrompts.length > 0 && <div className="follow"><span className="muted small">Ask about this:</span>{u.askPrompts.map((p) => <button key={p} className="chip" onClick={() => onAsk(p)}>{p}</button>)}</div>}

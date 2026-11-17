@@ -1,0 +1,8 @@
+# Adds the table adapter and points the layer at it. From the repository root, together with a pack stack and the layer file:
+#   AGENCY_ADAPTERS=http://table-adapter:8091 docker compose --project-directory . -f <pack compose> -f addons/thinking-layer/docker-compose.layer.yml -f addons/table-adapter/docker-compose.table.yml up --build
+services:
+  table-adapter:
+    build: addons/table-adapter
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
