@@ -50,3 +50,10 @@ export function currencySymbol(name: string): string {
   const m = /(?:^|_)(usd|eur|gbp)(?:$|_)/i.exec(name)
   return m ? SYMBOL[m[1].toLowerCase()] : ''
 }
+
+/** The Server's "no data for that" reply ends with an example question in curly quotes ("For example: “How many agent actions are there?”."): returns it so it can be asked in one click. */
+export function declineExample(answer: string): string | null {
+  if (!/won't guess/i.test(answer)) return null
+  const m = /For example: “([^”]{5,300})”/.exec(answer)
+  return m ? m[1] : null
+}

@@ -48,3 +48,11 @@ describe('column names for people', () => {
   it('leaves ordinary words and mixed names alone', () => { expect(humanName('Supplier')).toBe('Supplier'); expect(humanName('total amount')).toBe('total amount') })
   it('finds a currency in a name', () => { expect(currencySymbol('total_usd')).toBe('$'); expect(currencySymbol('usd_amount')).toBe('$'); expect(currencySymbol('eur_total')).toBe('€'); expect(currencySymbol('accounts')).toBe(''); expect(currencySymbol('usdx')).toBe('') })
 })
+
+import { declineExample } from './format'
+describe('declineExample', () => {
+  it('finds the example in a Server decline', () => {
+    expect(declineExample("I don't have data about will, weather in this workspace, so I won't guess. If it lives in a source that isn't connected yet, an admin can add it. For example: “How many agent actions are there?”.")).toBe('How many agent actions are there?')
+  })
+  it('ignores ordinary answers', () => { expect(declineExample('For example: “Total is 5”')).toBeNull(); expect(declineExample("I won't guess.")).toBeNull() })
+})
