@@ -49,6 +49,19 @@ class Session:
     def __init__(self, username, cookie):
         self.username, self.cookie, self.workspace, self.last = username, cookie, "?", time.time()   # "?" = Server-side Workspace not known yet
         self.lock = threading.Lock()                                                               # one question at a time: the Workspace is session state on the Server
+        self.starters = {}                                                                         # pack id ("" = all data) -> (time, the Server's answer), read before the first question
+
+
+STARTER_TTL = 900
+
+
+def prefetch_starters(s):
+    """Once a Server session has a Workspace selected, /app/starter-questions answers with NOTHING (every Workspace, even all-data; app 0.10.21). Agency selects one on the first
+    question, so a page reloaded after it would show no approved questions. The starters are read here, right after sign-in while the session has none, and kept."""
+    for key in [""] + [p["id"] for p in catalogue.load()]:
+        try: code, d = SERVER.json("GET", "/app/starter-questions" + ("?pack=" + quote(key, safe="") if key else ""), s.cookie)
+        except (OSError, Unauthorized): return
+        if code == 200 and isinstance(d, dict) and d.get("items"): s.starters[key] = (time.time(), d)
 
 
 def new_session(username, cookie):
@@ -241,7 +254,16 @@ class H(BaseHTTPRequestHandler):
 
     def starters(self, pack):
         if pack and pack not in {p["id"] for p in catalogue.load()}: return self.err(404, "unknown_pack", "No such pack: %s" % pack)
-        self.passthrough("/app/starter-questions" + ("?pack=" + quote(pack, safe="") if pack else ""))
+        t, s = self.need_session()
+        if not s: return
+        key = pack or ""; cached = s.starters.get(key)
+        if cached and time.time() - cached[0] < STARTER_TTL: return self.send(200, dict(cached[1], cached=True))
+        try: code, d = SERVER.json("GET", "/app/starter-questions" + ("?pack=" + quote(pack, safe="") if pack else ""), s.cookie)
+        except Unauthorized: return self.lost(t)
+        except OSError: return self.err(502, "server_unreachable", "The OmniGate Server could not be reached.")
+        if code == 200 and isinstance(d, dict) and d.get("items"): s.starters[key] = (time.time(), d); return self.send(200, d)
+        if cached: return self.send(200, dict(cached[1], cached=True, stale=True))             # the Server answers nothing once a Workspace is selected: keep what it said before
+        self.send(code, d)
 
     def preferences(self, body):
         t, s = self.need_session()
@@ -266,6 +288,7 @@ class H(BaseHTTPRequestHandler):
         if not ok: return self.err(401, "login_refused", str(data.get("error") or "Sign-in was refused."))
         try: token = new_session(u, cookie)
         except RuntimeError: return self.err(503, "too_many_sessions", "Too many active sessions.")
+        threading.Thread(target=prefetch_starters, args=(SESSIONS[token],), daemon=True).start()
         self.send(200, {"success": True, "username": u}, [("Set-Cookie", "%s=%s; Path=/; HttpOnly; SameSite=Strict; Max-Age=%d" % (COOKIE, token, int(SESSION_SECONDS)))])
 
     def logout(self):
