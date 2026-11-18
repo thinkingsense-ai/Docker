@@ -4,6 +4,7 @@ import { api, ApiError } from './api'
 import { formatCell, isNumeric } from './format'
 import { RunCard } from './Workflows'
 import ResultView from './ResultView'
+import Feedback from './Feedback'
 import { reasonText, startable, type Definition, type Run } from './workflow'
 
 export interface WorkflowCtx { defs: Definition[]; canStart: boolean; me: string; onSignedOut: () => void; onChange: () => void }
@@ -48,6 +49,7 @@ export default function Answer({ a, question, onFollow, wf, onDetails, active }:
       {a.suggestedQuestions && a.suggestedQuestions.length > 0 && (
         <div className="follow"><span className="muted small">Follow up:</span>{a.suggestedQuestions.map((q) => <button key={q} className="chip" onClick={() => onFollow(q)}>{q}</button>)}</div>
       )}
+      <Feedback a={a} question={question} onSignedOut={wf?.onSignedOut} />
       {onDetails && (
         <p className="small prov">
           <span className="muted">{a.evidence ? `${a.evidence.origin === 'question_bank' ? 'Approved question' : a.evidence.origin === 'generated' ? 'Written for this question' : 'Answered'} · ${a.evidence.elapsedMs < 950 ? '<1' : (a.evidence.elapsedMs / 1000).toFixed(a.evidence.elapsedMs < 10000 ? 1 : 0)} s` : 'Answered'}</span>{' '}

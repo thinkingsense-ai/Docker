@@ -15,7 +15,7 @@ export interface Starter { question: string; origin: 'approved' | 'suggested' }
 export interface ConversationSummary { id: string; title: string; updatedAtMillis: number }
 export interface Turn { question: string; answer: string; sql?: string; columns: string[]; rows: (string | null)[][] }
 export interface Answer {
-  answer: string; columns: string[]; rows: (string | null)[][]; sql: string | null; conversationId: string | null
+  answer: string; columns: string[]; rows: (string | null)[][]; sql: string | null; conversationId: string | null; queryId?: string | null
   suggestedQuestions?: string[]; truncated?: boolean; evidence: Evidence | null
 }
 export interface Status {
@@ -69,6 +69,9 @@ export const api = {
   approveWorkflow: (id: string, payloadHash: string) => call<{ run: Run }>('POST', '/workflows/' + encodeURIComponent(id) + '/approve', { payloadHash }),
   rejectWorkflow: (id: string, reason: string) => call<{ run: Run }>('POST', '/workflows/' + encodeURIComponent(id) + '/reject', { reason }),
   decisions: (runId: string) => call<Decisions>('GET', '/decisions?runId=' + encodeURIComponent(runId)),
+  feedback: (b: { queryId: string; vote: 'UP' | 'DOWN'; category?: string; note?: string; question?: string; answer?: string }) => call<{ success: boolean }>('POST', '/feedback', b),
+  askAdmin: (message: string) => call<{ success: boolean }>('POST', '/help', { message }),
+  saveReusable: (question: string, sql: string) => call<{ success: boolean; alreadySaved?: boolean }>('POST', '/reusable', { question, sql }),
   setPreference: (pack: string | null) => call<{ pack?: string }>('POST', '/preferences', { pack }),
 }
 
@@ -111,7 +114,7 @@ export async function ask(question: string, workspaceId: string | null, conversa
   if (!f) throw new ApiError(502, 'no_answer', 'The Server ended the stream without an answer.')
   if (f.step === 'error') throw new ApiError(200, 'server_error', String(f.error ?? f.message ?? 'The Server could not answer.'))
   if (f.step !== 'done') throw new ApiError(200, f.step, f.step === 'approval_needed' ? 'This question needs an approval before it can run.' : 'The question was stopped.')
-  return { answer: f.answer ?? '', columns: f.columns ?? [], rows: f.rows ?? [], sql: f.sql ?? null, conversationId: f.conversationId ?? null,
+  return { answer: f.answer ?? '', columns: f.columns ?? [], rows: f.rows ?? [], sql: f.sql ?? null, conversationId: f.conversationId ?? null, queryId: f.queryId ?? null,
            suggestedQuestions: f.suggestedQuestions, truncated: f.truncated, evidence }
 }
 

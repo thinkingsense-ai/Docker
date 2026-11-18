@@ -160,6 +160,9 @@ class H(BaseHTTPRequestHandler):
             if u.path == "/uploads": return self.upload(parse_qs(u.query))
             if u.path.startswith("/uploads/") and u.path.endswith("/share"): return self.share(u.path[9:-6], self.body())
             if u.path == "/workflows/start": return self.wf_start(self.body())
+            if u.path == "/feedback": return self.feedback(self.body())
+            if u.path == "/help": return self.help_request(self.body())
+            if u.path == "/reusable": return self.reusable(self.body())
             if u.path.startswith("/workflows/") and u.path.endswith(("/approve", "/reject")): return self.wf_run(u.path[11:].rsplit("/", 1)[0], u.path.rsplit("/", 1)[1], self.body())
             self.err(404, "not_found", "No such route.")
         except ValueError as e: self.err(400, "bad_request", str(e))
@@ -386,7 +389,7 @@ class H(BaseHTTPRequestHandler):
             out(e)
 
     # -- workflows (the Server's workflow API, v0.10.19: commercial edition, off unless the operator enabled an engine) --------------------------------------
-    def wf(self, method, path, body=None):
+    def wf(self, method, path, body=None, off="Workflows are off on this Server: they need the commercial edition and an operator-enabled workflow engine."):
         """Relay one workflow call as the signed-in user. The Server enforces every rule (grants, initiator, hash, duplicates); the layer only reshapes errors and never names a user."""
         t, s = self.need_session()
         if not s: return
@@ -395,10 +398,60 @@ class H(BaseHTTPRequestHandler):
         except OSError: return self.err(502, "server_unreachable", "The OmniGate Server could not be reached.")
         if code < 400: return self.send(code, d)
         if not isinstance(d, dict) or not d.get("code"):
-            if code == 404: return self.err(404, "workflows_off", "Workflows are off on this Server: they need the commercial edition and an operator-enabled workflow engine.")
+            if code == 404: return self.err(404, "workflows_off", off)
             return self.err(code, "server_error", "The Server refused the request (HTTP %d)." % code)
         detail = {k: d[k] for k in ("grant",) if k in d}
         self.err(code, d["code"], str(d.get("error") or d["code"]), **detail)
+
+    # -- feedback, help, reusable questions: the Server's own routes, as the signed-in user. The Server records who; the layer only validates the shape. ----
+    CATEGORIES = ("WRONG_VALUE", "WRONG_DEFINITION", "MISSING_SOURCE", "OTHER")
+
+    def _text(self, b, key, limit, required=False):
+        v = (b or {}).get(key)
+        if v is None or v == "":
+            if required: raise ValueError("%s is required." % key)
+            return None
+        if not isinstance(v, str) or len(v) > limit: raise ValueError("%s must be text of up to %d characters." % (key, limit))
+        v = v.strip()
+        if not v and required: raise ValueError("%s is required." % key)
+        return v or None
+
+    def _post_simple(self, path, body, bad):
+        """Relay a POST whose Server answer is {success, error?}: a refusal inside a 200 is surfaced as an error, not hidden."""
+        t, s = self.need_session()
+        if not s: return
+        try: code, d = SERVER.json("POST", path, s.cookie, body)
+        except Unauthorized: return self.lost(t)
+        except OSError: return self.err(502, "server_unreachable", "The OmniGate Server could not be reached.")
+        if code == 404: return self.err(404, "not_available", "This Server does not offer that.")
+        if code >= 400 or not isinstance(d, dict): return self.err(code if code >= 400 else 502, "server_error", (d.get("error") if isinstance(d, dict) and isinstance(d.get("error"), str) else "The Server refused the request (HTTP %d)." % code))
+        if d.get("success") is False: return self.err(422, "refused", str(d.get("error") or "The Server did not accept it."))
+        self.send(200, {k: d[k] for k in ("success", "alreadySaved") if k in d})
+
+    def feedback(self, body):
+        try:
+            qid = self._text(body, "queryId", 200, True); vote = (body or {}).get("vote")
+            if vote not in ("UP", "DOWN"): raise ValueError("vote must be UP or DOWN.")
+            out = {"queryId": qid, "vote": vote}
+            cat = (body or {}).get("category")
+            if cat not in (None, ""):
+                if cat not in self.CATEGORIES: raise ValueError("category must be one of %s." % ", ".join(self.CATEGORIES))
+                out["category"] = cat
+            for k, n in (("note", 2000), ("question", 4000), ("answer", 8000)):
+                v = self._text(body, k, n)
+                if v: out[k] = v
+        except ValueError as e: return self.err(400, "bad_request", str(e))
+        self._post_simple("/app/feedback", out, None)
+
+    def help_request(self, body):
+        try: m = self._text(body, "message", 2000, True)
+        except ValueError as e: return self.err(400, "bad_request", str(e))
+        self._post_simple("/app/help-request", {"message": m}, None)
+
+    def reusable(self, body):
+        try: q = self._text(body, "question", 4000, True); sql = self._text(body, "sql", 20000, True)
+        except ValueError as e: return self.err(400, "bad_request", str(e))
+        self._post_simple("/app/questions/save-as-reusable", {"question": q, "sql": sql}, None)
 
     RUN_ID = __import__("re").compile(r"^[A-Za-z0-9_-]{1,80}$")
 

@@ -144,3 +144,10 @@ th { position: sticky; top: 0; background: var(--chip) } th.num, td.num { text-a
   .shell.with-pane { grid-template-columns: 220px minmax(0, 1fr) }
   .shell.with-pane .pane { position: fixed; right: 0; top: 52px; height: calc(100vh - 52px); width: min(360px, 92vw); max-height: none; box-shadow: -6px 0 24px rgba(0, 0, 0, .18); z-index: 5 }
 }
+
+/* feedback row under an answer */
+.fb { margin-top: .5rem }
+.fbrow { display: flex; flex-wrap: wrap; gap: .25rem 1rem }
+.fbrow .link[aria-pressed="true"] { font-weight: 600; text-decoration: none }
+.fbpanel { margin-top: .5rem; padding: .6rem .75rem; border: 1px solid var(--line); border-radius: 8px; display: grid; gap: .5rem }
+.fbpanel textarea { display: block; width: 100%; margin-top: .25rem; font: inherit; color: inherit; background: var(--bg, transparent); border: 1px solid var(--edge); border-radius: 6px; padding: .4rem }
