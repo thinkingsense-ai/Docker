@@ -16,6 +16,26 @@ STORAGECLASS_PATH = os.path.join(TASK_ROOT, "storageclass.yaml")
 KUBECONFIG_PATH = "/tmp/kubeconfig"
 
 
+KNOWN_PACKS = ("supply-chain", "manufacturing", "it-risk", "smithsonian", "bom", "treasury")
+
+
+def pack_selection(raw):
+    """The form's `DemoPacks` (a CloudFormation CommaDelimitedList: a list of strings, [""] when empty; a plain comma-separated string is accepted too) as the chart's `demoDatasets`
+    value, or None when nothing was chosen (then the single `demoDataset` rules). The form's Rules and the chart check the same things; this is the deployer's own check, so a
+    mistake fails here with a clear message instead of deep inside Helm."""
+    items = raw if isinstance(raw, (list, tuple)) else str(raw or "").split(",")
+    packs = []
+    for item in items:
+        p = str(item).strip()
+        if p and p not in packs: packs.append(p)
+    unknown = [p for p in packs if p not in KNOWN_PACKS]
+    if unknown:
+        raise ValueError("DemoPacks: %s is not a pack (choose from %s)" % (", ".join(repr(u) for u in unknown), ", ".join(KNOWN_PACKS)))
+    if "smithsonian" in packs and len(set(packs) | ({"supply-chain"} if "manufacturing" in packs else set())) != len(KNOWN_PACKS):
+        raise ValueError("DemoPacks: the Smithsonian pack is only deployed together with all six packs for now")
+    return "{" + ",".join(packs) + "}" if packs else None
+
+
 def send_response(event, context, status, reason="", data=None, physical_resource_id=None):
     response_body = json.dumps({
         "Status": status,
@@ -300,6 +320,7 @@ def lambda_handler(event, context):
         write_kubeconfig(cluster_name, region, KUBECONFIG_PATH)
 
         if request_type in ("Create", "Update"):
+            packs = pack_selection(props.get("DemoPacks"))          # first, so a mistake fails in seconds, not after the cluster add-ons
             ensure_storageclass()
             ensure_lbc(cluster_name, region, props["VpcId"], props["LbcRoleArn"])
             app_username = props.get("AppUsername", "demo")
@@ -311,6 +332,7 @@ def lambda_handler(event, context):
 
             set_values = dict(props.get("HelmSetValues", {}))
             set_values.setdefault("storageClassName", "gp3")
+            if packs: set_values["demoDatasets"] = packs             # wins over demoDataset in the chart; the Rules on the form stop both being used
             # Local admin login for the admin console, admin API and /mcp: without it those are open
             # to anyone who can reach the load balancer.
             set_sensitive_values = {
