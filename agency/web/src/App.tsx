@@ -69,7 +69,12 @@ export default function App() {
     api.conversations().then((c) => setConvs(c.conversations ?? [])).catch(() => {})
   }, [user, guard])
 
-  useEffect(() => { if (user) api.starters(pack).then((s) => setStarters(s.items ?? (s.questions ?? []).map((question) => ({ question, origin: 'suggested' as const })))).catch(() => setStarters([])) }, [user, pack])
+  useEffect(() => {
+    if (!user) return
+    let current = true                                  // a slower answer for an earlier choice must not replace the starters of the one now selected
+    api.starters(pack).then((s) => { if (current) setStarters(s.items ?? (s.questions ?? []).map((question) => ({ question, origin: 'suggested' as const }))) }).catch(() => { if (current) setStarters([]) })
+    return () => { current = false }
+  }, [user, pack])
   useEffect(() => { bottom.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }) }, [turns, steps])
 
   function choose(id: string | null) {
@@ -113,7 +118,8 @@ export default function App() {
         <h1>Agency</h1>
         <div className="who">
           <span title="Server reachability">{status ? (status.server.reachable ? 'Server reachable' : 'Server not reachable') : '…'}</span>
-          {wf && <span title={wf.note}>{wf.available ? 'Workflows available' : 'Workflows: commercial edition'}</span>}
+          {status?.edition && <span title="The edition the Server reports for this session">{status.edition === 'commercial' ? 'Commercial edition' : 'Free edition'}</span>}
+          {wf && <span title={wf.note}>{wf.available ? 'Workflows available' : 'Workflows off'}</span>}
           <span>{user}</span>
           <button className="link" onClick={() => api.logout().finally(signedOut)}>Sign out</button>
         </div>

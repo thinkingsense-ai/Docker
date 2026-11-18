@@ -64,7 +64,7 @@ IDs are stable so tests and PRs can cite them. "Server" means the OmniGate Serve
 - FR-25 A **queue** ("Waiting for me") and inline approval cards show facts, rules result, the AI recommendation (clamped to allowed actions) and the payload hash the approval is bound to.
 - FR-26 Approve/reject sends the hash; a mismatch (409) tells the user the facts changed and reloads the card. Segregation of duties is enforced by the Server (initiator, AI and non-human identities cannot approve; dual approval over the limit). Agency shows the Server's refusal code in plain words and never hides a button's reason when disabled.
 - FR-27 Dry-run is the default; a live write-back is a separate, labelled step and absent unless the deployment enables it.
-- FR-28 The decision record is viewable and its hash chain verifiable in the page.
+- FR-28 The decision record is viewable and its hash chain verifiable in the page. With app 0.10.20 and later the Server serves it (`GET /app/workflows/runs/{id}/decisions`, Server#112): the page shows the Server's chain verdict and that each entry's hash was recomputed in the layer; an older Server needs the shared decision file.
 
 ### 3.7 Claude as a front-end
 - FR-29 Every operation above exists as a tool (ask, list packs, upload, search, list/start/approve workflow, read decisions) with the same inputs and the same access checks. Approving is never a tool a model can call on its own behalf: the human approval step stays in a human session.

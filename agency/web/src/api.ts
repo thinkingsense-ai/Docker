@@ -20,7 +20,7 @@ export interface Answer {
 }
 export interface Status {
   layer: { version: string }; server: { reachable: boolean; llmConfigured?: boolean }
-  workflows?: { available: boolean; note: string }; decisions: { readable: boolean }; scopeHint: boolean
+  edition?: 'free' | 'commercial'; workflows?: { available: boolean; note: string }; decisions: { readable: boolean; via?: 'server' | 'file' | null }; scopeHint: boolean
 }
 
 export interface Adapter { id: string; title: string; kind?: string; enabled: boolean; reason?: string; nonCommercial?: boolean; licence?: string; notes?: string; maxBytes?: number; accepts: { extensions: string[]; mime: string[] } }

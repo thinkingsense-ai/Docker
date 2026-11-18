@@ -85,7 +85,8 @@ export function RunCard({ initial, me, onSignedOut, onChange }: Props) {
       <p className="small"><button className="link" onClick={showRecord}>Decision record</button>{decNote && <span className="muted"> {decNote}</span>}</p>
       {dec && (
         <div className="small" role="region" aria-label="Decision record">
-          <p>{dec.chainValid ? 'The hash chain verifies' : `The hash chain is BROKEN at entry ${dec.firstBadSeq}`} ({dec.totalEntries} entries in the file, {dec.entries.length} for this run).</p>
+          <p>{dec.chainValid ? 'The Server says the hash chain verifies' : `The Server says the hash chain is BROKEN at entry ${dec.firstBadSeq}`}{dec.totalEntries != null ? ` (${dec.totalEntries} entries in the file)` : ''}.{' '}
+            {dec.entriesVerified ? `Each of this run's ${dec.count} entries was recomputed here and matches its hash.` : 'An entry of this run does not match its hash: it was edited after it was written.'}</p>
           <ol>{dec.entries.map((e) => <li key={e.seq}>{new Date(e.ts).toLocaleTimeString()} {e.type.replace(/_/g, ' ')} by {e.actor || 'the system'}</li>)}</ol>
         </div>
       )}

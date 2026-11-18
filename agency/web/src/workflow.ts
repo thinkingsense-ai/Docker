@@ -10,7 +10,7 @@ export interface Run {
   createdAt?: string; updatedAt?: string; you: { canApprove: boolean; reason: string | null }
 }
 export interface DecisionEntry { seq: number; ts: string; type: string; actor: string; details: Record<string, unknown> }
-export interface Decisions { chainValid: boolean; firstBadSeq: number | null; totalEntries: number; entries: DecisionEntry[] }
+export interface Decisions { chainValid: boolean; firstBadSeq: number | null; totalEntries: number | null; count: number; source: 'server' | 'file'; entriesVerified: boolean; entries: DecisionEntry[] }
 
 export const TERMINAL = ['written_back', 'rejected']
 

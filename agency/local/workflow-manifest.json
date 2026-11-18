@@ -1,0 +1,14 @@
+{
+  "definitions": [
+    {
+      "id": "payment-exception", "title": "Payment exception", "entity": "payment", "keyField": "payment_id",
+      "approverGroup": "treasury", "approvers": [], "requiredApprovals": 2, "inputs": ["payment_id"],
+      "stub": {
+        "recommendation": {"action": "hold", "reason": "Invoice is already marked Paid."},
+        "rules": [{"name": "invoice_not_paid", "passed": false, "detail": "Invoice is Paid (canned by the local engine)"}, {"name": "within_limit", "passed": true, "detail": "Below the dual-approval limit (canned)"}],
+        "evidence": {"amount": "184200.00"},
+        "writeBackCall": "POST /payments/{key}/hold"
+      }
+    }
+  ]
+}
