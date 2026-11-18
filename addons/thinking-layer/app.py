@@ -2,7 +2,7 @@
 """Thinking layer, phase 2 skeleton (docs/agency-spec.md section 4): signs the user in to the OmniGate Server, lists packs, asks in a pack's Workspace and returns the
 answer with an evidence block, reads the decision record, and lists the MCP tools generated from contract.json. Standard library only.
 
-Environment: SERVER_URL (default http://omnigate:8080), PACKS_CATALOGUE, AGENCY_DECISION_FILE (the Server's OMNIGATE_WORKFLOW_DECISION_FILE, shared read-only),
+Environment: SERVER_URL (default http://omnigate:8080), PACKS_CATALOGUE, AGENCY_DECISION_FILE (only for a Server older than 0.10.20: its OMNIGATE_WORKFLOW_DECISION_FILE, shared read-only),
 AGENCY_SCOPE_HINT=on to add the pack's data sets to the question when no Workspace exists (off by default: its effect on accuracy is not measured),
 AGENCY_SESSION_HOURS (default 8), AGENCY_WEB_DIST (the built Agency UI, served at / when the folder exists), AGENCY_PREFS_FILE (per-user preferences, kept in
 memory when unset), AGENCY_ADAPTERS (comma-separated adapter base URLs), AGENCY_UPLOAD_HOURS (record lifetime, default 1), AGENCY_UPLOAD_SHARING (off, the default, or workspace), AGENCY_UPLOAD_ADMINS (comma-separated Server usernames who may unshare or delete shared records), PORT (default 8097).
@@ -294,8 +294,16 @@ class H(BaseHTTPRequestHandler):
         t, s = self.session()
         if s:
             try:
-                code, _ = SERVER.json("GET", "/app/workflows/definitions", s.cookie)
-                out["workflows"] = {"available": code == 200, "note": "" if code == 200 else "The workflow routes answer %d: the free edition, or workflows are off." % code}
+                code, w = SERVER.json("GET", "/app/whoami", s.cookie)
+                feats = w.get("features") if code == 200 and isinstance(w, dict) else None
+                if code == 200 and isinstance(w, dict) and w.get("edition"): out["edition"] = w["edition"]           # app 0.10.20 and later (Server#113)
+                if isinstance(feats, dict) and "workflows" in feats:             # the Server says so: no probing for a 404
+                    out["workflows"] = {"available": bool(feats["workflows"]), "note": "" if feats["workflows"] else "Workflows are off: they need the commercial edition and an enabled workflow engine."}
+                    out["decisions"] = {"readable": bool(feats["workflows"]), "via": "server" if feats["workflows"] else None}
+                else:                                                            # an older Server: probe, as before
+                    code, _ = SERVER.json("GET", "/app/workflows/definitions", s.cookie)
+                    out["workflows"] = {"available": code == 200, "note": "" if code == 200 else "The workflow routes answer %d: the free edition, or workflows are off." % code}
+                    if out["decisions"]["readable"]: out["decisions"]["via"] = "file"
             except (OSError, Unauthorized): pass
         self.send(200, out)
 
@@ -392,19 +400,30 @@ class H(BaseHTTPRequestHandler):
 
     # -- decisions -----------------------------------------------------------------------------------------------------------------------------------------
     def decisions(self, run_id):
+        """The decision record of one run. App 0.10.20 and later answer it themselves (GET /app/workflows/runs/{id}/decisions, Server#112) with the same access as reading the run; the layer
+        also recomputes every returned entry's hash. An older Server has no such route: then the shared decision file (AGENCY_DECISION_FILE) is read, as before."""
         t, s = self.need_session()
         if not s: return
-        path = os.environ.get("AGENCY_DECISION_FILE")
-        if not path: return self.err(501, "decisions_unavailable", "Set AGENCY_DECISION_FILE to the Server's decision file, shared read-only. The Server has no business-user route for the record.")
         if not run_id: return self.err(400, "bad_request", "runId is required.")
-        try: code, _ = SERVER.json("GET", "/app/workflows/runs/" + run_id.replace("/", ""), s.cookie)     # the Server decides whether this user may see the run
+        if not self.RUN_ID.match(run_id): return self.err(404, "run_not_visible", "That run is not visible to you.")
+        try: code, d = SERVER.json("GET", "/app/workflows/runs/%s/decisions" % run_id, s.cookie)
+        except Unauthorized: return self.lost(t)
+        except OSError: return self.err(502, "server_unreachable", "The OmniGate Server could not be reached.")
+        if code == 200 and isinstance(d, dict) and isinstance(d.get("entries"), list):
+            es = d["entries"]
+            return self.send(200, {"runId": run_id, "source": "server", "chainValid": bool(d.get("chainValid")), "firstBadSeq": d.get("chainBrokenAtSeq"), "totalEntries": None, "count": len(es),
+                                   "entriesVerified": all(decisions.entry_hash(e) == e.get("hash") for e in es), "entries": es})
+        if code in (401, 403) or (code == 404 and isinstance(d, dict) and d.get("code") == "unknown_run"): return self.err(403 if code in (401, 403) else 404, "run_not_visible", "That run is not visible to you.")
+        path = os.environ.get("AGENCY_DECISION_FILE")                          # no such route (an older Server, or workflows off): the file, if one is shared
+        if not path: return self.err(501, "decisions_unavailable", "This Server does not serve the decision record (it is older than 0.10.20): set AGENCY_DECISION_FILE to its decision file, shared read-only.")
+        try: code, _ = SERVER.json("GET", "/app/workflows/runs/" + run_id, s.cookie)     # the Server decides whether this user may see the run
         except Unauthorized: return self.lost(t)
         except OSError: return self.err(502, "server_unreachable", "The OmniGate Server could not be reached.")
         if code != 200: return self.err(403 if code in (401, 403) else 404, "run_not_visible", "That run is not visible to you.")
         try: es = decisions.read(path)
         except OSError: return self.err(502, "decisions_unreadable", "The decision file could not be read.")
-        ok, bad = decisions.verify(es)
-        self.send(200, {"runId": run_id, "chainValid": ok, "firstBadSeq": bad, "totalEntries": len(es), "entries": [e for e in es if e.get("runId") == run_id]})
+        ok, bad = decisions.verify(es); mine = [e for e in es if e.get("runId") == run_id]
+        self.send(200, {"runId": run_id, "source": "file", "chainValid": ok, "firstBadSeq": bad, "totalEntries": len(es), "count": len(mine), "entriesVerified": all(decisions.entry_hash(e) == e.get("hash") for e in mine), "entries": mine})
 
 
 def main():

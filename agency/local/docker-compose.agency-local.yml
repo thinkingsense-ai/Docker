@@ -1,0 +1,16 @@
+# Agency on this machine, for designing the user experience. Added on top of the all-packs stack, the thinking layer and the three adapters by up.sh:
+#   docker compose -p agency-local -f docker-compose.yml -f demos/all-packs/docker-compose.packs.yml -f addons/thinking-layer/docker-compose.layer.yml \
+#     -f addons/table-adapter/docker-compose.table.yml -f addons/document-adapter/docker-compose.document.yml -f addons/image-adapter/docker-compose.image.yml \
+#     -f agency/local/docker-compose.agency-local.yml up --build -d
+# LOCAL ONLY: fixed demo logins in a public repo, nothing here is meant to be reachable beyond this machine.
+services:
+  omnigate:
+    ports: !override
+      - "8080:8080"                                  # Ask, for comparison; the base file publishes more ports than Agency needs and one of them is often taken
+    environment:
+      # curator and public are the all-packs logins; alice, bob and carol (password: demo) exist to try uploads, sharing and approvals as different people.
+      OMNIGATE_APP_USERS: "curator:FWpGgbhhJGIzH6L2LzDgxA==:3DGHpcuM7Wm4qFb51Kraqshrb0cIJquigmGiM9waIw4=:staff:role=staff;public:095i6OACFonQSBaYZ34ahg==:0hJlOfamKLS2t+cnZjJaEcKyr6GH1CLbW+aKbJzToOk=::cc0_filter=true|sensitive_filter=false;alice:lJX+xXgLcPmnjyXStA9VQQ==:HdoV/jHar1OSBbnTk8Iu8fbLcoBGFJ/Qe83zERd4Mac=::;bob:lJX+xXgLcPmnjyXStA9VQQ==:HdoV/jHar1OSBbnTk8Iu8fbLcoBGFJ/Qe83zERd4Mac=::;carol:lJX+xXgLcPmnjyXStA9VQQ==:HdoV/jHar1OSBbnTk8Iu8fbLcoBGFJ/Qe83zERd4Mac=::"
+  thinking-layer:
+    environment:
+      AGENCY_ADAPTERS: http://table-adapter:8091,http://document-adapter:8092,http://image-adapter:8093
+      AGENCY_UPLOAD_SHARING: workspace

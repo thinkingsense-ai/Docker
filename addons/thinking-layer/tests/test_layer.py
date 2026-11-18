@@ -6,7 +6,7 @@ import adapters, app, decisions, tools, uploads
 from upstream import Upstream
 
 class Fake:
-    namespaces = [{"id": "treasury", "name": "Treasury"}]; packs = [{"id": "bom"}]; ask_posts = []; ns_posts = []; ask_status = 200; can_upload = True; user_ns = {}; wf_off = False; wf_refuse = None; wf_posts = []
+    namespaces = [{"id": "treasury", "name": "Treasury"}]; packs = [{"id": "bom"}]; ask_posts = []; ns_posts = []; ask_status = 200; can_upload = True; user_ns = {}; wf_off = False; wf_refuse = None; wf_posts = []; decisions_route = False; edition = None
 
 class FakeServer(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
@@ -25,7 +25,7 @@ class FakeServer(BaseHTTPRequestHandler):
         p = self.path
         if p == "/app/public-config": return self._j(200, {"llmConfigured": True})
         if not self.authed(): return self._j(401, {"error": "not logged in"})
-        if p == "/app/whoami": return self._j(200, {"username": self.user(), "canSeeSql": True, "canUploadFiles": Fake.can_upload})
+        if p == "/app/whoami": return self._j(200, dict({"username": self.user(), "canSeeSql": True, "canUploadFiles": Fake.can_upload}, **({"edition": Fake.edition, "features": {"workflows": not Fake.wf_off}} if Fake.edition else {})))
         if p == "/app/namespaces": return self._j(200, {"success": True, "namespaces": Fake.user_ns.get(self.user(), Fake.namespaces)})
         if p.startswith("/app/starter-questions"): return self._j(200, {"success": True, "packs": Fake.packs, "items": [{"question": "q?", "origin": "approved"}], "asked": p})
         if p == "/app/conversations": return self._j(200, {"conversations": [{"id": "c1", "title": "T", "updatedAtMillis": 1}]})
@@ -34,6 +34,11 @@ class FakeServer(BaseHTTPRequestHandler):
         if p == "/app/workflows/definitions": return self._j(200, {"definitions": [{"id": "payment-exception", "title": "Payment exception", "keyField": "payment_id", "requiredApprovals": 2}]})
         if p == "/app/workflows/queue": return self._j(200, {"runs": [{"id": "run-1", "stage": "awaiting_approval"}], "count": 1})
         if p == "/app/workflows/runs/run-1": return self._j(200, {"run": {"id": "run-1", "stage": "awaiting_approval", "payloadHash": "ab" * 32, "you": {"canApprove": True, "reason": None}}})
+        if p.startswith("/app/workflows/runs/") and p.endswith("/decisions") and Fake.decisions_route:
+            rid = p.split("/")[4]
+            if rid != "run-1": return self._j(404, {"success": False, "error": "No such run", "code": "unknown_run"})
+            return self._j(200, Fake.decisions_body)
+        if p.startswith("/app/workflows/runs/") and p.endswith("/decisions"): return self._j(404, {})           # an older Server: no such route
         if p.startswith("/app/workflows/runs/"): return self._j(404, {"success": False, "error": "No such run", "code": "unknown_run"})
         return self._j(404, {})
     def do_POST(self):
@@ -97,7 +102,7 @@ class LayerTests(unittest.TestCase):
     def tearDownClass(cls): cls.fake.shutdown(); cls.adapter.shutdown(); cls.layer.shutdown()
     def setUp(self):
         Fake.namespaces = [{"id": "treasury", "name": "Treasury"}]; Fake.packs = [{"id": "bom"}]; Fake.ask_posts = []; Fake.ns_posts = []; Fake.ask_status = 200
-        Fake.can_upload = True; Fake.user_ns = {}; Fake.wf_off = False; Fake.wf_refuse = None; Fake.wf_posts = []; os.environ.pop("AGENCY_UPLOAD_SHARING", None); os.environ.pop("AGENCY_UPLOAD_ADMINS", None); FakeAdapter.ingests = []; FakeAdapter.fail = None
+        Fake.can_upload = True; Fake.user_ns = {}; Fake.wf_off = False; Fake.wf_refuse = None; Fake.wf_posts = []; Fake.decisions_route = False; Fake.edition = None; os.environ.pop("AGENCY_UPLOAD_SHARING", None); os.environ.pop("AGENCY_UPLOAD_ADMINS", None); FakeAdapter.ingests = []; FakeAdapter.fail = None
         app.ADAPTERS = adapters.Registry("http://127.0.0.1:%d" % self.adapter.server_port); app.UPLOADS = uploads.Store(1.0)
         app.SESSIONS.clear(); os.environ.pop("AGENCY_SCOPE_HINT", None); os.environ.pop("AGENCY_DECISION_FILE", None)
         self.c = Client(self.layer.server_port)
@@ -189,6 +194,33 @@ class LayerTests(unittest.TestCase):
         self.assertEqual(self.c.call("GET", "/decisions")[0], 400)
         os.environ["AGENCY_DECISION_FILE"] = self._decision_file(tamper=True)
         d = self.J(self.c.call("GET", "/decisions?runId=run-1")[1]); self.assertFalse(d["chainValid"]); self.assertEqual(d["firstBadSeq"], 2)
+
+    def _server_entries(self, tamper=False):
+        es = []; prev = ""
+        for i, typ in enumerate(("start", "recommendation", "approval"), 1):
+            e = {"seq": i * 2, "ts": "2026-11-18T00:00:0%dZ" % i, "runId": "run-1", "type": typ, "actor": "alice", "details": {"b": "2", "a": "1"}, "prevHash": prev}
+            e["hash"] = decisions.entry_hash(e); prev = e["hash"]; es.append(e)
+        if tamper: es[1]["details"]["a"] = "edited"
+        Fake.decisions_body = {"runId": "run-1", "entries": es, "count": len(es), "chainValid": True, "chainBrokenAtSeq": None}
+
+    def test_the_decision_record_comes_from_the_server_when_it_serves_it(self):
+        Fake.decisions_route = True; self._server_entries(); self.signin()
+        d = self.J(self.c.call("GET", "/decisions?runId=run-1")[1])
+        self.assertEqual((d["source"], d["chainValid"], d["entriesVerified"], d["count"], d["totalEntries"]), ("server", True, True, 3, None))
+        self.assertEqual(self.c.call("GET", "/decisions?runId=run-9")[0], 404); self.assertEqual(self.c.call("GET", "/decisions?runId=../x")[0], 404)
+        self._server_entries(tamper=True); d = self.J(self.c.call("GET", "/decisions?runId=run-1")[1])
+        self.assertFalse(d["entriesVerified"]); self.assertTrue(d["chainValid"])                                # the layer recomputed the hashes itself; the chain verdict stays the Server's
+
+    def test_an_older_server_falls_back_to_the_shared_file_and_says_so(self):
+        self.signin(); os.environ["AGENCY_DECISION_FILE"] = self._decision_file()
+        d = self.J(self.c.call("GET", "/decisions?runId=run-1")[1]); self.assertEqual((d["source"], d["entriesVerified"], d["count"]), ("file", True, 2))
+        del os.environ["AGENCY_DECISION_FILE"]; s, raw, _ = self.c.call("GET", "/decisions?runId=run-1"); self.assertEqual((s, self.J(raw)["error"]["code"]), (501, "decisions_unavailable")); self.assertIn("0.10.20", self.J(raw)["error"]["message"])
+
+    def test_status_takes_the_edition_and_workflow_availability_from_whoami_when_the_server_reports_them(self):
+        Fake.edition = "commercial"; self.signin(); d = self.J(self.c.call("GET", "/status")[1])
+        self.assertEqual((d["edition"], d["workflows"]["available"], d["decisions"]), ("commercial", True, {"readable": True, "via": "server"}))
+        Fake.edition = "free"; Fake.wf_off = True; d = self.J(self.c.call("GET", "/status")[1]); self.assertEqual((d["edition"], d["workflows"]["available"], d["decisions"]["readable"]), ("free", False, False))
+        Fake.edition = None; Fake.wf_off = False; d = self.J(self.c.call("GET", "/status")[1]); self.assertNotIn("edition", d); self.assertTrue(d["workflows"]["available"])           # an older Server: probed
 
     def test_starters_conversations_pass_through_and_need_sign_in(self):
         for path in ("/starters", "/conversations", "/conversations/get?id=c1", "/preferences"): self.assertEqual(self.c.call("GET", path)[0], 401, path)
