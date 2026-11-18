@@ -45,6 +45,7 @@ class T(unittest.TestCase):
 
     def test_transparency_and_animation(self):
         self.assertTrue(adapter.record(png(mode="RGBA", colour=(1, 2, 3, 0)), "t.png")["result"]["transparent"])
+        self.assertFalse(adapter.record(png(mode="RGBA", colour=(1, 2, 3, 255)), "o.png")["result"]["transparent"])      # an alpha channel with every pixel opaque is not a transparent picture
         b = io.BytesIO(); f = [Image.new("RGB", (40, 40), c) for c in ((255, 0, 0), (0, 255, 0), (0, 0, 255))]; f[0].save(b, "GIF", save_all=True, append_images=f[1:], duration=50)
         r = adapter.record(b.getvalue(), "a.gif"); self.assertEqual(r["result"]["frames"], 3); self.assertTrue(any("Animated" in n for n in r["notes"]))
 
