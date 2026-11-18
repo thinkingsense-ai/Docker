@@ -42,7 +42,7 @@ function DocSummary({ r }: { r: Record<string, any> }) {
   const heads: any[] = r.headings ?? [], terms: any[] = r.topTerms ?? []
   return (
     <div className="doc">
-      <p>{String(r.format).toUpperCase()}: {Number(r.words).toLocaleString()} words{r.format === 'pdf' ? `, ${r.pages} pages` : ''}, {r.chunks} passages of about 800 characters</p>
+      <p>{String(r.format).toUpperCase()}: {Number(r.words).toLocaleString()} words{r.format === 'pdf' ? `, ${r.pages} pages` : ''}, {r.chunks} {r.chunks === 1 ? 'passage' : 'passages'} of about 800 characters</p>
       {heads.length > 0 && <><p className="muted small">Headings</p><ul className="small">{heads.map((h, i) => <li key={i} style={{ marginLeft: (h.level - 1) * 14 }}>{h.text}</li>)}</ul></>}
       {terms.length > 0 && <p className="small"><span className="muted">Most frequent words: </span>{terms.map((t) => `${t[0]} (${t[1]})`).join(', ')}</p>}
       {r.preview && <pre className="small preview">{r.preview}</pre>}

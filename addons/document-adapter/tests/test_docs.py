@@ -44,7 +44,7 @@ class T(unittest.TestCase):
         md = b"# Supplier policy\n\nSuppliers must hold insurance. Insurance certificates expire yearly.\n\n## Audits\n\nAudits happen yearly; insurance is checked.\n"
         r = adapter.record(md, "p.md")["result"]
         self.assertEqual([h["text"] for h in r["headings"]], ["Supplier policy", "Audits"]); self.assertEqual(r["headings"][1]["level"], 2)
-        self.assertEqual(r["topTerms"][0][0], "insurance"); self.assertEqual(r["format"], "text"); self.assertGreaterEqual(r["chunks"], 1)
+        self.assertEqual(r["topTerms"][0][0], "insurance"); self.assertEqual(r["format"], "markdown"); self.assertGreaterEqual(r["chunks"], 1)
 
     def test_docx_text_and_heading_styles(self):
         r = adapter.record(docx(para("Contract", "Heading1") + para("The buyer pays within thirty days.") + para("Terms", "Heading2")), "c.docx")["result"]

@@ -21,7 +21,7 @@ def record(data, name):
     n = (name or "").lower()
     if n.endswith(".pdf") or data[:5] == b"%PDF-": doc, kind = docs.read_pdf(data), "pdf"
     elif n.endswith(".docx") or data[:2] == b"PK": doc, kind = docs.read_docx(data), "docx"
-    else: doc, kind = docs.read_plain(data, n), "text"
+    else: doc, kind = docs.read_plain(data, n), ("markdown" if n.endswith((".md", ".markdown")) else "text")
     d = docs.describe(doc); d.update(doc["extra"]); d["format"] = kind; d["name"] = name
     notes = ["The document was read and described only. It is not in any Server data source or search index, so questions about its text cannot be answered yet."]
     if d["words"] == 0 or (kind == "pdf" and d["words"] < 20 * max(d["pages"], 1)):

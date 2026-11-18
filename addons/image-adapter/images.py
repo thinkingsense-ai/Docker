@@ -57,6 +57,12 @@ def thumbnail(im):
     return "data:image/jpeg;base64," + base64.b64encode(b.getvalue()).decode()
 
 
+def has_transparency(im):
+    """True only when some pixel is actually see-through: an RGBA file that is fully opaque (a canvas export, say) has an alpha channel but no transparent area."""
+    if im.mode in ("RGBA", "LA"): return im.getchannel("A").getextrema()[0] < 255
+    return "transparency" in im.info
+
+
 def describe(data):
     try:
         im = Image.open(io.BytesIO(data), formats=FORMATS)
@@ -69,6 +75,6 @@ def describe(data):
     except Image.DecompressionBombError: raise ImageError("The picture is too large to read safely.")
     except (UnidentifiedImageError, OSError, SyntaxError, ValueError): raise ImageError("That is not a JPEG, PNG, GIF or WebP picture this adapter can read.")
     r = {"format": fmt, "width": w, "height": h, "megapixels": round(w * h / 1e6, 2), "frames": frames,
-         "transparent": im.mode in ("RGBA", "LA") or "transparency" in im.info, "exif": ex, "gps": gps,
+         "transparent": has_transparency(im), "exif": ex, "gps": gps,
          "colours": colours(im), "thumbnail": thumbnail(im)}
     return r
