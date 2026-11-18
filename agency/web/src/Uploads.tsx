@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, uploadFile, type Adapter, type Upload } from './api'
 
-interface Props { workspaceId: string | null; onAsk: (q: string) => void; onSignedOut: () => void }
+interface Props { workspaceId: string | null; onAsk: (q: string, uploadId?: string, uploadName?: string) => void; onSignedOut: () => void }
 
 const pct = (n: number) => Math.round(n * 100) + '%'
 
@@ -64,7 +64,7 @@ function ImageSummary({ r }: { r: Record<string, any> }) {
   )
 }
 
-function Card({ u, onAsk, onDelete, canShare, onShare }: { u: Upload; onAsk: (q: string) => void; onDelete?: () => void; canShare?: boolean; onShare?: (on: boolean) => void }) {
+function Card({ u, onAsk, onDelete, canShare, onShare }: { u: Upload; onAsk: (q: string, uploadId?: string, uploadName?: string) => void; onDelete?: () => void; canShare?: boolean; onShare?: (on: boolean) => void }) {
   const [asking, setAsking] = useState(false)
   const mine = u.mine !== false
   return (
@@ -73,7 +73,7 @@ function Card({ u, onAsk, onDelete, canShare, onShare }: { u: Upload; onAsk: (q:
       {u.kind === 'audio' && u.result ? <AudioSummary r={u.result} /> : u.kind === 'table' && u.result ? <TableSummary r={u.result} /> : u.kind === 'document' && u.result ? <DocSummary r={u.result} /> : u.kind === 'image' && u.result ? <ImageSummary r={u.result} /> : u.result && <pre className="small">{JSON.stringify(u.result, null, 2)}</pre>}
       {u.notes.length > 0 && <ul className="warnings">{u.notes.map((n, i) => <li key={i}>{n}</li>)}</ul>}
       {u.licence && <p className="muted small">{u.licence}</p>}
-      {u.askPrompts.length > 0 && <div className="follow"><span className="muted small">Ask about this:</span>{u.askPrompts.map((p) => <button key={p} className="chip" onClick={() => onAsk(p)}>{p}</button>)}</div>}
+      {u.askPrompts.length > 0 && <div className="follow"><span className="muted small">Ask about this{u.askable && u.askableUntil ? ` (until ${new Date(u.askableUntil).toLocaleTimeString()})` : ''}:</span>{u.askPrompts.map((p) => <button key={p} className="chip" onClick={() => onAsk(p, u.askable ? u.id : undefined, u.name)}>{p}</button>)}</div>}
       {!mine && <p className="muted small">Shared by {u.sharedBy}{u.sharedAt ? ` at ${new Date(u.sharedAt).toLocaleTimeString()}` : ''} with everyone who can use {u.workspaceId}. Read-only. Any location in the file is hidden from you. Expires {new Date(u.expiresAt).toLocaleTimeString()}.</p>}
       {mine && <p className="muted small">{u.shared ? `Shared with everyone who can use ${u.workspaceId}.` : 'Private to you.'} The file was not kept; this record expires {new Date(u.expiresAt).toLocaleTimeString()}.{' '}
         {onDelete && <button className="link" onClick={onDelete}>Delete now</button>}</p>}
