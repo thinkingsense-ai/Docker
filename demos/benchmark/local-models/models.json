@@ -1,0 +1,117 @@
+{
+ "_note": "Every entry is pinned: a repository commit, and a SHA-256 for each file (from the Hugging Face tree API on 2026-11-19). fetch.py refuses a file whose hash differs, and refuses an entry with no licence. 'licence' is the SPDX tag on the model repository; the licence of the BASE model (see 'base') is what counts for redistribution, and counsel has not yet read every licence page (Gemma 4's is open: see the write-up).",
+ "models": {
+  "qwen3-4b-q4km": {
+   "repo": "unsloth/Qwen3-4B-Instruct-2507-GGUF",
+   "revision": "a06e946bb6b655725eafa393f4a9745d460374c9",
+   "base": "Qwen/Qwen3-4B-Instruct-2507",
+   "licence": "apache-2.0",
+   "source": "third-party conversion (Unsloth); the same file the quick-start sidecar uses",
+   "files": {
+    "main": {
+     "name": "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+     "sha256": "3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597",
+     "approx_gb": 2.5
+    }
+   },
+   "context": 8192,
+   "thinking": "none (instruct model, no thinking mode)",
+   "sampling": {
+    "temperature": 0.2,
+    "top_p": 0.9
+   },
+   "modalities": [
+    "text"
+   ],
+   "prompt_adapter": "none"
+  },
+  "gemma4-e4b-q4": {
+   "repo": "ggml-org/gemma-4-E4B-it-GGUF",
+   "revision": "8903cb408c7df39cde2ed15fac397e6d7be92951",
+   "base": "google/gemma-4-E4B-it",
+   "licence": "apache-2.0",
+   "source": "llama.cpp project's own conversion",
+   "files": {
+    "main": {
+     "name": "gemma-4-E4B-it-Q4_0.gguf",
+     "sha256": "a555b900214b477d8880e7832e0b8925e139b0159640036b09fe472b6f2097f2",
+     "approx_gb": 4.59
+    },
+    "mmproj": {
+     "name": "mmproj-gemma-4-E4B-it-Q8_0.gguf",
+     "sha256": "9257f21a0f5358204b4a612cff83fad2e56412f4f607f0049331ce60c0cf9d34",
+     "approx_gb": 0.56
+    }
+   },
+   "context": 8192,
+   "thinking": "off unless the system prompt starts with the <|think|> token; when on it spends output tokens and the app's 256-2048 token limits can cut it off",
+   "sampling": {
+    "temperature": 0.2,
+    "top_p": 0.95,
+    "top_k": 64
+   },
+   "modalities": [
+    "text",
+    "image",
+    "audio"
+   ],
+   "prompt_adapter": "none"
+  },
+  "gemma4-26b-a4b-q4": {
+   "repo": "ggml-org/gemma-4-26B-A4B-it-GGUF",
+   "revision": "1ca99aae748b4b01f609fa51eb23682ee5f00b85",
+   "base": "google/gemma-4-26B-A4B-it",
+   "licence": "apache-2.0",
+   "source": "llama.cpp project's own conversion",
+   "files": {
+    "main": {
+     "name": "gemma-4-26B-A4B-it-Q4_0.gguf",
+     "sha256": "d208665ab1cd3a69f7a9a4bc59430e8448c8093d9b06334f566ac59d6d504a03",
+     "approx_gb": 14.62
+    },
+    "mmproj": {
+     "name": "mmproj-gemma-4-26B-A4B-it-Q8_0.gguf",
+     "sha256": "cc4e855736da450bf1e162d8cccfe0ad685727d0c9e04ef7dd8d884f3121039b",
+     "approx_gb": 0.81
+    }
+   },
+   "context": 8192,
+   "thinking": "as gemma4-e4b-q4",
+   "sampling": {
+    "temperature": 0.2,
+    "top_p": 0.95,
+    "top_k": 64
+   },
+   "modalities": [
+    "text",
+    "image",
+    "video"
+   ],
+   "prompt_adapter": "none"
+  },
+  "arctic-text2sql-7b-q4km": {
+   "repo": "mradermacher/Arctic-Text2SQL-R1-7B-GGUF",
+   "revision": "8e1a51188952afa8021bce6c8b3e5b495b3e85cd",
+   "base": "Snowflake/Arctic-Text2SQL-R1-7B",
+   "licence": "apache-2.0",
+   "source": "third-party community conversion (mradermacher); weights are not Snowflake's own GGUF",
+   "files": {
+    "main": {
+     "name": "Arctic-Text2SQL-R1-7B.Q4_K_M.gguf",
+     "sha256": "9c005244e3ab7fada2c53a9511999f4d22fbbd4f76a4416416a6d41d82702255",
+     "approx_gb": 4.68
+    }
+   },
+   "context": 8192,
+   "thinking": "reasoning model: replies carry reasoning before the SQL; check the app extracts the SQL (see README, prompt adapters)",
+   "sampling": {
+    "temperature": 0.2,
+    "top_p": 0.95
+   },
+   "modalities": [
+    "text"
+   ],
+   "prompt_adapter": "NOT BUILT: trained on SQLite CREATE TABLE prompts; the first run uses the app's own prompt and records the score as 'unadapted'"
+  }
+ }
+}

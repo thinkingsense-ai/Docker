@@ -1,0 +1,95 @@
+{
+ "_note": "A shape is a named hardware target plus the llama-server settings that suit it. 'oci' is the OCI shape and size to launch (needs quota: see the write-up). Memory and speed are MEASURED by the harness and recorded per run; none are promised here. llama.cpp flag names are checked against the installed binary by serve.py --check-flags. 'image' tags must be replaced by digests before a result is quoted.",
+ "image": {
+  "cpu": "ghcr.io/ggml-org/llama.cpp:server",
+  "cuda": "ghcr.io/ggml-org/llama.cpp:server-cuda"
+ },
+ "shapes": {
+  "arm-cpu-16": {
+   "kind": "cpu",
+   "arch": "arm64",
+   "oci": {
+    "shape": "VM.Standard.A4.Flex",
+    "ocpus": 16,
+    "memory_gb": 128,
+    "boot_gb": 200,
+    "shape_listed_in_tenancy": true
+   },
+   "threads": 16,
+   "gpu_layers": 0,
+   "parallel": 1,
+   "flash_attn": false
+  },
+  "x86-cpu-16": {
+   "kind": "cpu",
+   "arch": "amd64",
+   "oci": {
+    "shape": "VM.Standard.E6.Flex",
+    "ocpus": 16,
+    "memory_gb": 128,
+    "boot_gb": 200,
+    "shape_listed_in_tenancy": true
+   },
+   "threads": 16,
+   "gpu_layers": 0,
+   "parallel": 1,
+   "flash_attn": false
+  },
+  "a10-1": {
+   "kind": "cuda",
+   "arch": "amd64",
+   "oci": {
+    "shape": "VM.GPU.A10.1",
+    "ocpus": null,
+    "memory_gb": null,
+    "boot_gb": 200,
+    "shape_listed_in_tenancy": false
+   },
+   "threads": 8,
+   "gpu_layers": 99,
+   "parallel": 2,
+   "flash_attn": true
+  },
+  "a10-2": {
+   "kind": "cuda",
+   "arch": "amd64",
+   "oci": {
+    "shape": "VM.GPU.A10.2",
+    "ocpus": null,
+    "memory_gb": null,
+    "boot_gb": 300,
+    "shape_listed_in_tenancy": false
+   },
+   "threads": 8,
+   "gpu_layers": 99,
+   "parallel": 2,
+   "flash_attn": true,
+   "split_mode": "layer"
+  },
+  "l40s-4": {
+   "kind": "cuda",
+   "arch": "amd64",
+   "oci": {
+    "shape": "BM.GPU.L40S.4",
+    "ocpus": null,
+    "memory_gb": null,
+    "boot_gb": 500,
+    "shape_listed_in_tenancy": false
+   },
+   "threads": 16,
+   "gpu_layers": 99,
+   "parallel": 4,
+   "flash_attn": true,
+   "split_mode": "layer"
+  },
+  "local-docker": {
+   "kind": "cpu",
+   "arch": "any",
+   "oci": null,
+   "threads": 4,
+   "gpu_layers": 0,
+   "parallel": 1,
+   "flash_attn": false
+  }
+ }
+}

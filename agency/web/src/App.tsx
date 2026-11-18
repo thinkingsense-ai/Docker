@@ -131,7 +131,7 @@ export default function App() {
     try {
       const c = await api.conversation(id)
       if (!c.success) return setErr(c.error ?? 'That conversation could not be opened.')
-      setConvId(id); setDetailIdx(null); setChanged('Opened a past conversation. Its answers show the saved text and rows; evidence is only kept for answers asked now.')
+      setView('ask'); setConvId(id); setDetailIdx(null); setChanged('Opened a past conversation. Its answers show the saved text and rows; evidence is only kept for answers asked now.')
       setTurns((c.turns ?? []).map((t) => ({ question: t.question, answer: { answer: t.answer, columns: t.columns, rows: t.rows, sql: t.sql ?? null, conversationId: id, evidence: null } })))
     } catch (e) { guard(e) }
   }
@@ -155,7 +155,7 @@ export default function App() {
         </div>
       </header>
       <nav aria-label="Conversations">
-        <button className="primary" onClick={() => { setConvId(null); setFile(null); setTurns([]); setDetailIdx(null); setChanged('New conversation.') }}>New conversation</button>
+        <button className="primary" onClick={() => { setView('ask'); setConvId(null); setFile(null); setTurns([]); setDetailIdx(null); setChanged('New conversation.') }}>New conversation</button>
         <h2>Recent</h2>
         {convs.length === 0 && <p className="muted small">No conversations yet.</p>}
         <ul>{convs.map((c) => <li key={c.id}><button className={'link' + (c.id === convId ? ' on' : '')} title={c.title || 'Untitled'} onClick={() => open(c.id)}><span className="t">{c.title || 'Untitled'}</span>{c.updatedAtMillis ? <span className="when">{new Date(c.updatedAtMillis).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span> : null}</button></li>)}</ul>
