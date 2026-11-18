@@ -4,6 +4,7 @@ import Login from './Login'
 import PackCards from './PackCards'
 import Answer from './Answer'
 import Uploads from './Uploads'
+import StarterTiles from './StarterTiles'
 import { Queue } from './Workflows'
 import type { Definition } from './workflow'
 
@@ -25,6 +26,7 @@ export default function App() {
   const [packNote, setPackNote] = useState<string | null>(null)
   const [pack, setPack] = useState<string | null>(null)
   const [changed, setChanged] = useState('')
+  const [showDomains, setShowDomains] = useState(false)          // the full domain cards: on request, not taking the first screen
   const [starters, setStarters] = useState<Starter[]>([])
   const [convs, setConvs] = useState<ConversationSummary[]>([])
   const [convId, setConvId] = useState<string | null>(null)
@@ -142,16 +144,13 @@ export default function App() {
         {view === 'approvals' && <Queue me={user} onSignedOut={signedOut} onCount={setWaiting} />}
         {view === 'ask' && <>
         {packNote && <p className="muted small">{packNote}</p>}
-        <PackCards packs={packs} selected={pack} onSelect={choose} compact={turns.length > 0 || busy} />
-        <p className="muted small" role="status" aria-live="polite">{changed}</p>
-        {turns.length === 0 && !busy && (
-          <section aria-label="Starter questions">
-            <h2>Try a question</h2>
-            {starters.length === 0 ? <p className="muted">No starter questions for this choice.</p> :
-              <ul className="starters">{starters.slice(0, 12).map((s) => (
-                <li key={s.question}><button className="chip" onClick={() => send(s.question)}>{s.question}<span className={'tag ' + s.origin}>{s.origin}</span></button></li>))}</ul>}
-          </section>
-        )}
+        <PackCards packs={packs} selected={pack} onSelect={choose} compact={!showDomains || turns.length > 0 || busy} />
+        <p className="muted small domain-line" role="status" aria-live="polite">
+          {packs.find((p) => p.id === pack)?.summary ?? (pack ? '' : 'Every source this Server can reach. Choose a domain for better answers.')}
+          {turns.length === 0 && !busy && packs.length > 0 && <> <button className="link" aria-expanded={showDomains} onClick={() => setShowDomains(!showDomains)}>{showDomains ? 'Hide domain details' : 'Compare domains'}</button></>}
+          <span className="sr">{changed}</span>
+        </p>
+        {turns.length === 0 && !busy && <StarterTiles key={pack ?? 'all'} items={starters} label={pack ? `Approved questions: ${packs.find((p) => p.id === pack)?.title ?? pack}` : 'Approved questions'} onPick={send} />}
         <Uploads workspaceId={pack} onAsk={send} onSignedOut={signedOut} />
         {turns.map((t, i) => <Answer key={i} a={t.answer} question={t.question} onFollow={send} wf={defs.length ? { defs, canStart: grants.canStart, me: user, onSignedOut: signedOut, onChange: refreshWaiting } : undefined} />)}
         {busy && (
