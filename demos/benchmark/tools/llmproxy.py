@@ -21,5 +21,11 @@ class H(BaseHTTPRequestHandler):
         with LOCK, open(OUT, "a") as f:
             f.write(json.dumps({"t": time.time(), "secs": round(time.time() - t0, 2), "status": code, "request": rq, "response": rs}) + "\n")
         self.send_response(code); self.send_header("Content-Type", "application/json"); self.send_header("Content-Length", str(len(data))); self.end_headers(); self.wfile.write(data)
+    def do_GET(self):   # the app probes a "remote llama-server" with GET /health at boot and treats it as absent if that fails; forwarded, never logged
+        try:
+            with urllib.request.urlopen(urllib.request.Request(UP + self.path, method="GET"), timeout=30) as r: code, data = r.status, r.read()
+        except urllib.error.HTTPError as e: code, data = e.code, e.read()
+        except Exception as e: code, data = 502, json.dumps({"error": str(e)}).encode()
+        self.send_response(code); self.send_header("Content-Type", "application/json"); self.send_header("Content-Length", str(len(data))); self.end_headers(); self.wfile.write(data)
     def log_message(self, *a): pass
 ThreadingHTTPServer(("0.0.0.0", PORT), H).serve_forever()

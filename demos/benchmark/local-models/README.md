@@ -72,6 +72,8 @@ Checked: the 23 unit tests; a real download from Hugging Face with the CDN redir
 the Server's name for the confidence field in its answer events (`bench_run.py` takes the first event key containing "confidence"; confirm it on the first live run, or `calibrate`
 will say it found none); the app accepting a local server at `OMNIGATE_ASSISTANT_REMOTE_HOST` in `local-only` mode on v0.10.21 (documented in `docs/llm-configuration.md`, never run here).
 
+**Found live on the first node (fixed):** the app probes its local model with `GET /health` at boot, so the logging proxy must pass GET through (it now does, with a test); the Ubuntu OCI image's host firewall drops container-to-host traffic, so `run_local.sh` opens port 9099 to the Docker bridge range; cloud-init now adds the `ubuntu` user to the docker group; and the local override keeps the host's real API key out of the app container.
+
 **Known gaps:** no prompt adapter for the SQL-specialist models (Arctic-Text2SQL-R1 was trained on SQLite `CREATE TABLE` prompts; its first score is recorded as *unadapted*); no
 Arctic 14B GGUF found; Docker image tags should be replaced by digests before a result is quoted (the meta file records the image id used); GPU shape names are from Oracle's
 published families and are not visible in this tenancy until quota exists (`shape_listed_in_tenancy` in `shapes.json`).

@@ -133,6 +133,29 @@ class Report(unittest.TestCase):
         self.assertEqual(report.calibrate(rows, {"a": 1.0}, thresholds=[10])["table"][0]["kept_share"], 0.0)
 
 
+class Proxy(unittest.TestCase):
+    def test_health_probe_and_posts_pass_through_and_only_posts_are_logged(self):
+        """The app probes a remote llama-server with GET /health at boot; a proxy that answers only POST makes it look absent (found live)."""
+        import socket, subprocess, time
+        class Up(http.server.BaseHTTPRequestHandler):
+            def do_GET(self): self.send_response(200); self.send_header("Content-Length", "2"); self.end_headers(); self.wfile.write(b"ok")
+            def do_POST(self): self.rfile.read(int(self.headers.get("Content-Length", 0))); b = b'{"usage":{"prompt_tokens":1,"completion_tokens":2}}'; self.send_response(200); self.send_header("Content-Length", str(len(b))); self.end_headers(); self.wfile.write(b)
+            def log_message(self, *a): pass
+        up = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Up); threading.Thread(target=up.serve_forever, daemon=True).start()
+        s = socket.socket(); s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]; s.close()
+        out = os.path.join(tempfile.mkdtemp(), "calls.jsonl")
+        p = subprocess.Popen([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "tools", "llmproxy.py"), str(port), out],
+                             env={**os.environ, "LLM_UPSTREAM": f"http://127.0.0.1:{up.server_port}"})
+        try:
+            for _ in range(50):
+                try: r = urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=2); break
+                except Exception: time.sleep(0.2)
+            self.assertEqual((r.status, r.read()), (200, b"ok"))
+            urllib.request.urlopen(urllib.request.Request(f"http://127.0.0.1:{port}/v1/chat/completions", b'{"messages":[]}', {"Content-Type": "application/json"}), timeout=5).read()
+            lines = open(out).read().strip().splitlines(); self.assertEqual(len(lines), 1); self.assertEqual(json.loads(lines[0])["response"]["usage"]["completion_tokens"], 2)
+        finally: p.kill(); up.shutdown()
+
+
 class Oci(unittest.TestCase):
     ENV = {"OCI_COMPARTMENT_ID": "c", "OCI_SUBNET_ID": "s", "OCI_IMAGE_ID": "i", "OCI_AD": "ad", "SSH_PUBKEY_FILE": "/k.pub"}
 
