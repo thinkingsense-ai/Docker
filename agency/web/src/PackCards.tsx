@@ -9,6 +9,7 @@ export function loadedText(l: Pack['loaded']): string {
 
 interface Props { packs: Pack[]; selected: string | null; onSelect: (id: string | null) => void; compact?: boolean }
 
+/** The domain choice. `compact` is a single row of chips; otherwise full cards with what each domain holds. */
 export default function PackCards({ packs, selected, onSelect, compact }: Props) {
   return (
     <section aria-label="Choose a domain">

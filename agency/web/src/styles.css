@@ -97,3 +97,29 @@ th { position: sticky; top: 0; background: var(--chip) } th.num, td.num { text-a
 .actions input { flex: 1; min-width: 200px; padding: .4rem .6rem; border: 1px solid var(--edge); border-radius: 8px; background: var(--panel) }
 .actions button:not(.primary):not(.link) { background: var(--chip); border: 1px solid var(--edge); border-radius: 8px; padding: .4rem .8rem }
 .run code { background: var(--chip); padding: 0 4px; border-radius: 4px }
+
+/* approved-question tiles */
+.tiles-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px } .tiles-head h2 { margin: 0 }
+.tiles { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px }
+.tile { width: 100%; height: 100%; text-align: left; background: var(--panel); border: 1px solid var(--edge); border-radius: 10px; padding: 12px; display: grid; gap: 8px; align-content: space-between }
+.tile:hover { background: var(--accent-tint); border-color: var(--accent) }
+.tile-q { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; font-weight: 600 }
+.tile .tag { justify-self: start }
+.domain-line { margin: 0 }
+
+/* charts: series colours clear 3:1 against the page in both modes */
+:root { --c1: #c2512f; --c2: #2b7f6e; --c3: #6f5bc4; --c4: #b07a12; --c5: #2f78b5; --c6: #b3466f }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='light']) { --c1: #f0a287; --c2: #6fcfb8; --c3: #b3a3f0; --c4: #e8c45f; --c5: #7fb8ea; --c6: #f09ab8 } }
+.rv-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 8px }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--edge); border-radius: 8px; overflow: hidden }
+.seg button { background: var(--panel); border: 0; border-right: 1px solid var(--line); padding: .25rem .7rem; font-size: .85rem } .seg button:last-child { border-right: 0 }
+.seg button[aria-pressed='true'] { background: var(--fill); color: var(--accent-ink); font-weight: 700 }
+.chart { width: 100%; height: auto; max-height: 520px; display: block }
+.chart .grid { stroke: var(--line); stroke-dasharray: 3 5 } .chart .tick { fill: var(--muted); font-size: 11px } .chart .cat { fill: var(--ink); font-size: 11.5px } .chart .val { fill: var(--muted); font-size: 11px } .chart .center { fill: var(--ink); font-size: 20px; font-weight: 700 }
+.legend { list-style: none; display: flex; gap: 14px; flex-wrap: wrap; margin: 0 0 4px; padding: 0; font-size: .85rem } .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: -1px }
+.legend.vert { display: grid; gap: 4px; margin-top: 6px }
+.donut { display: grid; grid-template-columns: minmax(160px, 240px) 1fr; gap: 16px; align-items: center } .donut .chart { max-width: 240px }
+.panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px } .panels figure { margin: 0 } .panels figcaption { font-weight: 600; font-size: .9rem }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px }
+.stat { background: var(--chip); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px } .stat-v { font-size: 1.8rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.15 } .stat-l { color: var(--muted); font-size: .85rem }
+@media (max-width: 560px) { .donut { grid-template-columns: 1fr } }
