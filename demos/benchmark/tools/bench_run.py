@@ -36,7 +36,12 @@ for i, q in enumerate(qs):
     steps = [e.get("step") for e in ev]
     done = [e for e in ev if e.get("step") == "done"]; d = done[-1] if done else {}
     err = [e.get("error") for e in ev if e.get("step") == "error"]
-    res.append({"question": q["question"], "asked": text, "secs": round(time.time() - t0, 1), "calls": [n0, n1], "sqls": sqls, "steps": steps,
+    def find(key_part):   # the first value any event carries under a key containing key_part (the Server's field name for the pre-execution confidence is confirmed on the first live run)
+        for e in ev:
+            for k, v in e.items():
+                if key_part in k.lower() and not isinstance(v, (dict, list)): return v
+        return None
+    res.append({"confidence": find("confidence"), "escalated": any("escalat" in str(e.get("step", "")).lower() or "cloud" in str(e.get("source", "")).lower() for e in ev), "question": q["question"], "asked": text, "secs": round(time.time() - t0, 1), "calls": [n0, n1], "sqls": sqls, "steps": steps,
                 "source": next((e.get("source") for e in ev if e.get("step") == "sql" and e.get("source")), None),
                 "columns": d.get("columns"), "rows": d.get("rows"), "nrows": d.get("rowCount", len(d.get("rows") or [])), "answer": d.get("answer"),
                 "error": err[0] if err else None, "sameAs": q.get("sameAs")})

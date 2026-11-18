@@ -1,13 +1,13 @@
-"""Logging pass-through proxy for the Anthropic Messages API. The app is pointed at it with OMNIGATE_LLM_ENDPOINT; every request body
+"""Logging pass-through proxy for the Anthropic Messages API (or, with LLM_UPSTREAM, any OpenAI-style server). The app is pointed at it with OMNIGATE_LLM_ENDPOINT; every request body
 (system prompt, messages) and reply is appended to a JSONL file. Headers (the API key) are forwarded but never logged.
   python3 llmproxy.py 9099 calls.jsonl"""
-import json, sys, time, threading, urllib.request, urllib.error
+import json, os, sys, time, threading, urllib.request, urllib.error
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-PORT = int(sys.argv[1]); OUT = sys.argv[2]; LOCK = threading.Lock(); UP = "https://api.anthropic.com"
+PORT = int(sys.argv[1]); OUT = sys.argv[2]; LOCK = threading.Lock(); UP = os.environ.get("LLM_UPSTREAM", "https://api.anthropic.com").rstrip("/")   # LLM_UPSTREAM=http://127.0.0.1:8091 puts it in front of a local llama-server (OpenAI-style /v1/chat/completions)
 class H(BaseHTTPRequestHandler):
     def do_POST(self):
         body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
-        hdr = {k: v for k, v in self.headers.items() if k.lower() in ("x-api-key", "anthropic-version", "content-type", "anthropic-beta")}
+        hdr = {k: v for k, v in self.headers.items() if k.lower() in ("x-api-key", "anthropic-version", "content-type", "anthropic-beta", "authorization")}
         req = urllib.request.Request(UP + self.path, data=body, headers=hdr, method="POST")
         t0 = time.time()
         try:

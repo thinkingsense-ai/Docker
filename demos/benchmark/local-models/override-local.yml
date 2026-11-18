@@ -1,0 +1,12 @@
+# Points the app at a local llama-server THROUGH the logging proxy (tools/llmproxy.py, port 9099, forwarding to the server via LLM_UPSTREAM).
+# Used with run_variant.sh: BENCH_OVERRIDE=.../override-local.yml. Local-only mode: the key is not used and nothing leaves the machine
+# (the judge, which runs on the host, is the only thing that calls a hosted model).
+services:
+  omnigate:
+    extra_hosts: ["host.docker.internal:host-gateway"]     # Linux hosts (an OCI node); Docker Desktop already has the name
+    environment:
+      OMNIGATE_LLM_MODE: local-only
+      OMNIGATE_ASSISTANT_REMOTE_HOST: host.docker.internal
+      OMNIGATE_ASSISTANT_REMOTE_PORT: "9099"
+      OMNIGATE_ASSISTANT_CONTEXT_SIZE: "8192"
+      OMNIGATE_LOCAL_GRAMMAR_STYLE: gbnf                   # llama.cpp takes the table-selection constraint as a GBNF grammar

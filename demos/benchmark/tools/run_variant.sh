@@ -8,7 +8,7 @@
 # --comments   also writes each table's description into the database (COMMENT ON TABLE ...), which is where the app reads descriptions for its prompts.
 # --strip      removes the seed's table comments after seeding (a baseline for a pack whose seed already carries them, such as BOM).
 # --extra-sql  runs FILE (SQL) after the seed, e.g. column comments to try.
-# Environment: EXTRA_COMPOSE (more compose file), BENCH_FILE (question set), BENCH_MODEL (default claude-haiku-5-5), OMNIGATE_RELEASE_TAG (default v0.10.17), BENCH_OUT (default /tmp/bench-out), JUDGE_MODEL (default claude-haiku-5-5).
+# Environment: BENCH_OVERRIDE (compose file that points the app at the proxy: default override-proxy.yml; local-models/override-local.yml for a local llama-server), LLM_UPSTREAM (what the proxy forwards to), EXTRA_COMPOSE (more compose file), BENCH_FILE (question set), BENCH_MODEL (default claude-haiku-5-5), OMNIGATE_RELEASE_TAG (default v0.10.17), BENCH_OUT (default /tmp/bench-out), JUDGE_MODEL (default claude-haiku-5-5).
 # Results land in $BENCH_OUT as <pack>_<variant>_<model>_r<N>.json (answers), j_..._r<N>.json (judged) and calls_...jsonl (every prompt and reply).
 # Needs: docker compose, python3 with the anthropic package, and free ports 8080 and 9099. Takes about 10 minutes per run (BOM 13).
 set -u
@@ -19,7 +19,7 @@ HERE=$(cd "$(dirname "$0")" && pwd); ROOT=$(cd "$HERE/../../.." && pwd)
 export BENCH_MODEL=${BENCH_MODEL:-claude-haiku-5-5}; OUT=${BENCH_OUT:-/tmp/bench-out}; mkdir -p "$OUT"
 TAG=${PACK}_${VAR}_${BENCH_MODEL#claude-}; CALLS=$OUT/calls_$TAG.jsonl; rm -f "$CALLS"
 BV=TREASURY_BANK_RETRIEVAL; [ "$PACK" = bom ] && BV=BOM_BANK_RETRIEVAL; [ "$PACK" = sounds ] && BV=SOUNDS_BANK_RETRIEVAL
-FILES=(-f "$ROOT/demos/$PACK-pack/docker-compose.$PACK.yml" -f "$HERE/override-proxy.yml")
+FILES=(-f "$ROOT/demos/$PACK-pack/docker-compose.$PACK.yml" -f "${BENCH_OVERRIDE:-$HERE/override-proxy.yml}")
 [ -n "${EXTRA_COMPOSE:-}" ] && FILES+=(-f "$EXTRA_COMPOSE")   # e.g. a different database image
 BENCH=${BENCH_FILE:-$ROOT/demos/benchmark/benchmark-$PACK.json}   # e.g. a different question set for the same pack
 if [ "$COMMENTS" = "--comments" ]; then
