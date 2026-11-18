@@ -119,7 +119,7 @@ th { position: sticky; top: 0; background: var(--chip) } th.num, td.num { text-a
 .legend { list-style: none; display: flex; gap: 14px; flex-wrap: wrap; margin: 0 0 4px; padding: 0; font-size: .85rem } .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; vertical-align: -1px }
 .legend.vert { display: grid; gap: 4px; margin-top: 6px }
 .donut { display: grid; grid-template-columns: minmax(160px, 240px) 1fr; gap: 16px; align-items: center } .donut .chart { max-width: 240px }
-.panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px } .panels figure { margin: 0 } .panels figcaption { font-weight: 600; font-size: .9rem }
+.panels { display: grid; grid-template-columns: 1fr; gap: 18px }     /* one panel per row: side by side they shrank the drawing (and its 11px text) to about 5px */ .panels figure { margin: 0 } .panels figcaption { font-weight: 600; font-size: .9rem }
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px }
 .stat { background: var(--chip); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px } .stat-v { font-size: 1.8rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.15 } .stat-l { color: var(--muted); font-size: .85rem }
 @media (max-width: 560px) { .donut { grid-template-columns: 1fr } }

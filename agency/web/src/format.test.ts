@@ -39,3 +39,12 @@ describe('loadedText', () => {
     expect(loadedText(null)).toContain('unknown')
   })
 })
+
+import { currencySymbol, humanName } from './format'
+describe('column names for people', () => {
+  it('reads underscored names', () => {
+    expect(humanName('usd_amount')).toBe('USD amount'); expect(humanName('share_pct')).toBe('Share (%)'); expect(humanName('avg_error_pct')).toBe('Average error (%)'); expect(humanName('total_usd')).toBe('Total USD')
+  })
+  it('leaves ordinary words and mixed names alone', () => { expect(humanName('Supplier')).toBe('Supplier'); expect(humanName('total amount')).toBe('total amount') })
+  it('finds a currency in a name', () => { expect(currencySymbol('total_usd')).toBe('$'); expect(currencySymbol('usd_amount')).toBe('$'); expect(currencySymbol('eur_total')).toBe('€'); expect(currencySymbol('accounts')).toBe(''); expect(currencySymbol('usdx')).toBe('') })
+})
