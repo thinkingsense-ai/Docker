@@ -1,5 +1,5 @@
 import { compact, describePlan, niceTicks, type ChartPlan } from './chartModel'
-import { formatCell } from './format'
+import { formatCell, humanName } from './format'
 
 // Hand-drawn SVG: no charting library to ship, colours come from the page's own tokens (so light and dark both work), and the drawing scales with its box (viewBox) instead of needing a measured width.
 const W = 640, COLORS = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)', 'var(--c6)']
@@ -8,7 +8,7 @@ const full = (v: number) => formatCell(String(v))
 
 function Legend({ names }: { names: string[] }) {
   if (names.length < 2) return null
-  return <ul className="legend">{names.map((n, i) => <li key={n}><i style={{ background: COLORS[i % COLORS.length] }} aria-hidden="true" /> {n}</li>)}</ul>
+  return <ul className="legend">{names.map((n, i) => <li key={n}><i style={{ background: COLORS[i % COLORS.length] }} aria-hidden="true" /> {humanName(n)}</li>)}</ul>
 }
 
 function HBars({ plan }: { plan: ChartPlan }) {
@@ -24,7 +24,7 @@ function HBars({ plan }: { plan: ChartPlan }) {
           <text x={left - 8} y={top + i * row + row / 2 + 4} textAnchor="end" className="cat">{clip(l, 34)}<title>{l}</title></text>
           {plan.measures.map((m, j) => (
             <g key={m.name}>
-              <rect x={left} y={top + i * row + 4 + j * 14} width={Math.max(2, x(m.values[i]) - left)} height={11} rx={3} fill={COLORS[j % COLORS.length]}><title>{`${l}: ${m.name} ${full(m.values[i])}`}</title></rect>
+              <rect x={left} y={top + i * row + 4 + j * 14} width={Math.max(2, x(m.values[i]) - left)} height={11} rx={3} fill={COLORS[j % COLORS.length]}><title>{`${l}: ${humanName(m.name)} ${full(m.values[i])}`}</title></rect>
               <text x={x(m.values[i]) + 6} y={top + i * row + 13 + j * 14} className="val">{compact(m.values[i])}</text>
             </g>))}
         </g>))}
@@ -45,7 +45,7 @@ function VBars({ plan }: { plan: ChartPlan }) {
           <g key={i}>
             {plan.measures.map((m, j) => {
               const bx = cx - (bw * k) / 2 + j * bw
-              return <g key={m.name}><rect x={bx} y={y(m.values[i])} width={bw - 1} height={Math.max(1, H - bottom - y(m.values[i]))} rx={3} fill={COLORS[j % COLORS.length]}><title>{`${l}: ${m.name} ${full(m.values[i])}`}</title></rect>
+              return <g key={m.name}><rect x={bx} y={y(m.values[i])} width={bw - 1} height={Math.max(1, H - bottom - y(m.values[i]))} rx={3} fill={COLORS[j % COLORS.length]}><title>{`${l}: ${humanName(m.name)} ${full(m.values[i])}`}</title></rect>
                 {n <= 10 && k === 1 && <text x={bx + bw / 2} y={y(m.values[i]) - 5} textAnchor="middle" className="val">{compact(m.values[i])}</text>}</g>
             })}
             <text x={cx} y={H - bottom + 16} textAnchor="middle" className="cat">{clip(l, Math.max(4, Math.floor(slot / 6.2)))}<title>{l}</title></text>
@@ -69,7 +69,7 @@ function Lines({ plan }: { plan: ChartPlan }) {
           <g key={m.name}>
             {plan.measures.length === 1 && <path d={`${d} L${x(n - 1)},${y(Math.max(a, 0))} L${x(0)},${y(Math.max(a, 0))} Z`} fill={c} opacity={0.16} />}
             <path d={d} fill="none" stroke={c} strokeWidth={2.5} strokeLinejoin="round" />
-            {m.values.map((v, i) => <circle key={i} cx={x(i)} cy={y(v)} r={n > 40 ? 2 : 4} fill="var(--panel)" stroke={c} strokeWidth={2}><title>{`${plan.labels[i]}: ${m.name} ${full(v)}`}</title></circle>)}
+            {m.values.map((v, i) => <circle key={i} cx={x(i)} cy={y(v)} r={n > 40 ? 2 : 4} fill="var(--panel)" stroke={c} strokeWidth={2}><title>{`${plan.labels[i]}: ${humanName(m.name)} ${full(v)}`}</title></circle>)}
           </g>)
       })}
       {plan.labels.map((l, i) => i % every === 0 && <text key={i} x={x(i)} y={H - 12} textAnchor="middle" className="cat">{clip(formatCell(l), 12)}</text>)}
@@ -99,6 +99,6 @@ function Donut({ plan }: { plan: ChartPlan }) {
 /** One chart, or one panel per measure when the measures are too far apart in size to share an axis. */
 export default function Chart({ plan }: { plan: ChartPlan }) {
   const draw = (p: ChartPlan) => (p.kind === 'donut' ? <Donut plan={p} /> : p.kind === 'line' ? <Lines plan={p} /> : p.horizontal ? <HBars plan={p} /> : <VBars plan={p} />)
-  if (plan.panels) return <div className="panels">{plan.measures.map((m) => <figure key={m.name}><figcaption>{m.name}</figcaption>{draw({ ...plan, measures: [m], panels: false })}</figure>)}</div>
+  if (plan.panels) return <div className="panels">{plan.measures.map((m) => <figure key={m.name}><figcaption>{humanName(m.name)}</figcaption>{draw({ ...plan, measures: [m], panels: false })}</figure>)}</div>
   return <div><Legend names={plan.measures.map((m) => m.name)} />{draw(plan)}</div>
 }

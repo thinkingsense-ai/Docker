@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import Chart from './Chart'
 import { describePlan, planChart, statTiles, type Kind } from './chartModel'
 import { Table } from './Answer'
-import { formatCell } from './format'
+import { currencySymbol, formatCell, humanName } from './format'
 import type { Definition } from './workflow'
 
 type Start = { column: number; def: Definition }
@@ -19,7 +19,7 @@ export default function ResultView({ question, columns, rows, starts = [], onSta
   const current = view ?? (plan && starts.length === 0 ? 'chart' : 'table')
   if (stats && view !== 'table') return (
     <div>
-      <div className="stats">{stats.map((s) => <div key={s.label} className="stat"><div className="stat-v">{formatCell(s.value)}</div><div className="stat-l">{s.label.replace(/_/g, ' ')}</div></div>)}</div>
+      <div className="stats">{stats.map((s) => <div key={s.label} className="stat"><div className="stat-v">{currencySymbol(s.label)}{formatCell(s.value)}</div><div className="stat-l">{humanName(s.label)}</div></div>)}</div>
       <p className="small"><button className="link" onClick={() => setView('table')}>Show as a table</button></p>
     </div>
   )
@@ -37,7 +37,7 @@ export default function ResultView({ question, columns, rows, starts = [], onSta
           <div className="seg" role="group" aria-label="Measures to plot">
             {plan.candidates.map((c) => <button key={c} aria-pressed={plan.measures.some((m) => m.name === c)} onClick={() => {
               const now = plan.measures.map((m) => m.name); const next = now.includes(c) ? now.filter((x) => x !== c) : [...now, c]; setMeasures(next.length ? next : now)
-            }}>{c.replace(/_/g, ' ')}</button>)}
+            }}>{humanName(c)}</button>)}
           </div>)}
       </div>
       {current === 'chart'

@@ -32,3 +32,21 @@ export function scopeLine(s: 'server-backends' | 'agency-hint' | 'none'): string
   if (s === 'agency-hint') return 'Scope applied by Agency, not enforced by the Server'
   return 'No scope: asked in All data'
 }
+
+const WORDS: Record<string, string> = { usd: 'USD', eur: 'EUR', gbp: 'GBP', id: 'ID', avg: 'average', amt: 'amount', qty: 'quantity', num: 'number', pct: '%', ytd: 'YTD' }
+const SYMBOL: Record<string, string> = { usd: '$', eur: '€', gbp: '£' }
+
+/** A column name as a person would say it: usd_amount -> "USD amount", avg_error_pct -> "Average error %". Only names that look like column names (underscores) are touched. */
+export function humanName(name: string): string {
+  if (!/^[a-z0-9]+(_[a-z0-9]+)+$/i.test(name)) return name.replace(/_/g, ' ')
+  const out = name.toLowerCase().split('_').map((w) => WORDS[w] ?? w)
+  const pct = out[out.length - 1] === '%'
+  const text = out.filter((w) => w !== '%').join(' ')
+  return (text.charAt(0).toUpperCase() + text.slice(1)) + (pct ? ' (%)' : '')
+}
+
+/** The currency symbol a measure's name announces (total_usd, usd_amount), or ''. */
+export function currencySymbol(name: string): string {
+  const m = /(?:^|_)(usd|eur|gbp)(?:$|_)/i.exec(name)
+  return m ? SYMBOL[m[1].toLowerCase()] : ''
+}

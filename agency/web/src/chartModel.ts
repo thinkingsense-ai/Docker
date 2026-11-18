@@ -1,6 +1,6 @@
 // What to draw for a result, decided from its shape alone (no model call, so it is fast and predictable). Written for Agency; it borrows the idea of Ask's shape-based detection,
 // not its code. Everything here is pure so it is unit-tested.
-import { isNumeric } from './format'
+import { humanName, isNumeric } from './format'
 
 export type Kind = 'bar' | 'line' | 'donut'
 export type Intent = 'comparison' | 'trend' | 'share'
@@ -112,10 +112,11 @@ export function niceTicks(min: number, max: number, count = 4): number[] {
 
 /** A sentence for screen readers and for the caption: what is drawn, and the largest value. */
 export function describePlan(p: ChartPlan, _columns?: string[]): string {
+  const say = (n: string) => { const h = humanName(n); return /^[A-Z]{2,}/.test(h) ? h : h.charAt(0).toLowerCase() + h.slice(1) }
   const first = p.measures[0]; const top = first.values.reduce((b, v, i) => (v > first.values[b] ? i : b), 0)
-  const m = p.measures.map((x) => x.name).join(' and ')
-  return `${p.kind === 'donut' ? 'Donut' : p.kind === 'line' ? 'Line' : p.horizontal ? 'Horizontal bar' : 'Bar'} chart of ${m} by ${p.categoryName}, ${p.labels.length} rows${p.omitted ? ` (top ${p.labels.length} of ${p.labels.length + p.omitted})` : ''}. ` +
-         `The highest ${first.name} is ${compact(first.values[top])} for ${p.labels[top]}.`
+  const m = p.measures.map((x) => say(x.name)).join(' and ')
+  return `${p.kind === 'donut' ? 'Donut' : p.kind === 'line' ? 'Line' : p.horizontal ? 'Horizontal bar' : 'Bar'} chart of ${m} by ${say(p.categoryName)}, ${p.labels.length} rows${p.omitted ? ` (top ${p.labels.length} of ${p.labels.length + p.omitted})` : ''}. ` +
+         `The highest ${say(first.name)} is ${compact(first.values[top])} for ${p.labels[top]}.`
 }
 
 /** One or a few numbers and nothing to compare them against: show them large instead of a table or a chart. */
