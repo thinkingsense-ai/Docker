@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, uploadFile, type Adapter, type Upload } from './api'
 
-interface Props { workspaceId: string | null; onAsk: (q: string, uploadId?: string, uploadName?: string) => void; onSignedOut: () => void }
+interface Props { compact?: boolean; workspaceId: string | null; onAsk: (q: string, uploadId?: string, uploadName?: string) => void; onSignedOut: () => void }
 
 const pct = (n: number) => Math.round(n * 100) + '%'
 
@@ -87,7 +87,7 @@ function Card({ u, onAsk, onDelete, canShare, onShare }: { u: Upload; onAsk: (q:
   )
 }
 
-export default function Uploads({ workspaceId, onAsk, onSignedOut }: Props) {
+export default function Uploads({ compact, workspaceId, onAsk, onSignedOut }: Props) {
   const [adapters, setAdapters] = useState<Adapter[]>([])
   const [accept, setAccept] = useState<string[]>([])
   const [ups, setUps] = useState<Upload[]>([])
@@ -115,9 +115,13 @@ export default function Uploads({ workspaceId, onAsk, onSignedOut }: Props) {
     finally { setBusy(false); if (input.current) input.current.value = '' }
   }
 
+  const Wrap = ({ children }: { children: React.ReactNode }) => compact
+    ? <details className="bring"><summary>Bring a file{ups.length ? ` (${ups.length} so far)` : ''}</summary>{children}</details>
+    : <>{children}</>
   return (
     <section aria-label="Bring a file">
-      <h2>Bring a file</h2>
+      {!compact && <h2>Bring a file</h2>}
+      <Wrap>
       <div className={'drop' + (over ? ' over' : '')} onDragOver={(e) => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)}
            onDrop={(e) => { e.preventDefault(); setOver(false); take(e.dataTransfer.files[0]) }}>
         <p>{busy ? 'Reading the file…' : <>Drop a file here or <button className="link" onClick={() => input.current?.click()}>choose one</button>. Accepted: {accept.join(' ')}</>}</p>
@@ -128,6 +132,7 @@ export default function Uploads({ workspaceId, onAsk, onSignedOut }: Props) {
       {ups.map((u) => <Card key={u.id} u={u} onAsk={onAsk} canShare={sharing === 'workspace'} onShare={(on) => api.shareUpload(u.id, on).then((r) => setUps((x) => x.map((y) => (y.id === r.id ? r : y)))).catch((e) => setErr(e.message))} onDelete={() => api.deleteUpload(u.id).then(() => setUps((x) => x.filter((y) => y.id !== u.id))).catch((e) => setErr(e.message))} />)}
       {sharing === 'workspace' && <p className="small"><button className="link" onClick={() => api.uploads().then((u) => setShared(u.shared ?? [])).catch((e) => setErr(e.message))}>Check for uploads shared with you</button></p>}
       {shared.length > 0 && <><h2>Shared with you</h2>{shared.map((u) => <Card key={u.id} u={u} onAsk={onAsk} />)}</>}
+      </Wrap>
     </section>
   )
 }

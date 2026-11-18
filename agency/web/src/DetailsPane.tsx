@@ -46,7 +46,7 @@ export function AnswerDetails({ a, question, historic }: AnswerProps) {
             {origin && <><dt>Came from</dt><dd>{origin}{e.answeredWithoutDataSources ? ' (no data source used)' : ''}</dd></>}
             <dt>Time</dt><dd>{fmtMs(e.elapsedMs)}</dd>
             <dt>Domain</dt><dd>{e.pack && e.pack !== e.workspace ? `${e.pack} (workspace ${e.workspace})` : e.workspace}</dd>
-            <dt>Data used</dt><dd>{e.sources.length ? e.sources.map((s) => s.id).join(', ') : 'none reported'}</dd>
+            <dt>Data used</dt><dd>{e.sources.length ? e.sources.map((s) => s.id).join(', ') : 'not listed'}</dd>
             {e.model && <><dt>Model</dt><dd>{e.model}</dd></>}
           </dl>
           <p className="small muted">{scopeLine(e.scopeEnforcedBy)}</p>

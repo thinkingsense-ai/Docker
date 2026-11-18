@@ -163,3 +163,12 @@ a.link.quiet:hover, a.link.quiet:focus-visible { color: var(--accent) }
 .brand .by { font-size: .8rem; font-weight: 400; color: var(--muted) }
 .brand img { height: 26px; width: auto; display: block }
 .brand.big { font-size: 1.6rem } .brand.big img { height: 35px }
+nav li button .when { display: block; font-size: .72rem; color: var(--muted); font-weight: 400 }
+details.bring > summary { cursor: pointer; color: var(--accent); font-weight: 600; padding: .25rem 0 }
+@media (max-width: 760px) {
+  header { flex-wrap: wrap; gap: 6px } .who { gap: 6px 12px }
+  .shell, .shell.with-pane { grid-template-columns: minmax(0, 1fr) }
+  .shell.with-pane .pane { top: 0; height: 100vh; width: 100vw; z-index: 6; box-shadow: none }
+  nav { padding-block: 10px } nav ul { max-height: 7.5rem; overflow: auto }
+  .tiles, .starter-tiles { grid-template-columns: 1fr }
+}
