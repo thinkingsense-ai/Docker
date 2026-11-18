@@ -6,6 +6,7 @@ import adapters, app, decisions, tools, uploads
 from upstream import Upstream
 
 class Fake:
+    simple_posts = []; simple_refuse = None
     namespaces = [{"id": "treasury", "name": "Treasury"}]; packs = [{"id": "bom"}]; ask_posts = []; ns_posts = []; ask_status = 200; can_upload = True; user_ns = {}; wf_off = False; wf_refuse = None; wf_posts = []; decisions_route = False; edition = None; starters_need_default = False; starter_calls = 0
 
 class FakeServer(BaseHTTPRequestHandler):
@@ -57,6 +58,10 @@ class FakeServer(BaseHTTPRequestHandler):
             Fake.wf_posts.append((self.path, b, self.user()))
             if Fake.wf_refuse: st, code, extra = Fake.wf_refuse; return self._j(st, dict({"success": False, "error": "refused: " + code, "code": code}, **extra))
             return self._j(201 if self.path.endswith("/start") else 200, {"created": True, "run": {"id": "run-1", "stage": "facts"}})
+        if self.path in ("/app/feedback", "/app/help-request", "/app/questions/save-as-reusable"):
+            Fake.simple_posts.append((self.path, b, self.user()))
+            if Fake.simple_refuse: return self._j(200, {"success": False, "error": Fake.simple_refuse})
+            return self._j(200, {"success": True, "alreadySaved": False} if "reusable" in self.path else {"success": True})
         if self.path == "/app/session/namespace": Fake.ns_posts.append(b["namespaceId"]); return self._j(200, {"success": True})
         if self.path == "/api/ask":
             if Fake.ask_status != 200: return self._j(Fake.ask_status, {})
@@ -367,6 +372,20 @@ class LayerTests(unittest.TestCase):
         a, b = self.who("alice"), self.who("bob"); rid = self.gps_upload(a); before = app.UPLOADS.rows[rid]["expiresAtEpoch"]
         a.call("POST", "/uploads/%s/share" % rid, {"shared": True}); self.assertEqual(app.UPLOADS.rows[rid]["expiresAtEpoch"], before)
         app.UPLOADS.rows[rid]["expiresAtEpoch"] = 0; self.assertEqual(self.J(b.call("GET", "/uploads")[1])["shared"], [])
+
+    def test_feedback_help_and_reusable_are_validated_and_relayed_as_the_signed_in_user(self):
+        Fake.simple_posts.clear(); Fake.simple_refuse = None
+        self.assertEqual(self.c.call("POST", "/feedback", {"queryId": "q1", "vote": "UP"})[0], 401); self.signin()
+        s, raw, _ = self.c.call("POST", "/feedback", {"queryId": "q1", "vote": "DOWN", "category": "WRONG_VALUE", "note": " off by ten ", "question": "How many?", "answer": "5", "user": "mallory", "userId": "x"}); self.assertEqual(s, 200, raw)
+        self.assertEqual(Fake.simple_posts[-1], ("/app/feedback", {"queryId": "q1", "vote": "DOWN", "category": "WRONG_VALUE", "note": "off by ten", "question": "How many?", "answer": "5"}, "alice"))
+        for b in ({}, {"queryId": "q1"}, {"queryId": "q1", "vote": "MAYBE"}, {"queryId": "q1", "vote": "UP", "category": "RUDE"}, {"queryId": "q1", "vote": "UP", "note": "x" * 2001}, {"queryId": ["q"], "vote": "UP"}):
+            self.assertEqual(self.c.call("POST", "/feedback", b)[0], 400, b)
+        self.assertEqual(self.c.call("POST", "/help", {"message": "  I need the Q3 table  ", "who": "x"})[0], 200); self.assertEqual(Fake.simple_posts[-1], ("/app/help-request", {"message": "I need the Q3 table"}, "alice"))
+        for b in ({}, {"message": "  "}, {"message": "x" * 2001}): self.assertEqual(self.c.call("POST", "/help", b)[0], 400)
+        s, raw, _ = self.c.call("POST", "/reusable", {"question": "Top suppliers?", "sql": "SELECT 1", "approved": True}); self.assertEqual(s, 200); self.assertEqual(self.J(raw), {"success": True, "alreadySaved": False})
+        self.assertEqual(Fake.simple_posts[-1], ("/app/questions/save-as-reusable", {"question": "Top suppliers?", "sql": "SELECT 1"}, "alice"))
+        self.assertEqual(self.c.call("POST", "/reusable", {"question": "q"})[0], 400)
+        Fake.simple_refuse = "You are not allowed to save questions."; s, raw, _ = self.c.call("POST", "/reusable", {"question": "q", "sql": "s"}); self.assertEqual(s, 422); self.assertIn("not allowed", self.J(raw)["error"]["message"]); Fake.simple_refuse = None
 
     def test_workflow_routes_relay_as_the_signed_in_user_and_only_the_allowed_fields(self):
         self.assertEqual(self.c.call("GET", "/workflows/queue")[0], 401); self.signin()
