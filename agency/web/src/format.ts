@@ -57,3 +57,10 @@ export function declineExample(answer: string): string | null {
   const m = /For example: “([^”]{5,300})”/.exec(answer)
   return m ? m[1] : null
 }
+
+/** What to say when an answer has nothing to show. Text-only answers (a decline, a file summary) have no columns and are left alone. */
+export function emptyNote(columns: string[], rows: unknown[], answer: string): string | null {
+  if (columns.length > 0 && rows.length === 0) return 'No rows matched this question. Try loosening a filter (dates, amounts, names), or ask an admin for help.'
+  if (columns.length === 0 && rows.length === 0 && !answer.trim()) return 'The Server returned nothing for this question. Try asking it another way, or ask an admin for help.'
+  return null
+}

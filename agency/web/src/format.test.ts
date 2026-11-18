@@ -56,3 +56,10 @@ describe('declineExample', () => {
   })
   it('ignores ordinary answers', () => { expect(declineExample('For example: “Total is 5”')).toBeNull(); expect(declineExample("I won't guess.")).toBeNull() })
 })
+
+import { emptyNote } from './format'
+describe('emptyNote', () => {
+  it('says so when a query matched nothing', () => { expect(emptyNote(['a', 'b'], [], 'The query returned no rows.')).toMatch(/No rows matched/) })
+  it('says so when nothing at all came back', () => { expect(emptyNote([], [], '  ')).toMatch(/returned nothing/) })
+  it('leaves text-only answers and real results alone', () => { expect(emptyNote([], [], 'I do not have data about that.')).toBeNull(); expect(emptyNote(['a'], [['1']], '')).toBeNull() })
+})

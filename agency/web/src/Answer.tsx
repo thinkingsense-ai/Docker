@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Answer as A } from './api'
 import { api, ApiError } from './api'
-import { declineExample, formatCell, isNumeric } from './format'
+import { declineExample, emptyNote, formatCell, isNumeric } from './format'
 import { RunCard } from './Workflows'
 import ResultView from './ResultView'
 import Feedback from './Feedback'
@@ -43,7 +43,9 @@ export default function Answer({ a, question, onFollow, wf, onDetails, active }:
       <h2 className="q">{question}</h2>
       {a.answer && <p className="text">{a.answer}</p>}
       {a.answer && declineExample(a.answer) && <p className="small"><button className="chip" onClick={() => onFollow(declineExample(a.answer)!)}>{declineExample(a.answer)}</button></p>}
-      <ResultView question={question} columns={a.columns} rows={a.rows} starts={starts} onStart={start} />
+      {emptyNote(a.columns, a.rows, a.answer)
+        ? <p className="empty" role="status">{emptyNote(a.columns, a.rows, a.answer)}</p>
+        : <ResultView question={question} columns={a.columns} rows={a.rows} starts={starts} onStart={start} />}
       {wfNote && <p role="status" className="muted small">{wfNote}</p>}
       {wf && runs.map((r) => <RunCard key={r.id} initial={r} me={wf.me} onSignedOut={wf.onSignedOut} onChange={wf.onChange} />)}
       {a.truncated && <p className="warn">The result was cut at the Server's row limit.</p>}

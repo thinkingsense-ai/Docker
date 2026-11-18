@@ -175,3 +175,5 @@ details.bring > summary { cursor: pointer; color: var(--accent); font-weight: 60
 }
 
 .answer.pending { opacity: .85 } .answer.pending .q { margin: 0 }
+
+.empty { margin: 8px 0; padding: 10px 12px; border: 1px dashed var(--edge); border-radius: 8px; color: var(--ink) }
