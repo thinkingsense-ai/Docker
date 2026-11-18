@@ -3,8 +3,10 @@
 import { isNumeric } from './format'
 
 export type Kind = 'bar' | 'line' | 'donut'
+export type Intent = 'comparison' | 'trend' | 'share'
 export interface ChartPlan {
   kind: Kind
+  intent: Intent                   // what the answer is: a comparison of categories, a trend over time, or the parts of a whole
   category: number                 // column index of the category (or date) axis
   categoryName: string
   labels: string[]                 // one label per plotted row
@@ -17,9 +19,11 @@ export interface ChartPlan {
   note?: string
 }
 
-export const MAX_ROWS = 100, MAX_BARS = 12, MAX_MEASURES = 3, PANEL_RATIO = 20
+export const MIN_ROWS = 3, MAX_ROWS = 100, MAX_BARS = 12, MAX_MEASURES = 3, PANEL_RATIO = 20, MAX_DESCRIPTIVE = 2
 const DATE = /^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2})?(\.\d+)?Z?)?$/
 const ID = /(^|_)(id|key|no|num|number|code|zip|postcode)$/i
+// A donut says "these are the parts of one whole", which is only true for amounts that add up: not averages, rates, scores or prices.
+const NOT_ADDITIVE = /(avg|average|mean|median|rate|ratio|pct|percent|percentage|score|margin|days|age|price|per_|_per|headroom|yield|accuracy|error|variance)/i
 
 export type Role = 'measure' | 'id' | 'date' | 'text' | 'empty'
 export function classify(columns: string[], rows: (string | null)[][]): Role[] {
@@ -40,8 +44,11 @@ export function dropRaw(names: string[]): string[] {
 const num = (v: string | null) => (v === null || v === '' ? 0 : Number(v))
 const distinct = (a: (string | null)[]) => new Set(a).size
 
-export function planChart(columns: string[], rows: (string | null)[][], want?: { kind?: Kind; measures?: string[] }): ChartPlan | null {
-  if (rows.length < 2 || rows.length > MAX_ROWS || columns.length < 2) return null
+/** "Which suppliers do we hold the most stock from?": a ranking is the top of a longer list, so its rows are not the parts of one whole. */
+export const isRanking = (question?: string) => /\b(top|most|least|largest|biggest|highest|lowest|best|worst|rank(ed|ing)?|first|last|tightest|oldest|newest|longest|shortest)\b/i.test(question ?? '')
+
+export function planChart(columns: string[], rows: (string | null)[][], want?: { kind?: Kind; measures?: string[]; question?: string }): ChartPlan | null {
+  if (rows.length < MIN_ROWS || rows.length > MAX_ROWS || columns.length < 2) return null            // two rows are easier to read than to draw
   const roles = classify(columns, rows)
   const idx = (r: Role) => roles.map((x, i) => (x === r ? i : -1)).filter((i) => i >= 0)
   const dates = idx('date'), texts = idx('text'), ids = idx('id')
@@ -58,13 +65,18 @@ export function planChart(columns: string[], rows: (string | null)[][], want?: {
   else if (ids.length) category = ids.find(uniq) ?? ids[0]
   else if (texts.length === 1) category = texts[0]
   else return null
+  // A listing of records (an id or name plus several descriptive columns) is read, not drawn: a chart of one of its numbers would only add noise beside the table.
+  const descriptive = [...texts, ...dates, ...ids].filter((i) => i !== category).length
+  if (descriptive > MAX_DESCRIPTIVE) return null
   const textLabel = ids.includes(category) && texts.length ? texts[0] : -1                // an id on its own says little: add the first text column beside it
   const labels = rows.map((r) => (textLabel >= 0 ? `${r[category] ?? ''} · ${r[textLabel] ?? ''}` : r[category] ?? ''))
   let chosen = (want?.measures?.length ? want.measures.filter((m) => cand.includes(m)) : []).slice(0, MAX_MEASURES)
   if (!chosen.length) chosen = cand.slice(0, MAX_MEASURES)
   const all = chosen.map((name) => ({ name, index: columns.indexOf(name), values: rows.map((r) => num(r[columns.indexOf(name)])) }))
   const nonNegative = all.length === 1 && all[0].values.every((v) => v >= 0) && all[0].values.some((v) => v > 0)
-  const options: Kind[] = kind === 'line' ? ['line', 'bar'] : nonNegative && rows.length <= 6 ? ['bar', 'donut'] : ['bar']
+  // Only the views that say something true about this answer: a trend is a line (bars too only when there are few points); categories are bars (a donut only for amounts that add up).
+  const partsOfAWhole = nonNegative && rows.length <= 6 && kind === 'bar' && !isRanking(want?.question) && !NOT_ADDITIVE.test(all[0].name) && texts.includes(category)
+  const options: Kind[] = kind === 'line' ? (rows.length <= 12 ? ['line', 'bar'] : ['line']) : partsOfAWhole ? ['bar', 'donut'] : ['bar']
   if (want?.kind && options.includes(want.kind)) kind = want.kind
   // large results: bars sorted high to low and cut to the top 12; a trend keeps its order and its rows
   let order = rows.map((_, i) => i), omitted = 0
@@ -76,7 +88,8 @@ export function planChart(columns: string[], rows: (string | null)[][], want?: {
   const spans = all.map((m) => Math.max(...m.values.map(Math.abs), 0)).filter((s) => s > 0)
   const panels = all.length > 1 && spans.length > 1 && Math.max(...spans) / Math.min(...spans) > PANEL_RATIO
   const longest = Math.max(...pick(labels).map((l) => l.length))
-  return { kind, category, categoryName: columns[category], labels: pick(labels), measures: all.map((m) => ({ ...m, values: pick(m.values) })), horizontal: kind === 'bar' && (longest > 10 || order.length > 7), panels, omitted, options, candidates: cand,
+  const intent: Intent = kind === 'line' ? 'trend' : kind === 'donut' ? 'share' : 'comparison'
+  return { kind, intent, category, categoryName: columns[category], labels: pick(labels), measures: all.map((m) => ({ ...m, values: pick(m.values) })), horizontal: kind === 'bar' && (longest > 10 || order.length > 7), panels, omitted, options, candidates: cand,
            note: omitted ? `Showing the top ${MAX_BARS} of ${rows.length} rows.` : undefined }
 }
 
