@@ -60,7 +60,7 @@ export function RunCard({ initial, me, onSignedOut, onChange }: Props) {
         ))}
         {run.stage === 'rejected' && <li aria-current="step" className="now">{stageLabel('rejected')}</li>}
       </ol>
-      {evidence.length > 0 && simulated && <p className="muted small">These values come from the local simulator's example data, not from this {run.key ? 'record' : 'run'}.</p>}
+      {evidence.length > 0 && simulated && <p className="muted small">These values come from the local simulator's example data, not from this payment.</p>}
       {evidence.length > 0 && <dl className="facts small">{evidence.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{String(v)}</dd></div>)}</dl>}
       {run.rules.length > 0 && <ul className="rules small" aria-label="Rules">{run.rules.map((r) => <li key={r.name}><strong>{r.passed ? 'Passed' : 'Failed'}</strong> {r.name.replace(/_/g, ' ')}: {r.detail}</li>)}</ul>}
       {run.recommendation && (
