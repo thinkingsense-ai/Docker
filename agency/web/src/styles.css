@@ -158,3 +158,13 @@ th { position: sticky; top: 0; background: var(--chip) } th.num, td.num { text-a
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap }
 a.link.quiet { color: var(--muted, inherit); font-size: .85rem; text-decoration: underline }
 a.link.quiet:hover, a.link.quiet:focus-visible { color: var(--accent) }
+
+nav li button .when { display: block; font-size: .72rem; color: var(--muted); font-weight: 400 }
+details.bring > summary { cursor: pointer; color: var(--accent); font-weight: 600; padding: .25rem 0 }
+@media (max-width: 760px) {
+  header { flex-wrap: wrap; gap: 6px } .who { gap: 6px 12px }
+  .shell, .shell.with-pane { grid-template-columns: minmax(0, 1fr) }
+  .shell.with-pane .pane { top: 0; height: 100vh; width: 100vw; z-index: 6; box-shadow: none }
+  nav { padding-block: 10px } nav ul { max-height: 7.5rem; overflow: auto }
+  .tiles, .starter-tiles { grid-template-columns: 1fr }
+}

@@ -33,7 +33,7 @@ export default function App() {
   const [q, setQ] = useState('')
   const [steps, setSteps] = useState<PEvent[]>([])
   const [startedAt, setStartedAt] = useState(0)
-  const [paneOpen, setPaneOpen] = useState<boolean>(() => { try { const v = localStorage.getItem('agency.pane'); return v === null ? window.innerWidth >= 1100 : v === '1' } catch { return false } })
+  const [paneOpen, setPaneOpen] = useState<boolean>(() => { try { const v = localStorage.getItem('agency.pane'); return window.innerWidth >= 761 && v === '1' } catch { return false } })
   const [detailIdx, setDetailIdx] = useState<number | null>(null)
   const togglePane = () => setPaneOpen((o) => { try { localStorage.setItem('agency.pane', o ? '0' : '1') } catch { /* private window */ } return !o })
   const [busy, setBusy] = useState(false)
@@ -136,7 +136,7 @@ export default function App() {
         <button className="primary" onClick={() => { setConvId(null); setFile(null); setTurns([]); setDetailIdx(null); setChanged('New conversation.') }}>New conversation</button>
         <h2>Recent</h2>
         {convs.length === 0 && <p className="muted small">No conversations yet.</p>}
-        <ul>{convs.map((c) => <li key={c.id}><button className={'link' + (c.id === convId ? ' on' : '')} onClick={() => open(c.id)}>{c.title || 'Untitled'}</button></li>)}</ul>
+        <ul>{convs.map((c) => <li key={c.id}><button className={'link' + (c.id === convId ? ' on' : '')} onClick={() => open(c.id)}>{c.title || 'Untitled'}{c.updatedAtMillis ? <span className="when">{new Date(c.updatedAtMillis).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span> : null}</button></li>)}</ul>
         <p className="muted small">The Server lists conversations per user, not per domain.</p>
         {grants.canApprove && (
           <>
@@ -157,7 +157,7 @@ export default function App() {
           <span className="sr">{changed}</span>
         </p>
         {turns.length === 0 && !busy && <StarterTiles key={pack ?? 'all'} items={starters} label={pack ? `Approved questions: ${packs.find((p) => p.id === pack)?.title ?? pack}` : 'Approved questions'} onPick={send} />}
-        <Uploads workspaceId={pack} onAsk={(q, id, n) => send(q, id, n)} onSignedOut={signedOut} />
+        <Uploads compact={turns.length > 0} workspaceId={pack} onAsk={(q, id, n) => send(q, id, n)} onSignedOut={signedOut} />
         {turns.map((t, i) => <Answer key={i} a={t.answer} question={t.question} onFollow={send} onDetails={() => { setDetailIdx(i); if (!paneOpen) togglePane() }} active={paneOpen && detailIdx === i} wf={defs.length ? { defs, canStart: grants.canStart, me: user, onSignedOut: signedOut, onChange: refreshWaiting } : undefined} />)}
         {busy && !paneOpen && (
           <div className="progress" role="status" aria-live="polite">
