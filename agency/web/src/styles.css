@@ -123,3 +123,24 @@ th { position: sticky; top: 0; background: var(--chip) } th.num, td.num { text-a
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px }
 .stat { background: var(--chip); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px } .stat-v { font-size: 1.8rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.15 } .stat-l { color: var(--muted); font-size: .85rem }
 @media (max-width: 560px) { .donut { grid-template-columns: 1fr } }
+
+/* the details pane: progress while a question runs, then how the selected answer was made */
+.shell.with-pane { grid-template-columns: 220px minmax(0, 1fr) 340px }
+.shell.with-pane header { grid-column: 1 / -1 }
+.pane { border-left: 1px solid var(--line); background: var(--panel); padding: 16px; overflow: auto; position: sticky; top: 0; align-self: start; max-height: 100vh; font-size: .9rem }
+.pane h2 { font-size: 1rem } .pane h3 { font-size: .9rem; margin: 12px 0 4px } .pane-q { margin: 0 0 8px }
+.close-pane { float: right }
+.stages-list { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 8px }
+.stages-list li { display: grid; grid-template-columns: 1.2rem 1fr auto; gap: 8px; align-items: start }
+.stages-list .what { display: grid } .stages-list .time { white-space: nowrap; font-variant-numeric: tabular-nums }
+.stages-list .mark { text-align: center } .stages-list li.next { color: var(--muted) } .stages-list li.now { font-weight: 600 } .stages-list li.done .mark { color: var(--ok) }
+@media (prefers-reduced-motion: no-preference) { .stages-list li.now .mark { animation: pulse 1.2s ease-in-out infinite } }
+@keyframes pulse { 50% { opacity: .35 } }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 6px 0 } .facts dt { color: var(--muted) } .facts dd { margin: 0; word-break: break-word }
+.checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px }
+.pane details { margin-top: 10px } .pane summary { cursor: pointer; color: var(--accent) } .pane pre { white-space: pre-wrap; word-break: break-word; background: var(--chip); border-radius: 8px; padding: 8px; font-size: .8rem }
+.prov { margin: 0 }
+@media (max-width: 1099px) {
+  .shell.with-pane { grid-template-columns: 220px minmax(0, 1fr) }
+  .shell.with-pane .pane { position: fixed; right: 0; top: 52px; height: calc(100vh - 52px); width: min(360px, 92vw); max-height: none; box-shadow: -6px 0 24px rgba(0, 0, 0, .18); z-index: 5 }
+}

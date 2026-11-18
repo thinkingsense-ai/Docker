@@ -1,17 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api, ask, ApiError, type Answer as A, type ConversationSummary, type Pack, type ProgressEvent, type Starter, type Status } from './api'
+import { api, ask, ApiError, type Answer as A, type ConversationSummary, type Pack, type Starter, type Status } from './api'
 import Login from './Login'
 import PackCards from './PackCards'
 import Answer from './Answer'
 import Uploads from './Uploads'
 import StarterTiles from './StarterTiles'
+import { AnswerDetails, ProgressView } from './DetailsPane'
+import type { ProgressEvent as PEvent } from './progress'
 import { Queue } from './Workflows'
 import type { Definition } from './workflow'
 
-const STEP_LABEL: Record<string, string> = {
-  understanding: 'Understanding the question', planned: 'Planning which sources to use', sql: 'Writing the query', check: 'Checking the query',
-  ontology: 'Applying business definitions', results: 'Running the query', done: 'Done',
-}
 const LS = 'agency.pack'
 
 function lsGet(): string | null { try { return localStorage.getItem(LS) } catch { return null } }
@@ -32,7 +30,11 @@ export default function App() {
   const [convId, setConvId] = useState<string | null>(null)
   const [turns, setTurns] = useState<Turn[]>([])
   const [q, setQ] = useState('')
-  const [steps, setSteps] = useState<ProgressEvent[]>([])
+  const [steps, setSteps] = useState<PEvent[]>([])
+  const [startedAt, setStartedAt] = useState(0)
+  const [paneOpen, setPaneOpen] = useState<boolean>(() => { try { const v = localStorage.getItem('agency.pane'); return v === null ? window.innerWidth >= 1100 : v === '1' } catch { return false } })
+  const [detailIdx, setDetailIdx] = useState<number | null>(null)
+  const togglePane = () => setPaneOpen((o) => { try { localStorage.setItem('agency.pane', o ? '0' : '1') } catch { /* private window */ } return !o })
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [grants, setGrants] = useState<{ canStart: boolean; canApprove: boolean }>({ canStart: false, canApprove: false })
@@ -81,7 +83,7 @@ export default function App() {
 
   function choose(id: string | null) {
     if (id === pack) return
-    setPack(id); setConvId(null); setTurns([]); setErr('')
+    setPack(id); setConvId(null); setTurns([]); setDetailIdx(null); setErr('')
     const p = packs.find((x) => x.id === id)
     setChanged(`Asking in ${p ? p.title : 'All data'}. Starter questions updated and a new conversation started.`)
     lsSet(id); api.setPreference(id).catch(() => {})
@@ -90,10 +92,10 @@ export default function App() {
 
   async function send(text: string) {
     const question = text.trim(); if (!question || busy) return
-    setBusy(true); setErr(''); setSteps([]); setQ(''); const ac = new AbortController(); abort.current = ac
+    setBusy(true); setErr(''); setSteps([]); setStartedAt(Date.now()); setQ(''); const ac = new AbortController(); abort.current = ac
     try {
-      const a = await ask(question, pack, convId, (e) => setSteps((s) => [...s, e]), ac.signal)
-      setTurns((t) => [...t, { question, answer: a }]); if (a.conversationId) setConvId(a.conversationId)
+      const a = await ask(question, pack, convId, (e) => setSteps((s) => [...s, { ...e, t: Date.now() }]), ac.signal)
+      setTurns((t) => { setDetailIdx(t.length); return [...t, { question, answer: a }] }); if (a.conversationId) setConvId(a.conversationId)
       api.conversations().then((c) => setConvs(c.conversations ?? [])).catch(() => {})
     } catch (e) {
       if ((e as Error).name === 'AbortError') setErr('Cancelled.'); else guard(e)
@@ -105,7 +107,7 @@ export default function App() {
     try {
       const c = await api.conversation(id)
       if (!c.success) return setErr(c.error ?? 'That conversation could not be opened.')
-      setConvId(id); setChanged('Opened a past conversation. Its answers show the saved text and rows; evidence is only kept for answers asked now.')
+      setConvId(id); setDetailIdx(null); setChanged('Opened a past conversation. Its answers show the saved text and rows; evidence is only kept for answers asked now.')
       setTurns((c.turns ?? []).map((t) => ({ question: t.question, answer: { answer: t.answer, columns: t.columns, rows: t.rows, sql: t.sql ?? null, conversationId: id, evidence: null } })))
     } catch (e) { guard(e) }
   }
@@ -115,19 +117,20 @@ export default function App() {
 
   const wf = status?.workflows
   return (
-    <div className="shell">
+    <div className={'shell' + (paneOpen ? ' with-pane' : '')}>
       <header>
         <h1>Agency</h1>
         <div className="who">
           <span title="Server reachability">{status ? (status.server.reachable ? 'Server reachable' : 'Server not reachable') : '…'}</span>
           {status?.edition && <span title="The edition the Server reports for this session">{status.edition === 'commercial' ? 'Commercial edition' : 'Free edition'}</span>}
           {wf && <span title={wf.note}>{wf.available ? 'Workflows available' : 'Workflows off'}</span>}
+          <button className="link" aria-expanded={paneOpen} aria-controls="pane" onClick={togglePane}>{paneOpen ? 'Hide details' : 'Show details'}</button>
           <span>{user}</span>
           <button className="link" onClick={() => api.logout().finally(signedOut)}>Sign out</button>
         </div>
       </header>
       <nav aria-label="Conversations">
-        <button className="primary" onClick={() => { setConvId(null); setTurns([]); setChanged('New conversation.') }}>New conversation</button>
+        <button className="primary" onClick={() => { setConvId(null); setTurns([]); setDetailIdx(null); setChanged('New conversation.') }}>New conversation</button>
         <h2>Recent</h2>
         {convs.length === 0 && <p className="muted small">No conversations yet.</p>}
         <ul>{convs.map((c) => <li key={c.id}><button className={'link' + (c.id === convId ? ' on' : '')} onClick={() => open(c.id)}>{c.title || 'Untitled'}</button></li>)}</ul>
@@ -152,11 +155,10 @@ export default function App() {
         </p>
         {turns.length === 0 && !busy && <StarterTiles key={pack ?? 'all'} items={starters} label={pack ? `Approved questions: ${packs.find((p) => p.id === pack)?.title ?? pack}` : 'Approved questions'} onPick={send} />}
         <Uploads workspaceId={pack} onAsk={send} onSignedOut={signedOut} />
-        {turns.map((t, i) => <Answer key={i} a={t.answer} question={t.question} onFollow={send} wf={defs.length ? { defs, canStart: grants.canStart, me: user, onSignedOut: signedOut, onChange: refreshWaiting } : undefined} />)}
-        {busy && (
+        {turns.map((t, i) => <Answer key={i} a={t.answer} question={t.question} onFollow={send} onDetails={() => { setDetailIdx(i); if (!paneOpen) togglePane() }} active={paneOpen && detailIdx === i} wf={defs.length ? { defs, canStart: grants.canStart, me: user, onSignedOut: signedOut, onChange: refreshWaiting } : undefined} />)}
+        {busy && !paneOpen && (
           <div className="progress" role="status" aria-live="polite">
-            <ol>{steps.map((s, i) => <li key={i}>{STEP_LABEL[s.step] ?? s.step}</li>)}{steps.length === 0 && <li>Sending the question…</li>}</ol>
-            <button onClick={() => abort.current?.abort()}>Cancel</button>
+            <span>Working on it…</span> <button onClick={() => abort.current?.abort()}>Cancel</button> <button className="link" onClick={togglePane}>Show progress</button>
           </div>
         )}
         {err && <p role="alert" className="error">{err}</p>}
@@ -168,6 +170,13 @@ export default function App() {
         </form>
         </>}
       </main>
+      {paneOpen && (
+        <aside id="pane" className="pane" aria-label="Details">
+          <button className="link close-pane" onClick={togglePane}>Close</button>
+          {busy
+            ? <ProgressView events={steps} startedAt={startedAt} onCancel={() => abort.current?.abort()} />
+            : <AnswerDetails a={detailIdx !== null ? turns[detailIdx]?.answer ?? null : null} question={detailIdx !== null ? turns[detailIdx]?.question ?? '' : ''} historic={detailIdx !== null && turns[detailIdx]?.answer.evidence === null} />}
+        </aside>)}
     </div>
   )
 }

@@ -6,7 +6,7 @@ import adapters, app, decisions, tools, uploads
 from upstream import Upstream
 
 class Fake:
-    namespaces = [{"id": "treasury", "name": "Treasury"}]; packs = [{"id": "bom"}]; ask_posts = []; ns_posts = []; ask_status = 200; can_upload = True; user_ns = {}; wf_off = False; wf_refuse = None; wf_posts = []; decisions_route = False; edition = None
+    namespaces = [{"id": "treasury", "name": "Treasury"}]; packs = [{"id": "bom"}]; ask_posts = []; ns_posts = []; ask_status = 200; can_upload = True; user_ns = {}; wf_off = False; wf_refuse = None; wf_posts = []; decisions_route = False; edition = None; starters_need_default = False; starter_calls = 0
 
 class FakeServer(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
@@ -27,7 +27,9 @@ class FakeServer(BaseHTTPRequestHandler):
         if not self.authed(): return self._j(401, {"error": "not logged in"})
         if p == "/app/whoami": return self._j(200, dict({"username": self.user(), "canSeeSql": True, "canUploadFiles": Fake.can_upload}, **({"edition": Fake.edition, "features": {"workflows": not Fake.wf_off}} if Fake.edition else {})))
         if p == "/app/namespaces": return self._j(200, {"success": True, "namespaces": Fake.user_ns.get(self.user(), Fake.namespaces)})
-        if p.startswith("/app/starter-questions"): return self._j(200, {"success": True, "packs": Fake.packs, "items": [{"question": "q?", "origin": "approved"}], "asked": p})
+        if p.startswith("/app/starter-questions"):
+            Fake.starter_calls += 1; gone = Fake.starters_need_default and Fake.ns_posts and Fake.ns_posts[-1] is not None        # app 0.10.21: nothing once a Workspace is selected
+            return self._j(200, {"success": True, "packs": Fake.packs, "items": [] if gone else [{"question": "q?", "origin": "approved"}], "asked": p})
         if p == "/app/conversations": return self._j(200, {"conversations": [{"id": "c1", "title": "T", "updatedAtMillis": 1}]})
         if p.startswith("/app/conversations/get"): return self._j(200, {"success": True, "id": "c1", "turns": [], "asked": p})
         if p.startswith("/app/workflows/") and Fake.wf_off: return self._j(404, {})
@@ -102,7 +104,7 @@ class LayerTests(unittest.TestCase):
     def tearDownClass(cls): cls.fake.shutdown(); cls.adapter.shutdown(); cls.layer.shutdown()
     def setUp(self):
         Fake.namespaces = [{"id": "treasury", "name": "Treasury"}]; Fake.packs = [{"id": "bom"}]; Fake.ask_posts = []; Fake.ns_posts = []; Fake.ask_status = 200
-        Fake.can_upload = True; Fake.user_ns = {}; Fake.wf_off = False; Fake.wf_refuse = None; Fake.wf_posts = []; Fake.decisions_route = False; Fake.edition = None; os.environ.pop("AGENCY_UPLOAD_SHARING", None); os.environ.pop("AGENCY_UPLOAD_ADMINS", None); FakeAdapter.ingests = []; FakeAdapter.fail = None
+        Fake.can_upload = True; Fake.user_ns = {}; Fake.wf_off = False; Fake.wf_refuse = None; Fake.wf_posts = []; Fake.decisions_route = False; Fake.edition = None; Fake.starters_need_default = False; Fake.starter_calls = 0; os.environ.pop("AGENCY_UPLOAD_SHARING", None); os.environ.pop("AGENCY_UPLOAD_ADMINS", None); FakeAdapter.ingests = []; FakeAdapter.fail = None
         app.ADAPTERS = adapters.Registry("http://127.0.0.1:%d" % self.adapter.server_port); app.UPLOADS = uploads.Store(1.0)
         app.SESSIONS.clear(); os.environ.pop("AGENCY_SCOPE_HINT", None); os.environ.pop("AGENCY_DECISION_FILE", None)
         self.c = Client(self.layer.server_port)
@@ -221,6 +223,31 @@ class LayerTests(unittest.TestCase):
         self.assertEqual((d["edition"], d["workflows"]["available"], d["decisions"]), ("commercial", True, {"readable": True, "via": "server"}))
         Fake.edition = "free"; Fake.wf_off = True; d = self.J(self.c.call("GET", "/status")[1]); self.assertEqual((d["edition"], d["workflows"]["available"], d["decisions"]["readable"]), ("free", False, False))
         Fake.edition = None; Fake.wf_off = False; d = self.J(self.c.call("GET", "/status")[1]); self.assertNotIn("edition", d); self.assertTrue(d["workflows"]["available"])           # an older Server: probed
+
+    def settle(self):
+        import time as _t
+        for _ in range(100):
+            if all(s.starters for s in app.SESSIONS.values()): return
+            _t.sleep(0.02)
+
+    def test_starters_survive_the_server_going_empty_once_a_workspace_is_selected(self):
+        Fake.starters_need_default = True; self.signin(); self.settle()
+        s, raw, _ = self.c.call("GET", "/starters"); self.assertEqual(len(self.J(raw)["items"]), 1)
+        self.c.call("POST", "/ask", {"question": "q", "workspaceId": None}); self.c.call("POST", "/ask", {"question": "q", "workspaceId": "treasury"}); self.assertEqual(Fake.ns_posts[-1], "treasury")      # a Workspace is now selected on the Server
+        for path in ("/starters", "/starters?pack=bom"):
+            d = self.J(self.c.call("GET", path)[1]); self.assertEqual((len(d["items"]), d.get("cached")), (1, True), path)                    # the Server would answer nothing; the layer kept the first answer
+
+    def test_the_kept_starters_expire_and_stale_ones_still_beat_nothing(self):
+        Fake.starters_need_default = True; self.signin(); self.settle(); self.c.call("POST", "/ask", {"question": "q", "workspaceId": "treasury"})
+        for sess in app.SESSIONS.values(): sess.starters = {k: (v[0] - app.STARTER_TTL - 1, v[1]) for k, v in sess.starters.items()}
+        d = self.J(self.c.call("GET", "/starters")[1]); self.assertEqual((len(d["items"]), d.get("stale")), (1, True))              # expired, the Server gives nothing, so the old answer is served and marked stale
+        Fake.starters_need_default = False; d = self.J(self.c.call("GET", "/starters")[1]); self.assertFalse(d.get("stale")); self.assertEqual(len(d["items"]), 1)         # a live answer replaces it
+
+    def test_kept_starters_are_per_person_and_an_unknown_pack_is_still_refused(self):
+        self.signin(); self.settle(); other = self.who("bob"); import time as _t; _t.sleep(0.2)
+        for k in (self.c, other): self.assertEqual(len(self.J(k.call("GET", "/starters")[1])["items"]), 1)
+        sessions = list(app.SESSIONS.values()); self.assertEqual(len(sessions), 2); self.assertIsNot(sessions[0].starters, sessions[1].starters)
+        self.assertEqual(self.c.call("GET", "/starters?pack=nope")[0], 404); self.assertEqual(Client(self.layer.server_port).call("GET", "/starters")[0], 401)
 
     def test_starters_conversations_pass_through_and_need_sign_in(self):
         for path in ("/starters", "/conversations", "/conversations/get?id=c1", "/preferences"): self.assertEqual(self.c.call("GET", path)[0], 401, path)
