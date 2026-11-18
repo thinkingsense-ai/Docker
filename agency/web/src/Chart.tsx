@@ -13,7 +13,7 @@ function Legend({ names }: { names: string[] }) {
 
 function HBars({ plan }: { plan: ChartPlan }) {
   const k = plan.measures.length, row = 14 * k + 10, n = plan.labels.length
-  const left = Math.min(230, Math.max(70, Math.max(...plan.labels.map((l) => Math.min(l.length, 34))) * 6.4)), right = 70, top = 8, bottom = 26
+  const left = Math.min(230, Math.max(70, Math.max(...plan.labels.map((l) => Math.min(l.length, 34))) * 6.9)), right = 70, top = 8, bottom = 26
   const max = Math.max(...plan.measures.flatMap((m) => m.values), 0) || 1, ticks = niceTicks(0, max), end = ticks[ticks.length - 1] || 1
   const x = (v: number) => left + (Math.max(v, 0) / end) * (W - left - right), H = top + n * row + bottom
   return (
@@ -48,7 +48,7 @@ function VBars({ plan }: { plan: ChartPlan }) {
               return <g key={m.name}><rect x={bx} y={y(m.values[i])} width={bw - 1} height={Math.max(1, H - bottom - y(m.values[i]))} rx={3} fill={COLORS[j % COLORS.length]}><title>{`${l}: ${humanName(m.name)} ${full(m.values[i])}`}</title></rect>
                 {n <= 10 && k === 1 && <text x={bx + bw / 2} y={y(m.values[i]) - 5} textAnchor="middle" className="val">{compact(m.values[i])}</text>}</g>
             })}
-            <text x={cx} y={H - bottom + 16} textAnchor="middle" className="cat">{clip(l, Math.max(4, Math.floor(slot / 6.2)))}<title>{l}</title></text>
+            <text x={cx} y={H - bottom + 16} textAnchor="middle" className="cat">{clip(l, Math.max(4, Math.floor(slot / 6.7)))}<title>{l}</title></text>
           </g>)
       })}
     </svg>

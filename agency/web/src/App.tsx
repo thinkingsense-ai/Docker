@@ -46,6 +46,7 @@ export default function App() {
   const togglePane = () => setPaneOpen((o) => { try { localStorage.setItem('agency.pane', o ? '0' : '1') } catch { /* private window */ } return !o })
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [asking, setAsking] = useState('')                   // the question being answered, shown while it works
   const [retry, setRetry] = useState<string | null>(null)     // the question that did not get an answer, offered again
   const [notice, setNotice] = useState('')                    // why the sign-in page is showing, when the person did not ask for it
   const [grants, setGrants] = useState<{ canStart: boolean; canApprove: boolean }>({ canStart: false, canApprove: false })
@@ -106,7 +107,7 @@ export default function App() {
 
   async function send(text: string, uploadId?: string, uploadName?: string) {
     const question = text.trim(); if (!question || busy) return
-    setBusy(true); setErr(''); setRetry(null); setSteps([]); setStartedAt(Date.now()); setQ(''); const ac = new AbortController(); abort.current = ac
+    setBusy(true); setAsking(question); setErr(''); setRetry(null); setSteps([]); setStartedAt(Date.now()); setQ(''); const ac = new AbortController(); abort.current = ac
     try {
       const a = await ask(question, pack, convId, (e) => setSteps((s) => [...s, { ...e, t: Date.now() }]), ac.signal, uploadId ?? file?.id)
       setTurns((t) => { setDetailIdx(t.length); return [...t, { question, answer: a }] }); if (a.conversationId) setConvId(a.conversationId)
@@ -122,7 +123,7 @@ export default function App() {
         if ((e as { code?: string }).code === 'server_unreachable') setStatus((st) => (st ? { ...st, server: { ...st.server, reachable: false } } : st))
         if (expiredSession) expired(true); else { setRetry(question); guard(e) }
       }
-    } finally { setBusy(false); setSteps([]); abort.current = null }
+    } finally { setBusy(false); setAsking(''); setSteps([]); abort.current = null }
   }
 
   async function open(id: string) {
@@ -157,7 +158,7 @@ export default function App() {
         <button className="primary" onClick={() => { setConvId(null); setFile(null); setTurns([]); setDetailIdx(null); setChanged('New conversation.') }}>New conversation</button>
         <h2>Recent</h2>
         {convs.length === 0 && <p className="muted small">No conversations yet.</p>}
-        <ul>{convs.map((c) => <li key={c.id}><button className={'link' + (c.id === convId ? ' on' : '')} onClick={() => open(c.id)}>{c.title || 'Untitled'}{c.updatedAtMillis ? <span className="when">{new Date(c.updatedAtMillis).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span> : null}</button></li>)}</ul>
+        <ul>{convs.map((c) => <li key={c.id}><button className={'link' + (c.id === convId ? ' on' : '')} title={c.title || 'Untitled'} onClick={() => open(c.id)}><span className="t">{c.title || 'Untitled'}</span>{c.updatedAtMillis ? <span className="when">{new Date(c.updatedAtMillis).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span> : null}</button></li>)}</ul>
         <p className="muted small">The Server lists conversations per user, not per domain.</p>
         {grants.canApprove && (
           <>
@@ -180,6 +181,7 @@ export default function App() {
         {turns.length === 0 && !busy && <StarterTiles key={pack ?? 'all'} items={starters} label={pack ? `Approved questions: ${packs.find((p) => p.id === pack)?.title ?? pack}` : 'Approved questions'} onPick={send} />}
         <Uploads compact={turns.length > 0} workspaceId={pack} onAsk={(q, id, n) => send(q, id, n)} onSignedOut={() => expired()} />
         {turns.map((t, i) => <Answer key={i} a={t.answer} question={t.question} onFollow={send} onDetails={() => { setDetailIdx(i); if (!paneOpen) togglePane() }} active={paneOpen && detailIdx === i} wf={defs.length ? { defs, canStart: grants.canStart, me: user, onSignedOut: () => expired(), onChange: refreshWaiting } : undefined} />)}
+        {busy && asking && <article className="answer pending" aria-label="Question being answered"><h2 className="q">{asking}</h2></article>}
         {busy && !paneOpen && (
           <div className="progress" role="status" aria-live="polite">
             <span>Working on it… <Elapsed since={startedAt} /></span> <button onClick={() => abort.current?.abort()}>Cancel</button> <button className="link" onClick={togglePane}>Show progress</button>
