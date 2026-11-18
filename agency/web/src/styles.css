@@ -155,3 +155,6 @@ th { position: sticky; top: 0; background: var(--chip) } th.num, td.num { text-a
 .login .sso { margin: 0; text-align: center }
 .login .sso a.button { display: block; padding: .5rem; border: 1px solid var(--edge); border-radius: 8px; color: var(--accent); text-decoration: none; font-weight: 600 }
 .login .sso a.button:hover { background: var(--fill) }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap }
+a.link.quiet { color: var(--muted, inherit); font-size: .85rem; text-decoration: underline }
+a.link.quiet:hover, a.link.quiet:focus-visible { color: var(--accent) }

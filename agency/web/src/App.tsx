@@ -127,6 +127,7 @@ export default function App() {
           {status?.edition && <span title="The edition the Server reports for this session">{status.edition === 'commercial' ? 'Commercial edition' : 'Free edition'}</span>}
           {wf && <span title={wf.note}>{wf.available ? 'Workflows available' : 'Workflows off'}</span>}
           <button className="link" aria-expanded={paneOpen} aria-controls="pane" onClick={togglePane}>{paneOpen ? 'Hide details' : 'Show details'}</button>
+          {status?.adminUrl && <a className="link quiet" href={status.adminUrl} target="_blank" rel="noopener noreferrer" title="Opens the admin console, which has its own sign-in">Manage<span className="sr-only"> (opens the admin console in a new tab)</span></a>}
           <span>{user}</span>
           <button className="link" onClick={() => api.logout().finally(signedOut)}>Sign out</button>
         </div>
