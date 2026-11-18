@@ -33,7 +33,7 @@ export default function App() {
   const [q, setQ] = useState('')
   const [steps, setSteps] = useState<PEvent[]>([])
   const [startedAt, setStartedAt] = useState(0)
-  const [paneOpen, setPaneOpen] = useState<boolean>(() => { try { const v = localStorage.getItem('agency.pane'); return window.innerWidth >= 761 && v === '1' } catch { return false } })
+  const [paneOpen, setPaneOpen] = useState<boolean>(() => { try { const v = localStorage.getItem('agency.pane'); return window.innerWidth >= 1100 && v === '1' } catch { return false } })
   const [detailIdx, setDetailIdx] = useState<number | null>(null)
   const togglePane = () => setPaneOpen((o) => { try { localStorage.setItem('agency.pane', o ? '0' : '1') } catch { /* private window */ } return !o })
   const [busy, setBusy] = useState(false)
@@ -45,7 +45,7 @@ export default function App() {
   const abort = useRef<AbortController | null>(null)
   const bottom = useRef<HTMLDivElement>(null)
 
-  const signedOut = useCallback(() => { setUser(null); setTurns([]); setConvId(null); setFile(null) }, [])
+  const signedOut = useCallback(() => { setUser(null); setTurns([]); setConvId(null); setFile(null); setView('ask'); setWaiting(null); setDetailIdx(null) }, [])
   const guard = useCallback((e: unknown) => { if (e instanceof ApiError && e.status === 401) signedOut(); else setErr((e as Error).message) }, [signedOut])
 
   useEffect(() => { api.whoami().then((w) => setUser(w.username ?? w.layerUser ?? 'signed in')).catch(() => setUser(null)) }, [])

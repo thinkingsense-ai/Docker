@@ -46,6 +46,8 @@ export function RunCard({ initial, me, onSignedOut, onChange }: Props) {
 
   const waiting = run.stage === 'awaiting_approval'
   const canReject = waiting && (run.you.canApprove || run.initiator === me)
+  const withdraw = !run.you.canApprove && run.initiator === me      // the Server lets the person who started a run withdraw it, though not approve it
+  const simulated = run.recommendation?.source === 'stub'
   const order = run.stageOrder?.length ? run.stageOrder : ['facts', 'rules', 'recommendation', 'awaiting_approval', 'approved', 'written_back']
   const evidence = Object.entries(run.evidence ?? {}).filter(([k]) => k !== 'definition' && k !== 'key')
 
@@ -58,6 +60,7 @@ export function RunCard({ initial, me, onSignedOut, onChange }: Props) {
         ))}
         {run.stage === 'rejected' && <li aria-current="step" className="now">{stageLabel('rejected')}</li>}
       </ol>
+      {evidence.length > 0 && simulated && <p className="muted small">These values come from the local simulator's example data, not from this payment.</p>}
       {evidence.length > 0 && <dl className="facts small">{evidence.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{String(v)}</dd></div>)}</dl>}
       {run.rules.length > 0 && <ul className="rules small" aria-label="Rules">{run.rules.map((r) => <li key={r.name}><strong>{r.passed ? 'Passed' : 'Failed'}</strong> {r.name.replace(/_/g, ' ')}: {r.detail}</li>)}</ul>}
       {run.recommendation && (
@@ -70,15 +73,15 @@ export function RunCard({ initial, me, onSignedOut, onChange }: Props) {
       {waiting && (
         <div className="actions">
           <button className="primary" disabled={busy || !run.you.canApprove || !run.payloadHash} onClick={() => act(() => api.approveWorkflow(run.id, run.payloadHash!))}>Approve</button>
-          {canReject && !rejecting && <button disabled={busy} onClick={() => setRejecting(true)}>Reject…</button>}
+          {canReject && !rejecting && <button disabled={busy} onClick={() => setRejecting(true)}>{withdraw ? 'Withdraw…' : 'Reject…'}</button>}
           {!run.you.canApprove && <span className="muted small" role="note">You cannot approve: {reasonText(run.you.reason) || 'not available.'}</span>}
         </div>
       )}
       {rejecting && (
         <form className="actions" onSubmit={(e) => { e.preventDefault(); if (reason.trim()) act(() => api.rejectWorkflow(run.id, reason.trim())) }}>
           <label className="sr" htmlFor={`why-${run.id}`}>Reason for rejecting</label>
-          <input id={`why-${run.id}`} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why are you rejecting this?" maxLength={1000} />
-          <button className="primary" disabled={busy || !reason.trim()}>Reject</button> <button type="button" className="link" onClick={() => setRejecting(false)}>Cancel</button>
+          <input id={`why-${run.id}`} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={withdraw ? 'Why are you withdrawing this?' : 'Why are you rejecting this?'} maxLength={1000} />
+          <button className="primary" disabled={busy || !reason.trim()}>{withdraw ? 'Withdraw' : 'Reject'}</button> <button type="button" className="link" onClick={() => setRejecting(false)}>Cancel</button>
         </form>
       )}
       {note && <p role="alert" className="error small">{note}</p>}
