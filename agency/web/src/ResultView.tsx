@@ -17,7 +17,7 @@ export default function ResultView({ question, columns, rows, starts = [], onSta
   const stats = useMemo(() => statTiles(columns, rows), [columns, rows])
   const [view, setView] = useState<'chart' | 'table' | null>(null)
   const current = view ?? (plan && starts.length === 0 ? 'chart' : 'table')
-  if (stats && view !== 'table') return (
+  if (stats && view !== 'table' && starts.length === 0) return (       // rows that carry an action (start a workflow) stay a table: a tile would hide the button
     <div>
       <div className="stats">{stats.map((s) => <div key={s.label} className="stat"><div className="stat-v">{currencySymbol(s.label)}{formatCell(s.value)}</div><div className="stat-l">{humanName(s.label)}</div></div>)}</div>
       <p className="small"><button className="link" onClick={() => setView('table')}>Show as a table</button></p>
