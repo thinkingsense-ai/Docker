@@ -65,7 +65,7 @@ export default function Answer({ a, question, onFollow, wf }: { a: A; question: 
     <article className="answer" aria-label="Answer">
       <h2 className="q">{question}</h2>
       {a.answer && <p className="text">{a.answer}</p>}
-      <ResultView columns={a.columns} rows={a.rows} starts={starts} onStart={start} />
+      <ResultView question={question} columns={a.columns} rows={a.rows} starts={starts} onStart={start} />
       {wfNote && <p role="status" className="muted small">{wfNote}</p>}
       {wf && runs.map((r) => <RunCard key={r.id} initial={r} me={wf.me} onSignedOut={wf.onSignedOut} onChange={wf.onChange} />)}
       {a.truncated && <p className="warn">The result was cut at the Server's row limit.</p>}

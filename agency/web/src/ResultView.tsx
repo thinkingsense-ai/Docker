@@ -6,14 +6,14 @@ import { formatCell } from './format'
 import type { Definition } from './workflow'
 
 type Start = { column: number; def: Definition }
-interface Props { columns: string[]; rows: (string | null)[][]; starts?: Start[]; onStart?: (def: Definition, key: string) => void }
+interface Props { question?: string; columns: string[]; rows: (string | null)[][]; starts?: Start[]; onStart?: (def: Definition, key: string) => void }
 const KIND: Record<Kind, string> = { bar: 'Bars', line: 'Line', donut: 'Donut' }
 
 /** A result as a chart when its shape supports one, always with the table one click away (and first, when rows carry actions such as starting a workflow). */
-export default function ResultView({ columns, rows, starts = [], onStart }: Props) {
+export default function ResultView({ question, columns, rows, starts = [], onStart }: Props) {
   const [kind, setKind] = useState<Kind | undefined>()
   const [measures, setMeasures] = useState<string[] | undefined>()
-  const plan = useMemo(() => planChart(columns, rows, { kind, measures }), [columns, rows, kind, measures])
+  const plan = useMemo(() => planChart(columns, rows, { kind, measures, question }), [columns, rows, kind, measures, question])
   const stats = useMemo(() => statTiles(columns, rows), [columns, rows])
   const [view, setView] = useState<'chart' | 'table' | null>(null)
   const current = view ?? (plan && starts.length === 0 ? 'chart' : 'table')
