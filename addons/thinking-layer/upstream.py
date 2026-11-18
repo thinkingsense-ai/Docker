@@ -28,6 +28,22 @@ class Upstream:
             if c.startswith(COOKIE + "="): cookie = c.split("=", 1)[1].split(";", 1)[0]
         return (bool(data.get("success")) and cookie is not None), cookie, data
 
+    def _no_redirect(self, path, headers):
+        """One GET that is NOT followed: the single sign-on steps answer with a redirect whose Location and Set-Cookie are exactly what the layer needs."""
+        class Stop(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, *a, **k): return None
+        req = urllib.request.Request(self.base + path, None, headers, method="GET")
+        try: r = urllib.request.build_opener(Stop).open(req, timeout=30)
+        except urllib.error.HTTPError as e: r = e
+        return r.status, r.headers.get("Location"), {c.split("=", 1)[0]: c.split("=", 1)[1].split(";", 1)[0] for c in (r.headers.get_all("Set-Cookie") or []) if "=" in c}
+
+    def sso_start(self, host, proto):
+        """The Server's /app/oidc/login, asked as if the browser had come to `host`: its redirect_uri is built from the Host header, so the provider returns to the layer."""
+        return self._no_redirect("/app/oidc/login", {"Host": host, "X-Forwarded-Proto": proto})
+
+    def sso_finish(self, host, proto, query, state_cookie):
+        return self._no_redirect("/app/oidc/callback?" + query, {"Host": host, "X-Forwarded-Proto": proto, "Cookie": "omnigate_app_oidc_state=" + state_cookie})
+
     def ask_events(self, cookie, body):
         """Yields each parsed SSE event of POST /api/ask."""
         r = self._open("POST", "/api/ask", cookie, body, "text/event-stream")
