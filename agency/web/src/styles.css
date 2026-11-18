@@ -158,3 +158,8 @@ th { position: sticky; top: 0; background: var(--chip) } th.num, td.num { text-a
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap }
 a.link.quiet { color: var(--muted, inherit); font-size: .85rem; text-decoration: underline }
 a.link.quiet:hover, a.link.quiet:focus-visible { color: var(--accent) }
+
+.brand { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; margin: 0 }
+.brand .by { font-size: .8rem; font-weight: 400; color: var(--muted) }
+.brand img { height: 26px; width: auto; display: block }
+.brand.big { font-size: 1.6rem } .brand.big img { height: 35px }
