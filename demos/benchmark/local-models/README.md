@@ -15,8 +15,10 @@ Background, candidates and the OCI resources it needs are in the write-up *Local
 | `override-local.yml` | Compose override: the app in `local-only` mode talks to the local server through the logging proxy |
 | `run_local.sh` | One model on one shape, end to end: fetch, serve, run the benchmark, stop |
 | `report.py` | `summary` (accuracy, time, tokens per model and shape) and `calibrate` (escalation threshold vs measured accuracy) |
+| `push_repo.sh` | Copies the repo to a node without secrets; scans what remains and refuses on a key-shaped string |
 | `oci_node.py` | Creates a benchmark node on OCI with a mandatory expiry, lists them, and **reaps** expired ones |
-| `tests/` | 23 tests, no network or cloud needed (`python3 -m unittest discover -s demos/benchmark/local-models/tests`) |
+| `results/` | Saved benchmark results with a RESULTS.md each |
+| `tests/` | 24 tests, no network or cloud needed (`python3 -m unittest discover -s demos/benchmark/local-models/tests`) |
 
 Small hooks were added to `tools/`: `llmproxy.py` forwards to `LLM_UPSTREAM` (default Anthropic), `run_variant.sh` takes `BENCH_OVERRIDE`, and `bench_run.py` records each
 question's `confidence` and whether it `escalated`. Existing runs behave as before.
@@ -45,6 +47,8 @@ It prints, per threshold, the share kept locally, the accuracy of the kept answe
 (`--tolerance`) of the frontier model alone. If no threshold qualifies it says so. That is a valid result.
 
 ## On OCI
+
+Copy the repo to a node with `push_repo.sh ubuntu@<ip>`, never a plain rsync: it excludes secret-type files (`*.tfvars`, `*.tfstate*`, `.env`, keys) and **refuses** to copy anything containing an Anthropic-key-shaped string or a private-key header.
 
 ```bash
 export OCI_COMPARTMENT_ID=... OCI_SUBNET_ID=... OCI_IMAGE_ID=... OCI_AD=...        # an image for the shape's architecture; GPU shapes need drivers

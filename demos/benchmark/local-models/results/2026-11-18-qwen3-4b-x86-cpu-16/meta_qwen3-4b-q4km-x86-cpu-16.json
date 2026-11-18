@@ -1,0 +1,57 @@
+{
+ "model": "qwen3-4b-q4km",
+ "base": "Qwen/Qwen3-4B-Instruct-2507",
+ "licence": "apache-2.0",
+ "revision": "a06e946bb6b655725eafa393f4a9745d460374c9",
+ "files": {
+  "main": {
+   "name": "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+   "sha256": "3605803b982cb64aead44f6c1b2ae36e3acdb41d8e46c8a94c6533bc4c67e597",
+   "approx_gb": 2.5
+  }
+ },
+ "shape": "x86-cpu-16",
+ "oci_shape": "VM.Standard.E6.Flex",
+ "engine": "docker",
+ "command": [
+  "docker",
+  "run",
+  "-d",
+  "--name",
+  "omnigate-bench-llm",
+  "--rm",
+  "-p",
+  "8091:8091",
+  "-v",
+  "/home/ubuntu/omnigate-models:/models:ro",
+  "ghcr.io/ggml-org/llama.cpp:server",
+  "-m",
+  "/models/Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+  "--host",
+  "0.0.0.0",
+  "--port",
+  "8091",
+  "-c",
+  "8192",
+  "-t",
+  "16",
+  "-ngl",
+  "0",
+  "--parallel",
+  "1",
+  "--jinja",
+  "--flash-attn",
+  "off"
+ ],
+ "vision": false,
+ "sampling": {
+  "temperature": 0.2,
+  "top_p": 0.9
+ },
+ "thinking": "none (instruct model, no thinking mode)",
+ "prompt_adapter": "none",
+ "started": "2026-11-18T17:33:19",
+ "image": "ghcr.io/ggml-org/llama.cpp:server",
+ "healthy_after_s": 3.0,
+ "image_id": "sha256:5b43086e3ba7ea5794d72904654f6cd41224a9b1c6ac0398f4940ee380d30f23"
+}
