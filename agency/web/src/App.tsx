@@ -15,6 +15,14 @@ const LS = 'agency.pack'
 function lsGet(): string | null { try { return localStorage.getItem(LS) } catch { return null } }
 function lsSet(v: string | null) { try { v ? localStorage.setItem(LS, v) : localStorage.removeItem(LS) } catch { /* private window */ } }
 
+/** Seconds since the question was sent, so a long wait is visible without opening the details pane. */
+function Elapsed({ since }: { since: number }) {
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t) }, [])
+  const s = Math.max(0, Math.round((now - since) / 1000))
+  return <span className="muted">{s >= 5 ? (s >= 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s} s`) : ''}</span>
+}
+
 interface Turn { question: string; answer: A }
 
 export default function App() {
@@ -38,6 +46,8 @@ export default function App() {
   const togglePane = () => setPaneOpen((o) => { try { localStorage.setItem('agency.pane', o ? '0' : '1') } catch { /* private window */ } return !o })
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [retry, setRetry] = useState<string | null>(null)     // the question that did not get an answer, offered again
+  const [notice, setNotice] = useState('')                    // why the sign-in page is showing, when the person did not ask for it
   const [grants, setGrants] = useState<{ canStart: boolean; canApprove: boolean }>({ canStart: false, canApprove: false })
   const [defs, setDefs] = useState<Definition[]>([])
   const [view, setView] = useState<'ask' | 'approvals'>('ask')
@@ -45,8 +55,11 @@ export default function App() {
   const abort = useRef<AbortController | null>(null)
   const bottom = useRef<HTMLDivElement>(null)
 
-  const signedOut = useCallback(() => { setUser(null); setTurns([]); setConvId(null); setFile(null); setView('ask'); setWaiting(null); setDetailIdx(null) }, [])
-  const guard = useCallback((e: unknown) => { if (e instanceof ApiError && e.status === 401) signedOut(); else setErr((e as Error).message) }, [signedOut])
+  const leave = useCallback(() => { setUser(null); setTurns([]); setConvId(null); setFile(null); setView('ask'); setWaiting(null); setDetailIdx(null) }, [])
+  const signedOut = useCallback(() => { leave(); setQ(''); setRetry(null); setNotice('') }, [leave])
+  // the Server dropped the session (it restarted, or it expired): back to sign-in, saying so, with the unsent question kept in the box
+  const expired = useCallback((kept?: boolean) => { leave(); setNotice('Your session ended (the Server may have restarted). Sign in again.' + (kept === true ? ' The question you were asking is kept.' : '')) }, [leave])
+  const guard = useCallback((e: unknown) => { if (e instanceof ApiError && e.status === 401) expired(); else setErr((e as Error).message) }, [expired])
 
   useEffect(() => { api.whoami().then((w) => setUser(w.username ?? w.layerUser ?? 'signed in')).catch(() => setUser(null)) }, [])
 
@@ -93,14 +106,22 @@ export default function App() {
 
   async function send(text: string, uploadId?: string, uploadName?: string) {
     const question = text.trim(); if (!question || busy) return
-    setBusy(true); setErr(''); setSteps([]); setStartedAt(Date.now()); setQ(''); const ac = new AbortController(); abort.current = ac
+    setBusy(true); setErr(''); setRetry(null); setSteps([]); setStartedAt(Date.now()); setQ(''); const ac = new AbortController(); abort.current = ac
     try {
       const a = await ask(question, pack, convId, (e) => setSteps((s) => [...s, { ...e, t: Date.now() }]), ac.signal, uploadId ?? file?.id)
       setTurns((t) => { setDetailIdx(t.length); return [...t, { question, answer: a }] }); if (a.conversationId) setConvId(a.conversationId)
       if (uploadId) setFile({ id: uploadId, name: uploadName ?? 'your file' })
       api.conversations().then((c) => setConvs(c.conversations ?? [])).catch(() => {})
+      api.status().then(setStatus).catch(() => {})
     } catch (e) {
-      if ((e as Error).name === 'AbortError') setErr('Cancelled.'); else { if ((e as { code?: string }).code === 'upload_expired') setFile(null); guard(e) }
+      const expiredSession = e instanceof ApiError && e.status === 401
+      setQ(question)                                  // nothing was answered: the question goes back in the box instead of being lost
+      if ((e as Error).name === 'AbortError') setErr('Cancelled. Your question is back in the box.')
+      else {
+        if ((e as { code?: string }).code === 'upload_expired') setFile(null)
+        if ((e as { code?: string }).code === 'server_unreachable') setStatus((st) => (st ? { ...st, server: { ...st.server, reachable: false } } : st))
+        if (expiredSession) expired(true); else { setRetry(question); guard(e) }
+      }
     } finally { setBusy(false); setSteps([]); abort.current = null }
   }
 
@@ -115,7 +136,7 @@ export default function App() {
   }
 
   if (user === undefined) return <main className="center muted">Loading…</main>
-  if (user === null) return <Login onDone={() => api.whoami().then((w) => setUser(w.username ?? w.layerUser ?? 'signed in')).catch(() => setUser(null))} />
+  if (user === null) return <Login notice={notice} onDone={() => { setNotice(''); api.whoami().then((w) => setUser(w.username ?? w.layerUser ?? 'signed in')).catch(() => setUser(null)) }} />
 
   const wf = status?.workflows
   return (
@@ -147,7 +168,7 @@ export default function App() {
         )}
       </nav>
       <main>
-        {view === 'approvals' && <Queue me={user} onSignedOut={signedOut} onCount={setWaiting} />}
+        {view === 'approvals' && <Queue me={user} onSignedOut={() => expired()} onCount={setWaiting} />}
         {view === 'ask' && <>
         {packNote && <p className="muted small">{packNote}</p>}
         <PackCards packs={packs} selected={pack} onSelect={choose} compact={!showDomains || turns.length > 0 || busy} />
@@ -157,14 +178,14 @@ export default function App() {
           <span className="sr">{changed}</span>
         </p>
         {turns.length === 0 && !busy && <StarterTiles key={pack ?? 'all'} items={starters} label={pack ? `Approved questions: ${packs.find((p) => p.id === pack)?.title ?? pack}` : 'Approved questions'} onPick={send} />}
-        <Uploads compact={turns.length > 0} workspaceId={pack} onAsk={(q, id, n) => send(q, id, n)} onSignedOut={signedOut} />
-        {turns.map((t, i) => <Answer key={i} a={t.answer} question={t.question} onFollow={send} onDetails={() => { setDetailIdx(i); if (!paneOpen) togglePane() }} active={paneOpen && detailIdx === i} wf={defs.length ? { defs, canStart: grants.canStart, me: user, onSignedOut: signedOut, onChange: refreshWaiting } : undefined} />)}
+        <Uploads compact={turns.length > 0} workspaceId={pack} onAsk={(q, id, n) => send(q, id, n)} onSignedOut={() => expired()} />
+        {turns.map((t, i) => <Answer key={i} a={t.answer} question={t.question} onFollow={send} onDetails={() => { setDetailIdx(i); if (!paneOpen) togglePane() }} active={paneOpen && detailIdx === i} wf={defs.length ? { defs, canStart: grants.canStart, me: user, onSignedOut: () => expired(), onChange: refreshWaiting } : undefined} />)}
         {busy && !paneOpen && (
           <div className="progress" role="status" aria-live="polite">
-            <span>Working on it…</span> <button onClick={() => abort.current?.abort()}>Cancel</button> <button className="link" onClick={togglePane}>Show progress</button>
+            <span>Working on it… <Elapsed since={startedAt} /></span> <button onClick={() => abort.current?.abort()}>Cancel</button> <button className="link" onClick={togglePane}>Show progress</button>
           </div>
         )}
-        {err && <p role="alert" className="error">{err}</p>}
+        {err && <p role="alert" className="error">{err}{retry && !busy && <> <button className="link" onClick={() => send(retry)}>Try again</button></>}</p>}
         <div ref={bottom} />
         {file && <p className="small filechip" role="status">Asking about <strong>{file.name}</strong> (a table you uploaded; only you see it). <button className="link" onClick={() => setFile(null)}>Stop using it</button></p>}
         <form className="askbar" onSubmit={(e) => { e.preventDefault(); send(q) }}>
