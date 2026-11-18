@@ -14,6 +14,7 @@ services:
       AGENCY_ADAPTERS: ${AGENCY_ADAPTERS:-}
       AGENCY_UPLOAD_SHARING: ${AGENCY_UPLOAD_SHARING:-off}
       AGENCY_UPLOAD_ADMINS: ${AGENCY_UPLOAD_ADMINS:-}
+      AGENCY_PUBLIC_URL: ${AGENCY_PUBLIC_URL:-}
     read_only: true
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]

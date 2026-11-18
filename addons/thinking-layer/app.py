@@ -5,7 +5,7 @@ answer with an evidence block, reads the decision record, and lists the MCP tool
 Environment: SERVER_URL (default http://omnigate:8080), PACKS_CATALOGUE, AGENCY_DECISION_FILE (only for a Server older than 0.10.20: its OMNIGATE_WORKFLOW_DECISION_FILE, shared read-only),
 AGENCY_SCOPE_HINT=on to add the pack's data sets to the question when no Workspace exists (off by default: its effect on accuracy is not measured),
 AGENCY_SESSION_HOURS (default 8), AGENCY_WEB_DIST (the built Agency UI, served at / when the folder exists), AGENCY_PREFS_FILE (per-user preferences, kept in
-memory when unset), AGENCY_ADAPTERS (comma-separated adapter base URLs), AGENCY_UPLOAD_HOURS (record lifetime, default 1), AGENCY_UPLOAD_SHARING (off, the default, or workspace), AGENCY_UPLOAD_ADMINS (comma-separated Server usernames who may unshare or delete shared records), PORT (default 8097).
+memory when unset), AGENCY_ADAPTERS (comma-separated adapter base URLs), AGENCY_UPLOAD_HOURS (record lifetime, default 1), AGENCY_UPLOAD_SHARING (off, the default, or workspace), AGENCY_UPLOAD_ADMINS (comma-separated Server usernames who may unshare or delete shared records), AGENCY_PUBLIC_URL (where browsers reach the layer; turns on single sign-on, and PUBLIC_URL/app/oidc/callback must be registered with the identity provider), PORT (default 8097).
 The layer logs no question text and no file content."""
 import json, mimetypes, os, secrets, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -72,6 +72,15 @@ def new_session(username, cookie):
         token = secrets.token_urlsafe(32); SESSIONS[token] = Session(username, cookie); return token
 
 
+PUBLIC = os.environ.get("AGENCY_PUBLIC_URL", "").strip().rstrip("/")                    # where browsers reach the layer: single sign-on needs it (the provider's redirect address)
+SSO_PENDING = {}; SSO_TTL = 600                                                          # browser binding id -> (the Server's state cookie, the state, expiry)
+SSO_COOKIE = "agency_sso"
+SSO_MESSAGES = {"failed": "Single sign-on did not complete. Try again.", "unknown": "Your identity provider signed you in, but there is no OmniGate account for you. Ask an administrator."}
+
+
+def sso_enabled(): return bool(PUBLIC) and urlparse(PUBLIC).scheme in ("http", "https") and bool(urlparse(PUBLIC).netloc)
+
+
 def hint_for(pack):
     sets = ", ".join("%s.%s" % (s["id"], x) for s in pack["sources"] for x in s["schemas"])
     return " (Use only these data sets: %s.)" % sets
@@ -121,6 +130,9 @@ class H(BaseHTTPRequestHandler):
             if u.path == "/health": return self.send(200, {"ok": True, "version": VERSION})
             if u.path == "/tools": return self.send(200, {"tools": tools.tool_list()})
             if u.path == "/status": return self.status()
+            if u.path == "/sso/config": return self.sso_config()
+            if u.path == "/sso/login": return self.sso_login()
+            if u.path == "/app/oidc/callback": return self.sso_callback(u.query)
             if u.path == "/packs": return self.packs()
             if u.path == "/whoami": return self.whoami()
             if u.path == "/decisions": return self.decisions((q.get("runId") or [""])[0])
@@ -315,6 +327,58 @@ class H(BaseHTTPRequestHandler):
         except RuntimeError: return self.err(503, "too_many_sessions", "Too many active sessions.")
         threading.Thread(target=prefetch_starters, args=(SESSIONS[token],), daemon=True).start()
         self.send(200, {"success": True, "username": u}, [("Set-Cookie", "%s=%s; Path=/; HttpOnly; SameSite=Strict; Max-Age=%d" % (COOKIE, token, int(SESSION_SECONDS)))])
+
+    # -- single sign-on: the Server's own OIDC redirect, relayed. The Server sets its session cookie on whoever finishes the callback, so the layer finishes it (the provider returns
+    # to AGENCY_PUBLIC_URL + /app/oidc/callback, which must be registered with the provider) and keeps that cookie, as it does after a password sign-in. ------------------------
+    def sso_config(self):
+        if not sso_enabled(): return self.send(200, {"enabled": False})
+        try: code, d = SERVER.json("GET", "/app/auth-config")
+        except (OSError, Unauthorized): return self.send(200, {"enabled": False})
+        on = code == 200 and bool(d.get("ssoEnabled"))
+        self.send(200, {"enabled": on, "label": d.get("ssoLabel") or "single sign-on"} if on else {"enabled": False})
+
+    def redirect(self, where, cookies=()):
+        self.send_response(302); self.send_header("Location", where); self.send_header("Cache-Control", "no-store"); self.send_header("Content-Length", "0")
+        for c in cookies: self.send_header("Set-Cookie", c)
+        self.end_headers()
+
+    def sso_login(self):
+        if not sso_enabled(): return self.err(404, "not_found", "Single sign-on is not set up for Agency (AGENCY_PUBLIC_URL).")
+        pu = urlparse(PUBLIC)
+        try: code, where, ck = SERVER.sso_start(pu.netloc, pu.scheme)
+        except OSError: return self.redirect("/?sso=failed")
+        state = (parse_qs(urlparse(where or "").query).get("state") or [""])[0]
+        if code not in (301, 302, 303, 307) or not where or "omnigate_app_oidc_state" not in ck or not state: return self.redirect("/?sso=failed")
+        bind = secrets.token_urlsafe(24); now = time.time()
+        with SESSIONS_LOCK:
+            for k in [k for k, v in SSO_PENDING.items() if v[2] < now]: del SSO_PENDING[k]
+            if len(SSO_PENDING) >= MAX_SESSIONS: return self.redirect("/?sso=failed")
+            SSO_PENDING[bind] = (ck["omnigate_app_oidc_state"], state, now + SSO_TTL)
+        # Lax, not Strict: the provider's answer arrives as a cross-site top-level navigation, which Strict would not carry.
+        self.redirect(where, ["%s=%s; Path=/app/oidc; HttpOnly; SameSite=Lax; Max-Age=%d%s" % (SSO_COOKIE, bind, SSO_TTL, "; Secure" if PUBLIC.startswith("https") else "")])
+
+    def sso_callback(self, query):
+        gone = "%s=; Path=/app/oidc; Max-Age=0" % SSO_COOKIE
+        if not sso_enabled(): return self.err(404, "not_found", "Single sign-on is not set up for Agency.")
+        bind = ""
+        for part in (self.headers.get("Cookie") or "").split(";"):
+            k, _, v = part.strip().partition("=")
+            if k == SSO_COOKIE: bind = v
+        with SESSIONS_LOCK: pend = SSO_PENDING.pop(bind, None)
+        if not pend or pend[2] < time.time() or (parse_qs(query).get("state") or [""])[0] != pend[1]: return self.redirect("/?sso=failed", [gone])   # not the browser that began it, or too late
+        pu = urlparse(PUBLIC)
+        try: code, where, ck = SERVER.sso_finish(pu.netloc, pu.scheme, query, pend[0])
+        except OSError: return self.redirect("/?sso=failed", [gone])
+        cookie = ck.get("omnigate_app_session")
+        if not cookie or code not in (301, 302, 303, 307):
+            return self.redirect("/?sso=" + ("unknown" if "sso=unknown" in (where or "") else "failed"), [gone])
+        try: c, who = SERVER.json("GET", "/app/whoami", cookie); name = (who.get("userId") or who.get("username")) if c == 200 else None
+        except (OSError, Unauthorized): name = None
+        if not name: return self.redirect("/?sso=failed", [gone])
+        try: token = new_session(name, cookie)
+        except RuntimeError: return self.redirect("/?sso=failed", [gone])
+        threading.Thread(target=prefetch_starters, args=(SESSIONS[token],), daemon=True).start()
+        self.redirect("/", [gone, "%s=%s; Path=/; HttpOnly; SameSite=Strict; Max-Age=%d" % (COOKIE, token, int(SESSION_SECONDS))])
 
     def logout(self):
         t, s = self.session()

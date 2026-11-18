@@ -6,7 +6,7 @@ import adapters, app, decisions, tools, uploads
 from upstream import Upstream
 
 class Fake:
-    simple_posts = []; simple_refuse = None; server_uploads = []; upload_refuse = None
+    sso = True; sso_hosts = []; simple_posts = []; simple_refuse = None; server_uploads = []; upload_refuse = None
     namespaces = [{"id": "treasury", "name": "Treasury"}]; packs = [{"id": "bom"}]; ask_posts = []; ns_posts = []; ask_status = 200; can_upload = True; user_ns = {}; wf_off = False; wf_refuse = None; wf_posts = []; decisions_route = False; edition = None; starters_need_default = False; starter_calls = 0
 
 class FakeServer(BaseHTTPRequestHandler):
@@ -25,6 +25,15 @@ class FakeServer(BaseHTTPRequestHandler):
     def do_GET(self):
         p = self.path
         if p == "/app/public-config": return self._j(200, {"llmConfigured": True})
+        if p == "/app/auth-config": return self._j(200, {"ssoEnabled": Fake.sso, "ssoLabel": "Okta"})
+        if p == "/app/oidc/login":
+            Fake.sso_hosts.append((self.headers.get("Host"), self.headers.get("X-Forwarded-Proto")))
+            return self._j(302, {}, [("Location", "https://idp.example/authorize?client_id=x&state=S1&nonce=N"), ("Set-Cookie", "omnigate_app_oidc_state=ST; Path=/; HttpOnly; SameSite=Lax")])
+        if p.startswith("/app/oidc/callback?"):
+            q = dict(x.split("=", 1) for x in p.split("?", 1)[1].split("&")); Fake.sso_hosts.append((self.headers.get("Host"), self.headers.get("Cookie")))
+            if q.get("state") != "S1" or "omnigate_app_oidc_state=ST" not in (self.headers.get("Cookie") or "") or q.get("code") == "bad": return self._j(302, {}, [("Location", "/login?sso=failed")])
+            if q.get("code") == "nobody": return self._j(302, {}, [("Location", "/login?sso=unknown")])
+            return self._j(302, {}, [("Location", "/"), ("Set-Cookie", "omnigate_app_session=srv-cookie; Path=/; HttpOnly; SameSite=Lax")])
         if not self.authed(): return self._j(401, {"error": "not logged in"})
         if p == "/app/whoami": return self._j(200, dict({"username": self.user(), "canSeeSql": True, "canUploadFiles": Fake.can_upload}, **({"edition": Fake.edition, "features": {"workflows": not Fake.wf_off}} if Fake.edition else {})))
         if p == "/app/namespaces": return self._j(200, {"success": True, "namespaces": Fake.user_ns.get(self.user(), Fake.namespaces)})
@@ -115,11 +124,39 @@ class LayerTests(unittest.TestCase):
         Fake.namespaces = [{"id": "treasury", "name": "Treasury"}]; Fake.packs = [{"id": "bom"}]; Fake.ask_posts = []; Fake.ns_posts = []; Fake.ask_status = 200
         Fake.can_upload = True; Fake.user_ns = {}; Fake.wf_off = False; Fake.wf_refuse = None; Fake.wf_posts = []; Fake.decisions_route = False; Fake.edition = None; Fake.starters_need_default = False; Fake.starter_calls = 0; os.environ.pop("AGENCY_UPLOAD_SHARING", None); os.environ.pop("AGENCY_UPLOAD_ADMINS", None); FakeAdapter.ingests = []; FakeAdapter.fail = None
         app.ADAPTERS = adapters.Registry("http://127.0.0.1:%d" % self.adapter.server_port); app.UPLOADS = uploads.Store(1.0)
+        Fake.sso = True; Fake.sso_hosts = []; app.PUBLIC = ""; app.SSO_PENDING.clear()
         app.SESSIONS.clear(); os.environ.pop("AGENCY_SCOPE_HINT", None); os.environ.pop("AGENCY_DECISION_FILE", None)
         self.c = Client(self.layer.server_port)
     def signin(self):
         s, raw, r = self.c.call("POST", "/login", {"username": "alice", "password": "pw"}); self.assertEqual(s, 200, raw); return r
     def J(self, raw): return json.loads(raw)
+
+    def sso_get(self, path, cookie=None):
+        c = http.client.HTTPConnection("127.0.0.1", self.layer.server_port, timeout=10); c.request("GET", path, headers={"Cookie": cookie} if cookie else {})
+        r = c.getresponse(); r.read(); return r.status, r.getheader("Location"), r.headers.get_all("Set-Cookie") or []
+
+    def test_single_sign_on_is_relayed_and_the_server_cookie_stays_in_the_layer(self):
+        s, raw, _ = self.c.call("GET", "/sso/config"); self.assertEqual(self.J(raw), {"enabled": False})              # no public address: off
+        s, _, _ = self.sso_get("/sso/login"); self.assertEqual(s, 404)
+        app.PUBLIC = "https://agency.example:8443"
+        s, raw, _ = self.c.call("GET", "/sso/config"); self.assertEqual(self.J(raw), {"enabled": True, "label": "Okta"})
+        s, where, cookies = self.sso_get("/sso/login"); self.assertEqual((s, where.split("?")[0]), (302, "https://idp.example/authorize"))
+        self.assertEqual(Fake.sso_hosts[0], ("agency.example:8443", "https"))                                          # the provider will come back to the layer, not the Server
+        bind = cookies[0].split(";")[0]; self.assertTrue(bind.startswith("agency_sso=")); self.assertIn("SameSite=Lax", cookies[0]); self.assertNotIn("omnigate", cookies[0])
+        s, where, _ = self.sso_get("/app/oidc/callback?state=S1&code=abc"); self.assertEqual((s, where), (302, "/?sso=failed"))      # another browser: no binding cookie
+        s, where, cookies = self.sso_get("/app/oidc/callback?state=S1&code=abc", bind); self.assertEqual((s, where), (302, "/"))
+        mine = [c for c in cookies if c.startswith("agency_session=")][0]; self.assertIn("SameSite=Strict", mine); self.assertNotIn("srv-cookie", " ".join(cookies))
+        self.c.cookie = mine.split(";")[0]; s, raw, _ = self.c.call("GET", "/whoami"); self.assertEqual((s, self.J(raw)["layerUser"]), (200, "alice"))
+        s, where, _ = self.sso_get("/app/oidc/callback?state=S1&code=abc", bind); self.assertEqual(where, "/?sso=failed")           # a binding works once
+
+    def test_single_sign_on_refusals_are_reported_not_hidden(self):
+        app.PUBLIC = "http://agency.example"
+        for code, want in (("nobody", "/?sso=unknown"), ("bad", "/?sso=failed")):
+            s, where, cookies = self.sso_get("/sso/login"); bind = cookies[0].split(";")[0]
+            s, where, cookies = self.sso_get("/app/oidc/callback?state=S1&code=" + code, bind); self.assertEqual(where, want); self.assertFalse([c for c in cookies if c.startswith("agency_session=")])
+        s, where, cookies = self.sso_get("/sso/login"); bind = cookies[0].split(";")[0]
+        s, where, _ = self.sso_get("/app/oidc/callback?state=OTHER&code=abc", bind); self.assertEqual(where, "/?sso=failed")        # a state that is not the one we began with
+        Fake.sso = False; s, raw, _ = self.c.call("GET", "/sso/config"); self.assertEqual(self.J(raw), {"enabled": False})
 
     def test_tools_are_generated_from_the_contract_and_never_include_approval(self):
         names = [t["name"] for t in tools.tool_list()]

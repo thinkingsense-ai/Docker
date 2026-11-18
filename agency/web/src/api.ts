@@ -54,6 +54,7 @@ export const api = {
   whoami: () => call<Record<string, any>>('GET', '/whoami'),
   packs: () => call<{ packs: Pack[]; note: string | null }>('GET', '/packs'),
   status: () => call<Status>('GET', '/status'),
+  ssoConfig: () => call<{ enabled: boolean; label?: string }>('GET', '/sso/config'),
   starters: (pack: string | null) => call<{ items?: Starter[]; questions?: string[] }>('GET', '/starters' + (pack ? '?pack=' + encodeURIComponent(pack) : '')),
   conversations: () => call<{ conversations: ConversationSummary[] }>('GET', '/conversations'),
   conversation: (id: string) => call<{ success: boolean; title?: string; turns?: Turn[]; error?: string }>('GET', '/conversations/get?id=' + encodeURIComponent(id)),

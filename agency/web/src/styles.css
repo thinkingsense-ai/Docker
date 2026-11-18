@@ -152,3 +152,6 @@ th { position: sticky; top: 0; background: var(--chip) } th.num, td.num { text-a
 .fbpanel { margin-top: .5rem; padding: .6rem .75rem; border: 1px solid var(--line); border-radius: 8px; display: grid; gap: .5rem }
 .fbpanel textarea { display: block; width: 100%; margin-top: .25rem; font: inherit; color: inherit; background: var(--bg, transparent); border: 1px solid var(--edge); border-radius: 6px; padding: .4rem }
 .filechip { margin: .25rem 0; padding: .35rem .6rem; border-radius: 8px; background: var(--k-table, var(--line)) }
+.login .sso { margin: 0; text-align: center }
+.login .sso a.button { display: block; padding: .5rem; border: 1px solid var(--edge); border-radius: 8px; color: var(--accent); text-decoration: none; font-weight: 600 }
+.login .sso a.button:hover { background: var(--fill) }
