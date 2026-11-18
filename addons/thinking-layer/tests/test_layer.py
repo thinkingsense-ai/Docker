@@ -158,6 +158,16 @@ class LayerTests(unittest.TestCase):
         s, where, _ = self.sso_get("/app/oidc/callback?state=OTHER&code=abc", bind); self.assertEqual(where, "/?sso=failed")        # a state that is not the one we began with
         Fake.sso = False; s, raw, _ = self.c.call("GET", "/sso/config"); self.assertEqual(self.J(raw), {"enabled": False})
 
+    def test_manage_link_is_shown_only_when_configured_and_to_listed_users(self):
+        self.signin()
+        try:
+            s, raw, _ = self.c.call("GET", "/status"); self.assertNotIn("adminUrl", self.J(raw))
+            os.environ["AGENCY_ADMIN_URL"] = "javascript:alert(1)"; s, raw, _ = self.c.call("GET", "/status"); self.assertNotIn("adminUrl", self.J(raw))
+            os.environ["AGENCY_ADMIN_URL"] = "https://admin.example/admin"; s, raw, _ = self.c.call("GET", "/status"); self.assertEqual(self.J(raw)["adminUrl"], "https://admin.example/admin")
+            os.environ["AGENCY_ADMIN_USERS"] = "curator, bob"; s, raw, _ = self.c.call("GET", "/status"); self.assertNotIn("adminUrl", self.J(raw))          # alice is not listed
+            os.environ["AGENCY_ADMIN_USERS"] = "alice"; s, raw, _ = self.c.call("GET", "/status"); self.assertIn("adminUrl", self.J(raw))
+        finally: os.environ.pop("AGENCY_ADMIN_URL", None); os.environ.pop("AGENCY_ADMIN_USERS", None)
+
     def test_tools_are_generated_from_the_contract_and_never_include_approval(self):
         names = [t["name"] for t in tools.tool_list()]
         self.assertEqual(names, ["list_packs", "ask", "get_decisions", "status", "list_adapters", "list_uploads", "list_workflow_definitions", "list_workflows", "get_workflow_run"])

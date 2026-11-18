@@ -5,7 +5,7 @@ answer with an evidence block, reads the decision record, and lists the MCP tool
 Environment: SERVER_URL (default http://omnigate:8080), PACKS_CATALOGUE, AGENCY_DECISION_FILE (only for a Server older than 0.10.20: its OMNIGATE_WORKFLOW_DECISION_FILE, shared read-only),
 AGENCY_SCOPE_HINT=on to add the pack's data sets to the question when no Workspace exists (off by default: its effect on accuracy is not measured),
 AGENCY_SESSION_HOURS (default 8), AGENCY_WEB_DIST (the built Agency UI, served at / when the folder exists), AGENCY_PREFS_FILE (per-user preferences, kept in
-memory when unset), AGENCY_ADAPTERS (comma-separated adapter base URLs), AGENCY_UPLOAD_HOURS (record lifetime, default 1), AGENCY_UPLOAD_SHARING (off, the default, or workspace), AGENCY_UPLOAD_ADMINS (comma-separated Server usernames who may unshare or delete shared records), AGENCY_PUBLIC_URL (where browsers reach the layer; turns on single sign-on, and PUBLIC_URL/app/oidc/callback must be registered with the identity provider), PORT (default 8097).
+memory when unset), AGENCY_ADAPTERS (comma-separated adapter base URLs), AGENCY_UPLOAD_HOURS (record lifetime, default 1), AGENCY_UPLOAD_SHARING (off, the default, or workspace), AGENCY_UPLOAD_ADMINS (comma-separated Server usernames who may unshare or delete shared records), AGENCY_ADMIN_URL (the admin console, shown as a quiet Manage link) and AGENCY_ADMIN_USERS (optional: only these usernames see it), AGENCY_PUBLIC_URL (where browsers reach the layer; turns on single sign-on, and PUBLIC_URL/app/oidc/callback must be registered with the identity provider), PORT (default 8097).
 The layer logs no question text and no file content."""
 import json, mimetypes, os, secrets, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -79,6 +79,14 @@ SSO_MESSAGES = {"failed": "Single sign-on did not complete. Try again.", "unknow
 
 
 def sso_enabled(): return bool(PUBLIC) and urlparse(PUBLIC).scheme in ("http", "https") and bool(urlparse(PUBLIC).netloc)
+
+
+def admin_link(user):
+    """The 'Manage' link: AGENCY_ADMIN_URL (http or https), shown only to AGENCY_ADMIN_USERS when that is set. A convenience, not a control: the admin console has its own sign-in and roles."""
+    url = os.environ.get("AGENCY_ADMIN_URL", "").strip(); p = urlparse(url)
+    if p.scheme not in ("http", "https") or not p.netloc: return None
+    only = {u.strip() for u in os.environ.get("AGENCY_ADMIN_USERS", "").split(",") if u.strip()}
+    return url if not only or user in only else None
 
 
 def hint_for(pack):
@@ -405,6 +413,8 @@ class H(BaseHTTPRequestHandler):
         except (OSError, Unauthorized): pass
         t, s = self.session()
         if s:
+            url = admin_link(s.username)
+            if url: out["adminUrl"] = url
             try:
                 code, w = SERVER.json("GET", "/app/whoami", s.cookie)
                 feats = w.get("features") if code == 200 and isinstance(w, dict) else None
