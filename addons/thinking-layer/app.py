@@ -49,7 +49,7 @@ class Session:
     def __init__(self, username, cookie):
         self.username, self.cookie, self.workspace, self.last = username, cookie, "?", time.time()   # "?" = Server-side Workspace not known yet
         self.lock = threading.Lock()                                                               # one question at a time: the Workspace is session state on the Server
-        self.starters = {}                                                                         # pack id ("" = all data) -> (time, the Server's answer), read before the first question
+        self.epoch = 0; self.starters = {}                                                                         # pack id ("" = all data) -> (time, the Server's answer), read before the first question
 
 
 STARTER_TTL = 900
@@ -227,14 +227,36 @@ class H(BaseHTTPRequestHandler):
         if not w.get("canUploadFiles"): return self.err(403, "missing_grant", "Your account has no permission to upload files (an admin grants it under Admin > users).")
         data = self.rfile.read(n)
         try: ing = ADAPTERS.ingest(url, name, mime, data)
-        except adapters.AdapterError as e: return self.err(e.status, "adapter_refused" if e.status != 502 else "adapter_unavailable", e.message)
-        finally: data = None                                                # the file is not kept
+        except adapters.AdapterError as e: data = None; return self.err(e.status, "adapter_refused" if e.status != 502 else "adapter_unavailable", e.message)
+        server = None
+        if manifest.get("kind") == "table" and os.environ.get("AGENCY_TABLE_TO_SERVER", "on") != "off": server, ing = self.push_table(s, name, data, ing)
+        data = None                                                         # the file is not kept
         if wid is None and sharing() == "workspace":                               # All data is a Workspace of its own when the stack has one (see ask())
             try: wid = ALL_DATA if ALL_DATA in self.my_workspaces(t, s) else None
             except (Unauthorized, OSError): wid = None
-        rec = UPLOADS.add(s.username, name, wid, manifest, ing)
+        rec = UPLOADS.add(s.username, name, wid, manifest, ing, server)
         if rec is None: return self.err(429, "too_many_uploads", "You have %d uploads; delete one first." % uploads.MAX_PER_USER)
         self.send(200, rec)
+
+    SERVER_TABLE_EXT = (".csv", ".xlsx")                    # what the Server's own scratch upload reads (up to 5,000 rows, kept 30 minutes, one conversation)
+
+    def push_table(self, s, name, data, ing):
+        """Give the Server a conversation-scoped copy of a table (POST /app/uploads) so the person can ask about it. The Server reads comma CSV and XLSX, holds at most 5,000 rows for
+        30 minutes and shows the file to that one conversation only; it is never a registered data source. A refusal leaves the adapter's profile in place and says so."""
+        ing = dict(ing); notes = [n for n in (ing.get("notes") or []) if "not in any Server data source" not in n]
+        why = None
+        if not name.lower().endswith(self.SERVER_TABLE_EXT): why = "Only CSV and Excel (.xlsx) files can be asked about; this one is described only."
+        else:
+            try:
+                code, r = SERVER.json("POST", "/app/uploads", s.cookie, {"conversationId": None, "filename": name, "fileBase64": __import__("base64").b64encode(data).decode()})
+                if code == 200 and isinstance(r, dict) and r.get("success") and r.get("uploadId") and r.get("conversationId"):
+                    ing["notes"] = notes + ["Loaded for questions in this conversation only: %d rows%s, kept by the Server for 30 minutes, and visible to no one else." % (r.get("rowCount") or 0, " (the file was longer; the Server loads at most 5,000)" if r.get("truncated") else "")]
+                    ing["askPrompts"] = ["What columns does %s have?" % name, "Summarise %s" % name, "What is the total of each numeric column in %s?" % name]
+                    return {"uploadId": r["uploadId"], "conversationId": r["conversationId"], "untilEpoch": time.time() + 29 * 60, "session": (s.cookie, s.epoch)}, ing
+                why = str(r.get("error") or "The Server did not accept the file for questions.") if isinstance(r, dict) else "The Server did not accept the file for questions."
+            except (OSError, Unauthorized, ValueError): why = "The Server could not be reached to load the file for questions."
+        ing["notes"] = notes + [why + " It is described only."]; ing["askPrompts"] = []
+        return None, ing
 
     def static(self, path):
         root = os.path.realpath(WEB_DIST); f = os.path.realpath(os.path.join(root, path.lstrip("/") or "index.html"))
@@ -362,11 +384,18 @@ class H(BaseHTTPRequestHandler):
                     if pack["id"] in have: target, scope = pack["id"], "server-backends"
                     elif os.environ.get("AGENCY_SCOPE_HINT") == "on": scope = "agency-hint"; question = question.strip() + hint_for(pack)
                 elif ALL_DATA in have: target = ALL_DATA              # once packs are Workspaces the Server's Default one is empty; All data is its own Workspace
-                if s.workspace != target:                                    # None selects the default ("all data") Workspace, as the Ask app's "All groups" does
+                body = {"question": question, "conversationId": b.get("conversationId")}
+                tgt = None
+                if b.get("uploadId") not in (None, ""):                              # a table the person uploaded: the Server's own copy and the conversation it belongs to
+                    tgt = UPLOADS.ask_target(s.username, b["uploadId"], (s.cookie, s.epoch)) if isinstance(b["uploadId"], str) else None
+                    if not tgt: return self.err(404, "upload_expired", "That uploaded table is no longer available to ask about (it lasts 30 minutes, and ends when you ask about a different domain). Upload it again.")
+                    body["uploadId"], body["conversationId"] = tgt
+                if s.workspace != target and not tgt:                        # (an upload question stays where the upload was made: switching would drop the file) None selects the default ("all data") Workspace, as the Ask app's "All groups" does
                     code, r = SERVER.json("POST", "/app/session/namespace", s.cookie, {"namespaceId": target})
                     if code != 200 or not r.get("success"): return self.err(409, "workspace_refused", str(r.get("error") or "The Server refused the Workspace."), workspaceId=target)
-                    s.workspace = target
-                ev = Evidence(target, pack, scope, started); events = SERVER.ask_events(s.cookie, {"question": question, "conversationId": b.get("conversationId")})
+                    s.workspace = target; s.epoch += 1; UPLOADS.forget_server_copies(s.username, s.cookie)
+                if tgt: target, scope = (s.workspace if s.workspace != "?" else None), "none"      # the file's own conversation; no Workspace claim is made for it
+                ev = Evidence(target, pack, scope, started); events = SERVER.ask_events(s.cookie, body)
                 if stream: return self.relay(events, ev)
                 last = None
                 for e in events:

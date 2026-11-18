@@ -151,3 +151,4 @@ th { position: sticky; top: 0; background: var(--chip) } th.num, td.num { text-a
 .fbrow .link[aria-pressed="true"] { font-weight: 600; text-decoration: none }
 .fbpanel { margin-top: .5rem; padding: .6rem .75rem; border: 1px solid var(--line); border-radius: 8px; display: grid; gap: .5rem }
 .fbpanel textarea { display: block; width: 100%; margin-top: .25rem; font: inherit; color: inherit; background: var(--bg, transparent); border: 1px solid var(--edge); border-radius: 6px; padding: .4rem }
+.filechip { margin: .25rem 0; padding: .35rem .6rem; border-radius: 8px; background: var(--k-table, var(--line)) }

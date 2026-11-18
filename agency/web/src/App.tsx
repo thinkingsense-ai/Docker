@@ -28,6 +28,7 @@ export default function App() {
   const [starters, setStarters] = useState<Starter[]>([])
   const [convs, setConvs] = useState<ConversationSummary[]>([])
   const [convId, setConvId] = useState<string | null>(null)
+  const [file, setFile] = useState<{ id: string; name: string } | null>(null)    // a table being asked about: questions carry it until the person lets go or starts over
   const [turns, setTurns] = useState<Turn[]>([])
   const [q, setQ] = useState('')
   const [steps, setSteps] = useState<PEvent[]>([])
@@ -44,7 +45,7 @@ export default function App() {
   const abort = useRef<AbortController | null>(null)
   const bottom = useRef<HTMLDivElement>(null)
 
-  const signedOut = useCallback(() => { setUser(null); setTurns([]); setConvId(null) }, [])
+  const signedOut = useCallback(() => { setUser(null); setTurns([]); setConvId(null); setFile(null) }, [])
   const guard = useCallback((e: unknown) => { if (e instanceof ApiError && e.status === 401) signedOut(); else setErr((e as Error).message) }, [signedOut])
 
   useEffect(() => { api.whoami().then((w) => setUser(w.username ?? w.layerUser ?? 'signed in')).catch(() => setUser(null)) }, [])
@@ -83,22 +84,23 @@ export default function App() {
 
   function choose(id: string | null) {
     if (id === pack) return
-    setPack(id); setConvId(null); setTurns([]); setDetailIdx(null); setErr('')
+    setPack(id); setConvId(null); setFile(null); setTurns([]); setDetailIdx(null); setErr('')
     const p = packs.find((x) => x.id === id)
     setChanged(`Asking in ${p ? p.title : 'All data'}. Starter questions updated and a new conversation started.`)
     lsSet(id); api.setPreference(id).catch(() => {})
     const url = new URL(location.href); id ? url.searchParams.set('pack', id) : url.searchParams.delete('pack'); history.replaceState(null, '', url)
   }
 
-  async function send(text: string) {
+  async function send(text: string, uploadId?: string, uploadName?: string) {
     const question = text.trim(); if (!question || busy) return
     setBusy(true); setErr(''); setSteps([]); setStartedAt(Date.now()); setQ(''); const ac = new AbortController(); abort.current = ac
     try {
-      const a = await ask(question, pack, convId, (e) => setSteps((s) => [...s, { ...e, t: Date.now() }]), ac.signal)
+      const a = await ask(question, pack, convId, (e) => setSteps((s) => [...s, { ...e, t: Date.now() }]), ac.signal, uploadId ?? file?.id)
       setTurns((t) => { setDetailIdx(t.length); return [...t, { question, answer: a }] }); if (a.conversationId) setConvId(a.conversationId)
+      if (uploadId) setFile({ id: uploadId, name: uploadName ?? 'your file' })
       api.conversations().then((c) => setConvs(c.conversations ?? [])).catch(() => {})
     } catch (e) {
-      if ((e as Error).name === 'AbortError') setErr('Cancelled.'); else guard(e)
+      if ((e as Error).name === 'AbortError') setErr('Cancelled.'); else { if ((e as { code?: string }).code === 'upload_expired') setFile(null); guard(e) }
     } finally { setBusy(false); setSteps([]); abort.current = null }
   }
 
@@ -130,7 +132,7 @@ export default function App() {
         </div>
       </header>
       <nav aria-label="Conversations">
-        <button className="primary" onClick={() => { setConvId(null); setTurns([]); setDetailIdx(null); setChanged('New conversation.') }}>New conversation</button>
+        <button className="primary" onClick={() => { setConvId(null); setFile(null); setTurns([]); setDetailIdx(null); setChanged('New conversation.') }}>New conversation</button>
         <h2>Recent</h2>
         {convs.length === 0 && <p className="muted small">No conversations yet.</p>}
         <ul>{convs.map((c) => <li key={c.id}><button className={'link' + (c.id === convId ? ' on' : '')} onClick={() => open(c.id)}>{c.title || 'Untitled'}</button></li>)}</ul>
@@ -154,7 +156,7 @@ export default function App() {
           <span className="sr">{changed}</span>
         </p>
         {turns.length === 0 && !busy && <StarterTiles key={pack ?? 'all'} items={starters} label={pack ? `Approved questions: ${packs.find((p) => p.id === pack)?.title ?? pack}` : 'Approved questions'} onPick={send} />}
-        <Uploads workspaceId={pack} onAsk={send} onSignedOut={signedOut} />
+        <Uploads workspaceId={pack} onAsk={(q, id, n) => send(q, id, n)} onSignedOut={signedOut} />
         {turns.map((t, i) => <Answer key={i} a={t.answer} question={t.question} onFollow={send} onDetails={() => { setDetailIdx(i); if (!paneOpen) togglePane() }} active={paneOpen && detailIdx === i} wf={defs.length ? { defs, canStart: grants.canStart, me: user, onSignedOut: signedOut, onChange: refreshWaiting } : undefined} />)}
         {busy && !paneOpen && (
           <div className="progress" role="status" aria-live="polite">
@@ -163,6 +165,7 @@ export default function App() {
         )}
         {err && <p role="alert" className="error">{err}</p>}
         <div ref={bottom} />
+        {file && <p className="small filechip" role="status">Asking about <strong>{file.name}</strong> (a table you uploaded; only you see it). <button className="link" onClick={() => setFile(null)}>Stop using it</button></p>}
         <form className="askbar" onSubmit={(e) => { e.preventDefault(); send(q) }}>
           <label className="sr" htmlFor="q">Ask a question</label>
           <input id="q" value={q} onChange={(e) => setQ(e.target.value)} placeholder={pack ? `Ask about ${packs.find((p) => p.id === pack)?.title ?? pack}` : 'Ask about any of your data'} maxLength={4000} disabled={busy} />

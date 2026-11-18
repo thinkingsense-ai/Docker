@@ -26,7 +26,7 @@ export interface Status {
 export interface Adapter { id: string; title: string; kind?: string; enabled: boolean; reason?: string; nonCommercial?: boolean; licence?: string; notes?: string; maxBytes?: number; accepts: { extensions: string[]; mime: string[] } }
 export interface Upload {
   id: string; name: string; kind: string; adapter: string; workspaceId: string | null; nonCommercial: boolean; licence: string | null
-  notes: string[]; askPrompts: string[]; result: Record<string, any> | null; expiresAt: number
+  notes: string[]; askPrompts: string[]; askable?: boolean; askableUntil?: number; result: Record<string, any> | null; expiresAt: number
   mine?: boolean; shared?: boolean; sharedBy?: string; sharedAt?: number | null
 }
 
@@ -79,11 +79,11 @@ export interface ProgressEvent { step: string; [k: string]: any }
 
 /** Streams POST /ask. onEvent gets each Server event as the layer relays it; resolves with the final answer, rejects on error or abort. */
 export async function ask(question: string, workspaceId: string | null, conversationId: string | null,
-                          onEvent: (e: ProgressEvent) => void, signal: AbortSignal): Promise<Answer> {
+                          onEvent: (e: ProgressEvent) => void, signal: AbortSignal, uploadId?: string): Promise<Answer> {
   const res = await fetch('/ask', {
     method: 'POST', credentials: 'same-origin', signal,
     headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', 'X-Requested-With': 'agency' },
-    body: JSON.stringify({ question, workspaceId, conversationId }),
+    body: JSON.stringify({ question, workspaceId, conversationId, ...(uploadId ? { uploadId } : {}) }),
   })
   if (!res.ok || !res.body) {
     let data: any = {}

@@ -15,19 +15,23 @@ class Store:
         now = time.time()
         for k in [k for k, r in self.rows.items() if r["expiresAtEpoch"] <= now]: del self.rows[k]
 
-    def add(self, owner, name, workspace, manifest, ingest):
+    def add(self, owner, name, workspace, manifest, ingest, server=None):
         with self.lock:
             self._purge()
             if sum(1 for r in self.rows.values() if r["owner"] == owner) >= MAX_PER_USER: return None
             now = time.time(); rid = "up_" + secrets.token_urlsafe(9)
             self.rows[rid] = {"id": rid, "owner": owner, "name": name, "kind": manifest.get("kind"), "adapter": manifest.get("id"), "workspaceId": workspace,
                               "createdAtEpoch": now, "expiresAtEpoch": now + self.ttl, "nonCommercial": bool(manifest.get("nonCommercial")),
-                              "sharedBy": None, "sharedAtEpoch": None, "licence": ingest.get("licence"), "notes": ingest.get("notes") or [], "askPrompts": ingest.get("askPrompts") or [], "result": ingest.get("result")}
+                              "sharedBy": None, "sharedAtEpoch": None, "licence": ingest.get("licence"), "notes": ingest.get("notes") or [], "askPrompts": ingest.get("askPrompts") or [], "result": ingest.get("result"),
+                              "server": server}                           # {uploadId, conversationId, untilEpoch}: the Server's own conversation-scoped copy, if one was made
             return self.view(self.rows[rid])
 
     @staticmethod
     def view(r, viewer=None):
-        out = {k: v for k, v in r.items() if k not in ("owner", "createdAtEpoch", "expiresAtEpoch", "sharedBy", "sharedAtEpoch")}
+        out = {k: v for k, v in r.items() if k not in ("owner", "createdAtEpoch", "expiresAtEpoch", "sharedBy", "sharedAtEpoch", "server")}
+        srv = r.get("server"); out["askable"] = bool(srv and srv["untilEpoch"] > time.time() and not srv.get("gone") and (viewer is None or r["owner"] == viewer))
+        if srv and out["askable"]: out["askableUntil"] = int(srv["untilEpoch"] * 1000)
+        if not out["askable"]: out["askPrompts"] = []
         out.update(expiresAt=int(r["expiresAtEpoch"] * 1000), shared=bool(r["sharedBy"]), sharedAt=int(r["sharedAtEpoch"] * 1000) if r["sharedAtEpoch"] else None,
                    mine=viewer is None or r["owner"] == viewer)
         if r["sharedBy"]: out["sharedBy"] = r["sharedBy"]
@@ -58,6 +62,20 @@ class Store:
         with self.lock:
             self._purge(); r = self.rows.get(rid)
             return dict(r) if r and r["owner"] == owner else None
+
+    def ask_target(self, owner, rid, session=None):
+        """(Server uploadId, conversationId) when this person's own record still has a live copy on the Server, else None. `session` is (Server cookie, Workspace switches so far):
+        the Server forgets an uploaded file when the session's Workspace is changed (found live, app 0.10.21), so a copy made before a switch, or in another session, is gone."""
+        with self.lock:
+            self._purge(); r = self.rows.get(rid); srv = r and r["owner"] == owner and r.get("server")
+            if not srv or srv["untilEpoch"] <= time.time() or (session is not None and tuple(srv.get("session") or ()) != tuple(session)): return None
+            return srv["uploadId"], srv["conversationId"]
+
+    def forget_server_copies(self, owner, cookie):
+        """The session's Workspace changed: the Server no longer holds this person's files from that session."""
+        with self.lock:
+            for r in self.rows.values():
+                if r["owner"] == owner and r.get("server") and r["server"].get("session", (None,))[0] == cookie: r["server"]["gone"] = True
 
     def set_shared(self, who, rid, on, admin=False):
         """Owner shares or unshares; an admin may only unshare a shared record. Returns the viewer's view or None."""

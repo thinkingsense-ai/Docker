@@ -6,7 +6,7 @@ import adapters, app, decisions, tools, uploads
 from upstream import Upstream
 
 class Fake:
-    simple_posts = []; simple_refuse = None
+    simple_posts = []; simple_refuse = None; server_uploads = []; upload_refuse = None
     namespaces = [{"id": "treasury", "name": "Treasury"}]; packs = [{"id": "bom"}]; ask_posts = []; ns_posts = []; ask_status = 200; can_upload = True; user_ns = {}; wf_off = False; wf_refuse = None; wf_posts = []; decisions_route = False; edition = None; starters_need_default = False; starter_calls = 0
 
 class FakeServer(BaseHTTPRequestHandler):
@@ -62,6 +62,10 @@ class FakeServer(BaseHTTPRequestHandler):
             Fake.simple_posts.append((self.path, b, self.user()))
             if Fake.simple_refuse: return self._j(200, {"success": False, "error": Fake.simple_refuse})
             return self._j(200, {"success": True, "alreadySaved": False} if "reusable" in self.path else {"success": True})
+        if self.path == "/app/uploads":
+            Fake.server_uploads.append((b, self.user()))
+            if Fake.upload_refuse: return self._j(403, {"success": False, "error": Fake.upload_refuse})
+            return self._j(200, {"success": True, "uploadId": "su1", "conversationId": "conv-u", "filename": b["filename"], "rowCount": 3, "truncated": False})
         if self.path == "/app/session/namespace": Fake.ns_posts.append(b["namespaceId"]); return self._j(200, {"success": True})
         if self.path == "/api/ask":
             if Fake.ask_status != 200: return self._j(Fake.ask_status, {})
@@ -73,12 +77,12 @@ class FakeServer(BaseHTTPRequestHandler):
         self._j(404, {})
 
 class FakeAdapter(BaseHTTPRequestHandler):
-    ingests = []; fail = None; gps = False
+    ingests = []; fail = None; gps = False; kind = "audio"; ext = ".wav"
     def log_message(self, *a): pass
     def _j(self, code, o):
         b = json.dumps(o).encode(); self.send_response(code); self.send_header("Content-Type", "application/json"); self.send_header("Content-Length", str(len(b))); self.end_headers(); self.wfile.write(b)
     def do_GET(self):
-        if self.path == "/adapter": return self._j(200, {"id": "fake-audio", "title": "Fake", "kind": "audio", "accepts": {"extensions": [".wav"], "mime": ["audio/wav"]}, "maxBytes": 1000, "nonCommercial": True})
+        if self.path == "/adapter": return self._j(200, {"id": "fake-audio", "title": "Fake", "kind": FakeAdapter.kind, "accepts": {"extensions": [FakeAdapter.ext] + ([".tsv"] if FakeAdapter.kind == "table" else []), "mime": ["audio/wav"]}, "maxBytes": 1000, "nonCommercial": FakeAdapter.kind == "audio"})
         self._j(404, {})
     def do_POST(self):
         body = self.rfile.read(int(self.headers.get("Content-Length") or 0)); FakeAdapter.ingests.append((self.headers.get("X-Filename"), len(body)))
@@ -372,6 +376,29 @@ class LayerTests(unittest.TestCase):
         a, b = self.who("alice"), self.who("bob"); rid = self.gps_upload(a); before = app.UPLOADS.rows[rid]["expiresAtEpoch"]
         a.call("POST", "/uploads/%s/share" % rid, {"shared": True}); self.assertEqual(app.UPLOADS.rows[rid]["expiresAtEpoch"], before)
         app.UPLOADS.rows[rid]["expiresAtEpoch"] = 0; self.assertEqual(self.J(b.call("GET", "/uploads")[1])["shared"], [])
+
+    def test_a_table_gets_a_server_copy_for_this_conversation_and_asking_uses_it(self):
+        Fake.server_uploads.clear(); Fake.upload_refuse = None; Fake.ask_posts.clear(); self.signin(); FakeAdapter.kind, FakeAdapter.ext = "table", ".csv"
+        try:
+            self.assertEqual(self.c.call("GET", "/adapters")[0], 200); app.ADAPTERS = adapters.Registry("http://127.0.0.1:%d" % self.adapter.server_port)
+            s, raw, _ = self.c.call("POST", "/uploads?name=pay.csv", b"a,b\n1,2\n", {"Content-Type": "text/csv"}); self.assertEqual(s, 200, raw); r = self.J(raw)
+            self.assertEqual(Fake.server_uploads[-1][0]["filename"], "pay.csv"); self.assertEqual(Fake.server_uploads[-1][1], "alice"); self.assertIsNone(Fake.server_uploads[-1][0]["conversationId"])
+            self.assertTrue(r["askable"]); self.assertTrue(r["askPrompts"]); self.assertNotIn("server", r); self.assertNotIn("su1", raw)       # the Server's id never reaches the browser
+            self.assertTrue(any("this conversation only" in n for n in r["notes"]))
+            n_ns = len(Fake.ns_posts); self.c.call("POST", "/ask", {"question": "total?", "uploadId": r["id"], "conversationId": "ignored"}); self.assertEqual(len(Fake.ns_posts), n_ns)      # asking about a file never switches Workspace
+            self.assertEqual((Fake.ask_posts[-1]["uploadId"], Fake.ask_posts[-1]["conversationId"]), ("su1", "conv-u"))
+            self.assertEqual(self.c.call("POST", "/ask", {"question": "total?", "uploadId": "up_nope"})[0], 404)
+            bob = Client(self.layer.server_port); bob.call("POST", "/login", {"username": "bob", "password": "pw"})
+            self.assertEqual(bob.call("POST", "/ask", {"question": "total?", "uploadId": r["id"]})[0], 404)                  # somebody else's record cannot be asked about
+            self.c.call("POST", "/ask", {"question": "ordinary"}); self.assertGreater(len(Fake.ns_posts), n_ns)                  # an ordinary question switches Workspace, and the Server then forgets the file
+            self.assertFalse(self.J(self.c.call("GET", "/uploads")[1])["uploads"][0]["askable"]); self.assertEqual(self.c.call("POST", "/ask", {"question": "total?", "uploadId": r["id"]})[0], 404)
+            app.UPLOADS.rows[r["id"]]["server"]["gone"] = False; app.UPLOADS.rows[r["id"]]["server"]["untilEpoch"] = 0; self.assertEqual(self.c.call("POST", "/ask", {"question": "total?", "uploadId": r["id"]})[0], 404)
+            self.assertFalse(self.J(self.c.call("GET", "/uploads")[1])["uploads"][0]["askable"])
+            Fake.upload_refuse = "no grant"; r2 = self.J(self.c.call("POST", "/uploads?name=pay2.csv", b"a\n1\n", {"Content-Type": "text/csv"})[1])
+            self.assertFalse(r2["askable"]); self.assertEqual(r2["askPrompts"], []); self.assertTrue(any("described only" in n for n in r2["notes"]))
+            Fake.upload_refuse = None; n0 = len(Fake.server_uploads); r3 = self.J(self.c.call("POST", "/uploads?name=pay.tsv", b"a\tb\n", {"Content-Type": "text/tab-separated-values"})[1])
+            self.assertEqual(len(Fake.server_uploads), n0); self.assertFalse(r3["askable"])                                   # a type the Server cannot read is not sent
+        finally: FakeAdapter.kind, FakeAdapter.ext = "audio", ".wav"; app.ADAPTERS = adapters.Registry("http://127.0.0.1:%d" % self.adapter.server_port)
 
     def test_feedback_help_and_reusable_are_validated_and_relayed_as_the_signed_in_user(self):
         Fake.simple_posts.clear(); Fake.simple_refuse = None
