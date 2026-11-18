@@ -121,7 +121,7 @@ export default function App() {
   return (
     <div className={'shell' + (paneOpen ? ' with-pane' : '')}>
       <header>
-        <h1>Agency</h1>
+        <h1 className="brand">Agency <span className="by">by</span> <img src="/thinkingsense-wordmark.png" alt="Thinking Sense" width="117" height="26" /></h1>
         <div className="who">
           <span title="Server reachability">{status ? (status.server.reachable ? 'Server reachable' : 'Server not reachable') : '…'}</span>
           {status?.edition && <span title="The edition the Server reports for this session">{status.edition === 'commercial' ? 'Commercial edition' : 'Free edition'}</span>}

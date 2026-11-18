@@ -14,7 +14,7 @@ export default function Login({ onDone }: { onDone: () => void }) {
   return (
     <main className="login">
       <form onSubmit={submit} aria-labelledby="login-h">
-        <h1 id="login-h">Agency</h1>
+        <h1 id="login-h" className="brand big">Agency <span className="by">by</span> <img src="/thinkingsense-wordmark.png" alt="Thinking Sense" width="156" height="35" /></h1>
         <p className="muted">Sign in with your OmniGate account. Agency keeps no passwords.</p>
         <label>Username<input value={u} onChange={(e) => setU(e.target.value)} autoComplete="username" autoFocus required /></label>
         <label>Password<input type="password" value={p} onChange={(e) => setP(e.target.value)} autoComplete="current-password" required /></label>
