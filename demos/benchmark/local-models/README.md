@@ -15,8 +15,10 @@ Background, candidates and the OCI resources it needs are in the write-up *Local
 | `override-local.yml` | Compose override: the app in `local-only` mode talks to the local server through the logging proxy |
 | `run_local.sh` | One model on one shape, end to end: fetch, serve, run the benchmark, stop |
 | `report.py` | `summary` (accuracy, time, tokens per model and shape) and `calibrate` (escalation threshold vs measured accuracy) |
+| `push_repo.sh` | Copies the repo to a node without secrets; scans what remains and refuses on a key-shaped string |
 | `oci_node.py` | Creates a benchmark node on OCI with a mandatory expiry, lists them, and **reaps** expired ones |
-| `tests/` | 23 tests, no network or cloud needed (`python3 -m unittest discover -s demos/benchmark/local-models/tests`) |
+| `results/` | Saved benchmark results with a RESULTS.md each |
+| `tests/` | 24 tests, no network or cloud needed (`python3 -m unittest discover -s demos/benchmark/local-models/tests`) |
 
 Small hooks were added to `tools/`: `llmproxy.py` forwards to `LLM_UPSTREAM` (default Anthropic), `run_variant.sh` takes `BENCH_OVERRIDE`, and `bench_run.py` records each
 question's `confidence` and whether it `escalated`. Existing runs behave as before.
@@ -46,6 +48,8 @@ It prints, per threshold, the share kept locally, the accuracy of the kept answe
 
 ## On OCI
 
+Copy the repo to a node with `push_repo.sh ubuntu@<ip>`, never a plain rsync: it excludes secret-type files (`*.tfvars`, `*.tfstate*`, `.env`, keys) and **refuses** to copy anything containing an Anthropic-key-shaped string or a private-key header.
+
 ```bash
 export OCI_COMPARTMENT_ID=... OCI_SUBNET_ID=... OCI_IMAGE_ID=... OCI_AD=...        # an image for the shape's architecture; GPU shapes need drivers
 python3 demos/benchmark/local-models/oci_node.py plan x86-cpu-16 --ttl-hours 4      # prints the command; creates nothing
@@ -71,6 +75,8 @@ Checked: the 23 unit tests; a real download from Hugging Face with the CDN redir
 **Not checked:** serving a model and running the benchmark through it (nothing downloaded beyond a 60 MB test file); any OCI launch (no GPU quota; no node created); CUDA serving;
 the Server's name for the confidence field in its answer events (`bench_run.py` takes the first event key containing "confidence"; confirm it on the first live run, or `calibrate`
 will say it found none); the app accepting a local server at `OMNIGATE_ASSISTANT_REMOTE_HOST` in `local-only` mode on v0.10.21 (documented in `docs/llm-configuration.md`, never run here).
+
+**Found live on the first node (fixed):** the app probes its local model with `GET /health` at boot, so the logging proxy must pass GET through (it now does, with a test); the Ubuntu OCI image's host firewall drops container-to-host traffic, so `run_local.sh` opens port 9099 to the Docker bridge range; cloud-init now adds the `ubuntu` user to the docker group; and the local override keeps the host's real API key out of the app container.
 
 **Known gaps:** no prompt adapter for the SQL-specialist models (Arctic-Text2SQL-R1 was trained on SQLite `CREATE TABLE` prompts; its first score is recorded as *unadapted*); no
 Arctic 14B GGUF found; Docker image tags should be replaced by digests before a result is quoted (the meta file records the image id used); GPU shape names are from Oracle's

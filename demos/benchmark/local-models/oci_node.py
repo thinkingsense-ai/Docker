@@ -25,6 +25,7 @@ def shapes():
 def cloud_init(ttl_hours):
     minutes = int(ttl_hours * 60)
     return ("#cloud-config\nruncmd:\n  - [sh, -c, \"curl -fsSL https://get.docker.com | sh\"]\n"
+            "  - [sh, -c, \"usermod -aG docker ubuntu || true\"]\n"
             f"  - [sh, -c, \"shutdown -h +{minutes}\"]\n")
 
 

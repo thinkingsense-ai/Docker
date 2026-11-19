@@ -6,6 +6,7 @@ services:
     extra_hosts: ["host.docker.internal:host-gateway"]     # Linux hosts (an OCI node); Docker Desktop already has the name
     environment:
       OMNIGATE_LLM_MODE: local-only
+      OMNIGATE_LLM_API_KEY: bench-no-key                   # run_variant.sh passes the host's real key; a local-only run must not carry it into the container (the judge uses it on the host)
       OMNIGATE_ASSISTANT_REMOTE_HOST: host.docker.internal
       OMNIGATE_ASSISTANT_REMOTE_PORT: "9099"
       OMNIGATE_ASSISTANT_CONTEXT_SIZE: "8192"

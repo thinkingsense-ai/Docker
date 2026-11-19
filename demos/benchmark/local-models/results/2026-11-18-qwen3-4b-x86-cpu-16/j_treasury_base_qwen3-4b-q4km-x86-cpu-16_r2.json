@@ -1,0 +1,122 @@
+[
+ {
+  "question": "What is our consolidated cash position in US dollars across all open accounts?",
+  "verdict": "wrong",
+  "reason": "The candidate's total of about 21.86 billion USD differs greatly from the reference total of 136,685,450 USD across 25 accounts."
+ },
+ {
+  "question": "How much cash do we hold in each currency, in the local currency and in US dollars?",
+  "verdict": "wrong",
+  "reason": "The candidate's figures differ from the reference in every currency (e.g., USD 846,690,616.54 vs 77,380,913), so the amounts do not match even though the currency rows are the same."
+ },
+ {
+  "question": "What is the cash position of each legal entity in US dollars?",
+  "verdict": "wrong",
+  "reason": "The candidate returned no rows and no columns, while the reference lists six legal entities with their USD cash amounts."
+ },
+ {
+  "question": "How much cash is held at each bank, and what share of the total is that?",
+  "verdict": "wrong",
+  "reason": "The candidate returns per-account rows with negative balances and a different total (-194191108.85), not the per-bank USD amounts and positive shares given in the reference (e.g., Atlantic National Bank 75617590, 55.3%)."
+ },
+ {
+  "question": "Which accounts have a balance that is more than a day old?",
+  "verdict": "wrong",
+  "reason": "The candidate returns 230 rows of repeated account_id values (apparently unjoined or duplicated) rather than the four distinct accounts with their details in the reference."
+ },
+ {
+  "question": "How much cash is trapped in frozen or restricted accounts, in US dollars?",
+  "verdict": "wrong",
+  "reason": "The reference shows a single frozen restricted SGD account worth 1,900,000 USD, while the candidate reports a total of 12,837,837.85 USD, a different figure."
+ },
+ {
+  "question": "How many open accounts are fed by API, file and portal?",
+  "verdict": "correct",
+  "reason": "Candidate returns the same three feed methods with identical counts (API 14, Portal 6, File 6); only the column name differs."
+ },
+ {
+  "question": "Which ledger entries have been waiting more than 5 days to be reconciled, by entity?",
+  "verdict": "wrong",
+  "reason": "The candidate omits the 'oldest' date figure for each entity and shows only entity_id values, which cannot be matched to the reference entity names from the rows alone."
+ },
+ {
+  "question": "Which bank transactions in the last 14 days have no matching ledger entry, by account?",
+  "verdict": "wrong",
+  "reason": "The candidate's gross amounts differ from the reference (e.g., the account with 5 unmatched rows shows -148375.88 versus 262424, and many values have opposite signs or different magnitudes)."
+ },
+ {
+  "question": "How many ledger entries are still unreconciled even though the bank has already booked the transaction, by entity?",
+  "verdict": "wrong",
+  "reason": "The entities match, but the candidate's counts (e.g., 492 for Meridian Europe GmbH) differ from the reference (11), so the figures are wrong."
+ },
+ {
+  "question": "What invoices fall due in the next 14 days, by currency?",
+  "verdict": "wrong",
+  "reason": "The invoice counts differ from the reference for JPY (3 vs 1), MXN (2 vs 3), EUR (5 vs 6), and GBP (3 vs 2); only USD and SGD match."
+ },
+ {
+  "question": "Which invoices are in a different currency from the one in the vendor's contract?",
+  "verdict": "correct",
+  "reason": "The candidate returns the same two invoices (INV-3-4910 and INV-3-5193), both invoiced in USD against EUR contract currency, matching the reference; the extra invoice_id column is allowed."
+ },
+ {
+  "question": "Are there possible duplicate invoices, with the same vendor, amount and date?",
+  "verdict": "wrong",
+  "reason": "The candidate returns 14 vendor rows with duplicate counts per vendor, while the reference returns only 2 vendor-amount-date duplicate groups (Azteca Maquila SA and Bavaria Gears GmbH); the candidate's counts and extra vendors don't match the reference."
+ },
+ {
+  "question": "Which open or approved invoices have no purchase order?",
+  "verdict": "correct",
+  "reason": "The candidate returns the same five invoice numbers with matching amounts, currencies, and dates; the only difference is that vendor names are omitted, but the invoice numbers still identify the same entities."
+ },
+ {
+  "question": "Which payments are waiting for approval, and how much is each in US dollars?",
+  "verdict": "correct",
+  "reason": "The candidate returns the same seven payments (IDs 29\u201335) with the same amount_usd figures as the reference; the omitted entity and date columns are allowed extras to drop."
+ },
+ {
+  "question": "Which released payments were above the dual-approval limit without a second approver?",
+  "verdict": "correct",
+  "reason": "The candidate returns the same two payments (IDs 2 and 12) with identical amounts and null second approvers; the extra status and threshold columns are allowed."
+ },
+ {
+  "question": "What did the treasury agent do outside policy in the last 30 days?",
+  "verdict": "correct",
+  "reason": "The candidate returns the same three rows with identical action types, details, timestamps, and approvers, differing only in column order."
+ },
+ {
+  "question": "Which payments waiting for approval are for invoices that are on hold?",
+  "verdict": "correct",
+  "reason": "The candidate returns the same single payment (id 35, amount 520000.00) for an invoice on hold, matching the reference; the extra columns and invoice_id instead of invoice_no/vendor are acceptable identifiers."
+ },
+ {
+  "question": "For each foreign currency, how much of our open payables is covered by active hedges?",
+  "verdict": "wrong",
+  "reason": "The candidate omits the JPY and MXN rows and its figures differ from the reference: EUR covered notional is 30.1M versus 2.15M hedged, and the payables amounts are also different (EUR 5.33M versus 2.67M, SGD 1.47M versus 0.73M)."
+ },
+ {
+  "question": "Which hedges mature in the next 30 days?",
+  "verdict": "correct",
+  "reason": "The candidate returns the same four hedges (1, 2, 4, 5) with matching notionals, rates, currencies and maturity dates; its entity_id and bank_id values map consistently to the reference's entity and bank names."
+ },
+ {
+  "question": "How much headroom does each covenant have, tightest first?",
+  "verdict": "wrong",
+  "reason": "The magnitudes match the reference, but the candidate gives negative headroom for the three minimum-type covenants (-9.17, -36.67, -185.33) where the reference shows positive 9.2, 36.7 and 185.3, so the figures differ."
+ },
+ {
+  "question": "What is our total liquidity: cash in open accounts plus undrawn revolving credit, in US dollars?",
+  "verdict": "wrong",
+  "reason": "The reference gives cash of 136,685,450 and undrawn revolver of 194,000,000 in one row, while the candidate returns two rows with different figures (21,855,710,046.55 and 190,000,000), so neither the totals nor the entity breakdown match."
+ },
+ {
+  "question": "How accurate were the weekly cash forecasts for each entity over the last 12 weeks?",
+  "verdict": "wrong",
+  "reason": "The figures match the reference when rounded, but the candidate drops the entity column, so its rows don't say which entity each error belongs to, and the question asks for per-entity accuracy."
+ },
+ {
+  "question": "Which entities' forecasts have missed by more than 15% on average?",
+  "verdict": "wrong",
+  "reason": "The candidate returns six entities, while the reference has only Meridian Asia Pte; the other five averages (at most 11.4%) are below the 15% threshold and should have been filtered out."
+ }
+]
