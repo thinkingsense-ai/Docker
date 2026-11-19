@@ -44,7 +44,7 @@
     }
    },
    "context": 8192,
-   "thinking": "off unless the system prompt starts with the <|think|> token; when on it spends output tokens and the app's 256-2048 token limits can cut it off",
+   "thinking": "OFF: llama-server is started with --reasoning off (Gemma 4 thinks by default under --jinja; the first runs on 2026-11-19 did not set it and are not comparable)",
    "sampling": {
     "temperature": 0.2,
     "top_p": 0.95,
@@ -55,7 +55,11 @@
     "image",
     "audio"
    ],
-   "prompt_adapter": "none"
+   "prompt_adapter": "none",
+   "extra_args": [
+    "--reasoning",
+    "off"
+   ]
   },
   "gemma4-26b-a4b-q4": {
    "repo": "ggml-org/gemma-4-26B-A4B-it-GGUF",
@@ -76,7 +80,7 @@
     }
    },
    "context": 8192,
-   "thinking": "as gemma4-e4b-q4",
+   "thinking": "OFF: llama-server is started with --reasoning off (Gemma 4 thinks by default under --jinja; the first runs on 2026-11-19 did not set it and are not comparable)",
    "sampling": {
     "temperature": 0.2,
     "top_p": 0.95,
@@ -87,7 +91,11 @@
     "image",
     "video"
    ],
-   "prompt_adapter": "none"
+   "prompt_adapter": "none",
+   "extra_args": [
+    "--reasoning",
+    "off"
+   ]
   },
   "arctic-text2sql-7b-q4km": {
    "repo": "mradermacher/Arctic-Text2SQL-R1-7B-GGUF",

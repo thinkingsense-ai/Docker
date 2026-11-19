@@ -1,0 +1,63 @@
+{
+ "model": "gemma4-26b-a4b-q4",
+ "base": "google/gemma-4-26B-A4B-it",
+ "licence": "apache-2.0",
+ "revision": "1ca99aae748b4b01f609fa51eb23682ee5f00b85",
+ "files": {
+  "main": {
+   "name": "gemma-4-26B-A4B-it-Q4_0.gguf",
+   "sha256": "d208665ab1cd3a69f7a9a4bc59430e8448c8093d9b06334f566ac59d6d504a03",
+   "approx_gb": 14.62
+  },
+  "mmproj": {
+   "name": "mmproj-gemma-4-26B-A4B-it-Q8_0.gguf",
+   "sha256": "cc4e855736da450bf1e162d8cccfe0ad685727d0c9e04ef7dd8d884f3121039b",
+   "approx_gb": 0.81
+  }
+ },
+ "shape": "x86-cpu-16",
+ "oci_shape": "VM.Standard.E6.Flex",
+ "engine": "docker",
+ "command": [
+  "docker",
+  "run",
+  "-d",
+  "--name",
+  "omnigate-bench-llm",
+  "--rm",
+  "-p",
+  "8091:8091",
+  "-v",
+  "/home/ubuntu/omnigate-models:/models:ro",
+  "ghcr.io/ggml-org/llama.cpp:server",
+  "-m",
+  "/models/gemma-4-26B-A4B-it-Q4_0.gguf",
+  "--host",
+  "0.0.0.0",
+  "--port",
+  "8091",
+  "-c",
+  "8192",
+  "-t",
+  "16",
+  "-ngl",
+  "0",
+  "--parallel",
+  "1",
+  "--jinja",
+  "--flash-attn",
+  "off"
+ ],
+ "vision": false,
+ "sampling": {
+  "temperature": 0.2,
+  "top_p": 0.95,
+  "top_k": 64
+ },
+ "thinking": "as gemma4-e4b-q4",
+ "prompt_adapter": "none",
+ "started": "2026-11-19T06:14:27",
+ "image": "ghcr.io/ggml-org/llama.cpp:server",
+ "healthy_after_s": 6.0,
+ "image_id": "sha256:5b43086e3ba7ea5794d72904654f6cd41224a9b1c6ac0398f4940ee380d30f23"
+}

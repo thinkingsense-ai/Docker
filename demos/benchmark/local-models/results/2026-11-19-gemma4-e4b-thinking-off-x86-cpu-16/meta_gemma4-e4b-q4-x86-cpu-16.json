@@ -1,0 +1,65 @@
+{
+ "model": "gemma4-e4b-q4",
+ "base": "google/gemma-4-E4B-it",
+ "licence": "apache-2.0",
+ "revision": "8903cb408c7df39cde2ed15fac397e6d7be92951",
+ "files": {
+  "main": {
+   "name": "gemma-4-E4B-it-Q4_0.gguf",
+   "sha256": "a555b900214b477d8880e7832e0b8925e139b0159640036b09fe472b6f2097f2",
+   "approx_gb": 4.59
+  },
+  "mmproj": {
+   "name": "mmproj-gemma-4-E4B-it-Q8_0.gguf",
+   "sha256": "9257f21a0f5358204b4a612cff83fad2e56412f4f607f0049331ce60c0cf9d34",
+   "approx_gb": 0.56
+  }
+ },
+ "shape": "x86-cpu-16",
+ "oci_shape": "VM.Standard.E6.Flex",
+ "engine": "docker",
+ "command": [
+  "docker",
+  "run",
+  "-d",
+  "--name",
+  "omnigate-bench-llm",
+  "--rm",
+  "-p",
+  "8091:8091",
+  "-v",
+  "/home/ubuntu/omnigate-models:/models:ro",
+  "ghcr.io/ggml-org/llama.cpp:server",
+  "-m",
+  "/models/gemma-4-E4B-it-Q4_0.gguf",
+  "--host",
+  "0.0.0.0",
+  "--port",
+  "8091",
+  "-c",
+  "8192",
+  "-t",
+  "16",
+  "-ngl",
+  "0",
+  "--parallel",
+  "1",
+  "--jinja",
+  "--flash-attn",
+  "off",
+  "--reasoning",
+  "off"
+ ],
+ "vision": false,
+ "sampling": {
+  "temperature": 0.2,
+  "top_p": 0.95,
+  "top_k": 64
+ },
+ "thinking": "OFF: llama-server is started with --reasoning off (Gemma 4 thinks by default under --jinja; the first runs on 2026-11-19 did not set it and are not comparable)",
+ "prompt_adapter": "none",
+ "started": "2026-11-19T07:58:39",
+ "image": "ghcr.io/ggml-org/llama.cpp:server",
+ "healthy_after_s": 3.0,
+ "image_id": "sha256:5b43086e3ba7ea5794d72904654f6cd41224a9b1c6ac0398f4940ee380d30f23"
+}
