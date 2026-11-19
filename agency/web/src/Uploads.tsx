@@ -56,6 +56,14 @@ function ImageSummary({ r }: { r: Record<string, any> }) {
   return (
     <div className="img">
       {r.thumbnail && <img src={r.thumbnail} alt={`Small preview of ${r.name}`} className="thumb" />}
+      {r.model && (
+        <div className="small" role="note" aria-label="Description written by a model">
+          <p><strong>Described by a model</strong> <span className="tag caution">experimental</span></p>
+          <p>{r.model.description}</p>
+          {r.model.visibleText && <p><span className="muted">Text it read: </span>{r.model.visibleText}</p>}
+          <p className="muted">{r.model.name} · {r.model.seconds} s · not benchmarked, may be wrong</p>
+        </div>
+      )}
       <p>{r.format} · {r.width} × {r.height} ({r.megapixels} MP){r.frames > 1 ? ` · ${r.frames} frames` : ''}{r.transparent ? ' · transparent areas' : ''}</p>
       {ex.length > 0 ? <ul className="small">{ex.map(([k, v]) => <li key={k}>{label[k] ?? k}: {v}</li>)}</ul> : <p className="muted small">No camera or date metadata.</p>}
       {r.gps && <p className="warn small">Location in the file: {r.gps.lat}, {r.gps.lon}</p>}
