@@ -22,6 +22,7 @@ def server_args(entry, shape, port, model_path, mmproj_path=None):
     a = ["-m", model_path, "--host", "0.0.0.0", "--port", str(port), "-c", str(entry.get("context", 8192)),
          "-t", str(shape["threads"]), "-ngl", str(shape["gpu_layers"]), "--parallel", str(shape["parallel"]), "--jinja"]
     a += ["--flash-attn", "on" if shape.get("flash_attn") else "off"]
+    a += list(entry.get("extra_args", []))      # per-model flags, e.g. --reasoning off for Gemma 4 (it thinks by default under --jinja)
     if shape.get("split_mode"): a += ["--split-mode", shape["split_mode"]]
     if mmproj_path: a += ["--mmproj", mmproj_path]
     return a
@@ -47,7 +48,7 @@ def used_flags(entry, shape):
 def check_flags(binary="llama-server"):
     """Returns the flags this harness passes that the binary's --help does not mention (empty list = all present)."""
     out = subprocess.run([binary, "--help"], capture_output=True, text=True).stdout
-    probe = {"-m", "--host", "--port", "-c", "-t", "-ngl", "--parallel", "--jinja", "--flash-attn", "--split-mode", "--mmproj"}
+    probe = {"-m", "--host", "--port", "-c", "-t", "-ngl", "--parallel", "--jinja", "--flash-attn", "--split-mode", "--mmproj", "--reasoning"}
     return sorted(f for f in probe if f not in out)
 
 

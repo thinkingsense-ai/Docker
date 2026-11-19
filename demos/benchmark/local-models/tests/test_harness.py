@@ -182,6 +182,16 @@ class Oci(unittest.TestCase):
                 {"id": "untagged", "lifecycle-state": "RUNNING"}]
         self.assertEqual([i["id"] for i in oci_node.expired(inst, now=500)], ["ours-old"])
 
+class ExtraArgsTest(unittest.TestCase):
+    def test_gemma_runs_with_reasoning_off(self):
+        import json, os, serve
+        models = json.load(open(os.path.join(os.path.dirname(serve.__file__), "models.json")))["models"]
+        shape = json.load(open(os.path.join(os.path.dirname(serve.__file__), "shapes.json")))["shapes"]["x86-cpu-16"]
+        for m in ("gemma4-e4b-q4", "gemma4-26b-a4b-q4"):
+            a = serve.server_args(models[m], shape, 8091, "/models/x.gguf")
+            self.assertEqual(a[a.index("--reasoning") + 1], "off")
+        self.assertNotIn("--reasoning", serve.server_args(models["qwen3-4b-q4km"], shape, 8091, "/models/x.gguf"))
+
 
 if __name__ == "__main__":
     unittest.main()
