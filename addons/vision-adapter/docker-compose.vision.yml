@@ -1,0 +1,24 @@
+# OPTIONAL and OFF by default: a local Gemma 4 E4B that describes uploaded pictures. EXPERIMENTAL (no benchmark, licence page not yet read by counsel).
+# It REPLACES the plain image adapter in AGENCY_ADAPTERS (the layer uses the first adapter that accepts a file), e.g.:
+#   AGENCY_ADAPTERS=http://table-adapter:8091,http://document-adapter:8092,http://vision-adapter:8095 docker compose --project-directory . \
+#     -f <pack compose> -f addons/thinking-layer/docker-compose.layer.yml -f addons/vision-adapter/docker-compose.vision.yml up --build
+# Needs about 6 GB of memory on top of the stack and is slow on CPU (tens of seconds to minutes per picture). Audio is NOT wired: see README.
+services:
+  gemma-model:
+    build: addons/vision-adapter/gemma
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+  vision-adapter:
+    build:
+      context: addons
+      dockerfile: vision-adapter/Dockerfile
+    environment:
+      GEMMA_URL: http://gemma-model:8090
+    depends_on:
+      gemma-model:
+        condition: service_healthy
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
