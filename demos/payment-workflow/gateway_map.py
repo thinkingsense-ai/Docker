@@ -7,7 +7,9 @@ with the reason spelled out, so the card reads honestly even though the stage na
 import hmac, re
 
 DEFINITION = "payment-exception"
-RUN_ID = re.compile(r"^payment-(\d{1,12})$")
+IT_DEFINITION = "vulnerability-exception"
+DEFINITIONS = {DEFINITION: {"prefix": "payment", "key": "payment_id", "what": "a payment id"}, IT_DEFINITION: {"prefix": "vuln", "key": "vuln_id", "what": "a vulnerability id"}}
+RUN_ID = re.compile(r"^(payment|vuln)-(\d{1,12})$")
 STAGES = {"starting": "facts", "facts": "facts", "rules": "rules", "recommendation": "recommendation", "awaiting_approval": "awaiting_approval",
           "writing_back": "approved", "done": "written_back", "rejected": "rejected", "escalated": "rejected", "expired": "rejected"}
 AGENTS = {"treasury-agent", "policy-auto", "ai", "claude"}            # rules.AGENT_ACTORS: automation never approves
@@ -17,20 +19,26 @@ class Refusal(Exception):
     def __init__(self, status, code, message): super().__init__(message); self.status, self.code = status, code
 
 
-def run_id(key):
+def definition_of(rid):
+    """The definition a run id belongs to (payment-35 -> payment-exception, vuln-6 -> vulnerability-exception)."""
+    return next(d for d, x in DEFINITIONS.items() if rid.startswith(x["prefix"] + "-"))
+
+
+def run_id(key, definition=DEFINITION):
     """The Temporal workflow id, deliberately the same one the approval inbox uses: one payment, one run, whichever front end started it."""
-    k = str(key).strip()
-    if not re.fullmatch(r"\d{1,12}", k): raise Refusal(400, "bad_request", "key must be a payment id (digits only)")
-    return "payment-%d" % int(k)
+    d = DEFINITIONS[definition]; k = str(key).strip()
+    if not re.fullmatch(r"\d{1,12}", k): raise Refusal(400, "bad_request", "key must be %s (digits only)" % d["what"])
+    return "%s-%d" % (d["prefix"], int(k))
 
 
 def check_start(body):
     if not isinstance(body, dict): raise Refusal(400, "bad_request", "a JSON object is required")
-    if body.get("definition") != DEFINITION: raise Refusal(404, "unknown_definition", "this gateway only runs the %r definition" % DEFINITION)
+    definition = body.get("definition")
+    if definition not in DEFINITIONS: raise Refusal(404, "unknown_definition", "this gateway runs: %s" % ", ".join(repr(d) for d in DEFINITIONS))
     initiator = body.get("initiator")
     if not isinstance(initiator, str) or not initiator.strip() or len(initiator) > 200: raise Refusal(400, "bad_request", "initiator is required")
     q = body.get("queryId")
-    return {"id": run_id(body.get("key")), "initiator": initiator.strip(), "queryId": q if isinstance(q, str) and len(q) <= 200 else None,
+    return {"id": run_id(body.get("key"), definition), "definition": definition, "initiator": initiator.strip(), "queryId": q if isinstance(q, str) and len(q) <= 200 else None,
             "requiredApprovals": body.get("requiredApprovals") if isinstance(body.get("requiredApprovals"), int) else 2}
 
 
@@ -62,9 +70,10 @@ def to_run(rid, st, requested=2, created=None, updated=None):
     if wb:
         dry = wb.get("mode") in ("dry-run", "no-write")
         write_back = {"mode": "dry_run" if dry else wb.get("mode", ""), "status": "simulated" if dry else "sent", "call": _call(wb) or wb.get("note", ""), "at": updated}
-    evidence = {"payment_id": rid.split("-", 1)[1]}
+    definition = definition_of(rid)
+    evidence = {DEFINITIONS[definition]["key"]: rid.split("-", 1)[1]}
     evidence.update({k: str(v) for k, v in (st.get("facts_summary") or {}).items() if v is not None})
-    return {"id": rid, "definition": DEFINITION, "key": rid.split("-", 1)[1], "initiator": st.get("initiator") or "(started in the approval inbox)", "queryId": st.get("queryId"),
+    return {"id": rid, "definition": definition, "key": rid.split("-", 1)[1], "initiator": st.get("initiator") or "(started in the approval inbox)", "queryId": st.get("queryId"),
             "stage": stage,
             "recommendation": {"action": rec["recommendation"], "reason": "; ".join(rec.get("reasons") or []) or "no reasons given", "source": rec.get("model") or "workflow"} if rec else None,
             "rules": _rules(gate) if stage not in ("facts", "rules") else [], "evidence": evidence if stage != "facts" else {}, "approvals": approvals,
