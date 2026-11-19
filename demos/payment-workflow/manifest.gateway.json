@@ -3,6 +3,10 @@
     {
       "id": "payment-exception", "title": "Payment exception", "entity": "payment", "keyField": "payment_id",
       "approverGroup": "treasury", "approvers": [], "requiredApprovals": 2, "inputs": ["payment_id"]
+    },
+    {
+      "id": "vulnerability-exception", "title": "Vulnerability exception", "entity": "vulnerability", "keyField": "vuln_id",
+      "approverGroup": "IT risk", "approvers": [], "requiredApprovals": 2, "inputs": ["vuln_id"]
     }
   ]
 }
