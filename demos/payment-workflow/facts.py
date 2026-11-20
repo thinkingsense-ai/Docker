@@ -9,7 +9,7 @@ def addressed(sql, env=None):
     m = dict(x.split("=", 1) for x in (env if env is not None else os.environ.get("SQL_SCHEMA_CONNECTORS", "")).split(",") if "=" in x)
     return re.sub(r"\b(FROM|JOIN)(\s+)(%s)\." % "|".join(map(re.escape, m)), lambda g: "%s%s%s.%s." % (g.group(1), g.group(2), m[g.group(3)], g.group(3)), sql) if m else sql
 
-def query(sql, workspace=None):
+def query_table(sql, workspace=None):
     """`workspace` (or QUERY_WORKSPACE) names the Workspace the statement runs in: a Server whose Workspaces cover every source has an empty default one, and the admin API then refuses every statement."""
     sql = addressed(sql)
     headers = {"Content-Type": "application/json"}
@@ -17,7 +17,11 @@ def query(sql, workspace=None):
     req = urllib.request.Request(ASK_URL + "/api/query", json.dumps(dict({"sql": sql}, **({"workspaceId": workspace or os.environ.get("QUERY_WORKSPACE")} if (workspace or os.environ.get("QUERY_WORKSPACE")) else {}))).encode(), headers)
     with urllib.request.urlopen(req, timeout=60) as r: res = json.load(r)
     if not res.get("success"): raise RuntimeError("query failed: %s" % res.get("error"))
-    cols = res["columns"]; return [dict(zip(cols, row)) for row in res["rows"]]
+    return list(res["columns"]), [list(r) for r in res["rows"]]
+
+def query(sql, workspace=None):
+    cols, rows = query_table(sql, workspace)
+    return [dict(zip(cols, row)) for row in rows]
 
 def pending_payments():
     """Each system is read on its own and merged here: a single statement that joins Postgres and the ERP comes back without its AS aliases (and with duplicate column names)."""

@@ -5,13 +5,13 @@ Actions: "publish" (the brief is fixed as this version and may go out) and "hold
 check below holds, so a flat statement the evidence does not support can never be approved as a publication. Nothing is written to a customer system: the write-back is a dry run.
 Facts come from rca_facts.gather: the claim, one cause per incident with its grade and source count, the open links, the controls, and who said each confirmed cause."""
 import hashlib, json
-import rca_judge
+import rca_judge, exposure_rules
 
 PUBLISH, HOLD = "publish", "hold"
 AGENT_ACTORS = {"treasury-agent", "policy-auto", "ai", "claude"}            # the AI and automation never approve
 SPEAKERS_THAT_CONFIRM = ("operator", "regulator")                            # a cause is confirmed only when the company involved or a regulator says it
 UNSOURCED_OK = ("inferred", "to_be_tested")
-ACTION_HELP = {PUBLISH: "fix this brief as the published version (a dry run: nothing is sent anywhere)",
+ACTION_HELP = {PUBLISH: "fix this brief, together with its exposure rating when it has one, as the published version (a dry run: nothing is sent anywhere)",
                HOLD: "keep the brief a draft and record what it is waiting for"}
 
 
@@ -47,13 +47,34 @@ def checks(facts):
     else:
         s = rca_judge.summary(rca_judge.audit(links))
         out.append({"rule": "grades_match_the_evidence", "ok": not s["blocks"], "detail": "; ".join(s["blocks"]) if s["blocks"] else "%d links audited: none graded above what its sources support" % s["audited"]})
+    out.append(exposure_check(facts))
     out.append({"rule": "the_claim_has_a_verdict", "ok": bool(c) and bool(inc), "detail": "a verdict and at least one incident are present" if c and inc else "there is no claim or no incident for this case"})
     return out
+
+
+def exposure_rating(facts):
+    """The rating, recomputed here from the five answers (never trusted from a stored value), or None when this brief carries no assessed exposure."""
+    e = facts.get("exposure")
+    return exposure_rules.rate(e["answers"]) if e and e.get("assessed") else None
+
+
+def exposure_check(facts):
+    """The brief and the exposure rating are published together, so a rating that could not be completed (an unread estate, or a question with no answer) blocks publishing."""
+    e = facts.get("exposure")
+    if e is None: return {"rule": "exposure_is_rated", "ok": True, "detail": "no exposure assessment is part of these facts"}
+    if e.get("error"): return {"rule": "exposure_is_rated", "ok": False, "detail": e["error"]}
+    if not e.get("assessed"): return {"rule": "exposure_is_rated", "ok": True, "detail": "not assessed: %s" % e.get("reason", "no estate for this case")}
+    r = exposure_rules.rate(e["answers"])
+    if r["complete"]: return {"rule": "exposure_is_rated", "ok": True, "detail": "all five exposure questions were scored: %s" % r["sentence"]}
+    why = "; ".join("question %d: %s" % (s["n"], s["reason"]) for s in r["scores"] if s["score"] is None)
+    return {"rule": "exposure_is_rated", "ok": False, "detail": "the exposure rating is incomplete (%s)" % why}
 
 
 def brief_digest(facts):
     """What an approval is bound to: the exact content of the brief (causes, grades, source counts, verdict, controls). A change in the data changes the hash."""
     body = {k: facts.get(k) for k in ("claim", "incidents", "open_links", "controls", "speakers", "links")}
+    r = exposure_rating(facts)
+    if r: body["exposure"] = {"answers": facts["exposure"]["answers"], "level": r["level"], "set_by": r["set_by"]}       # the approval covers the rating and the answers behind it
     return hashlib.sha256(json.dumps(body, sort_keys=True, default=str).encode()).hexdigest()
 
 
@@ -65,9 +86,12 @@ def gate(facts, initiator="", today=None):
     open_ = [i for i in inc if i["grade"] != "confirmed"]
     if open_: notes.append("%d of %d causes are not confirmed: %s" % (len(open_), len(inc), "; ".join("%s (%s)" % (i["operator"], i["grade"].replace("_", " ")) for i in open_)))
     for l in facts.get("open_links", []): notes.append("%s is %s: %s" % (l["layer"].replace("_", " "), l["grade"].replace("_", " "), l["reason"]))
+    er = exposure_rating(facts)
+    if er: notes.append("Exposure: %s" % er["sentence"])
     excluded = sorted({initiator} | AGENT_ACTORS) if initiator else sorted(AGENT_ACTORS)
     return {"allowed_actions": [HOLD] if blocks else [PUBLISH, HOLD], "blocks": blocks, "notes": notes, "approvals_required": 1, "excluded_approvers": excluded,
-            "action_help": ACTION_HELP, "checks": cs, "verdict_sentence": verdict_sentence(facts)}
+            "action_help": ACTION_HELP, "checks": cs, "verdict_sentence": verdict_sentence(facts),
+            "exposure": {"level": er["level"], "set_by": er["set_by"], "sentence": er["sentence"]} if er else None}
 
 
 def may_approve(approver, already, gate_result):

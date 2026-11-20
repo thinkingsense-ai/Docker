@@ -65,7 +65,7 @@ def rca_recommend(facts: dict, gate: dict) -> dict:
 def build_rca_call(action: dict) -> dict:
     """The exact call to the (not yet connected) briefing tool for an approved action: what the approver's hash covers and what the dry run shows."""
     path = {"publish": "publish", "hold": "hold"}[action["type"]]
-    body = {k: action[k] for k in ("claim_id", "case_id", "brief_digest", "payload_hash", "approvers", "waiting_for") if k in action}
+    body = {k: action[k] for k in ("claim_id", "case_id", "brief_digest", "exposure_level", "exposure_set_by", "payload_hash", "approvers", "waiting_for") if k in action}
     return {"method": "POST", "path": "/briefs/%s/%s" % (action["case_id"], path), "body": body, "idempotency_key": action["idempotency_key"]}
 
 @activity.defn

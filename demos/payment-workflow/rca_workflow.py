@@ -20,6 +20,7 @@ def summarize(facts, gate=None):
            "open_incidents": "; ".join("%s (%s)" % (i["operator"], i["grade"].replace("_", " ")) for i in open_) or "none"}
     if gate: out["verdict"] = gate["verdict_sentence"]
     if gate and facts.get("links") is not None: out["judge"] = next((c["detail"] for c in gate["checks"] if c["rule"] == "grades_match_the_evidence"), "")
+    if gate and gate.get("exposure"): out["exposure"] = gate["exposure"]["sentence"]
     for c in facts.get("controls", []): out["control_to_fix"] = "%s (%s); %s %s" % (c["owning_control"], c["owner_role"], c["framework"], c["category"])
     return out
 
@@ -67,6 +68,7 @@ class IncidentClusterRca:
         rec = await workflow.execute_activity(A.rca_recommend, args=[facts, gate], **RETRY)
         record = {"decision_id": wid, "claim_id": claim_id, "definition": "incident-cluster-rca", "case_id": facts["case_id"], "facts": facts, "rules": gate, "recommendation": rec, "started_at": workflow.now().isoformat()}
         action = {"type": rec["recommendation"], "system": "briefing", "claim_id": claim_id, "case_id": facts["case_id"], "brief_digest": rules.brief_digest(facts), "idempotency_key": wid}
+        if gate.get("exposure"): action["exposure_level"] = gate["exposure"]["level"]; action["exposure_set_by"] = gate["exposure"]["set_by"]
         if action["type"] == HOLD: action["waiting_for"] = list(gate["blocks"]) or [n for n in gate["notes"][:3]]
         action["payload_hash"] = payload_hash(action)
         self._st(stage="awaiting_approval", payload_hash=action["payload_hash"], action=action, recommendation=rec, gate=gate, approvals_required=gate["approvals_required"], facts_summary=summarize(facts, gate))
