@@ -1,0 +1,14 @@
+# Optional: replays the events in demos/it-risk-estate/replay/ into the estate tables, like a Kafka sink connector would (see replay.sh). Add it to the estate stack:
+#   docker compose ... -f demos/it-risk-estate/docker-compose.estate.yml -f demos/it-risk-estate/docker-compose.estate-replay.yml up -d estate-replay
+# It changes the answers to the third exposure question (a credential appears in a public channel and a credentials sheet is widened), so leave it off for a stable demo.
+services:
+  estate-replay:
+    image: postgres:16-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./demos/it-risk-estate/replay:/replay:ro
+      - ./demos/it-risk-estate/replay.sh:/replay.sh:ro
+    entrypoint: ["/bin/sh", "/replay.sh"]
+    restart: "no"
