@@ -25,4 +25,11 @@ def gather(claim_id):
     speakers = query("SELECT e.operator, s.speaker, s.speaker_kind, s.publisher FROM %s l JOIN %s e ON e.event_id = l.event_id JOIN %s ls ON ls.link_id = l.link_id JOIN %s s ON s.signal_id = ls.signal_id "
                      "WHERE l.layer = 'cause' AND l.case_id = '%s' ORDER BY e.event_id" % (T("links"), T("events"), T("link_sources"), T("signals"), case))
     for i in incidents: i["sources"] = int(i["sources"])
-    return {"claim": claim, "case_id": case, "incidents": incidents, "open_links": open_links, "controls": controls, "speakers": speakers}
+    rows = query("SELECT l.link_id, l.layer, l.grade, l.control_root, e.operator AS who, ls.signal_id, ls.relation, ls.asserts, s.speaker, s.speaker_kind, s.source_kind FROM %s l LEFT JOIN %s e ON e.event_id = l.event_id "
+                 "LEFT JOIN %s ls ON ls.link_id = l.link_id LEFT JOIN %s s ON s.signal_id = ls.signal_id WHERE l.case_id = '%s' ORDER BY l.link_id, ls.signal_id" % (T("links"), T("events"), T("link_sources"), T("signals"), case))
+    byid = {}
+    for r in rows:
+        k = int(r["link_id"]); l = byid.setdefault(k, {"link_id": k, "layer": r["layer"], "grade": r["grade"], "has_control": r.get("control_root") not in (None, ""), "who": r.get("who") or "case", "sources": []})
+        if r.get("signal_id") not in (None, ""): l["sources"].append({k2: r.get(k2) for k2 in ("signal_id", "relation", "asserts", "speaker", "speaker_kind", "source_kind")})
+    links = [byid[k] for k in sorted(byid)]
+    return {"claim": claim, "case_id": case, "incidents": incidents, "open_links": open_links, "controls": controls, "speakers": speakers, "links": links}

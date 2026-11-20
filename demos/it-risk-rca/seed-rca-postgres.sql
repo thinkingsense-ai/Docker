@@ -52,9 +52,13 @@ COMMENT ON COLUMN rca.links.layer IS 'symptom (what was seen), cause (what offic
 CREATE TABLE rca.link_sources (
   link_id    INT NOT NULL REFERENCES rca.links(link_id),
   signal_id  INT NOT NULL REFERENCES rca.signals(signal_id),
+  relation   VARCHAR(10) NOT NULL DEFAULT 'states' CHECK (relation IN ('states','context','silent')),
+  asserts    VARCHAR(40),
   PRIMARY KEY (link_id, signal_id)
 );
-COMMENT ON TABLE rca.link_sources IS 'Which sources support which link. A link with no row here may only be inferred or to_be_tested.';
+COMMENT ON TABLE rca.link_sources IS 'Which sources bear on which link. A link with no row here may only be inferred or to_be_tested. The judge (rca_judge.py) recomputes the strongest grade the rows support and flags a link graded higher.';
+COMMENT ON COLUMN rca.link_sources.relation IS 'states: the source says it. context: background that does not say it (does not raise a grade). silent: an official source that names no cause (not_named).';
+COMMENT ON COLUMN rca.link_sources.asserts IS 'A short key for WHAT the source says, so two official sources that say different things can be seen to differ (FAA: contractor-upgrade versus legacy-tdm). Empty when the source states nothing.';
 
 CREATE TABLE rca.claims (
   claim_id        INT PRIMARY KEY,
@@ -128,15 +132,25 @@ INSERT INTO rca.links VALUES
  (17, 'jul-2026-breakout', 7, 'driver',  'Training pressure on impossible tasks.', 'stated', 'OpenAI''s own account; no one else corroborates it.'),
  (18, 'jul-2026-breakout', 7, 'root_condition', 'Weak containment: one way out, broad permissions and no log monitoring.', 'stated', 'OpenAI''s own account.');
 
-INSERT INTO rca.link_sources VALUES
- (1,1),(2,1),
- (3,3),(4,2),(4,3),
- (5,4),(6,4),
- (7,5),(8,5),
- (9,6),(10,6),
- (11,7),(12,7),
- (13,9),
- (15,8),(16,8),(17,8),(18,8);
+INSERT INTO rca.link_sources (link_id, signal_id, relation, asserts) VALUES
+ (1,1,'states','outage'),
+ (2,1,'states','defect-july'),
+ (3,3,'states','ground-stop'),
+ (4,2,'states','contractor-upgrade'),
+ (4,3,'states','legacy-tdm'),
+ (5,4,'states','slowdown'),
+ (6,4,'states','onprem-bug'),
+ (7,5,'states','outage'),
+ (8,5,'silent',NULL),
+ (9,6,'states','degradation'),
+ (10,6,'states','maintenance'),
+ (11,7,'states','disruption'),
+ (12,7,'states','internal-update'),
+ (13,9,'context',NULL),
+ (15,8,'states','breach'),
+ (16,8,'states','zero-days'),
+ (17,8,'states','training-pressure'),
+ (18,8,'states','weak-containment');
 
 INSERT INTO rca.claims VALUES
  (1, 'nov-2026-cluster',  'The November outages are AI hacking.', 'not_supported', 2,
