@@ -1,15 +1,15 @@
 :root {
-  /* Warm pastel. Text colours are checked at 4.5:1 or better on the surface they sit on; --edge (input and chip borders) at 3:1; --line is decoration only. */
-  --bg: #fff7f0; --panel: #fffdfb; --head: #ffeede; --ink: #3a2a24; --muted: #6e5a50; --line: #ecd9cc; --edge: #a98672;
-  --accent: #a8431f; --fill: #f7b9a3; --accent-ink: #3a1c11; --accent-tint: #fde3d3;
-  --ok: #2a7448; --bad: #b3362f; --warn: #7a4d00; --warn-bg: #fde7b8; --chip: #fbe3d6;
-  --k-audio: #fbefc4; --k-table: #d7efe0; --k-document: #e6dff5; --k-image: #d9e9f7;
+  /* Blue, a shade toward blue from the logo teal #0BA9AA (a mid-tone that fails as text, so the logo colour is the wordmark only). Text pairs are computed at 4.5:1 or better on the surface they sit on; --edge (input and chip borders) at 3:1; --line is decoration only. */
+  --bg: #f5fafc; --panel: #ffffff; --head: #e8f3f8; --ink: #14262e; --muted: #4a606a; --line: #d3e3ea; --edge: #6f8d9b;
+  --accent: #0a6c94; --fill: #0a7ba6; --accent-ink: #ffffff; --accent-tint: #e1f0f6;
+  --ok: #1f6b43; --bad: #b3362f; --warn: #7a4d00; --warn-bg: #fde7b8; --chip: #e4eff4;
+  --k-audio: #fbf0c8; --k-table: #d6efe3; --k-document: #e4e0f5; --k-image: #d6e8f5;
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) { --bg: #231a17; --panel: #2d221e; --head: #2a1f1b; --ink: #f6e8df; --muted: #cdb8ab; --line: #4d3a32; --edge: #a58a7b;
-    --accent: #f4ac90; --fill: #eba288; --accent-ink: #2a140c; --accent-tint: #40302a;
-    --ok: #7fd6a0; --bad: #ff9a93; --warn: #f2c879; --warn-bg: #473412; --chip: #40302a;
+  :root:not([data-theme='light']) { --bg: #0f1a1f; --panel: #16252c; --head: #13222a; --ink: #e6eef2; --muted: #a9bdc6; --line: #29404a; --edge: #7c9aa7;
+    --accent: #7fb7cc; --fill: #5bb6d6; --accent-ink: #0f1a1f; --accent-tint: #1b3440;
+    --ok: #7fd6a0; --bad: #ff9a93; --warn: #f2c879; --warn-bg: #473412; --chip: #1e323b;
     --k-audio: #4a3d1a; --k-table: #1f3b2c; --k-document: #382f4d; --k-image: #1f3547; }
 }
 * { box-sizing: border-box }
@@ -189,3 +189,20 @@ details.bring > summary { cursor: pointer; color: var(--accent); font-weight: 60
 td.wrap { white-space: normal; min-width: 14rem } ul.plain { margin: 0; padding-left: 18px; display: grid; gap: 6px }
 .checks { list-style: none; padding-left: 0 } .checks .ok span { color: var(--ok) } .checks .bad span { color: var(--bad); font-weight: 700 }
 @media print { nav, header:not(.brief-head), .brief-actions { display: none } .shell { display: block } main { max-width: none } }
+
+/* the IT-risk shell: section navigation, the Workspace menu at the top right, and a drawer on a phone */
+.ws select { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--edge); border-radius: 8px; padding: .25rem .5rem; max-width: 16rem }
+.menu { display: none }
+nav ul.sections { gap: 2px; margin-bottom: .5rem }
+.navitem { width: 100%; text-align: left; background: none; border: 0; border-radius: 8px; padding: .5rem .75rem; color: var(--ink); display: flex; justify-content: space-between; align-items: center }
+.navitem:hover { background: var(--accent-tint) }
+.navitem.on { background: var(--accent-tint); color: var(--accent); font-weight: 700; box-shadow: inset 3px 0 0 var(--accent) }
+.count { background: var(--fill); color: var(--accent-ink); border-radius: 999px; font-size: .75rem; font-weight: 700; padding: 0 .5rem }
+.screen { display: grid; gap: 10px; max-width: 46rem } .screen p { margin: 0 }
+.notbuilt { background: var(--warn-bg); color: var(--warn); border-radius: 8px; padding: .4rem .7rem }
+@media (max-width: 760px) {
+  .menu { display: inline-block }
+  nav { display: none } nav.open { display: grid }
+  header .ws select { max-width: 11rem }
+  nav ul.sections { max-height: none; overflow: visible }
+}
