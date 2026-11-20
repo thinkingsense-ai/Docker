@@ -214,3 +214,15 @@ nav ul.sections { gap: 2px; margin-bottom: .5rem }
 .candidate { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 8px } .candidate h3 { margin: 0; font-size: 1.05rem }
 .cmeta { display: flex; gap: 8px 14px; flex-wrap: wrap; align-items: center }
 .status.traced { color: var(--ok); font-size: .85rem; font-weight: 600 } .status.not_yet_traced { color: var(--warn); background: var(--warn-bg); border-radius: 999px; padding: 0 .6rem; font-size: .85rem; font-weight: 600 }
+
+/* Exposure: a score is always a word and a number, and the overall rating also carries a four-step meter */
+.exposure { display: grid; gap: 10px }
+.rating { display: flex; gap: 14px; align-items: center; border: 2px solid currentColor; border-radius: 10px; padding: 12px 14px; background: var(--panel) }
+.rating .level { font-size: 1.4rem } .rating span { color: var(--ink) }
+.rating.l0 { color: var(--ok) } .rating.l1 { color: var(--accent) } .rating.l2 { color: var(--warn) } .rating.l3 { color: var(--bad) } .rating.lu { color: var(--muted) }
+.meter { display: inline-flex; gap: 3px; align-items: flex-end } .meter i { width: 10px; background: var(--line); border-radius: 2px; display: block } .meter i:nth-child(1) { height: 10px } .meter i:nth-child(2) { height: 16px } .meter i:nth-child(3) { height: 22px } .meter i:nth-child(4) { height: 28px }
+.meter i.on { background: currentColor }
+.qcards { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px }
+.qcard { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 6px } .qcard h3 { margin: 0; font-size: 1rem } .qcard p { margin: 0 }
+.score { display: inline-block; font-size: .78rem; font-weight: 700; border-radius: 999px; padding: 1px 10px; border: 1px solid currentColor; white-space: nowrap }
+.score.s0 { color: var(--ok) } .score.s1 { color: var(--accent) } .score.s2 { color: var(--warn); background: var(--warn-bg) } .score.s3 { color: var(--bad); border-width: 2px } .score.su { color: var(--muted); border-style: dashed }

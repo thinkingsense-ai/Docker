@@ -9,7 +9,7 @@ export interface NavItem { id: View; label: string; hint: string; built: boolean
 // Order is the order in the left navigation. `built` is false for a screen whose build step has not landed: it opens a plain page saying so, never a made-up one.
 export const NAV: NavItem[] = [
   { id: 'watch', label: 'Watch', hint: 'Incidents in the news that may be AI hacking', built: true },
-  { id: 'exposure', label: 'Exposure', hint: 'Could this happen to our systems', built: false },
+  { id: 'exposure', label: 'Exposure', hint: 'Could this happen to our systems', built: true },
   { id: 'briefs', label: 'Briefs', hint: 'Root-cause briefs and their approval', built: true },
   { id: 'approvals', label: 'Approvals', hint: 'Briefs waiting for you', built: true },
   { id: 'sources', label: 'Sources', hint: 'Where the feed comes from', built: false },
