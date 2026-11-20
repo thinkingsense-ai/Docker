@@ -248,7 +248,7 @@ Each step is a small pull request that can be tested without the next one.
 2. **Watch with seeded candidates:** `candidates` tables, the November and July cases listed as candidates, the Watch screen and Incident detail. No live feed yet.
 3. **Estate data:** the `estate` schema, the event tables for SharePoint and Slack with a replay service that fills them like a Kafka connector would, approved questions for the five, and the grants.
 4. **Exposure screen and rating:** the rating rules as a pure module with a gold set (including planted errors, like the judge), the five-question run, the exposure view.
-5. **Decision for both:** extend `incident-cluster-rca` so the approval covers brief and rating (the digest includes the rating).
+5. **Decision for both (built):** `incident-cluster-rca` reads the five exposure answers, recomputes the rating with a Python port tested against the same gold set, includes rating and answers in the digest, and blocks *publish* when the rating is incomplete (rule `exposure_is_rated`). Agency shows the rating as one line on the approval card.
 6. **Feed adapter:** RSS first, rule-based filter and clustering, the source health line in Watch. X only once the plan and terms are known.
 7. **Server design note for Kumar (a pull request on the Server repo, to be opened with the user's go-ahead):** how an add-on feed and the Kafka-to-Postgres event tables reach the Server as sources (Q5, Q6). It can go in parallel with steps 2 to 4 and gates only step 6 and a real connector.
 8. **Pilot hardening:** a real feed run for several days, with Leo's reading of what it caught and missed.

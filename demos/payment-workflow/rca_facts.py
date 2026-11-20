@@ -3,6 +3,7 @@ The run is keyed by a claim id (rca.claims): the claim under test, and through i
 all-packs stack (tables are addressed connector.schema.table), empty on a stack with one source per schema."""
 import os, re
 import facts as base
+import exposure_facts
 
 def query(sql): return base.query(sql, os.environ.get("RCA_WORKSPACE"))             # the IT-risk Workspace on a stack whose Workspaces cover every source; unset elsewhere
 
@@ -32,4 +33,4 @@ def gather(claim_id):
         k = int(r["link_id"]); l = byid.setdefault(k, {"link_id": k, "layer": r["layer"], "grade": r["grade"], "has_control": r.get("control_root") not in (None, ""), "who": r.get("who") or "case", "sources": []})
         if r.get("signal_id") not in (None, ""): l["sources"].append({k2: r.get(k2) for k2 in ("signal_id", "relation", "asserts", "speaker", "speaker_kind", "source_kind")})
     links = [byid[k] for k in sorted(byid)]
-    return {"claim": claim, "case_id": case, "incidents": incidents, "open_links": open_links, "controls": controls, "speakers": speakers, "links": links}
+    return {"claim": claim, "case_id": case, "incidents": incidents, "open_links": open_links, "controls": controls, "speakers": speakers, "links": links, "exposure": exposure_facts.gather(case)}
