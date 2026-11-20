@@ -57,3 +57,36 @@ export function startable(columns: string[], defs: Definition[]): { column: numb
   }
   return out
 }
+
+// The incident brief (docs/agency-risk-it.md): approving carries out what the run recommends, publishing the brief or recording a hold; rejecting declines it. The Server has no "hold" state,
+// so a hold or a send-back is a rejection whose reason starts with a fixed phrase, and the card reads it back.
+export const INCIDENT = 'incident-cluster-rca'
+export const ON_HOLD = 'On hold: '
+export const SENT_BACK = 'Sent back: '
+export const isIncident = (r: Pick<Run, 'definition'>) => r.definition === INCIDENT
+export const incidentWords = (r: Run) => {
+  const publish = r.recommendation?.action === 'publish'
+  return {
+    approve: publish ? 'Publish brief' : 'Confirm hold', decline: publish ? 'Hold it…' : 'Send back…', prefix: publish ? ON_HOLD : SENT_BACK,
+    ask: publish ? 'What is it waiting for?' : 'What should change before it comes back?', submit: publish ? 'Hold' : 'Send back',
+  }
+}
+export function incidentStage(r: Run, s: string): string {
+  if (s === 'written_back') return r.recommendation?.action === 'hold' ? 'Hold recorded (dry run)' : 'Published (dry run)'
+  if (s === 'rejected') return r.rejection?.reason.startsWith(ON_HOLD) ? 'On hold' : r.rejection?.reason.startsWith(SENT_BACK) ? 'Sent back' : 'Declined'
+  return stageLabel(s)
+}
+export function incidentRejection(r: Run): string {
+  const x = r.rejection; if (!x) return ''
+  if (x.reason.startsWith(ON_HOLD)) return `Put on hold by ${x.user}: ${x.reason.slice(ON_HOLD.length)}`
+  if (x.reason.startsWith(SENT_BACK)) return `Sent back by ${x.user}: ${x.reason.slice(SENT_BACK.length)}`
+  return `Declined by ${x.user}: ${x.reason}`
+}
+
+/** How a rule line is introduced. The gateway names the rules that stopped something "block", plain observations "note", and the allowed actions "allowed_actions"; the rest are named checks. */
+export function ruleLabel(r: Rule): string {
+  if (r.name === 'block') return 'Blocked:'
+  if (r.name === 'note') return 'Note:'
+  if (r.name === 'allowed_actions') return 'Allowed:'
+  return `${r.passed ? 'Passed' : 'Failed'} ${r.name.replace(/_/g, ' ')}:`
+}

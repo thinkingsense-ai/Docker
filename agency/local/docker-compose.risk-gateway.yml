@@ -1,0 +1,47 @@
+# LOCAL SANDBOX ONLY (added by up.sh when the commercial override exists). Puts the Temporal workflows behind the app's own workflow API, so Agency's Incident brief and the payment and
+# vulnerability runs really run on Temporal instead of the app's canned simulator. Tokens are generated into agency/local/.runtime/tokens.env (git-ignored) by up.sh.
+#   - the worker reads facts through the app's governed query path with an admin API token; the all-packs stack addresses tables connector.schema.table, hence the two prefix settings
+#   - the gateway has no published port; only the app reaches it, with a bearer token
+# Write-back is a dry run: no briefing, GRC or ERP tool is connected.
+services:
+  temporal:
+    image: temporalio/temporal:1.5.1
+    user: "0"
+    command: ["server", "start-dev", "--ip", "0.0.0.0", "--db-filename", "/data/temporal.db"]
+    volumes: [temporal-data:/data]
+  worker:
+    build: ./demos/payment-workflow
+    command: ["python", "worker.py"]
+    depends_on: [temporal, omnigate]
+    restart: unless-stopped
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      ASK_URL: http://omnigate:8080
+      ASK_ADMIN_TOKEN: ${AGENCY_ADMIN_API_TOKEN:?run agency/local/up.sh, which generates it}
+      RCA_TABLE_PREFIX: "pg."
+      RCA_WORKSPACE: it-risk                         # /api/query runs inside a Workspace; the Default one is empty once every source is in a pack Workspace
+      QUERY_WORKSPACE: all-data                      # the payment and vulnerability runs
+      SQL_SCHEMA_CONNECTORS: "treasury=pg,erp=mdb,risk=pg,security=mdb"
+      OMNIGATE_LLM_API_KEY: ""                      # empty on purpose: recommendations come from the rules ("rules-only"), never a dummy key
+      WRITE_BACK: dry-run
+      DECISIONS_FILE: /data/decisions.jsonl
+    volumes: [workflow-data:/data]
+  gateway:
+    build: ./demos/payment-workflow
+    command: ["python", "gateway.py"]
+    depends_on: [temporal, worker]
+    restart: unless-stopped
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      GATEWAY_TOKEN: ${WORKFLOW_GATEWAY_TOKEN:?run agency/local/up.sh, which generates it}
+  omnigate:
+    volumes:
+      - ./demos/payment-workflow/manifest.gateway.json:/etc/omnigate/workflows.json:ro
+    environment:
+      OMNIGATE_WORKFLOW_ENGINE: http://gateway:8094
+      OMNIGATE_WORKFLOW_ENGINE_TOKEN: ${WORKFLOW_GATEWAY_TOKEN:?run agency/local/up.sh}
+      OMNIGATE_WORKFLOW_MANIFEST: /etc/omnigate/workflows.json
+      OMNIGATE_AUTH_API_TOKENS: "${AGENCY_ADMIN_API_TOKEN:?run agency/local/up.sh}:admin"
+volumes:
+  temporal-data:
+  workflow-data:

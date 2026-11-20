@@ -32,3 +32,30 @@ describe('run wording', () => {
     expect(shortHash('9b74c9897bac770ffc029102a200c5de')).toBe('9b74c9897bac…'); expect(shortHash(null)).toBe('not available yet')
   })
 })
+
+import { ruleLabel, incidentRejection, incidentStage, incidentWords, isIncident, ON_HOLD, SENT_BACK } from './workflow'
+describe('the incident brief run', () => {
+  const r = (o: Partial<Run>) => run({ definition: 'incident-cluster-rca', ...o })
+  it('words the buttons after what the run recommends', () => {
+    expect(incidentWords(r({ recommendation: { action: 'publish', reason: '' } }))).toMatchObject({ approve: 'Publish brief', decline: 'Hold it…', prefix: ON_HOLD })
+    expect(incidentWords(r({ recommendation: { action: 'hold', reason: '' } }))).toMatchObject({ approve: 'Confirm hold', decline: 'Send back…', prefix: SENT_BACK })
+    expect(isIncident(r({}))).toBe(true); expect(isIncident(run({}))).toBe(false)
+  })
+  it('reads a rejection back as a hold, a send-back or a plain decline', () => {
+    const x = (reason: string) => r({ stage: 'rejected', rejection: { user: 'bob', reason, at: '' } })
+    expect(incidentStage(x(ON_HOLD + 'a primary source'), 'rejected')).toBe('On hold'); expect(incidentRejection(x(ON_HOLD + 'a primary source'))).toBe('Put on hold by bob: a primary source')
+    expect(incidentStage(x(SENT_BACK + 'regrade NSANet'), 'rejected')).toBe('Sent back'); expect(incidentRejection(x(SENT_BACK + 'regrade NSANet'))).toBe('Sent back by bob: regrade NSANet')
+    expect(incidentStage(x('no'), 'rejected')).toBe('Declined')
+  })
+  it('names the finished stage after the action', () => {
+    expect(incidentStage(r({ recommendation: { action: 'publish', reason: '' } }), 'written_back')).toBe('Published (dry run)')
+    expect(incidentStage(r({ recommendation: { action: 'hold', reason: '' } }), 'written_back')).toBe('Hold recorded (dry run)')
+  })
+})
+
+describe('ruleLabel', () => {
+  it('introduces the gateway rule lines in plain words and keeps named checks', () => {
+    expect(ruleLabel({ name: 'block', passed: false, detail: '' })).toBe('Blocked:'); expect(ruleLabel({ name: 'note', passed: true, detail: '' })).toBe('Note:')
+    expect(ruleLabel({ name: 'allowed_actions', passed: true, detail: '' })).toBe('Allowed:'); expect(ruleLabel({ name: 'patch_within_policy', passed: false, detail: '' })).toBe('Failed patch within policy:')
+  })
+})

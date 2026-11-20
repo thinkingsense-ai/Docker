@@ -39,6 +39,21 @@ docker compose --project-directory . -f demos/treasury-pack/docker-compose.treas
 - **In the app:** `manifest.gateway.json` lists it (key `vuln_id`, approver group "IT risk"), so a result row with a `vuln_id` column gets a Start button in Ask and Agency (needs `canStartWorkflows`). The gateway serves both definitions; the worker runs both on the `payment-exceptions` task queue. Use it with the IT-risk or all-packs data set, not Treasury alone.
 - **Tested:** 17 unit tests (`tests/test_it_risk.py`: rules on data shaped like the seeded Treasury Workstation case CVE-2026-0871 and a clean tier-3 case, facts queries, recommender fallback and clamp, gateway mapping and refusals). **Not tested live:** a real Temporal run, the query path against the seeded data, and the app-side Start/approve flow; the worker's Temporal tests are skipped where `temporalio` is not installed.
 
+## A third definition: incident brief (IT-risk root-cause analysis)
+
+`incident-cluster-rca` (`rca_rules.py`, `rca_facts.py`, `rca_workflow.py`; workflow id `rca-<claim_id>`) is the workflow behind Agency's **Incident brief** (design: `docs/agency-risk-it.md`, case data: `demos/it-risk-rca`).
+Flow: facts (the claim, one cause per incident with its grade and source count, open links, controls, who said each confirmed cause; governed reads of the `rca` schema through `POST /api/query`) -> rules gate ->
+recommendation (rules only: `publish` or `hold`; no model drafts anything yet) -> one named approver, bound to the digest of the exact brief -> dry-run write-back -> decision record.
+
+- **Rules** (`rca_rules.gate`): a cause with no source can only be inferred or to be tested; a cause graded *confirmed* needs an operator or a regulator as the speaker; the verdict must name every open incident; a claim and an incident must exist.
+  Any failure removes `publish` from the allowed actions, so a flat statement the evidence does not support can never be approved as a publication.
+- **Approving carries out what the run recommends** (publish the brief, or record the hold); **rejecting declines it** and needs a reason. The Server has no "hold" state, so Agency sends a hold or a send-back as a rejection whose reason starts with `On hold: ` or `Sent back: ` and reads it back.
+- **On the sample data** claim 1 (November 2026) recommends *hold*: NSANet is graded confirmed on a news page that relays "people familiar". Claim 2 (the July breakout) recommends *publish*. Regrading NSANet as *stated* lets November publish.
+- **Dry run only**: `POST /briefs/<case>/publish|hold` is recorded, nothing is sent. The initiator and the AI identities never approve; one approver is enough.
+- **Limits**: one run per claim id (re-running a held brief needs a new version scheme); the recommendation is not model-written; the cloud add-on charts do not carry this workflow (their `RUNTIME` list predates the vulnerability workflow too).
+- **Local sandbox**: `agency/local/docker-compose.risk-gateway.yml` runs Temporal, the worker and this gateway behind the app's workflow API (`OMNIGATE_WORKFLOW_ENGINE`), reading facts with a generated admin API token inside the `it-risk` Workspace
+  (`RCA_WORKSPACE`; the all-packs stack addresses tables `connector.schema.table`, hence `RCA_TABLE_PREFIX` and `SQL_SCHEMA_CONNECTORS`). Tests: `tests/test_rca.py`.
+
 ## Behind the app's own workflow API (the gateway)
 
 The app (v0.10.19 and later, **commercial edition only**) has a workflow API of its own: Ask and Agency start, approve and reject runs through it, and it talks to an engine over a small HTTP contract (`OMNIGATE_WORKFLOW_ENGINE=http://...`, documented in the Server repo's `docs/workflows-api.md`, "Engine gateway contract"). `gateway.py` is that engine in front of this Temporal workflow, so the same runs show up in Ask, in Agency and in the approval inbox (the Temporal workflow id is `payment-<id>` in all three: one payment, one run).
