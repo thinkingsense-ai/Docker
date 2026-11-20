@@ -1,5 +1,7 @@
-import { useCallback, useRef, useState } from 'react'
-import { ask, ApiError } from './api'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { api, ask, ApiError } from './api'
+import { RunCard } from './Workflows'
+import { INCIDENT, reasonText, type Definition, type Run } from './workflow'
 import { BRIEF_PACK, BRIEF_QUESTIONS, GRADES, briefText, composeBrief, gradeLabel, headline, verdictLabel, type Answers, type BriefKey } from './rcaBrief'
 
 const ORDER: BriefKey[] = ['causes', 'open', 'verdict', 'controls', 'speakers']
@@ -7,12 +9,30 @@ const ORDER: BriefKey[] = ['causes', 'open', 'verdict', 'controls', 'speakers']
 export const Grade = ({ g }: { g: string }) => <span className={`grade g-${g}`} title={GRADES[g]?.meaning}>{gradeLabel(g)}</span>
 
 /** The one-page IT-risk root-cause brief (design note docs/agency-risk-it.md). It asks five approved questions as the signed-in person and composes the page; nothing is published or sent. */
-export default function Brief({ onSignedOut }: { onSignedOut: () => void }) {
+const CLAIM = '1'     // the November claim (rca.claims): the run is keyed by it, so its id is rca-1
+
+export default function Brief({ onSignedOut, me, canStart, defs }: { onSignedOut: () => void; me: string; canStart: boolean; defs: Definition[] }) {
   const [answers, setAnswers] = useState<Answers | null>(null)
   const [step, setStep] = useState<number | null>(null)
   const [err, setErr] = useState('')
   const [copied, setCopied] = useState(false)
   const abort = useRef<AbortController | null>(null)
+  const [runState, setRunState] = useState<Run | null | undefined>(undefined)       // undefined = looking, null = none yet
+  const [starting, setStarting] = useState(false)
+  const [startErr, setStartErr] = useState('')
+  const offered = defs.some((d) => d.id === INCIDENT)
+  useEffect(() => {
+    if (!offered) return
+    let live = true
+    api.workflowRun('rca-' + CLAIM).then((r) => live && setRunState(r.run)).catch((e) => { if (!live) return; if (e instanceof ApiError && e.status === 401) onSignedOut(); else setRunState(null) })
+    return () => { live = false }
+  }, [offered, onSignedOut])
+  async function send() {
+    setStarting(true); setStartErr('')
+    try { setRunState((await api.startWorkflow(INCIDENT, CLAIM)).run) }
+    catch (e) { if (e instanceof ApiError && e.status === 401) return onSignedOut(); setStartErr(e instanceof ApiError ? reasonText(e.code) || e.message : (e as Error).message) }
+    finally { setStarting(false) }
+  }
 
   const run = useCallback(async () => {
     setErr(''); setAnswers(null); setCopied(false); abort.current = new AbortController()
@@ -76,7 +96,15 @@ export default function Brief({ onSignedOut }: { onSignedOut: () => void }) {
         <h2>Rules checked</h2>
         <ul className="plain checks">{b.checks.map((c) => <li key={c.rule} className={c.ok ? 'ok' : 'bad'}><span aria-hidden>{c.ok ? '✓' : '!'}</span> <strong>{c.rule}.</strong> {c.detail}</li>)}</ul>
 
-        <p className="muted small">Publishing, holding or sending back this brief, and the control-review request, need the incident workflow, which is not built. This page is a read of the approved answers.</p>
+        <h2>Decision</h2>
+        {!offered && <p className="muted small">The incident workflow is not available on this Server (it needs the commercial edition and a workflow engine), so this page can be read but not sent for approval.</p>}
+        {offered && runState === undefined && <p className="muted small" role="status">Looking for a decision on this brief…</p>}
+        {offered && runState === null && <>
+          <p className="small">A named approver, not you, publishes this brief or puts it on hold. The run re-reads the causes and sources, checks the rules, and recommends one of the two; the approval is bound to the exact brief. Publishing is a dry run: nothing is sent anywhere.</p>
+          <div className="brief-actions"><button className="primary" onClick={send} disabled={starting || !canStart}>{starting ? 'Sending…' : 'Send for approval'}</button>{!canStart && <span className="muted small" role="note">Your account cannot start workflows.</span>}</div>
+          {startErr && <p role="alert" className="error small">{startErr}</p>}
+        </>}
+        {offered && runState && <RunCard initial={runState} me={me} onSignedOut={onSignedOut} />}
       </>}
     </section>
   )

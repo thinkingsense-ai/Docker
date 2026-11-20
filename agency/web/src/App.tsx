@@ -177,7 +177,7 @@ export default function App() {
         )}
       </nav>
       <main>
-        {view === 'brief' && pack === BRIEF_PACK && <Brief onSignedOut={() => expired()} />}
+        {view === 'brief' && pack === BRIEF_PACK && <Brief onSignedOut={() => expired()} me={user ?? ''} canStart={grants.canStart} defs={defs} />}
         {view === 'approvals' && <Queue me={user} onSignedOut={() => expired()} onCount={setWaiting} />}
         {(view === 'ask' || (view === 'brief' && pack !== BRIEF_PACK)) && <>
         {packNote && <p className="muted small">{packNote}</p>}

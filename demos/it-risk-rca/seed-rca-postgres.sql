@@ -102,8 +102,8 @@ INSERT INTO rca.signals VALUES
      'The network was temporarily degraded during scheduled routine maintenance; no immediate signs of an attack.', '2026-11-19', 'The specification grades this cause confirmed; the page relays people familiar, not a named NSA statement. Open question.'),
  (7, 'TechCrunch', 'https://techcrunch.com/2026/11/17/apple-services-including-icloud-app-store-and-apple-music-hit-by-outage/', 'news', 'Apple', 'operator',
      'Apple attributes the disruption to an internal update and rules out a cyberattack.', '2026-11-19', 'News page relaying a company statement.'),
- (8, 'Wikipedia', 'https://en.wikipedia.org/wiki/OpenAI%E2%80%93HuggingFace_incident', 'reference', 'OpenAI and Hugging Face', 'reference',
-     'Summarises OpenAI''s 2026-08-26 report and Hugging Face''s disclosure of the breakout.', '2026-11-19', 'A reference page summarising the two companies'' own reports.'),
+ (8, 'Wikipedia', 'https://en.wikipedia.org/wiki/OpenAI%E2%80%93HuggingFace_incident', 'reference', 'OpenAI and Hugging Face', 'operator',
+     'Summarises OpenAI''s 2026-08-26 report and Hugging Face''s disclosure of the breakout.', '2026-11-19', 'A reference page summarising the two companies'' own reports; the speakers are the companies.'),
  (9, 'Anthropic', 'https://www.anthropic.com/research/glasswing-initial-update', 'official', 'Anthropic', 'operator',
      'By 2026-05-22 partners had found over 10,000 serious vulnerabilities; about 530 were disclosed and 75 patched.', '2026-11-19', 'Context for the driver: it shows a patch backlog, not that it caused these outages.');
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, ApiError } from './api'
-import { approvalLine, dryRunLine, reasonText, shortHash, stageLabel, TERMINAL, type Decisions, type Run } from './workflow'
+import { approvalLine, dryRunLine, incidentRejection, incidentStage, incidentWords, isIncident, reasonText, ruleLabel, shortHash, stageLabel, TERMINAL, type Decisions, type Run } from './workflow'
 
 interface Props { initial: Run; me: string; onSignedOut: () => void; onChange?: (run: Run) => void }
 
@@ -48,6 +48,8 @@ export function RunCard({ initial, me, onSignedOut, onChange }: Props) {
   const canReject = waiting && (run.you.canApprove || run.initiator === me)
   const withdraw = !run.you.canApprove && run.initiator === me      // the Server lets the person who started a run withdraw it, though not approve it
   const simulated = run.recommendation?.source === 'stub'
+  const inc = isIncident(run); const words = incidentWords(run)
+  const stageText = (st: string) => (inc ? incidentStage(run, st) : stageLabel(st))
   const order = run.stageOrder?.length ? run.stageOrder : ['facts', 'rules', 'recommendation', 'awaiting_approval', 'approved', 'written_back']
   const evidence = Object.entries(run.evidence ?? {}).filter(([k]) => k !== 'definition' && k !== 'key')
 
@@ -56,32 +58,32 @@ export function RunCard({ initial, me, onSignedOut, onChange }: Props) {
       <h3>{run.title} <span className="tag">{run.key}</span> <span className="muted small">started by {run.initiator}</span></h3>
       <ol className="stages" aria-label="Progress">
         {order.filter((s) => s !== 'approved' || run.stage === 'approved').map((s) => (
-          <li key={s} aria-current={s === run.stage ? 'step' : undefined} className={s === run.stage ? 'now' : order.indexOf(s) < order.indexOf(run.stage) ? 'past' : ''}>{stageLabel(s)}</li>
+          <li key={s} aria-current={s === run.stage ? 'step' : undefined} className={s === run.stage ? 'now' : order.indexOf(s) < order.indexOf(run.stage) ? 'past' : ''}>{stageText(s)}</li>
         ))}
-        {run.stage === 'rejected' && <li aria-current="step" className="now">{stageLabel('rejected')}</li>}
+        {run.stage === 'rejected' && <li aria-current="step" className="now">{stageText('rejected')}</li>}
       </ol>
       {evidence.length > 0 && simulated && <p className="muted small">These values come from the local simulator's example data, not from this payment.</p>}
       {evidence.length > 0 && <dl className="facts small">{evidence.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{String(v)}</dd></div>)}</dl>}
-      {run.rules.length > 0 && <ul className="rules small" aria-label="Rules">{run.rules.map((r) => <li key={r.name}><strong>{r.passed ? 'Passed' : 'Failed'}</strong> {r.name.replace(/_/g, ' ')}: {r.detail}</li>)}</ul>}
+      {run.rules.length > 0 && <ul className="rules small" aria-label="Rules">{run.rules.map((r, i) => <li key={r.name + i}><strong>{ruleLabel(r)}</strong> {r.detail}</li>)}</ul>}
       {run.recommendation && (
         <p className="rec"><strong>Recommendation: {run.recommendation.action}.</strong> {run.recommendation.reason}{' '}
           <span className="muted small">{run.recommendation.source === 'stub' ? '(simulated by the local engine, not a model)' : run.recommendation.source ? `(source: ${run.recommendation.source})` : ''}</span></p>
       )}
       {(waiting || run.approvals.length > 0) && <p className="small">{approvalLine(run)}.{waiting && <> Each approval is bound to hash <code title={run.payloadHash ?? ''}>{shortHash(run.payloadHash)}</code> of exactly what you see here.</>}</p>}
-      {run.rejection && <p className="small"><strong>Rejected by {run.rejection.user}:</strong> {run.rejection.reason}</p>}
+      {run.rejection && (inc ? <p className="small"><strong>{incidentRejection(run)}</strong></p> : <p className="small"><strong>Rejected by {run.rejection.user}:</strong> {run.rejection.reason}</p>)}
       {run.writeBack && <p className="small">{dryRunLine(run.writeBack)}</p>}
       {waiting && (
         <div className="actions">
-          <button className="primary" disabled={busy || !run.you.canApprove || !run.payloadHash} onClick={() => act(() => api.approveWorkflow(run.id, run.payloadHash!))}>Approve</button>
-          {canReject && !rejecting && <button disabled={busy} onClick={() => setRejecting(true)}>{withdraw ? 'Withdraw…' : 'Reject…'}</button>}
+          <button className="primary" disabled={busy || !run.you.canApprove || !run.payloadHash} onClick={() => act(() => api.approveWorkflow(run.id, run.payloadHash!))}>{inc ? words.approve : 'Approve'}</button>
+          {canReject && !rejecting && <button disabled={busy} onClick={() => setRejecting(true)}>{inc ? (withdraw ? 'Withdraw…' : words.decline) : withdraw ? 'Withdraw…' : 'Reject…'}</button>}
           {!run.you.canApprove && <span className="muted small" role="note">You cannot approve: {reasonText(run.you.reason) || 'not available.'}</span>}
         </div>
       )}
       {rejecting && (
-        <form className="actions" onSubmit={(e) => { e.preventDefault(); if (reason.trim()) act(() => api.rejectWorkflow(run.id, reason.trim())) }}>
-          <label className="sr" htmlFor={`why-${run.id}`}>Reason for rejecting</label>
-          <input id={`why-${run.id}`} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={withdraw ? 'Why are you withdrawing this?' : 'Why are you rejecting this?'} maxLength={1000} />
-          <button className="primary" disabled={busy || !reason.trim()}>{withdraw ? 'Withdraw' : 'Reject'}</button> <button type="button" className="link" onClick={() => setRejecting(false)}>Cancel</button>
+        <form className="actions" onSubmit={(e) => { e.preventDefault(); if (reason.trim()) act(() => api.rejectWorkflow(run.id, (inc && !withdraw ? words.prefix : '') + reason.trim())) }}>
+          <label className="sr" htmlFor={`why-${run.id}`}>{inc ? words.ask : 'Reason for rejecting'}</label>
+          <input id={`why-${run.id}`} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={withdraw ? 'Why are you withdrawing this?' : inc ? words.ask : 'Why are you rejecting this?'} maxLength={1000} />
+          <button className="primary" disabled={busy || !reason.trim()}>{withdraw ? 'Withdraw' : inc ? words.submit : 'Reject'}</button> <button type="button" className="link" onClick={() => setRejecting(false)}>Cancel</button>
         </form>
       )}
       {note && <p role="alert" className="error small">{note}</p>}

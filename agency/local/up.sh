@@ -3,6 +3,7 @@
 # pack Workspaces loaded, and demo logins with different grants. From anywhere:
 #   agency/local/up.sh            start (first run builds images and downloads the embedding model and the museum sample: several minutes)
 #   agency/local/up.sh down       stop and wipe the data
+#   agency/local/up.sh workflow   rebuild and restart only the Temporal worker and gateway after you change demos/payment-workflow
 #   agency/local/up.sh layer      rebuild and restart only the thinking layer (and its UI) after you change addons/thinking-layer or agency/web
 # Set OMNIGATE_LLM_API_KEY to your Anthropic key for free-form questions; without it the approved questions still work. LOCAL ONLY.
 set -eu
@@ -17,10 +18,17 @@ import json
 a = json.load(open("demos/all-packs/demo-questions-all-packs.json")); b = json.load(open("demos/it-risk-rca/demo-questions-rca.json"))
 json.dump(a + b, open("agency/local/.runtime/demo-questions.json", "w"), indent=1)
 PY
-[ -f agency/local/commercial.override.yml ] && F+=(-f agency/local/commercial.override.yml)
+# The workflow API is a commercial-edition feature, so the workflows only exist with the (git-ignored) commercial override. With it, the Temporal workflows (the Incident brief,
+# payments, vulnerabilities) run behind the app's own workflow API; tokens for that are generated once and kept in agency/local/.runtime/tokens.env.
+if [ -f agency/local/commercial.override.yml ]; then
+  F+=(-f agency/local/commercial.override.yml -f agency/local/docker-compose.risk-gateway.yml)
+  [ -f agency/local/.runtime/tokens.env ] || { umask 077; printf 'AGENCY_ADMIN_API_TOKEN=%s\nWORKFLOW_GATEWAY_TOKEN=%s\n' "$(openssl rand -hex 24)" "$(openssl rand -hex 24)" > agency/local/.runtime/tokens.env; }
+  set -a; . agency/local/.runtime/tokens.env; set +a
+fi
 dc() { docker compose --project-directory . -p "${AGENCY_PROJECT:-agency-local}" "${F[@]}" "$@"; }
 case "${1:-up}" in
   down) dc down -v; exit 0;;
+  workflow) export OMNIGATE_LLM_API_KEY=${OMNIGATE_LLM_API_KEY:-dummy}; dc up --build --no-deps -d worker gateway; exit 0;;
   layer) export OMNIGATE_LLM_API_KEY=${OMNIGATE_LLM_API_KEY:-dummy}; dc up --build -d thinking-layer; exit 0;;
 esac
 export OMNIGATE_LLM_API_KEY=${OMNIGATE_LLM_API_KEY:-dummy}

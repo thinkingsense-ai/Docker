@@ -1,12 +1,20 @@
 """Governed facts: every number comes from thinking sense's own query path (POST /api/query), so access policy, federation across Postgres and the ERP, and the audit log all apply.
 No workflow code talks to a database directly."""
-import json, os, urllib.request
+import json, os, re, urllib.request
 ASK_URL = os.environ.get("ASK_URL", "http://omnigate:8080").rstrip("/")
 
-def query(sql):
+def addressed(sql, env=None):
+    """A stack that holds several sources under connector names (the all-packs stack) addresses tables connector.schema.table. SQL_SCHEMA_CONNECTORS="treasury=pg,erp=mdb,risk=pg,security=mdb" adds the
+    connector after FROM and JOIN so the same statements run there; unset (the one-source stacks) leaves the SQL untouched."""
+    m = dict(x.split("=", 1) for x in (env if env is not None else os.environ.get("SQL_SCHEMA_CONNECTORS", "")).split(",") if "=" in x)
+    return re.sub(r"\b(FROM|JOIN)(\s+)(%s)\." % "|".join(map(re.escape, m)), lambda g: "%s%s%s.%s." % (g.group(1), g.group(2), m[g.group(3)], g.group(3)), sql) if m else sql
+
+def query(sql, workspace=None):
+    """`workspace` (or QUERY_WORKSPACE) names the Workspace the statement runs in: a Server whose Workspaces cover every source has an empty default one, and the admin API then refuses every statement."""
+    sql = addressed(sql)
     headers = {"Content-Type": "application/json"}
     if os.environ.get("ASK_ADMIN_TOKEN"): headers["Authorization"] = "Bearer " + os.environ["ASK_ADMIN_TOKEN"]      # a secured deployment (the cloud stacks) wants it on /api/query
-    req = urllib.request.Request(ASK_URL + "/api/query", json.dumps({"sql": sql}).encode(), headers)
+    req = urllib.request.Request(ASK_URL + "/api/query", json.dumps(dict({"sql": sql}, **({"workspaceId": workspace or os.environ.get("QUERY_WORKSPACE")} if (workspace or os.environ.get("QUERY_WORKSPACE")) else {}))).encode(), headers)
     with urllib.request.urlopen(req, timeout=60) as r: res = json.load(r)
     if not res.get("success"): raise RuntimeError("query failed: %s" % res.get("error"))
     cols = res["columns"]; return [dict(zip(cols, row)) for row in res["rows"]]

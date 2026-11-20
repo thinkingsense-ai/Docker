@@ -24,7 +24,8 @@ class TemporalEngine:
         import temporal_wait
         from workflows import PaymentException
         from it_workflow import VulnerabilityException
-        self.W = PaymentException; self.IW = VulnerabilityException
+        from rca_workflow import IncidentClusterRca
+        self.W = PaymentException; self.IW = VulnerabilityException; self.RW = IncidentClusterRca
         self.loop = asyncio.new_event_loop(); threading.Thread(target=self.loop.run_forever, daemon=True).start()
         self.client = self._run(temporal_wait.connect())
 
@@ -44,7 +45,7 @@ class TemporalEngine:
         updated = (d.close_time or datetime.datetime.now(datetime.timezone.utc)).isoformat()
         return st, created, updated
 
-    def _cls(self, rid): return self.IW if rid.startswith("vuln-") else self.W
+    def _cls(self, rid): return self.IW if rid.startswith("vuln-") else self.RW if rid.startswith("rca-") else self.W
 
     def state(self, rid): return self._run(self._state(rid))
 
@@ -54,6 +55,7 @@ class TemporalEngine:
             try:
                 meta = {"initiator": spec["initiator"], "queryId": spec["queryId"]}; n = int(spec["id"].split("-")[1])
                 if spec["id"].startswith("vuln-"): await self.client.start_workflow(self.IW.run, args=[n, meta], id=spec["id"], task_queue="payment-exceptions")
+                elif spec["id"].startswith("rca-"): await self.client.start_workflow(self.RW.run, args=[n, meta], id=spec["id"], task_queue="payment-exceptions")
                 else: await self.client.start_workflow(self.W.run, args=[n, "treasury", meta], id=spec["id"], task_queue="payment-exceptions")
                 created = True
             except WorkflowAlreadyStartedError: created = False
@@ -63,7 +65,7 @@ class TemporalEngine:
     def awaiting(self):
         async def go():
             out = []
-            async for e in self.client.list_workflows('(WorkflowType="PaymentException" OR WorkflowType="VulnerabilityException") AND ExecutionStatus="Running"', limit=100):
+            async for e in self.client.list_workflows('(WorkflowType="PaymentException" OR WorkflowType="VulnerabilityException" OR WorkflowType="IncidentClusterRca") AND ExecutionStatus="Running"', limit=100):
                 if M.RUN_ID.match(e.id):
                     s = await self._state(e.id)
                     if s and s[0].get("stage") == "awaiting_approval": out.append((e.id, s))
