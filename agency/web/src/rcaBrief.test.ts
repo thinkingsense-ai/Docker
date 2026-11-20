@@ -22,7 +22,9 @@ describe('composeBrief', () => {
     const b = composeBrief(answers())
     expect(b.counts).toMatchObject({ total: 6, confirmed: 4, stated: 5 })
     expect(b.counts.openIncidents.map((i) => i.operator)).toEqual(['FAA', 'United Airlines'])
-    expect(headline(b)).toBe('4 of 6 causes are confirmed, 5 of 6 are stated, and no official source points to an attack. 2 stay open.')
+    expect(headline(b)).toBe('4 of 6 causes are confirmed, 5 of 6 are stated, and no official source points to an attack. 2 stay open. 1 confirmed grade is higher than the sources support.')
+    expect(b.incidents.find((i) => i.operator === 'NSA (NSANet)')?.supported).toBe('stated')
+    expect(b.incidents.filter((i) => i.supported)).toHaveLength(1)
   })
   it('names every open incident in the verdict sentence, with its grade (the costliest error)', () => {
     const b = composeBrief(answers())
@@ -31,7 +33,7 @@ describe('composeBrief', () => {
   })
   it('flags a confirmed cause whose only source is reporting (NSANet), which the specification grades confirmed', () => {
     const c = composeBrief(answers()).checks.find((x) => x.rule.startsWith('Confirmed means'))!
-    expect(c.ok).toBe(false); expect(c.detail).toMatch(/NSA \(NSANet\)/)
+    expect(c.ok).toBe(false); expect(c.detail).toMatch(/NSA \(NSANet\) cause is graded confirmed but its sources support stated/)
   })
   it('refuses a cause with no source unless it is inferred', () => {
     const a = answers(); a.causes!.rows[0][3] = '0'

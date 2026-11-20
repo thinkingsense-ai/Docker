@@ -79,7 +79,7 @@ export default function Brief({ onSignedOut, me, canStart, defs }: { onSignedOut
         <h2>Incidents and their causes</h2>
         <div className="tablewrap"><table>
           <thead><tr><th>Incident</th><th>Cause</th><th>Grade</th><th className="num">Sources</th></tr></thead>
-          <tbody>{b.incidents.map((i) => <tr key={i.operator}><td>{i.operator}</td><td className="wrap">{i.cause}</td><td><Grade g={i.grade} /></td><td className="num">{i.sources}</td></tr>)}</tbody>
+          <tbody>{b.incidents.map((i) => <tr key={i.operator}><td>{i.operator}</td><td className="wrap">{i.cause}</td><td><Grade g={i.grade} />{i.supported && <div className="small muted" role="note">Sources support only: <Grade g={i.supported} /></div>}</td><td className="num">{i.sources}</td></tr>)}</tbody>
         </table></div>
 
         <h2>Not established</h2>
@@ -104,7 +104,10 @@ export default function Brief({ onSignedOut, me, canStart, defs }: { onSignedOut
           <div className="brief-actions"><button className="primary" onClick={send} disabled={starting || !canStart}>{starting ? 'Sending…' : 'Send for approval'}</button>{!canStart && <span className="muted small" role="note">Your account cannot start workflows.</span>}</div>
           {startErr && <p role="alert" className="error small">{startErr}</p>}
         </>}
-        {offered && runState && <RunCard initial={runState} me={me} onSignedOut={onSignedOut} />}
+        {offered && runState && <>
+          <p className="small muted" role="note">This brief was already sent for approval{runState.initiator ? ` by ${runState.initiator}` : ''}. The run re-reads the sources and applies the same grading as the table above; its card is below.</p>
+          <RunCard initial={runState} me={me} onSignedOut={onSignedOut} />
+        </>}
       </>}
     </section>
   )
