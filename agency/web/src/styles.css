@@ -177,3 +177,15 @@ details.bring > summary { cursor: pointer; color: var(--accent); font-weight: 60
 .answer.pending { opacity: .85 } .answer.pending .q { margin: 0 }
 
 .empty { margin: 8px 0; padding: 10px 12px; border: 1px dashed var(--edge); border-radius: 8px; color: var(--ink) }
+
+/* IT-risk brief: a grade is always spelled out, never a colour alone */
+.brief { display: grid; gap: 10px } .brief h2 { margin-top: 10px } .brief-head { display: grid; gap: 6px; background: none; border: 0; padding: 0 }
+.brief-actions { display: flex; gap: 8px; flex-wrap: wrap } .brief-headline { font-size: 1.15rem }
+.verdict { background: var(--accent-tint); border: 1px solid var(--accent); border-radius: 8px; padding: 8px 12px }
+.grade { display: inline-block; font-size: .75rem; font-weight: 600; border-radius: 999px; padding: 1px 9px; border: 1px solid var(--edge); background: var(--chip); white-space: nowrap }
+.g-confirmed { color: var(--ok); border-color: var(--ok) } .g-stated { color: var(--accent); border-color: var(--accent) }
+.g-disputed, .g-not_named { color: var(--warn); background: var(--warn-bg); border-color: var(--warn) }
+.g-inferred, .g-to_be_tested { color: var(--muted); border-style: dashed }
+td.wrap { white-space: normal; min-width: 14rem } ul.plain { margin: 0; padding-left: 18px; display: grid; gap: 6px }
+.checks { list-style: none; padding-left: 0 } .checks .ok span { color: var(--ok) } .checks .bad span { color: var(--bad); font-weight: 700 }
+@media print { nav, header:not(.brief-head), .brief-actions { display: none } .shell { display: block } main { max-width: none } }

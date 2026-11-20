@@ -5,6 +5,8 @@ import PackCards from './PackCards'
 import Answer from './Answer'
 import Uploads from './Uploads'
 import StarterTiles from './StarterTiles'
+import Brief from './Brief'
+import { BRIEF_PACK } from './rcaBrief'
 import { AnswerDetails, ProgressView } from './DetailsPane'
 import type { ProgressEvent as PEvent } from './progress'
 import { Queue } from './Workflows'
@@ -51,7 +53,7 @@ export default function App() {
   const [notice, setNotice] = useState('')                    // why the sign-in page is showing, when the person did not ask for it
   const [grants, setGrants] = useState<{ canStart: boolean; canApprove: boolean }>({ canStart: false, canApprove: false })
   const [defs, setDefs] = useState<Definition[]>([])
-  const [view, setView] = useState<'ask' | 'approvals'>('ask')
+  const [view, setView] = useState<'ask' | 'approvals' | 'brief'>('ask')
   const [waiting, setWaiting] = useState<number | null>(null)
   const abort = useRef<AbortController | null>(null)
   const bottom = useRef<HTMLDivElement>(null)
@@ -160,6 +162,12 @@ export default function App() {
         {convs.length === 0 && <p className="muted small">No conversations yet.</p>}
         <ul>{convs.map((c) => <li key={c.id}><button className={'link' + (c.id === convId ? ' on' : '')} title={c.title || 'Untitled'} onClick={() => open(c.id)}><span className="t">{c.title || 'Untitled'}</span>{c.updatedAtMillis ? <span className="when">{new Date(c.updatedAtMillis).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span> : null}</button></li>)}</ul>
         <p className="muted small">The Server lists conversations per user, not per domain.</p>
+        {pack === BRIEF_PACK && (
+          <>
+            <h2>Investigate</h2>
+            <button className={'link' + (view === 'brief' ? ' on' : '')} onClick={() => setView(view === 'brief' ? 'ask' : 'brief')}>{view === 'brief' ? 'Back to questions' : 'Incident brief'}</button>
+          </>
+        )}
         {grants.canApprove && (
           <>
             <h2>Approvals</h2>
@@ -169,8 +177,9 @@ export default function App() {
         )}
       </nav>
       <main>
+        {view === 'brief' && pack === BRIEF_PACK && <Brief onSignedOut={() => expired()} />}
         {view === 'approvals' && <Queue me={user} onSignedOut={() => expired()} onCount={setWaiting} />}
-        {view === 'ask' && <>
+        {(view === 'ask' || (view === 'brief' && pack !== BRIEF_PACK)) && <>
         {packNote && <p className="muted small">{packNote}</p>}
         <PackCards packs={packs} selected={pack} onSelect={choose} compact={!showDomains || turns.length > 0 || busy} />
         <p className="muted small domain-line" role="status" aria-live="polite">

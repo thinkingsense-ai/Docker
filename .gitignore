@@ -11,3 +11,6 @@ __pycache__/
 
 # local secrets (the SAP sandbox key for demos/sap-spike)
 demos/sap-spike/.env
+
+# Local Agency sandbox: generated question file
+agency/local/.runtime/
