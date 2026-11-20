@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, ask, ApiError, type Answer as A, type ConversationSummary, type Pack, type Starter, type Status } from './api'
 import Login from './Login'
-import PackCards from './PackCards'
 import Answer from './Answer'
 import Uploads from './Uploads'
 import StarterTiles from './StarterTiles'
 import Brief from './Brief'
 import { BRIEF_PACK } from './rcaBrief'
+import Screen from './Screens'
+import { navFor, startWorkspace, viewFor, workspaceChoices, type View } from './shell'
 import { AnswerDetails, ProgressView } from './DetailsPane'
 import type { ProgressEvent as PEvent } from './progress'
 import { Queue } from './Workflows'
@@ -34,7 +35,7 @@ export default function App() {
   const [packNote, setPackNote] = useState<string | null>(null)
   const [pack, setPack] = useState<string | null>(null)
   const [changed, setChanged] = useState('')
-  const [showDomains, setShowDomains] = useState(false)          // the full domain cards: on request, not taking the first screen
+  const [navOpen, setNavOpen] = useState(false)                  // the left navigation as a drawer on a phone
   const [starters, setStarters] = useState<Starter[]>([])
   const [convs, setConvs] = useState<ConversationSummary[]>([])
   const [convId, setConvId] = useState<string | null>(null)
@@ -53,12 +54,12 @@ export default function App() {
   const [notice, setNotice] = useState('')                    // why the sign-in page is showing, when the person did not ask for it
   const [grants, setGrants] = useState<{ canStart: boolean; canApprove: boolean }>({ canStart: false, canApprove: false })
   const [defs, setDefs] = useState<Definition[]>([])
-  const [view, setView] = useState<'ask' | 'approvals' | 'brief'>('ask')
+  const [view, setView] = useState<View>('watch')
   const [waiting, setWaiting] = useState<number | null>(null)
   const abort = useRef<AbortController | null>(null)
   const bottom = useRef<HTMLDivElement>(null)
 
-  const leave = useCallback(() => { setUser(null); setTurns([]); setConvId(null); setFile(null); setView('ask'); setWaiting(null); setDetailIdx(null) }, [])
+  const leave = useCallback(() => { setUser(null); setTurns([]); setConvId(null); setFile(null); setView('watch'); setNavOpen(false); setWaiting(null); setDetailIdx(null) }, [])
   const signedOut = useCallback(() => { leave(); setQ(''); setRetry(null); setNotice('') }, [leave])
   // the Server dropped the session (it restarted, or it expired): back to sign-in, saying so, with the unsent question kept in the box
   const expired = useCallback((kept?: boolean) => { leave(); setNotice('Your session ended (the Server may have restarted). Sign in again.' + (kept === true ? ' The question you were asking is kept.' : '')) }, [leave])
@@ -84,8 +85,7 @@ export default function App() {
     Promise.all([api.packs(), api.preferences().catch(() => ({} as { pack?: string }))]).then(([p, pref]) => {
       setPacks(p.packs); setPackNote(p.note)
       const want = new URLSearchParams(location.search).get('pack') ?? pref.pack ?? lsGet()
-      const ok = p.packs.find((x) => x.id === want)
-      setPack(ok ? ok.id : null)
+      setPack(startWorkspace(p.packs, want))
     }).catch(guard)
     api.conversations().then((c) => setConvs(c.conversations ?? [])).catch(() => {})
   }, [user, guard])
@@ -102,7 +102,7 @@ export default function App() {
     if (id === pack) return
     setPack(id); setConvId(null); setFile(null); setTurns([]); setDetailIdx(null); setErr('')
     const p = packs.find((x) => x.id === id)
-    setChanged(`Asking in ${p ? p.title : 'All data'}. Starter questions updated and a new conversation started.`)
+    setChanged(`Workspace: ${p ? p.title : 'All data'}. Starter questions updated and a new conversation started.`)
     lsSet(id); api.setPreference(id).catch(() => {})
     const url = new URL(location.href); id ? url.searchParams.set('pack', id) : url.searchParams.delete('pack'); history.replaceState(null, '', url)
   }
@@ -133,7 +133,7 @@ export default function App() {
     try {
       const c = await api.conversation(id)
       if (!c.success) return setErr(c.error ?? 'That conversation could not be opened.')
-      setView('ask'); setConvId(id); setDetailIdx(null); setChanged('Opened a past conversation. Its answers show the saved text and rows; evidence is only kept for answers asked now.')
+      setView('ask'); setNavOpen(false); setConvId(id); setDetailIdx(null); setChanged('Opened a past conversation. Its answers show the saved text and rows; evidence is only kept for answers asked now.')
       setTurns((c.turns ?? []).map((t) => ({ question: t.question, answer: { answer: t.answer, columns: t.columns, rows: t.rows, sql: t.sql ?? null, conversationId: id, evidence: null } })))
     } catch (e) { guard(e) }
   }
@@ -142,9 +142,12 @@ export default function App() {
   if (user === null) return <Login notice={notice} onDone={() => { setNotice(''); api.whoami().then((w) => setUser(w.username ?? w.layerUser ?? 'signed in')).catch(() => setUser(null)) }} />
 
   const wf = status?.workflows
+  const shown = viewFor(view, grants)
+  const go = (v: View) => { setView(v); setNavOpen(false); setErr('') }
   return (
     <div className={'shell' + (paneOpen ? ' with-pane' : '')}>
       <header>
+        <button className="link menu" aria-expanded={navOpen} aria-controls="sidenav" onClick={() => setNavOpen((o) => !o)}>Menu</button>
         <h1 className="brand">Agency <span className="by">by</span> <img src="/thinkingsense-wordmark.png" alt="Thinking Sense" width="117" height="26" /></h1>
         <div className="who">
           <span title="Server reachability">{status ? (status.server.reachable ? 'Server reachable' : 'Server not reachable') : '…'}</span>
@@ -152,39 +155,41 @@ export default function App() {
           {wf && <span title={wf.note}>{wf.available ? 'Workflows available' : 'Workflows off'}</span>}
           <button className="link" aria-expanded={paneOpen} aria-controls="pane" onClick={togglePane}>{paneOpen ? 'Hide details' : 'Show details'}</button>
           {status?.adminUrl && <a className="link quiet" href={status.adminUrl} target="_blank" rel="noopener noreferrer" title="Opens the admin console, which has its own sign-in">Manage<span className="sr-only"> (opens the admin console in a new tab)</span></a>}
+          <label className="ws"><span className="sr">Workspace</span>
+            <select value={pack ?? ''} onChange={(e) => choose(e.target.value || null)} title="Workspace. More arrive later.">
+              {pack === null && <option value="">No Workspace</option>}
+              {workspaceChoices(packs).map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+            </select></label>
           <span>{user}</span>
           <button className="link" onClick={() => api.logout().finally(signedOut)}>Sign out</button>
         </div>
       </header>
-      <nav aria-label="Conversations">
-        <button className="primary" onClick={() => { setView('ask'); setConvId(null); setFile(null); setTurns([]); setDetailIdx(null); setChanged('New conversation.') }}>New conversation</button>
-        <h2>Recent</h2>
-        {convs.length === 0 && <p className="muted small">No conversations yet.</p>}
-        <ul>{convs.map((c) => <li key={c.id}><button className={'link' + (c.id === convId ? ' on' : '')} title={c.title || 'Untitled'} onClick={() => open(c.id)}><span className="t">{c.title || 'Untitled'}</span>{c.updatedAtMillis ? <span className="when">{new Date(c.updatedAtMillis).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span> : null}</button></li>)}</ul>
-        <p className="muted small">The Server lists conversations per user, not per domain.</p>
-        {pack === BRIEF_PACK && (
-          <>
-            <h2>Investigate</h2>
-            <button className={'link' + (view === 'brief' ? ' on' : '')} onClick={() => setView(view === 'brief' ? 'ask' : 'brief')}>{view === 'brief' ? 'Back to questions' : 'Incident brief'}</button>
-          </>
-        )}
-        {grants.canApprove && (
-          <>
-            <h2>Approvals</h2>
-            <button className={'link' + (view === 'approvals' ? ' on' : '')} onClick={() => setView(view === 'approvals' ? 'ask' : 'approvals')}>
-              {view === 'approvals' ? 'Back to questions' : `Waiting for me${waiting ? ` (${waiting})` : ''}`}</button>
-          </>
-        )}
+      <nav id="sidenav" aria-label="Sections" className={navOpen ? 'open' : ''}>
+        <ul className="sections">
+          {navFor(grants).map((n) => {
+            const on = viewFor(view, grants) === n.id
+            return <li key={n.id}><button className={'navitem' + (on ? ' on' : '')} aria-current={on ? 'page' : undefined} title={n.hint} onClick={() => go(n.id)}>
+              {n.label}{n.id === 'approvals' && waiting ? <span className="count" aria-label={`${waiting} waiting`}>{waiting}</span> : null}</button></li>
+          })}
+        </ul>
+        {shown === 'ask' && <>
+          <button className="primary" onClick={() => { setConvId(null); setFile(null); setTurns([]); setDetailIdx(null); setChanged('New conversation.') }}>New conversation</button>
+          <h2>Recent</h2>
+          {convs.length === 0 && <p className="muted small">No conversations yet.</p>}
+          <ul>{convs.map((c) => <li key={c.id}><button className={'link' + (c.id === convId ? ' on' : '')} title={c.title || 'Untitled'} onClick={() => open(c.id)}><span className="t">{c.title || 'Untitled'}</span>{c.updatedAtMillis ? <span className="when">{new Date(c.updatedAtMillis).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span> : null}</button></li>)}</ul>
+          <p className="muted small">The Server lists conversations per user, not per Workspace.</p>
+        </>}
       </nav>
       <main>
-        {view === 'brief' && pack === BRIEF_PACK && <Brief onSignedOut={() => expired()} me={user ?? ''} canStart={grants.canStart} defs={defs} />}
-        {view === 'approvals' && <Queue me={user} onSignedOut={() => expired()} onCount={setWaiting} />}
-        {(view === 'ask' || (view === 'brief' && pack !== BRIEF_PACK)) && <>
+        {shown === 'briefs' && (pack === BRIEF_PACK
+          ? <Brief onSignedOut={() => expired()} me={user ?? ''} canStart={grants.canStart} defs={defs} />
+          : <p className="empty">Briefs are in the IT risk Workspace. Choose it from the Workspace menu at the top right.</p>)}
+        {shown === 'approvals' && <Queue me={user} onSignedOut={() => expired()} onCount={setWaiting} />}
+        {(shown === 'watch' || shown === 'exposure' || shown === 'sources') && <Screen view={shown} onOpen={go} />}
+        {shown === 'ask' && <>
         {packNote && <p className="muted small">{packNote}</p>}
-        <PackCards packs={packs} selected={pack} onSelect={choose} compact={!showDomains || turns.length > 0 || busy} />
         <p className="muted small domain-line" role="status" aria-live="polite">
-          {packs.find((p) => p.id === pack)?.summary ?? (pack ? '' : 'Every source this Server can reach. Choose a domain for better answers.')}
-          {turns.length === 0 && !busy && packs.length > 0 && <> <button className="link" aria-expanded={showDomains} onClick={() => setShowDomains(!showDomains)}>{showDomains ? 'Hide domain details' : 'Compare domains'}</button></>}
+          {packs.find((p) => p.id === pack)?.summary ?? 'Every source this Server can reach. Choose a Workspace for better answers.'}
           <span className="sr">{changed}</span>
         </p>
         {turns.length === 0 && !busy && <StarterTiles key={pack ?? 'all'} items={starters} label={pack ? `Approved questions: ${packs.find((p) => p.id === pack)?.title ?? pack}` : 'Approved questions'} onPick={send} />}
