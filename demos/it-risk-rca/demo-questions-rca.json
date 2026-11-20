@@ -48,5 +48,10 @@
   "question": "Which causes rest on a news page that quotes a source rather than on a statement we can name?",
   "referenceSql": "SELECT e.operator, l.grade, s.publisher, s.speaker, s.note FROM pg.rca.links l JOIN pg.rca.events e ON e.event_id = l.event_id JOIN pg.rca.link_sources ls ON ls.link_id = l.link_id JOIN pg.rca.signals s ON s.signal_id = ls.signal_id WHERE l.layer = 'cause' AND s.speaker_kind = 'reporting' AND e.case_id = 'nov-2026-cluster'",
   "category": "it-risk"
+ },
+ {
+  "question": "Which incident candidates are we watching, and has each been traced?",
+  "referenceSql": "SELECT c.candidate_id, c.title, c.claim_type, c.status, c.first_seen, c.summary, cl.verdict, cl.open_incidents, (SELECT COUNT(*) FROM pg.rca.events e WHERE e.case_id = c.case_id) AS incidents, (SELECT COUNT(*) FROM pg.rca.candidate_items ci WHERE ci.candidate_id = c.candidate_id) AS sources FROM pg.rca.candidates c LEFT JOIN pg.rca.claims cl ON cl.claim_id = c.claim_id ORDER BY c.first_seen DESC",
+  "category": "it-risk"
  }
 ]

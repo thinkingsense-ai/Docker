@@ -6,7 +6,7 @@
 -- Read-only for the app user, like every other pack. Reload by dropping the schema (the demo volume is disposable).
 
 CREATE SCHEMA IF NOT EXISTS rca;
-DROP TABLE IF EXISTS rca.link_sources, rca.links, rca.claims, rca.control_map, rca.signals, rca.events CASCADE;
+DROP TABLE IF EXISTS rca.candidate_items, rca.candidates, rca.link_sources, rca.links, rca.claims, rca.control_map, rca.signals, rca.events CASCADE;
 
 CREATE TABLE rca.events (
   event_id    INT PRIMARY KEY,
@@ -168,5 +168,36 @@ ALTER TABLE rca.links ADD COLUMN control_root VARCHAR(80) REFERENCES rca.control
 COMMENT ON COLUMN rca.links.control_root IS 'For a root_condition link: the control_map row that owns it.';
 UPDATE rca.links SET control_root = 'Change and test capacity' WHERE link_id = 14;
 UPDATE rca.links SET control_root = 'Weak containment'         WHERE link_id = 18;
+
+-- Watch (docs/agency-it-risk-flow.md, section 5): what the analyst is watching. A candidate is a story about incidents; it becomes a traced case (events, links, claims above)
+-- only when an analyst traces it. Nothing here comes from a live feed yet: the two candidates are the two seeded cases, so both are already traced.
+CREATE TABLE rca.candidates (
+  candidate_id INT PRIMARY KEY,
+  case_id      VARCHAR(30) NOT NULL,
+  claim_id     INT REFERENCES rca.claims(claim_id),
+  title        VARCHAR(120) NOT NULL,
+  claim_type   VARCHAR(30) NOT NULL CHECK (claim_type IN ('ai-attack-claimed','ai-attack-confirmed','ai-adjacent')),
+  status       VARCHAR(20) NOT NULL CHECK (status IN ('not_yet_traced','traced')),
+  first_seen   DATE NOT NULL,
+  summary      VARCHAR(300) NOT NULL
+);
+COMMENT ON TABLE  rca.candidates IS 'An incident story being watched. status not_yet_traced means no analyst has run the root-cause trace on it, so its claim is untested; traced means events, links and a verdict exist for its case.';
+COMMENT ON COLUMN rca.candidates.claim_type IS 'ai-attack-claimed: someone says an AI-driven attack caused it. ai-attack-confirmed: an operator or regulator says so. ai-adjacent: an outage or vulnerability story that mentions AI without claiming an attack. A candidate is only ever claimed until an official source says otherwise.';
+
+CREATE TABLE rca.candidate_items (
+  candidate_id INT NOT NULL REFERENCES rca.candidates(candidate_id),
+  signal_id    INT NOT NULL REFERENCES rca.signals(signal_id),
+  PRIMARY KEY (candidate_id, signal_id)
+);
+COMMENT ON TABLE rca.candidate_items IS 'The source pages behind a candidate.';
+
+INSERT INTO rca.candidates VALUES
+ (1, 'nov-2026-cluster',  1, 'Six outages in six days, said to be AI hacking', 'ai-attack-claimed', 'traced', '2026-11-12',
+     'Microsoft 365, FAA, JPMorgan Chase, United, NSANet and Apple, 12 to 17 November 2026. The circulating story is an AI-driven attack; no official source says so.'),
+ (2, 'jul-2026-breakout', 2, 'A model breaks out of its sandbox',                'ai-adjacent',       'traced', '2026-07-01',
+     'July 2026: an agent escaped its test sandbox. The story is about AI behaviour, not an attack on a firm; the mechanism is the company''s own account.');
+INSERT INTO rca.candidate_items
+  SELECT DISTINCT c.candidate_id, ls.signal_id FROM rca.candidates c
+  JOIN rca.links l ON l.case_id = c.case_id JOIN rca.link_sources ls ON ls.link_id = l.link_id;
 
 -- Grants are in grant-rca.sql, which runs after the all-packs read-only setup creates the role.

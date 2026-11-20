@@ -1,13 +1,7 @@
 import type { View } from './shell'
 
-// The three screens whose build step has not landed. Each says plainly what it will do and what to use meanwhile; none shows invented data.
+// The two screens whose build step has not landed. Each says plainly what it will do and what to use meanwhile; none shows invented data.
 const COPY: Partial<Record<View, { title: string; will: string; step: string; meanwhile: string }>> = {
-  watch: {
-    title: 'Watch',
-    will: 'A continuous list of incidents in the news that are being called AI hacking, grouped by event. You open one and press Trace it to run the root-cause brief on it. Nothing is traced or published without a person pressing a button.',
-    step: 'Build step 2 (seeded candidates), then step 6 (the live feed).',
-    meanwhile: 'The two seeded cases, November 2026 and the July breakout, are in Briefs.',
-  },
   exposure: {
     title: 'Exposure',
     will: 'Five questions over a simulated estate (databases, Slack, SharePoint, object store) that show how a similar incident would reach our own systems, with one rating from Low to Critical and the rule behind it.',
@@ -22,7 +16,7 @@ const COPY: Partial<Record<View, { title: string; will: string; step: string; me
   },
 }
 
-export default function Screen({ view, onOpen }: { view: View; onOpen: (v: View) => void }) {
+export default function Screen({ view }: { view: View }) {
   const c = COPY[view]
   if (!c) return null
   return (
@@ -30,7 +24,7 @@ export default function Screen({ view, onOpen }: { view: View; onOpen: (v: View)
       <h2 id="screen-h">{c.title}</h2>
       <p className="notbuilt" role="status"><strong>Not built yet.</strong> {c.step}</p>
       <p>{c.will}</p>
-      <p className="muted">{c.meanwhile}{view === 'watch' && <> <button className="link" onClick={() => onOpen('briefs')}>Open Briefs</button></>}</p>
+      <p className="muted">{c.meanwhile}</p>
     </section>
   )
 }
