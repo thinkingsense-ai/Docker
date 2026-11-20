@@ -60,7 +60,7 @@ Every N minutes (default 30) a feed service reads the configured sources, drops 
 
 | Source | Role | State |
 |---|---|---|
-| RSS or Atom from technical news sites | primary: titles, links and dates | **To be chosen.** Which sites offer a feed, and on what terms, has not been checked. Candidate list for Leo and Kumar to confirm: a security news site, a general technology outlet, a vendor status page, a government advisory feed. |
+| RSS or Atom from technical news sites | primary: titles, links and dates | **To be chosen (the user asked us to search for the best few and propose them; not yet done).** Which sites offer a feed, and on what terms, has not been checked. Candidate list for Leo and Kumar to confirm: a security news site, a general technology outlet, a vendor status page, a government advisory feed. |
 | X | the public story only; per the spec a post can be a lead, never evidence of a cause | **Not decided.** Needs a paid API plan and terms we have not read. Design it behind the same adapter so it can be added without changing the rest. |
 | Official statements (company status pages, agency advisories) | the only things that can grade a cause `confirmed` or `disputed` | Same adapter, flagged `official`. |
 
@@ -104,10 +104,10 @@ The question needs a map of what the firm owns. The resources named in the reque
 |---|---|---|
 | Databases (Postgres, MariaDB) | systems, owners, classification, patch and change records | SQL source, as for every pack |
 | Object store (S3 compatible) | buckets, public access, encryption, who can write | the Server's file/object source |
-| SharePoint | sites and libraries, sharing scope, whether recovery or credential documents sit there | a REST source over Microsoft Graph (the Server documents this route; never run against a real tenant by us) |
-| Slack | channels and whether secrets or runbooks are posted in broad channels | a REST or MCP source (route exists in principle; never verified by us) |
+| SharePoint | sites and libraries, sharing scope, whether recovery or credential documents sit there | a stream of change events (Kafka connector) landing in Postgres tables; the Server reads the tables as SQL (answer to Q6) |
+| Slack | channels and whether secrets or runbooks are posted in broad channels | the same: a stream of events into Postgres tables (answer to Q6) |
 
-In this release all four are **simulated**: invented data in the `estate` schema plus small mock REST services for SharePoint and Slack, labelled as invented on screen, exactly as the current demo is. The aim is to prove the flow and the rating, not to claim a real connector.
+In this release all four are **simulated**: invented data in the `estate` schema, and for SharePoint and Slack a replay of invented events into the same Postgres tables a real Kafka connector would fill (a small replay service stands in for the connector), labelled as invented on screen. The aim is to prove the flow, the stream shape and the rating, not to claim a real connector. A real tenant later means swapping the replay for the connector; the questions and the rating do not change.
 
 ### 6.2 The five questions
 
@@ -127,7 +127,7 @@ These five are a proposal, not Leo's list; open question 1 asks him to confirm o
 
 Rule-based, like the judge, so a risk partner can challenge each rule.
 
-- Each question gets 0 (no concern), 1 (watch), 2 (concern) or 3 (critical), from a short stated rule over the returned rows. Examples: Q2 scores 3 if a system with `restricted` data is reachable by a group wider than its owner team; Q4 scores 2 if any in-scope system has a security patch overdue by more than the policy days; Q5 scores 3 if a tier-1 service has no recovery test in the last year.
+- Each question gets 0 (no concern), 1 (watch), 2 (concern) or 3 (critical), from a short stated rule over the returned rows. Examples: Q2 scores 3 if a system with `restricted` data is reachable by a group wider than its owner team; Q4 scores 2 if any in-scope system has a security patch overdue by more than 15 days; Q5 scores 3 if a tier-1 service has no recovery test in the last 180 days.
 - The overall rating is the highest of the five, shown as Low, Moderate, High or Critical, **with the question that set it**. Not an average, because one unrecoverable tier-1 system is not diluted by four clean answers.
 - Every score shows the rows behind it and the rule that produced it. A question that cannot be answered (a source is not loaded) scores *unknown*, never 0, and the overall rating says so.
 - Thresholds (days overdue, recovery window) are demo constants, listed on screen, owned by the head of technology risk in a real deployment.
@@ -182,11 +182,12 @@ Each step is a small pull request that can be tested without the next one.
 
 1. **Shell and palette:** the blue tokens and the dark-mode pair, the Workspace dropdown at the top right (one entry), IT risk only on first load, new left navigation with the existing Incident brief behind it. UI tests and a screenshot pass at three widths.
 2. **Watch with seeded candidates:** `candidates` tables, the November and July cases listed as candidates, the Watch screen and Incident detail. No live feed yet.
-3. **Estate data:** the `estate` schema, mock SharePoint and Slack services, approved questions for the five, and the grants.
+3. **Estate data:** the `estate` schema, the event tables for SharePoint and Slack with a replay service that fills them like a Kafka connector would, approved questions for the five, and the grants.
 4. **Exposure screen and rating:** the rating rules as a pure module with a gold set (including planted errors, like the judge), the five-question run, the exposure view.
 5. **Decision for both:** extend `incident-cluster-rca` so the approval covers brief and rating (the digest includes the rating).
 6. **Feed adapter:** RSS first, rule-based filter and clustering, the source health line in Watch. X only once the plan and terms are known.
-7. **Pilot hardening:** a real feed run for several days, with Leo's reading of what it caught and missed.
+7. **Server design note for Kumar (a pull request on the Server repo, to be opened with the user's go-ahead):** how an add-on feed and the Kafka-to-Postgres event tables reach the Server as sources (Q5, Q6). It can go in parallel with steps 2 to 4 and gates only step 6 and a real connector.
+8. **Pilot hardening:** a real feed run for several days, with Leo's reading of what it caught and missed.
 
 ## 10. Questions to answer, and decisions taken
 
@@ -196,38 +197,39 @@ Each question says why it matters and what the build assumes if it stays unanswe
 
 - **The firm's own records are simulated** in this release; there is no real system to connect. Invented data and mock SharePoint and Slack services, labelled as invented on screen.
 - **A candidate is only ever traced by a person pressing a button**, never automatically.
+- **Answers to Q1 to Q7 recorded 2026-11-20** (below). They change three things in this note: the thresholds (section 6.3), how SharePoint and Slack data arrives (sections 5.5 and 6.1: a stream into Postgres), and the Server pull request (section 9).
 
 ### For Leo (the risk view)
 
 **Q1. Are the five exposure questions in section 6.2 the right ones, in the right order? What would you replace or add?**
 Why it matters: they decide what the rating is built from. Assumed if unanswered: the five as written.
-Answer: ____________________
+**Answer:** Yes, start with these five, in this order.
 
 **Q2. What should the rating look like to a head of technology risk: four levels (Low, Moderate, High, Critical), a number, or a heat map?**
 Why it matters: the rating is the thing people will quote. Assumed if unanswered: four levels, the highest of the five question scores, with the question that set it.
-Answer: ____________________
+**Answer:** Use the four levels: Low, Moderate, High, Critical.
 
 **Q3. Which news sources would you trust for the feed, and do you want X for the story only?**
 Why it matters: the feed is only as good as its sources, and X needs a paid plan we have not bought. Assumed if unanswered: RSS from technical news and official status pages first, no X.
-Answer: ____________________
+**Answer:** Search for the best RSS feeds and choose a few that fit best. **Follow-up for us, not yet done:** research and propose the feeds (and check their terms) before the feed adapter is built.
 
 **Q4. What is the policy threshold for "overdue" on a security patch, and for "no recovery test", in a bank?**
-Why it matters: Q4 and Q5 of the exposure questions score against these numbers. Assumed if unanswered: 30 days overdue and 365 days since a recovery test, shown on screen as demo constants.
-Answer: ____________________
+Why it matters: Q4 and Q5 of the exposure questions score against these numbers. Assumed if unanswered: 15 days overdue and 180 days since a recovery test, shown on screen as demo constants.
+**Answer:** Tighten to half of the assumed values: **15 days** overdue for a security patch and **180 days** since a recovery test. Shown on screen as demo constants; they can be relaxed later.
 
 ### For Kumar (the platform view)
 
 **Q5. Can an add-on service write new tables in the Server's Postgres, or should the feed go through a Server route?**
 Why it matters: today the layer only reads through the Server. Assumed if unanswered: the feed adapter writes to its own schema in the same Postgres and the Server reads it as a source.
-Answer: ____________________
+**Answer:** Yes: open a Server pull request for Kumar. **Follow-up, not yet opened:** the Server repo is private and is edited by Kumar; the pull request would be a design note (as Server#95 and #102 were) proposing how the feed reaches Postgres and the Server (see Q6).
 
 **Q6. Is there a supported way to put SharePoint and Slack behind the Server as sources, and has either been run against a real tenant?**
 Why it matters: our simulation should mimic the real route. Assumed if unanswered: both as generic REST sources (Microsoft Graph and Slack's web API shapes), mock services standing in.
-Answer: ____________________
+**Answer:** Create a stream into Postgres, using Kafka connectors. Slack and SharePoint activity arrives as events, lands in Postgres tables, and the Server reads those tables as ordinary SQL sources. This replaces the idea of the Server calling Slack and SharePoint over REST. In this release the stream is **simulated**: a replay of invented events into the same tables, so the Kafka-to-Postgres shape is what the demo shows.
 
 **Q7. Will the Workspace list stay the way the Ask app shows it (one Workspace per session), so Agency's dropdown can read it directly?**
 Why it matters: the dropdown should not invent its own list. Assumed if unanswered: yes, one Workspace at a time, read from `/app/namespaces`.
-Answer: ____________________
+**Answer:** One Workspace at a time, as in the Ask app.
 
 ## 11. Not in this design
 
