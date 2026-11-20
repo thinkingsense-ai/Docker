@@ -8,6 +8,7 @@ import Brief from './Brief'
 import { BRIEF_PACK } from './rcaBrief'
 import Screen from './Screens'
 import Watch from './Watch'
+import Exposure, { type ExposureAnswers } from './Exposure'
 import type { Table } from './rcaBrief'
 import { navFor, startWorkspace, viewFor, workspaceChoices, type View } from './shell'
 import { AnswerDetails, ProgressView } from './DetailsPane'
@@ -38,6 +39,7 @@ export default function App() {
   const [pack, setPack] = useState<string | null>(null)
   const [changed, setChanged] = useState('')
   const [watch, setWatch] = useState<Table | null>(null)      // the Watch list, kept so switching sections does not ask again
+  const [exposure, setExposure] = useState<ExposureAnswers | null>(null)   // the five exposure answers, kept so switching sections does not ask again
   const [navOpen, setNavOpen] = useState(false)                  // the left navigation as a drawer on a phone
   const [starters, setStarters] = useState<Starter[]>([])
   const [convs, setConvs] = useState<ConversationSummary[]>([])
@@ -62,7 +64,7 @@ export default function App() {
   const abort = useRef<AbortController | null>(null)
   const bottom = useRef<HTMLDivElement>(null)
 
-  const leave = useCallback(() => { setUser(null); setTurns([]); setConvId(null); setFile(null); setView('watch'); setWatch(null); setNavOpen(false); setWaiting(null); setDetailIdx(null) }, [])
+  const leave = useCallback(() => { setUser(null); setTurns([]); setConvId(null); setFile(null); setView('watch'); setWatch(null); setExposure(null); setNavOpen(false); setWaiting(null); setDetailIdx(null) }, [])
   const signedOut = useCallback(() => { leave(); setQ(''); setRetry(null); setNotice('') }, [leave])
   // the Server dropped the session (it restarted, or it expired): back to sign-in, saying so, with the unsent question kept in the box
   const expired = useCallback((kept?: boolean) => { leave(); setNotice('Your session ended (the Server may have restarted). Sign in again.' + (kept === true ? ' The question you were asking is kept.' : '')) }, [leave])
@@ -189,7 +191,10 @@ export default function App() {
           : <p className="empty">Briefs are in the IT risk Workspace. Choose it from the Workspace menu at the top right.</p>)}
         {shown === 'approvals' && <Queue me={user} onSignedOut={() => expired()} onCount={setWaiting} />}
         {shown === 'watch' && <Watch table={watch} onLoaded={setWatch} onBrief={() => go('briefs')} onAsk={(q) => { go('ask'); setConvId(null); setTurns([]); void send(q) }} onSignedOut={() => expired()} />}
-        {(shown === 'exposure' || shown === 'sources') && <Screen view={shown} />}
+        {shown === 'exposure' && (pack === BRIEF_PACK
+          ? <Exposure answers={exposure} onAnswers={setExposure} onSignedOut={() => expired()} />
+          : <p className="empty">Exposure is in the IT risk Workspace. Choose it from the Workspace menu at the top right.</p>)}
+        {shown === 'sources' && <Screen view={shown} />}
         {shown === 'ask' && <>
         {packNote && <p className="muted small">{packNote}</p>}
         <p className="muted small domain-line" role="status" aria-live="polite">

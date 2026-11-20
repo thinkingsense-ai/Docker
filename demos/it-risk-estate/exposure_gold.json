@@ -1,0 +1,2075 @@
+{
+ "about": "Gold set for the exposure rating (agency/web/src/exposureModel.ts). Answers are tables as the five approved questions return them; the first two cases are the real rows from the simulated estate (demos/it-risk-estate) at start-up and after the replay. PLANTED cases are the errors a careless rule would make.",
+ "cases": [
+  {
+   "name": "start-up estate: Critical from a patch with an untested change, and from the stale tier 1 recovery test",
+   "answers": {
+    "systems": {
+     "columns": [
+      "system",
+      "technology",
+      "tier",
+      "owner_team",
+      "environment",
+      "hosting"
+     ],
+     "rows": [
+      [
+       "Payment gateway (production)",
+       "Payment gateway software",
+       "1",
+       "Payments Engineering",
+       "production",
+       "on-premise cluster"
+      ],
+      [
+       "Payment gateway (disaster recovery)",
+       "Payment gateway software",
+       "1",
+       "Payments Engineering",
+       "dr",
+       "secondary data centre"
+      ],
+      [
+       "Domain controllers",
+       "Windows Server",
+       "1",
+       "Platform Operations",
+       "production",
+       "on-premise"
+      ],
+      [
+       "Branch file servers",
+       "Windows Server",
+       "2",
+       "Platform Operations",
+       "production",
+       "on-premise"
+      ],
+      [
+       "Back-office application servers",
+       "Windows Server",
+       "2",
+       "Platform Operations",
+       "production",
+       "on-premise"
+      ],
+      [
+       "Branch voice and ATM link",
+       "Legacy TDM telecom",
+       "2",
+       "Network Operations",
+       "production",
+       "carrier-leased lines"
+      ]
+     ]
+    },
+    "access": {
+     "columns": [
+      "resource",
+      "kind",
+      "data_class",
+      "reachable_by",
+      "people",
+      "level",
+      "reach"
+     ],
+     "rows": [
+      [
+       "Payment gateway (production)",
+       "system",
+       "restricted",
+       "Payments Engineering",
+       "22",
+       "admin",
+       "owner team"
+      ],
+      [
+       "Payment gateway (production)",
+       "system",
+       "restricted",
+       "Payments Operations",
+       "35",
+       "operate",
+       "wider than the owner team"
+      ],
+      [
+       "Payment gateway (production)",
+       "system",
+       "restricted",
+       "Gateway vendor support",
+       "4",
+       "admin",
+       "wider than the owner team"
+      ],
+      [
+       "Payment gateway (disaster recovery)",
+       "system",
+       "restricted",
+       "Payments Engineering",
+       "22",
+       "admin",
+       "owner team"
+      ],
+      [
+       "Payment gateway (disaster recovery)",
+       "system",
+       "restricted",
+       "Payments Operations",
+       "35",
+       "operate",
+       "wider than the owner team"
+      ],
+      [
+       "Domain controllers",
+       "system",
+       "confidential",
+       "Platform Operations",
+       "28",
+       "admin",
+       "owner team"
+      ],
+      [
+       "Domain controllers",
+       "system",
+       "confidential",
+       "All IT staff",
+       "410",
+       "read",
+       "wider than the owner team"
+      ],
+      [
+       "Branch file servers",
+       "system",
+       "confidential",
+       "Platform Operations",
+       "28",
+       "admin",
+       "owner team"
+      ],
+      [
+       "Branch file servers",
+       "system",
+       "confidential",
+       "All branch staff",
+       "2300",
+       "operate",
+       "wider than the owner team"
+      ],
+      [
+       "gateway-audit-logs",
+       "bucket",
+       "restricted",
+       "Payments Engineering",
+       "22",
+       "write",
+       "owner team"
+      ],
+      [
+       "gateway-dr-snapshots",
+       "bucket",
+       "restricted",
+       "Platform Operations",
+       "28",
+       "write",
+       "wider than the owner team"
+      ],
+      [
+       "tdm-config-backups",
+       "bucket",
+       "confidential",
+       "Carrier support",
+       "6",
+       "write",
+       "wider than the owner team"
+      ]
+     ]
+    },
+    "places": {
+     "columns": [
+      "system",
+      "location",
+      "item",
+      "kind",
+      "visible_to",
+      "people"
+     ],
+     "rows": [
+      [
+       "Payment gateway (production)",
+       "SharePoint: Payments Engineering / Runbooks",
+       "Gateway admin credentials (shared sheet)",
+       "credential",
+       "owners",
+       "3"
+      ],
+      [
+       "Payment gateway (production)",
+       "SharePoint: Payments Engineering / Runbooks",
+       "Gateway failover runbook",
+       "runbook",
+       "team",
+       "22"
+      ],
+      [
+       "Domain controllers",
+       "SharePoint: Platform Operations / Recovery",
+       "Domain controller rebuild steps",
+       "recovery",
+       "team",
+       "28"
+      ],
+      [
+       "Branch file servers",
+       "SharePoint: Platform Operations / Recovery",
+       "Branch file server restore guide",
+       "recovery",
+       "department",
+       "410"
+      ],
+      [
+       "Branch voice and ATM link",
+       "SharePoint: Network Operations / Carrier",
+       "Carrier escalation contacts and line IDs",
+       "runbook",
+       "external",
+       "6"
+      ],
+      [
+       "Payment gateway (production)",
+       "Slack: #payments-oncall",
+       "Failover steps are pinned: fail over to DR first, then check the queue depth.",
+       "runbook",
+       "private",
+       "18"
+      ],
+      [
+       "Branch file servers",
+       "Slack: #it-help",
+       "Reminder: branch shares are restored from the nightly vault job; ask Platform Operations to start it.",
+       "recovery",
+       "public",
+       "640"
+      ],
+      [
+       "Branch voice and ATM link",
+       "Slack: #network-ops",
+       "The carrier escalation line is in the pinned document; ask for the senior engineer on the 24 hour desk.",
+       "runbook",
+       "private",
+       "14"
+      ]
+     ]
+    },
+    "exposures": {
+     "columns": [
+      "system",
+      "finding",
+      "detail",
+      "severity",
+      "days"
+     ],
+     "rows": [
+      [
+       "Domain controllers",
+       "security patch overdue",
+       "MS-2026-11-A",
+       "critical",
+       "16"
+      ],
+      [
+       "Branch file servers",
+       "security patch overdue",
+       "MS-2026-11-B",
+       "high",
+       "9"
+      ],
+      [
+       "Branch voice and ATM link",
+       "security patch overdue",
+       "TDM-FW-2026-02",
+       "high",
+       "51"
+      ],
+      [
+       "Payment gateway (disaster recovery)",
+       "change without a pre-production test",
+       "DR failover configuration",
+       "configuration",
+       "21"
+      ],
+      [
+       "Domain controllers",
+       "change without a pre-production test",
+       "Domain controller update rollup",
+       "patch",
+       "8"
+      ],
+      [
+       "Back-office application servers",
+       "change without a pre-production test",
+       "Application server configuration change",
+       "configuration",
+       "4"
+      ]
+     ]
+    },
+    "recovery": {
+     "columns": [
+      "system",
+      "tier",
+      "dependents",
+      "tested_on",
+      "result",
+      "rto_target_minutes",
+      "rto_actual_minutes",
+      "days_since_test"
+     ],
+     "rows": [
+      [
+       "Payment gateway (production)",
+       "1",
+       "2",
+       "2026-04-22",
+       "passed over target",
+       "30",
+       "41",
+       "212"
+      ],
+      [
+       "Payment gateway (disaster recovery)",
+       "1",
+       "1",
+       "2026-04-22",
+       "passed over target",
+       "30",
+       "41",
+       "212"
+      ],
+      [
+       "Domain controllers",
+       "1",
+       "4",
+       "2026-09-12",
+       "passed",
+       "120",
+       "95",
+       "69"
+      ],
+      [
+       "Branch file servers",
+       "2",
+       "0",
+       "2026-06-01",
+       "passed",
+       "240",
+       "200",
+       "172"
+      ],
+      [
+       "Back-office application servers",
+       "2",
+       "0",
+       "2026-08-20",
+       "passed",
+       "240",
+       "180",
+       "92"
+      ],
+      [
+       "Branch voice and ATM link",
+       "2",
+       "1",
+       null,
+       "never tested",
+       null,
+       null,
+       null
+      ]
+     ]
+    }
+   },
+   "scores": [
+    2,
+    2,
+    2,
+    3,
+    3
+   ],
+   "level": "Critical",
+   "setBy": [
+    4,
+    5
+   ]
+  },
+  {
+   "name": "after the replay: a credential in a public channel and a company-wide sheet raise question 3 to Critical",
+   "answers": {
+    "systems": {
+     "columns": [
+      "system",
+      "technology",
+      "tier",
+      "owner_team",
+      "environment",
+      "hosting"
+     ],
+     "rows": [
+      [
+       "Payment gateway (production)",
+       "Payment gateway software",
+       "1",
+       "Payments Engineering",
+       "production",
+       "on-premise cluster"
+      ],
+      [
+       "Payment gateway (disaster recovery)",
+       "Payment gateway software",
+       "1",
+       "Payments Engineering",
+       "dr",
+       "secondary data centre"
+      ],
+      [
+       "Domain controllers",
+       "Windows Server",
+       "1",
+       "Platform Operations",
+       "production",
+       "on-premise"
+      ],
+      [
+       "Branch file servers",
+       "Windows Server",
+       "2",
+       "Platform Operations",
+       "production",
+       "on-premise"
+      ],
+      [
+       "Back-office application servers",
+       "Windows Server",
+       "2",
+       "Platform Operations",
+       "production",
+       "on-premise"
+      ],
+      [
+       "Branch voice and ATM link",
+       "Legacy TDM telecom",
+       "2",
+       "Network Operations",
+       "production",
+       "carrier-leased lines"
+      ]
+     ]
+    },
+    "access": {
+     "columns": [
+      "resource",
+      "kind",
+      "data_class",
+      "reachable_by",
+      "people",
+      "level",
+      "reach"
+     ],
+     "rows": [
+      [
+       "Payment gateway (production)",
+       "system",
+       "restricted",
+       "Payments Engineering",
+       "22",
+       "admin",
+       "owner team"
+      ],
+      [
+       "Payment gateway (production)",
+       "system",
+       "restricted",
+       "Payments Operations",
+       "35",
+       "operate",
+       "wider than the owner team"
+      ],
+      [
+       "Payment gateway (production)",
+       "system",
+       "restricted",
+       "Gateway vendor support",
+       "4",
+       "admin",
+       "wider than the owner team"
+      ],
+      [
+       "Payment gateway (disaster recovery)",
+       "system",
+       "restricted",
+       "Payments Engineering",
+       "22",
+       "admin",
+       "owner team"
+      ],
+      [
+       "Payment gateway (disaster recovery)",
+       "system",
+       "restricted",
+       "Payments Operations",
+       "35",
+       "operate",
+       "wider than the owner team"
+      ],
+      [
+       "Domain controllers",
+       "system",
+       "confidential",
+       "Platform Operations",
+       "28",
+       "admin",
+       "owner team"
+      ],
+      [
+       "Domain controllers",
+       "system",
+       "confidential",
+       "All IT staff",
+       "410",
+       "read",
+       "wider than the owner team"
+      ],
+      [
+       "Branch file servers",
+       "system",
+       "confidential",
+       "Platform Operations",
+       "28",
+       "admin",
+       "owner team"
+      ],
+      [
+       "Branch file servers",
+       "system",
+       "confidential",
+       "All branch staff",
+       "2300",
+       "operate",
+       "wider than the owner team"
+      ],
+      [
+       "gateway-audit-logs",
+       "bucket",
+       "restricted",
+       "Payments Engineering",
+       "22",
+       "write",
+       "owner team"
+      ],
+      [
+       "gateway-dr-snapshots",
+       "bucket",
+       "restricted",
+       "Platform Operations",
+       "28",
+       "write",
+       "wider than the owner team"
+      ],
+      [
+       "tdm-config-backups",
+       "bucket",
+       "confidential",
+       "Carrier support",
+       "6",
+       "write",
+       "wider than the owner team"
+      ]
+     ]
+    },
+    "places": {
+     "columns": [
+      "system",
+      "location",
+      "item",
+      "kind",
+      "visible_to",
+      "people"
+     ],
+     "rows": [
+      [
+       "Payment gateway (production)",
+       "SharePoint: Payments Engineering / Runbooks",
+       "Gateway admin credentials (shared sheet)",
+       "credential",
+       "company",
+       "3100"
+      ],
+      [
+       "Payment gateway (production)",
+       "SharePoint: Payments Engineering / Runbooks",
+       "Gateway failover runbook",
+       "runbook",
+       "team",
+       "22"
+      ],
+      [
+       "Domain controllers",
+       "SharePoint: Platform Operations / Recovery",
+       "Domain controller rebuild steps",
+       "recovery",
+       "team",
+       "28"
+      ],
+      [
+       "Branch file servers",
+       "SharePoint: Platform Operations / Recovery",
+       "Branch file server restore guide",
+       "recovery",
+       "department",
+       "410"
+      ],
+      [
+       "Branch voice and ATM link",
+       "SharePoint: Network Operations / Carrier",
+       "Carrier escalation contacts and line IDs",
+       "runbook",
+       "external",
+       "6"
+      ],
+      [
+       "Payment gateway (production)",
+       "Slack: #eng-general",
+       "Pasting the gateway admin token here so the night shift can fail over: [invented demo token].",
+       "credential",
+       "public",
+       "1240"
+      ],
+      [
+       "Payment gateway (production)",
+       "Slack: #payments-oncall",
+       "Failover steps are pinned: fail over to DR first, then check the queue depth.",
+       "runbook",
+       "private",
+       "18"
+      ],
+      [
+       "Branch file servers",
+       "Slack: #it-help",
+       "Reminder: branch shares are restored from the nightly vault job; ask Platform Operations to start it.",
+       "recovery",
+       "public",
+       "640"
+      ],
+      [
+       "Branch voice and ATM link",
+       "Slack: #network-ops",
+       "The carrier escalation line is in the pinned document; ask for the senior engineer on the 24 hour desk.",
+       "runbook",
+       "private",
+       "14"
+      ]
+     ]
+    },
+    "exposures": {
+     "columns": [
+      "system",
+      "finding",
+      "detail",
+      "severity",
+      "days"
+     ],
+     "rows": [
+      [
+       "Domain controllers",
+       "security patch overdue",
+       "MS-2026-11-A",
+       "critical",
+       "16"
+      ],
+      [
+       "Branch file servers",
+       "security patch overdue",
+       "MS-2026-11-B",
+       "high",
+       "9"
+      ],
+      [
+       "Branch voice and ATM link",
+       "security patch overdue",
+       "TDM-FW-2026-02",
+       "high",
+       "51"
+      ],
+      [
+       "Payment gateway (disaster recovery)",
+       "change without a pre-production test",
+       "DR failover configuration",
+       "configuration",
+       "21"
+      ],
+      [
+       "Domain controllers",
+       "change without a pre-production test",
+       "Domain controller update rollup",
+       "patch",
+       "8"
+      ],
+      [
+       "Back-office application servers",
+       "change without a pre-production test",
+       "Application server configuration change",
+       "configuration",
+       "4"
+      ]
+     ]
+    },
+    "recovery": {
+     "columns": [
+      "system",
+      "tier",
+      "dependents",
+      "tested_on",
+      "result",
+      "rto_target_minutes",
+      "rto_actual_minutes",
+      "days_since_test"
+     ],
+     "rows": [
+      [
+       "Payment gateway (production)",
+       "1",
+       "2",
+       "2026-04-22",
+       "passed over target",
+       "30",
+       "41",
+       "212"
+      ],
+      [
+       "Payment gateway (disaster recovery)",
+       "1",
+       "1",
+       "2026-04-22",
+       "passed over target",
+       "30",
+       "41",
+       "212"
+      ],
+      [
+       "Domain controllers",
+       "1",
+       "4",
+       "2026-09-12",
+       "passed",
+       "120",
+       "95",
+       "69"
+      ],
+      [
+       "Branch file servers",
+       "2",
+       "0",
+       "2026-06-01",
+       "passed",
+       "240",
+       "200",
+       "172"
+      ],
+      [
+       "Back-office application servers",
+       "2",
+       "0",
+       "2026-08-20",
+       "passed",
+       "240",
+       "180",
+       "92"
+      ],
+      [
+       "Branch voice and ATM link",
+       "2",
+       "1",
+       null,
+       "never tested",
+       null,
+       null,
+       null
+      ]
+     ]
+    }
+   },
+   "scores": [
+    2,
+    2,
+    3,
+    3,
+    3
+   ],
+   "level": "Critical",
+   "setBy": [
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "name": "a tier 3 system with everything in order is Moderate only because it runs the affected technology",
+   "answers": {
+    "systems": {
+     "columns": [
+      "system",
+      "technology",
+      "tier"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "Web application",
+       "3"
+      ]
+     ]
+    },
+    "access": {
+     "columns": [
+      "resource",
+      "kind",
+      "data_class",
+      "reachable_by",
+      "people",
+      "level",
+      "reach"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "system",
+       "confidential",
+       "Digital Channels",
+       "10",
+       "admin",
+       "owner team"
+      ]
+     ]
+    },
+    "places": {
+     "columns": [
+      "system",
+      "location",
+      "item",
+      "kind",
+      "visible_to",
+      "people"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "SharePoint: Digital / Runbooks",
+       "Runbook",
+       "runbook",
+       "team",
+       "10"
+      ]
+     ]
+    },
+    "exposures": {
+     "columns": [
+      "system",
+      "finding",
+      "detail",
+      "severity",
+      "days"
+     ],
+     "rows": []
+    },
+    "recovery": {
+     "columns": [
+      "system",
+      "tier",
+      "dependents",
+      "tested_on",
+      "result",
+      "rto_target_minutes",
+      "rto_actual_minutes",
+      "days_since_test"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "3",
+       "0",
+       "2026-11-01",
+       "passed",
+       "60",
+       "40",
+       "19"
+      ]
+     ]
+    }
+   },
+   "scores": [
+    1,
+    0,
+    0,
+    0,
+    0
+   ],
+   "level": "Moderate",
+   "setBy": [
+    1
+   ]
+  },
+  {
+   "name": "nothing runs the affected technology: Low, not unknown",
+   "answers": {
+    "systems": {
+     "columns": [
+      "system",
+      "technology",
+      "tier"
+     ],
+     "rows": []
+    },
+    "access": {
+     "columns": [
+      "resource",
+      "kind",
+      "data_class",
+      "reachable_by",
+      "people",
+      "level",
+      "reach"
+     ],
+     "rows": []
+    },
+    "places": {
+     "columns": [
+      "system",
+      "location",
+      "item",
+      "kind",
+      "visible_to",
+      "people"
+     ],
+     "rows": []
+    },
+    "exposures": {
+     "columns": [
+      "system",
+      "finding",
+      "detail",
+      "severity",
+      "days"
+     ],
+     "rows": []
+    },
+    "recovery": {
+     "columns": [
+      "system",
+      "tier",
+      "dependents",
+      "tested_on",
+      "result",
+      "rto_target_minutes",
+      "rto_actual_minutes",
+      "days_since_test"
+     ],
+     "rows": []
+    }
+   },
+   "scores": [
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "level": "Low",
+   "setBy": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "name": "PLANTED: one critical answer is not averaged away by four clean ones",
+   "answers": {
+    "systems": {
+     "columns": [
+      "system",
+      "technology",
+      "tier"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "Web application",
+       "3"
+      ]
+     ]
+    },
+    "access": {
+     "columns": [
+      "resource",
+      "kind",
+      "data_class",
+      "reachable_by",
+      "people",
+      "level",
+      "reach"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "system",
+       "confidential",
+       "Digital Channels",
+       "10",
+       "admin",
+       "owner team"
+      ]
+     ]
+    },
+    "places": {
+     "columns": [
+      "system",
+      "location",
+      "item",
+      "kind",
+      "visible_to",
+      "people"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "SharePoint: Digital / Credentials",
+       "Admin passwords",
+       "credential",
+       "company",
+       "3100"
+      ]
+     ]
+    },
+    "exposures": {
+     "columns": [
+      "system",
+      "finding",
+      "detail",
+      "severity",
+      "days"
+     ],
+     "rows": []
+    },
+    "recovery": {
+     "columns": [
+      "system",
+      "tier",
+      "dependents",
+      "tested_on",
+      "result",
+      "rto_target_minutes",
+      "rto_actual_minutes",
+      "days_since_test"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "3",
+       "0",
+       "2026-11-01",
+       "passed",
+       "60",
+       "40",
+       "19"
+      ]
+     ]
+    }
+   },
+   "scores": [
+    1,
+    0,
+    3,
+    0,
+    0
+   ],
+   "level": "Critical",
+   "setBy": [
+    3
+   ]
+  },
+  {
+   "name": "PLANTED: a credential visible only to its owners does not score 3",
+   "answers": {
+    "systems": {
+     "columns": [
+      "system",
+      "technology",
+      "tier"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "Web application",
+       "3"
+      ]
+     ]
+    },
+    "access": {
+     "columns": [
+      "resource",
+      "kind",
+      "data_class",
+      "reachable_by",
+      "people",
+      "level",
+      "reach"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "system",
+       "confidential",
+       "Digital Channels",
+       "10",
+       "admin",
+       "owner team"
+      ]
+     ]
+    },
+    "places": {
+     "columns": [
+      "system",
+      "location",
+      "item",
+      "kind",
+      "visible_to",
+      "people"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "SharePoint: Digital / Credentials",
+       "Admin passwords",
+       "credential",
+       "owners",
+       "3"
+      ]
+     ]
+    },
+    "exposures": {
+     "columns": [
+      "system",
+      "finding",
+      "detail",
+      "severity",
+      "days"
+     ],
+     "rows": []
+    },
+    "recovery": {
+     "columns": [
+      "system",
+      "tier",
+      "dependents",
+      "tested_on",
+      "result",
+      "rto_target_minutes",
+      "rto_actual_minutes",
+      "days_since_test"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "3",
+       "0",
+       "2026-11-01",
+       "passed",
+       "60",
+       "40",
+       "19"
+      ]
+     ]
+    }
+   },
+   "scores": [
+    1,
+    0,
+    0,
+    0,
+    0
+   ],
+   "level": "Moderate",
+   "setBy": [
+    1
+   ]
+  },
+  {
+   "name": "PLANTED: a patch overdue exactly the limit (15 days) is not over it",
+   "answers": {
+    "systems": {
+     "columns": [
+      "system",
+      "technology",
+      "tier"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "Web application",
+       "3"
+      ]
+     ]
+    },
+    "access": {
+     "columns": [
+      "resource",
+      "kind",
+      "data_class",
+      "reachable_by",
+      "people",
+      "level",
+      "reach"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "system",
+       "confidential",
+       "Digital Channels",
+       "10",
+       "admin",
+       "owner team"
+      ]
+     ]
+    },
+    "places": {
+     "columns": [
+      "system",
+      "location",
+      "item",
+      "kind",
+      "visible_to",
+      "people"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "SharePoint: Digital / Runbooks",
+       "Runbook",
+       "runbook",
+       "team",
+       "10"
+      ]
+     ]
+    },
+    "exposures": {
+     "columns": [
+      "system",
+      "finding",
+      "detail",
+      "severity",
+      "days"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "security patch overdue",
+       "P-1",
+       "high",
+       "15"
+      ]
+     ]
+    },
+    "recovery": {
+     "columns": [
+      "system",
+      "tier",
+      "dependents",
+      "tested_on",
+      "result",
+      "rto_target_minutes",
+      "rto_actual_minutes",
+      "days_since_test"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "3",
+       "0",
+       "2026-11-01",
+       "passed",
+       "60",
+       "40",
+       "19"
+      ]
+     ]
+    }
+   },
+   "scores": [
+    1,
+    0,
+    0,
+    1,
+    0
+   ],
+   "level": "Moderate",
+   "setBy": [
+    1,
+    4
+   ]
+  },
+  {
+   "name": "a patch overdue one day past the limit scores 2",
+   "answers": {
+    "systems": {
+     "columns": [
+      "system",
+      "technology",
+      "tier"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "Web application",
+       "3"
+      ]
+     ]
+    },
+    "access": {
+     "columns": [
+      "resource",
+      "kind",
+      "data_class",
+      "reachable_by",
+      "people",
+      "level",
+      "reach"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "system",
+       "confidential",
+       "Digital Channels",
+       "10",
+       "admin",
+       "owner team"
+      ]
+     ]
+    },
+    "places": {
+     "columns": [
+      "system",
+      "location",
+      "item",
+      "kind",
+      "visible_to",
+      "people"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "SharePoint: Digital / Runbooks",
+       "Runbook",
+       "runbook",
+       "team",
+       "10"
+      ]
+     ]
+    },
+    "exposures": {
+     "columns": [
+      "system",
+      "finding",
+      "detail",
+      "severity",
+      "days"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "security patch overdue",
+       "P-1",
+       "high",
+       "16"
+      ]
+     ]
+    },
+    "recovery": {
+     "columns": [
+      "system",
+      "tier",
+      "dependents",
+      "tested_on",
+      "result",
+      "rto_target_minutes",
+      "rto_actual_minutes",
+      "days_since_test"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "3",
+       "0",
+       "2026-11-01",
+       "passed",
+       "60",
+       "40",
+       "19"
+      ]
+     ]
+    }
+   },
+   "scores": [
+    1,
+    0,
+    0,
+    2,
+    0
+   ],
+   "level": "High",
+   "setBy": [
+    4
+   ]
+  },
+  {
+   "name": "PLANTED: a tier 1 system tested exactly 180 days ago is not critical (it only reaches Watch, being over 90 days)",
+   "answers": {
+    "systems": {
+     "columns": [
+      "system",
+      "technology",
+      "tier"
+     ],
+     "rows": [
+      [
+       "Core",
+       "Postgres",
+       "1"
+      ]
+     ]
+    },
+    "access": {
+     "columns": [
+      "resource",
+      "kind",
+      "data_class",
+      "reachable_by",
+      "people",
+      "level",
+      "reach"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "system",
+       "confidential",
+       "Digital Channels",
+       "10",
+       "admin",
+       "owner team"
+      ]
+     ]
+    },
+    "places": {
+     "columns": [
+      "system",
+      "location",
+      "item",
+      "kind",
+      "visible_to",
+      "people"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "SharePoint: Digital / Runbooks",
+       "Runbook",
+       "runbook",
+       "team",
+       "10"
+      ]
+     ]
+    },
+    "exposures": {
+     "columns": [
+      "system",
+      "finding",
+      "detail",
+      "severity",
+      "days"
+     ],
+     "rows": []
+    },
+    "recovery": {
+     "columns": [
+      "system",
+      "tier",
+      "dependents",
+      "tested_on",
+      "result",
+      "rto_target_minutes",
+      "rto_actual_minutes",
+      "days_since_test"
+     ],
+     "rows": [
+      [
+       "Core",
+       "1",
+       "1",
+       "2026-05-24",
+       "passed",
+       "60",
+       "40",
+       "180"
+      ]
+     ]
+    }
+   },
+   "scores": [
+    2,
+    0,
+    0,
+    0,
+    1
+   ],
+   "level": "High",
+   "setBy": [
+    1
+   ]
+  },
+  {
+   "name": "a tier 1 system tested 181 days ago scores 3",
+   "answers": {
+    "systems": {
+     "columns": [
+      "system",
+      "technology",
+      "tier"
+     ],
+     "rows": [
+      [
+       "Core",
+       "Postgres",
+       "1"
+      ]
+     ]
+    },
+    "access": {
+     "columns": [
+      "resource",
+      "kind",
+      "data_class",
+      "reachable_by",
+      "people",
+      "level",
+      "reach"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "system",
+       "confidential",
+       "Digital Channels",
+       "10",
+       "admin",
+       "owner team"
+      ]
+     ]
+    },
+    "places": {
+     "columns": [
+      "system",
+      "location",
+      "item",
+      "kind",
+      "visible_to",
+      "people"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "SharePoint: Digital / Runbooks",
+       "Runbook",
+       "runbook",
+       "team",
+       "10"
+      ]
+     ]
+    },
+    "exposures": {
+     "columns": [
+      "system",
+      "finding",
+      "detail",
+      "severity",
+      "days"
+     ],
+     "rows": []
+    },
+    "recovery": {
+     "columns": [
+      "system",
+      "tier",
+      "dependents",
+      "tested_on",
+      "result",
+      "rto_target_minutes",
+      "rto_actual_minutes",
+      "days_since_test"
+     ],
+     "rows": [
+      [
+       "Core",
+       "1",
+       "1",
+       "2026-05-23",
+       "passed",
+       "60",
+       "40",
+       "181"
+      ]
+     ]
+    }
+   },
+   "scores": [
+    2,
+    0,
+    0,
+    0,
+    3
+   ],
+   "level": "Critical",
+   "setBy": [
+    5
+   ]
+  },
+  {
+   "name": "PLANTED: a tier 1 system never tested is critical (an empty date is not a pass)",
+   "answers": {
+    "systems": {
+     "columns": [
+      "system",
+      "technology",
+      "tier"
+     ],
+     "rows": [
+      [
+       "Core",
+       "Postgres",
+       "1"
+      ]
+     ]
+    },
+    "access": {
+     "columns": [
+      "resource",
+      "kind",
+      "data_class",
+      "reachable_by",
+      "people",
+      "level",
+      "reach"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "system",
+       "confidential",
+       "Digital Channels",
+       "10",
+       "admin",
+       "owner team"
+      ]
+     ]
+    },
+    "places": {
+     "columns": [
+      "system",
+      "location",
+      "item",
+      "kind",
+      "visible_to",
+      "people"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "SharePoint: Digital / Runbooks",
+       "Runbook",
+       "runbook",
+       "team",
+       "10"
+      ]
+     ]
+    },
+    "exposures": {
+     "columns": [
+      "system",
+      "finding",
+      "detail",
+      "severity",
+      "days"
+     ],
+     "rows": []
+    },
+    "recovery": {
+     "columns": [
+      "system",
+      "tier",
+      "dependents",
+      "tested_on",
+      "result",
+      "rto_target_minutes",
+      "rto_actual_minutes",
+      "days_since_test"
+     ],
+     "rows": [
+      [
+       "Core",
+       "1",
+       "1",
+       null,
+       "never tested",
+       null,
+       null,
+       null
+      ]
+     ]
+    }
+   },
+   "scores": [
+    2,
+    0,
+    0,
+    0,
+    3
+   ],
+   "level": "Critical",
+   "setBy": [
+    5
+   ]
+  },
+  {
+   "name": "PLANTED: a missing answer is unknown, never 0, and the rating says it may be higher",
+   "answers": {
+    "systems": {
+     "columns": [
+      "system",
+      "technology",
+      "tier"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "Web application",
+       "3"
+      ]
+     ]
+    },
+    "access": {
+     "columns": [
+      "resource",
+      "kind",
+      "data_class",
+      "reachable_by",
+      "people",
+      "level",
+      "reach"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "system",
+       "confidential",
+       "Digital Channels",
+       "10",
+       "admin",
+       "owner team"
+      ]
+     ]
+    },
+    "exposures": {
+     "columns": [
+      "system",
+      "finding",
+      "detail",
+      "severity",
+      "days"
+     ],
+     "rows": []
+    },
+    "recovery": {
+     "columns": [
+      "system",
+      "tier",
+      "dependents",
+      "tested_on",
+      "result",
+      "rto_target_minutes",
+      "rto_actual_minutes",
+      "days_since_test"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "3",
+       "0",
+       "2026-11-01",
+       "passed",
+       "60",
+       "40",
+       "19"
+      ]
+     ]
+    }
+   },
+   "scores": [
+    1,
+    0,
+    null,
+    0,
+    0
+   ],
+   "level": "Moderate",
+   "setBy": [
+    1
+   ],
+   "unknown": [
+    3
+   ]
+  },
+  {
+   "name": "PLANTED: an answer without the expected columns is unknown",
+   "answers": {
+    "systems": {
+     "columns": [
+      "system",
+      "technology",
+      "tier"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "Web application",
+       "3"
+      ]
+     ]
+    },
+    "access": {
+     "columns": [
+      "resource"
+     ],
+     "rows": [
+      [
+       "Web tier"
+      ]
+     ]
+    },
+    "places": {
+     "columns": [
+      "system",
+      "location",
+      "item",
+      "kind",
+      "visible_to",
+      "people"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "SharePoint: Digital / Runbooks",
+       "Runbook",
+       "runbook",
+       "team",
+       "10"
+      ]
+     ]
+    },
+    "exposures": {
+     "columns": [
+      "system",
+      "finding",
+      "detail",
+      "severity",
+      "days"
+     ],
+     "rows": []
+    },
+    "recovery": {
+     "columns": [
+      "system",
+      "tier",
+      "dependents",
+      "tested_on",
+      "result",
+      "rto_target_minutes",
+      "rto_actual_minutes",
+      "days_since_test"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "3",
+       "0",
+       "2026-11-01",
+       "passed",
+       "60",
+       "40",
+       "19"
+      ]
+     ]
+    }
+   },
+   "scores": [
+    1,
+    null,
+    0,
+    0,
+    0
+   ],
+   "level": "Moderate",
+   "setBy": [
+    1
+   ],
+   "unknown": [
+    2
+   ]
+  },
+  {
+   "name": "PLANTED: a recovery answer that skips a system is unknown, not clean",
+   "answers": {
+    "systems": {
+     "columns": [
+      "system",
+      "technology",
+      "tier"
+     ],
+     "rows": [
+      [
+       "Core",
+       "Postgres",
+       "3"
+      ],
+      [
+       "Web tier",
+       "Web application",
+       "3"
+      ]
+     ]
+    },
+    "access": {
+     "columns": [
+      "resource",
+      "kind",
+      "data_class",
+      "reachable_by",
+      "people",
+      "level",
+      "reach"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "system",
+       "confidential",
+       "Digital Channels",
+       "10",
+       "admin",
+       "owner team"
+      ]
+     ]
+    },
+    "places": {
+     "columns": [
+      "system",
+      "location",
+      "item",
+      "kind",
+      "visible_to",
+      "people"
+     ],
+     "rows": [
+      [
+       "Web tier",
+       "SharePoint: Digital / Runbooks",
+       "Runbook",
+       "runbook",
+       "team",
+       "10"
+      ]
+     ]
+    },
+    "exposures": {
+     "columns": [
+      "system",
+      "finding",
+      "detail",
+      "severity",
+      "days"
+     ],
+     "rows": []
+    },
+    "recovery": {
+     "columns": [
+      "system",
+      "tier",
+      "dependents",
+      "tested_on",
+      "result",
+      "rto_target_minutes",
+      "rto_actual_minutes",
+      "days_since_test"
+     ],
+     "rows": [
+      [
+       "Core",
+       "3",
+       "0",
+       "2026-11-01",
+       "passed",
+       "60",
+       "40",
+       "19"
+      ]
+     ]
+    }
+   },
+   "scores": [
+    1,
+    0,
+    0,
+    0,
+    null
+   ],
+   "level": "Moderate",
+   "setBy": [
+    1
+   ],
+   "unknown": [
+    5
+   ]
+  },
+  {
+   "name": "nothing answered: no rating",
+   "answers": {},
+   "scores": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   "level": null,
+   "setBy": [],
+   "unknown": [
+    1,
+    2,
+    3,
+    4,
+    5
+   ]
+  }
+ ]
+}
