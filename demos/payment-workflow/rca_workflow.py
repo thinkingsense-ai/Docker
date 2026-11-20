@@ -19,6 +19,7 @@ def summarize(facts, gate=None):
     out = {"claim": facts["claim"]["claim"], "case": facts["case_id"], "causes_confirmed": "%d of %d" % (len(conf), len(inc)),
            "open_incidents": "; ".join("%s (%s)" % (i["operator"], i["grade"].replace("_", " ")) for i in open_) or "none"}
     if gate: out["verdict"] = gate["verdict_sentence"]
+    if gate and facts.get("links") is not None: out["judge"] = next((c["detail"] for c in gate["checks"] if c["rule"] == "grades_match_the_evidence"), "")
     for c in facts.get("controls", []): out["control_to_fix"] = "%s (%s); %s %s" % (c["owning_control"], c["owner_role"], c["framework"], c["category"])
     return out
 

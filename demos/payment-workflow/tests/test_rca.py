@@ -58,7 +58,7 @@ class Facts(unittest.TestCase):
         os.environ["RCA_TABLE_PREFIX"] = "pg."; rca_facts.query = fake
         try: f = rca_facts.gather(1)
         finally: os.environ.pop("RCA_TABLE_PREFIX", None)
-        self.assertEqual(f["incidents"][0]["sources"], 2); self.assertEqual(len(seen), 5); self.assertTrue(all(" rca." not in s.replace("pg.rca.", "") for s in seen))
+        self.assertEqual(f["incidents"][0]["sources"], 2); self.assertEqual(len(seen), 6); self.assertTrue(all(" rca." not in s.replace("pg.rca.", "") for s in seen))
     def test_an_unknown_claim_is_an_error_and_a_hostile_case_id_is_refused(self):
         rca_facts.query = lambda sql: []
         with self.assertRaises(RuntimeError): rca_facts.gather(9)

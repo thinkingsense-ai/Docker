@@ -1,0 +1,373 @@
+{
+ "about": "Gold set for rca_judge: the specification's graded rows (judge must reproduce them) and planted errors (judge must flag each as overstated). spec_grade is what the specification says; expect_grade is what the judge must return.",
+ "cases": [
+  {
+   "id": "ms-cause",
+   "why": "Microsoft states a July defect; no official source differs",
+   "link": {
+    "layer": "cause",
+    "has_control": false,
+    "grade": "confirmed",
+    "sources": [
+     {
+      "signal_id": 1,
+      "speaker": "Microsoft",
+      "speaker_kind": "operator",
+      "source_kind": "news",
+      "relation": "states",
+      "asserts": "defect-july"
+     }
+    ]
+   },
+   "expect_grade": "confirmed",
+   "spec_grade": "confirmed"
+  },
+  {
+   "id": "faa-cause",
+   "why": "Two official accounts differ (Secretary Duffy versus the FAA)",
+   "link": {
+    "layer": "cause",
+    "has_control": false,
+    "grade": "disputed",
+    "sources": [
+     {
+      "signal_id": 2,
+      "speaker": "Transportation Secretary Duffy",
+      "speaker_kind": "regulator",
+      "source_kind": "news",
+      "relation": "states",
+      "asserts": "contractor-upgrade"
+     },
+     {
+      "signal_id": 3,
+      "speaker": "FAA",
+      "speaker_kind": "regulator",
+      "source_kind": "official",
+      "relation": "states",
+      "asserts": "legacy-tdm"
+     }
+    ]
+   },
+   "expect_grade": "disputed",
+   "spec_grade": "disputed"
+  },
+  {
+   "id": "chase-cause",
+   "why": "JPMorgan states an on-premise software bug",
+   "link": {
+    "layer": "cause",
+    "has_control": false,
+    "grade": "confirmed",
+    "sources": [
+     {
+      "signal_id": 4,
+      "speaker": "JPMorgan Chase",
+      "speaker_kind": "operator",
+      "source_kind": "news",
+      "relation": "states",
+      "asserts": "onprem-bug"
+     }
+    ]
+   },
+   "expect_grade": "confirmed",
+   "spec_grade": "confirmed"
+  },
+  {
+   "id": "united-cause",
+   "why": "United names no cause; a union memo is a union claim",
+   "link": {
+    "layer": "cause",
+    "has_control": false,
+    "grade": "not_named",
+    "sources": [
+     {
+      "signal_id": 5,
+      "speaker": "United Airlines",
+      "speaker_kind": "operator",
+      "source_kind": "news",
+      "relation": "silent",
+      "asserts": null
+     }
+    ]
+   },
+   "expect_grade": "not_named",
+   "spec_grade": "not_named"
+  },
+  {
+   "id": "nsanet-cause",
+   "why": "The only source is a news page relaying people familiar",
+   "link": {
+    "layer": "cause",
+    "has_control": false,
+    "grade": "stated",
+    "sources": [
+     {
+      "signal_id": 6,
+      "speaker": "NSA, via people familiar",
+      "speaker_kind": "reporting",
+      "source_kind": "news",
+      "relation": "states",
+      "asserts": "maintenance"
+     }
+    ]
+   },
+   "expect_grade": "stated",
+   "spec_grade": "confirmed",
+   "note": "The specification grades this confirmed; the judge supports only stated, because no operator or regulator is named. A deliberate, documented disagreement: ask Leo for a primary source."
+  },
+  {
+   "id": "apple-cause",
+   "why": "Apple states an internal update",
+   "link": {
+    "layer": "cause",
+    "has_control": false,
+    "grade": "confirmed",
+    "sources": [
+     {
+      "signal_id": 7,
+      "speaker": "Apple",
+      "speaker_kind": "operator",
+      "source_kind": "news",
+      "relation": "states",
+      "asserts": "internal-update"
+     }
+    ]
+   },
+   "expect_grade": "confirmed",
+   "spec_grade": "confirmed"
+  },
+  {
+   "id": "nov-driver",
+   "why": "AI finding bugs faster: our reasoning; the Glasswing page is context only",
+   "link": {
+    "layer": "driver",
+    "has_control": false,
+    "grade": "inferred",
+    "sources": [
+     {
+      "signal_id": 9,
+      "speaker": "Anthropic",
+      "speaker_kind": "operator",
+      "source_kind": "official",
+      "relation": "context",
+      "asserts": null
+     }
+    ]
+   },
+   "expect_grade": "inferred",
+   "spec_grade": "inferred"
+  },
+  {
+   "id": "nov-root",
+   "why": "Change and test capacity: needs the firm's records, and a control exists to test it",
+   "link": {
+    "layer": "root_condition",
+    "has_control": true,
+    "grade": "to_be_tested",
+    "sources": []
+   },
+   "expect_grade": "to_be_tested",
+   "spec_grade": "to_be_tested"
+  },
+  {
+   "id": "jul-cause",
+   "why": "OpenAI's report and Hugging Face's disclosure state zero-days chained",
+   "link": {
+    "layer": "cause",
+    "has_control": false,
+    "grade": "confirmed",
+    "sources": [
+     {
+      "signal_id": 8,
+      "speaker": "OpenAI and Hugging Face",
+      "speaker_kind": "operator",
+      "source_kind": "reference",
+      "relation": "states",
+      "asserts": "zero-days"
+     }
+    ]
+   },
+   "expect_grade": "confirmed",
+   "spec_grade": "confirmed"
+  },
+  {
+   "id": "jul-driver",
+   "why": "Training pressure: OpenAI's own account, uncorroborated",
+   "link": {
+    "layer": "driver",
+    "has_control": false,
+    "grade": "stated",
+    "sources": [
+     {
+      "signal_id": 8,
+      "speaker": "OpenAI and Hugging Face",
+      "speaker_kind": "operator",
+      "source_kind": "reference",
+      "relation": "states",
+      "asserts": "training-pressure"
+     }
+    ]
+   },
+   "expect_grade": "stated",
+   "spec_grade": "stated"
+  },
+  {
+   "id": "planted-faa-settled",
+   "why": "The FAA cause stated as settled (the zero-shot brief's error)",
+   "link": {
+    "layer": "cause",
+    "has_control": false,
+    "grade": "confirmed",
+    "sources": [
+     {
+      "signal_id": 2,
+      "speaker": "Transportation Secretary Duffy",
+      "speaker_kind": "regulator",
+      "source_kind": "news",
+      "relation": "states",
+      "asserts": "contractor-upgrade"
+     },
+     {
+      "signal_id": 3,
+      "speaker": "FAA",
+      "speaker_kind": "regulator",
+      "source_kind": "official",
+      "relation": "states",
+      "asserts": "legacy-tdm"
+     }
+    ]
+   },
+   "expect_grade": "disputed",
+   "planted": true
+  },
+  {
+   "id": "planted-social-only",
+   "why": "A cause whose only source is a social post",
+   "link": {
+    "layer": "cause",
+    "has_control": false,
+    "grade": "confirmed",
+    "sources": [
+     {
+      "signal_id": 20,
+      "speaker": "an account on X",
+      "speaker_kind": "reporting",
+      "source_kind": "social",
+      "relation": "states",
+      "asserts": "ai-hack"
+     }
+    ]
+   },
+   "expect_grade": "inferred",
+   "planted": true
+  },
+  {
+   "id": "planted-driver-fact",
+   "why": "An unsourced driver stated as fact",
+   "link": {
+    "layer": "driver",
+    "has_control": false,
+    "grade": "confirmed",
+    "sources": []
+   },
+   "expect_grade": "inferred",
+   "planted": true
+  },
+  {
+   "id": "planted-united-settled",
+   "why": "United's unnamed cause presented as confirmed",
+   "link": {
+    "layer": "cause",
+    "has_control": false,
+    "grade": "confirmed",
+    "sources": [
+     {
+      "signal_id": 5,
+      "speaker": "United Airlines",
+      "speaker_kind": "operator",
+      "source_kind": "news",
+      "relation": "silent",
+      "asserts": null
+     }
+    ]
+   },
+   "expect_grade": "not_named",
+   "planted": true
+  },
+  {
+   "id": "planted-root-fact",
+   "why": "A root condition with no source graded stated",
+   "link": {
+    "layer": "root_condition",
+    "has_control": true,
+    "grade": "stated",
+    "sources": []
+   },
+   "expect_grade": "to_be_tested",
+   "planted": true
+  },
+  {
+   "id": "planted-news-only-confirmed",
+   "why": "A cause confirmed on reporting alone (NSANet as the specification grades it)",
+   "link": {
+    "layer": "cause",
+    "has_control": false,
+    "grade": "confirmed",
+    "sources": [
+     {
+      "signal_id": 6,
+      "speaker": "NSA, via people familiar",
+      "speaker_kind": "reporting",
+      "source_kind": "news",
+      "relation": "states",
+      "asserts": "maintenance"
+     }
+    ]
+   },
+   "expect_grade": "stated",
+   "planted": true
+  },
+  {
+   "id": "planted-union-confirmed",
+   "why": "A union's claim presented as confirmed",
+   "link": {
+    "layer": "cause",
+    "has_control": false,
+    "grade": "confirmed",
+    "sources": [
+     {
+      "signal_id": 5,
+      "speaker": "Pilots' union",
+      "speaker_kind": "union",
+      "source_kind": "news",
+      "relation": "states",
+      "asserts": "weight-and-balance"
+     }
+    ]
+   },
+   "expect_grade": "stated",
+   "planted": true
+  },
+  {
+   "id": "planted-context-confirmed",
+   "why": "A page that is background, graded confirmed",
+   "link": {
+    "layer": "cause",
+    "has_control": false,
+    "grade": "confirmed",
+    "sources": [
+     {
+      "signal_id": 9,
+      "speaker": "Anthropic",
+      "speaker_kind": "operator",
+      "source_kind": "official",
+      "relation": "context",
+      "asserts": null
+     }
+    ]
+   },
+   "expect_grade": "inferred",
+   "planted": true
+  }
+ ]
+}
