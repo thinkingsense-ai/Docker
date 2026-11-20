@@ -66,6 +66,70 @@ Every N minutes (default 30) a feed service reads the configured sources, drops 
 
 Each item stores: source, URL, title, publication time, speaker kind (`operator`, `regulator`, `reporting`, `social`), and a one-sentence paraphrase written by us. It does **not** store article text (the seed data follows the same rule). This keeps copyright and storage small and is what the existing `signals` table already holds.
 
+### 5.2a Feed research (2026-11-20, our notes; the user's own research to be compared)
+
+Each feed was fetched once with a plain client and read for item count, newest date and headlines. Nothing was stored. Headlines are what the live feeds returned today; no article was opened, so none of them is evidence of a cause.
+
+| Feed | Items / newest | On topic (AI in title, outage or incident) | robots.txt for the feed path | Verdict |
+|---|---|---|---|---|
+| SecurityWeek | 10 / 20 Nov | 2 of 10 AI; two on-topic outage and AI-patching headlines | allowed | **Start with** |
+| Dark Reading | 50 / 19 Nov | 21 of 50 AI | allowed | **Start with** (noisy, vendor-style pieces) |
+| Wired security | 20 / 18 Nov | 6 of 20 AI; a "cyberattack or just an outage" explainer | allowed | **Start with** |
+| The Hacker News | 50 / 20 Nov | 8 of 50 AI | allowed | Add after terms are read |
+| BleepingComputer | 15 / 20 Nov | 0 AI in titles; fast on incidents | allowed, crawl delay 1 s | Add after terms: its 2014 user agreement restricts storing site content except personal, non-commercial use |
+| The Register (security) | 50 / 20 Nov | 12 of 50 AI; an outages headline | **disallowed** for the feed path | Do **not** use unless they permit it |
+| Krebs on Security | 10 / 11 Nov | few | allowed, **crawl delay 35 s** | Low priority; slow, infrequent |
+| SANS ISC | 10 / 20 Nov | 1 AI | allowed | Optional, technical |
+| CISA advisories | 30 / 19 Nov | advisories, no AI titles | allowed | **Start with** (official, US government) |
+| UK NCSC | 20 / 11 Nov | 3 AI incl. a critical-infrastructure warning | no robots file | **Start with** (official) |
+| GitHub status | 25 / 19 Nov | many incident posts | allowed | Example of a provider status feed |
+| AWS status | 38 / newest 15 Sep | stale | n/a | Not useful as is |
+| Cloudflare status | 25 / newest dated 11 Dec (a date in the future) | n/a | n/a | Date is wrong; check before use |
+| OpenAI news, Hugging Face blog | 1,418 and 914 items | needs a filter | n/a | Operator statements for July-type events; only with a keyword filter |
+| Ars Technica security, Anthropic news | 404 at the paths tried | | | Find the right URLs or skip |
+| Microsoft MSRC blog | 0 items parsed | | | Different format or blocked; find another route |
+
+### 5.2b The user's feed list, checked the same way (2026-11-20)
+
+The user supplied 13 feeds. Fetched once each: 12 work; Trend Micro's address does not resolve. Robots results below used a generic user agent and must be re-checked with the real Agency user agent.
+
+| Feed | Items / newest | AI in title | Verdict |
+|---|---|---|---|
+| WeLiveSecurity (ESET) | 100 / 19 Nov | 8 | **Reporting.** Add. |
+| Zscaler security research | 50 / 19 Nov | 7 | **Reporting.** Add. |
+| Wired AI tag | 10 / 20 Nov | 5 | **Reporting.** Add; better than Wired security for this topic. |
+| Schneier | 10 / 20 Nov | 3 | **Context** |
+| Securelist (Kaspersky) | 10 / 18 Nov | 1 | **Context** (malware detail, low yield) |
+| Ars Technica AI | 20 / 19 Nov | 9 | **Context** (AI news, not attack reporting) |
+| MIT Technology Review AI | 10 / 18 Nov | 6 | **Context** |
+| Krebs | 10 / 18 Nov | 0 | Context, low priority (35 s crawl delay) |
+| OpenAI news | 1,418 / 19 Nov | 315 | **Official** for model-vendor events; needs a keyword filter; later |
+| Google DeepMind | 100 / 18 Nov | 27 | Official, same; later |
+| Wiz | 513 / newest 21 Oct | 15 | Stale; skip until it updates |
+| Volexity | 10 / newest 16 Oct | 1 | Stale; skip |
+| Trend Micro | does not resolve | | Find the current address or skip |
+
+**A fourth source kind: `context`.** Analysis, commentary and general AI news help an analyst understand a candidate but never create one and never count as a source for a link. The judge already ignores `context` relations; the feed adapter tags these feeds so they appear beside a candidate as reading, not as evidence.
+
+**Merged starter set (seven, plus context):**
+
+| Kind | Feeds |
+|---|---|
+| Reporting (can create a candidate) | SecurityWeek, Dark Reading, Wired AI, WeLiveSecurity, Zscaler |
+| Official (can ground a cause) | CISA advisories, UK NCSC |
+| Context (reading only) | Schneier, Securelist, Ars Technica AI, MIT Technology Review AI |
+| Later, with a filter | OpenAI news, Google DeepMind, The Hacker News, BleepingComputer (after terms) |
+
+**Statements from operators.** Neither list found a feed for the operators and regulators the spec grades on. A social feed such as an X aggregator is the only candidate route; it may be paid, its terms are unread, and per the spec a post is a lead, never evidence. For this release the analyst pastes the primary source when tracing a candidate, and X stays behind the adapter as a later option.
+
+**Our first proposed starter set (five, superseded by the merged set above):** SecurityWeek, Dark Reading, Wired security, CISA advisories, UK NCSC. Three reporting feeds that carry the AI and outage story, two official sources that can ground a cause. Add The Hacker News and BleepingComputer once their terms are read.
+
+**Gaps that matter:** the official statements the spec grades causes on (Microsoft 365, the FAA, a bank, an airline) mostly have no RSS feed; cloud providers' status pages are the exception. A feed gives leads; confirming a cause still needs a person to find the primary source, or a later adapter for a few named status pages.
+
+**Terms:** only robots.txt was checked, plus one search that surfaced BleepingComputer's 2014 agreement. The Register, SecurityWeek, Dark Reading, Wired and The Hacker News were not read for reuse terms. The design stores only the title, link, date, speaker kind and our own one-sentence paraphrase (never the article text), which should lower the risk, but it belongs on the counsel list next to the licence register.
+
+**One example of why grading matters:** a security feed's headline today says Chase confirmed third-party cyberattacks that may have exposed customer information, while the specification's Chase incident was an on-premise software bug causing a transaction slowdown. They may be different events; the system would hold the first as a lead, not as a cause, until a primary source says which.
+
 ### 5.3 What counts as "AI hacking"
 
 Three claim types, chosen so the system does not swallow the fear it is meant to test:
