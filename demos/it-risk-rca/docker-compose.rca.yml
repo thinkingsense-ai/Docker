@@ -1,0 +1,16 @@
+# Adds the IT-risk root-cause-analysis case data (schema `rca`) to the all-packs stack, for the local Agency sandbox. Run from the repository root, after demos/all-packs:
+#   docker compose -f docker-compose.yml -f demos/all-packs/docker-compose.packs.yml -f demos/it-risk-rca/docker-compose.rca.yml up --build
+# Postgres runs init files only on a FRESH volume, so an existing stack must be wiped (agency/local/up.sh down) to pick the schema up.
+# The approved questions are the all-packs file plus demos/it-risk-rca/demo-questions-rca.json, merged by agency/local/up.sh into agency/local/.runtime/demo-questions.json.
+# Not in the cloud charts: the four stacks do not carry the rca schema yet.
+services:
+  postgres:
+    volumes:
+      - ./demos/it-risk-rca/seed-rca-postgres.sql:/docker-entrypoint-initdb.d/03b-rca.sql:ro
+      - ./demos/it-risk-rca/grant-rca.sql:/docker-entrypoint-initdb.d/07-rca-grant.sql:ro
+  seed-questions:
+    volumes:
+      - ./agency/local/.runtime/demo-questions.json:/seed/demo-questions.json:ro
+  omnigate:
+    environment:
+      OMNIGATE_FEDERATION_SCHEMA_INCLUDE: "suppliers,inventory,procurement,risk,smithsonian,security,museums,bom,treasury,erp,rca"
