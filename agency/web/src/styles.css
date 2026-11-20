@@ -206,3 +206,11 @@ nav ul.sections { gap: 2px; margin-bottom: .5rem }
   header .ws select { max-width: 11rem }
   nav ul.sections { max-height: none; overflow: visible }
 }
+
+/* Watch */
+.watch { display: grid; gap: 10px } .watch p { margin: 0 } .watch-head { display: flex; justify-content: space-between; align-items: center; background: none; border: 0; padding: 0 }
+.watch-head h2 { margin: 0 } .watch-head button { background: var(--chip); border: 1px solid var(--edge); border-radius: 8px; padding: .3rem .8rem }
+.candidates { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px }
+.candidate { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 8px } .candidate h3 { margin: 0; font-size: 1.05rem }
+.cmeta { display: flex; gap: 8px 14px; flex-wrap: wrap; align-items: center }
+.status.traced { color: var(--ok); font-size: .85rem; font-weight: 600 } .status.not_yet_traced { color: var(--warn); background: var(--warn-bg); border-radius: 999px; padding: 0 .6rem; font-size: .85rem; font-weight: 600 }

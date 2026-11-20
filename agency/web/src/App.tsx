@@ -7,6 +7,8 @@ import StarterTiles from './StarterTiles'
 import Brief from './Brief'
 import { BRIEF_PACK } from './rcaBrief'
 import Screen from './Screens'
+import Watch from './Watch'
+import type { Table } from './rcaBrief'
 import { navFor, startWorkspace, viewFor, workspaceChoices, type View } from './shell'
 import { AnswerDetails, ProgressView } from './DetailsPane'
 import type { ProgressEvent as PEvent } from './progress'
@@ -35,6 +37,7 @@ export default function App() {
   const [packNote, setPackNote] = useState<string | null>(null)
   const [pack, setPack] = useState<string | null>(null)
   const [changed, setChanged] = useState('')
+  const [watch, setWatch] = useState<Table | null>(null)      // the Watch list, kept so switching sections does not ask again
   const [navOpen, setNavOpen] = useState(false)                  // the left navigation as a drawer on a phone
   const [starters, setStarters] = useState<Starter[]>([])
   const [convs, setConvs] = useState<ConversationSummary[]>([])
@@ -59,7 +62,7 @@ export default function App() {
   const abort = useRef<AbortController | null>(null)
   const bottom = useRef<HTMLDivElement>(null)
 
-  const leave = useCallback(() => { setUser(null); setTurns([]); setConvId(null); setFile(null); setView('watch'); setNavOpen(false); setWaiting(null); setDetailIdx(null) }, [])
+  const leave = useCallback(() => { setUser(null); setTurns([]); setConvId(null); setFile(null); setView('watch'); setWatch(null); setNavOpen(false); setWaiting(null); setDetailIdx(null) }, [])
   const signedOut = useCallback(() => { leave(); setQ(''); setRetry(null); setNotice('') }, [leave])
   // the Server dropped the session (it restarted, or it expired): back to sign-in, saying so, with the unsent question kept in the box
   const expired = useCallback((kept?: boolean) => { leave(); setNotice('Your session ended (the Server may have restarted). Sign in again.' + (kept === true ? ' The question you were asking is kept.' : '')) }, [leave])
@@ -185,7 +188,8 @@ export default function App() {
           ? <Brief onSignedOut={() => expired()} me={user ?? ''} canStart={grants.canStart} defs={defs} />
           : <p className="empty">Briefs are in the IT risk Workspace. Choose it from the Workspace menu at the top right.</p>)}
         {shown === 'approvals' && <Queue me={user} onSignedOut={() => expired()} onCount={setWaiting} />}
-        {(shown === 'watch' || shown === 'exposure' || shown === 'sources') && <Screen view={shown} onOpen={go} />}
+        {shown === 'watch' && <Watch table={watch} onLoaded={setWatch} onBrief={() => go('briefs')} onAsk={(q) => { go('ask'); setConvId(null); setTurns([]); void send(q) }} onSignedOut={() => expired()} />}
+        {(shown === 'exposure' || shown === 'sources') && <Screen view={shown} />}
         {shown === 'ask' && <>
         {packNote && <p className="muted small">{packNote}</p>}
         <p className="muted small domain-line" role="status" aria-live="polite">
