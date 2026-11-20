@@ -24,7 +24,7 @@ export const gradeLabel = (g: string) => GRADES[g]?.label ?? g
 const VERDICTS: Record<string, string> = { supported: 'Supported', not_supported: 'Not supported', insufficient_evidence: 'Insufficient evidence' }
 export const verdictLabel = (v: string) => VERDICTS[v] ?? v
 
-export interface Incident { operator: string; cause: string; grade: string; sources: number }
+export interface Incident { operator: string; cause: string; grade: string; sources: number; supported?: string }   // supported: set only when the sources back less than the grade (the link judge's finding)
 export interface OpenItem { layer: string; statement: string; grade: string; reason: string }
 export interface ControlRow { condition: string; grade: string; control: string; owner: string; framework: string; category: string; caseId: string }
 export interface Check { rule: string; ok: boolean; detail: string }
@@ -52,7 +52,7 @@ export function checks(incidents: Incident[], speakers: Record<string, string>[]
     detail: unsourced.length ? `${unsourced.map((i) => i.operator).join(', ')}: a cause with no source can only be inferred or to be tested.` : 'Every cause on this page has at least one source.' })
   const weak = incidents.filter((i) => i.grade === 'confirmed' && !speakers.some((s) => s.operator === i.operator && ['operator', 'regulator'].includes(s.speaker_kind)))
   out.push({ rule: 'Confirmed means an operator or regulator said it', ok: weak.length === 0,
-    detail: weak.length ? `${weak.map((i) => i.operator).join(', ')}: graded confirmed, but the source is reporting, not a named statement. Needs a primary source.` : 'Every confirmed cause has an operator or regulator behind it.' })
+    detail: weak.length ? `${weak.map((i) => `${i.operator} cause is graded confirmed but its sources support stated: only reporting, a union or a reference page says it; no operator or regulator statement`).join('; ')}. Needs a primary source.` : 'Every confirmed cause has an operator or regulator behind it.' })
   const open = incidents.filter((i) => i.grade !== 'confirmed')
   const named = open.every((i) => sentence.includes(i.operator))
   out.push({ rule: 'No flat "no attack" while a cause is open', ok: claimVerdict !== null && (claimVerdict !== 'not_supported' || open.length === 0 || named),
@@ -61,7 +61,12 @@ export function checks(incidents: Incident[], speakers: Record<string, string>[]
 }
 
 export function composeBrief(a: Answers): Brief {
-  const incidents: Incident[] = records(a.causes).map((r) => ({ operator: r.operator, cause: r.cause, grade: r.grade, sources: n(r.sources) }))
+  const speakers = records(a.speakers)
+  const incidents: Incident[] = records(a.causes).map((r) => {
+    const i: Incident = { operator: r.operator, cause: r.cause, grade: r.grade, sources: n(r.sources) }
+    if (i.grade === 'confirmed' && !speakers.some((s) => s.operator === i.operator && ['operator', 'regulator'].includes(s.speaker_kind))) i.supported = i.sources > 0 ? 'stated' : 'inferred'
+    return i
+  })
   const open: OpenItem[] = records(a.open).map((r) => ({ layer: r.layer, statement: r.statement, grade: r.grade, reason: r.reason }))
   const controls: ControlRow[] = records(a.controls).map((r) => ({ condition: r.root_condition, grade: r.grade, control: r.owning_control, owner: r.owner_role, framework: r.framework, category: r.category, caseId: r.case_id }))
   const v = records(a.verdict)[0]
@@ -79,7 +84,7 @@ export function composeBrief(a: Answers): Brief {
   return {
     incidents, open, controls, claim: v ? { text: v.claim, verdict: v.verdict, sentence } : null,
     counts: { total, confirmed: confirmed.length, stated: stated.length, openIncidents },
-    checks: checks(incidents, records(a.speakers), v?.verdict ?? null, sentence),
+    checks: checks(incidents, speakers, v?.verdict ?? null, sentence),
     complete: incidents.length > 0 && !!v,
   }
 }
@@ -88,13 +93,13 @@ export function headline(b: Brief): string {
   const c = b.counts
   if (!b.complete) return 'The brief could not be completed from the approved questions.'
   const attack = b.claim?.verdict === 'not_supported' ? 'no official source points to an attack' : b.claim?.verdict === 'supported' ? 'an official source supports the claim' : 'the claim cannot be tested yet'
-  return `${c.confirmed} of ${c.total} causes are confirmed, ${c.stated} of ${c.total} are stated, and ${attack}.${c.openIncidents.length ? ` ${c.openIncidents.length} stay open.` : ''}`
+  return `${c.confirmed} of ${c.total} causes are confirmed, ${c.stated} of ${c.total} are stated, and ${attack}.${c.openIncidents.length ? ` ${c.openIncidents.length} stay open.` : ''}${b.incidents.some((i) => i.supported) ? ` ${b.incidents.filter((i) => i.supported).length} confirmed grade${b.incidents.filter((i) => i.supported).length === 1 ? ' is' : 's are'} higher than the sources support.` : ''}`
 }
 
 /** Plain text of the brief, for copying into an email or a ticket. */
 export function briefText(b: Brief): string {
   const L: string[] = ['IT risk root-cause brief: November 2026 incident cluster', headline(b), b.claim ? `Claim: ${b.claim.text} Verdict: ${verdictLabel(b.claim.verdict)}. ${b.claim.sentence}` : '', '']
-  for (const i of b.incidents) L.push(`- ${i.operator}: ${i.cause} [${gradeLabel(i.grade)}, ${i.sources} source${i.sources === 1 ? '' : 's'}]`)
+  for (const i of b.incidents) L.push(`- ${i.operator}: ${i.cause} [${gradeLabel(i.grade)}${i.supported ? `; sources support only ${gradeLabel(i.supported).toLowerCase()}` : ''}, ${i.sources} source${i.sources === 1 ? '' : 's'}]`)
   if (b.open.length) { L.push('', 'Not established:'); for (const o of b.open) L.push(`- ${gradeLabel(o.grade)}: ${o.statement} (${o.reason})`) }
   if (b.controls.length) { L.push('', 'Control to fix:'); for (const c of b.controls.filter((x) => x.caseId === 'nov-2026-cluster')) L.push(`- ${c.control} (${c.owner}); ${c.framework} ${c.category}`) }
   const bad = b.checks.filter((c) => !c.ok); if (bad.length) { L.push('', 'Checks that failed:'); for (const c of bad) L.push(`- ${c.rule}: ${c.detail}`) }
