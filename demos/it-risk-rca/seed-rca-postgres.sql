@@ -6,7 +6,7 @@
 -- Read-only for the app user, like every other pack. Reload by dropping the schema (the demo volume is disposable).
 
 CREATE SCHEMA IF NOT EXISTS rca;
-DROP TABLE IF EXISTS rca.candidate_items, rca.candidates, rca.link_sources, rca.links, rca.claims, rca.control_map, rca.signals, rca.events CASCADE;
+DROP TABLE IF EXISTS rca.candidate_feed_items, rca.feed_items, rca.feed_sources, rca.candidate_items, rca.candidates, rca.link_sources, rca.links, rca.claims, rca.control_map, rca.signals, rca.events CASCADE;
 
 CREATE TABLE rca.events (
   event_id    INT PRIMARY KEY,
@@ -173,7 +173,7 @@ UPDATE rca.links SET control_root = 'Weak containment'         WHERE link_id = 1
 -- only when an analyst traces it. Nothing here comes from a live feed yet: the two candidates are the two seeded cases, so both are already traced.
 CREATE TABLE rca.candidates (
   candidate_id INT PRIMARY KEY,
-  case_id      VARCHAR(30) NOT NULL,
+  case_id      VARCHAR(30),
   claim_id     INT REFERENCES rca.claims(claim_id),
   title        VARCHAR(120) NOT NULL,
   claim_type   VARCHAR(30) NOT NULL CHECK (claim_type IN ('ai-attack-claimed','ai-attack-confirmed','ai-adjacent')),
@@ -199,5 +199,47 @@ INSERT INTO rca.candidates VALUES
 INSERT INTO rca.candidate_items
   SELECT DISTINCT c.candidate_id, ls.signal_id FROM rca.candidates c
   JOIN rca.links l ON l.case_id = c.case_id JOIN rca.link_sources ls ON ls.link_id = l.link_id;
+
+-- The live feed (build step 6, docs/agency-it-risk-flow.md section 5). The feed adapter (addons/feed-adapter) is the only writer, as the feed_writer role (grant-rca.sql); the Server reads
+-- these tables as ordinary SQL. METADATA ONLY: a headline, its link and date, the source and a hash. No article text is stored (the adapter reads a short description to match on and drops it).
+-- Candidates the adapter creates have no case yet (case_id is empty until an analyst traces them) and cite feed items through candidate_feed_items.
+CREATE SEQUENCE rca.candidate_seq START 1000;
+CREATE TABLE rca.feed_sources (
+  source_id       VARCHAR(30) PRIMARY KEY,
+  name            VARCHAR(80) NOT NULL,
+  url             VARCHAR(300) NOT NULL,
+  kind            VARCHAR(10) NOT NULL CHECK (kind IN ('reporting','official','context')),
+  enabled         BOOLEAN NOT NULL DEFAULT TRUE,
+  last_attempt_at TIMESTAMP,
+  last_success_at TIMESTAMP,
+  last_status     VARCHAR(30),
+  last_error      VARCHAR(200),
+  items_last_run  INT NOT NULL DEFAULT 0,
+  etag            VARCHAR(200),
+  last_modified   VARCHAR(80)
+);
+COMMENT ON TABLE  rca.feed_sources IS 'The feeds the adapter reads, with their health. kind reporting can create a candidate; official can ground a cause; context is reading only and never creates a candidate or supports a link. last_status ok, not_modified, blocked_by_robots, http_error, parse_error or unreachable.';
+CREATE TABLE rca.feed_items (
+  item_id       BIGSERIAL PRIMARY KEY,
+  source_id     VARCHAR(30) NOT NULL REFERENCES rca.feed_sources(source_id),
+  url           VARCHAR(500) NOT NULL,
+  title         VARCHAR(250) NOT NULL,
+  published_at  TIMESTAMP,
+  first_seen_at TIMESTAMP NOT NULL,
+  seen_hash     CHAR(64) NOT NULL UNIQUE,
+  matched       BOOLEAN NOT NULL DEFAULT FALSE,
+  claim_type    VARCHAR(30) CHECK (claim_type IN ('ai-attack-claimed','ai-attack-confirmed','ai-adjacent')),
+  match_terms   VARCHAR(200)
+);
+COMMENT ON TABLE  rca.feed_items IS 'Every headline the adapter has read (metadata only, no article text), so counts over time are real. matched is true when the rule-based filter keeps it as a possible AI-hacking story; claim_type and match_terms say why. Items older than the retention period (400 days) are deleted.';
+COMMENT ON COLUMN rca.feed_items.first_seen_at IS 'When the adapter first read the item (UTC). Trends use this, because a feed carries only its latest items.';
+ALTER TABLE rca.candidates ADD COLUMN lead_item_id BIGINT REFERENCES rca.feed_items(item_id);
+COMMENT ON COLUMN rca.candidates.lead_item_id IS 'For a candidate the feed adapter created: the earliest headline in it, whose title the candidate carries and whose link Watch shows. Empty for the seeded cases.';
+CREATE TABLE rca.candidate_feed_items (
+  candidate_id INT NOT NULL REFERENCES rca.candidates(candidate_id),
+  item_id      BIGINT NOT NULL REFERENCES rca.feed_items(item_id),
+  PRIMARY KEY (candidate_id, item_id)
+);
+COMMENT ON TABLE rca.candidate_feed_items IS 'The headlines behind a candidate the adapter created. Leads, never evidence: a reporting item cannot raise a cause above stated.';
 
 -- Grants are in grant-rca.sql, which runs after the all-packs read-only setup creates the role.

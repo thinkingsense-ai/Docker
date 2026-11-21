@@ -1,0 +1,17 @@
+{
+ "about": "The starter set from docs/agency-it-risk-flow.md section 5.2 (merged list). kind: reporting can create a candidate; official can ground a cause; context is reading only. Reuse terms were NOT read for any of them (see the README): only robots.txt is honoured, and only a headline, link and date are stored.",
+ "sources": [
+  {"id": "securityweek",   "name": "SecurityWeek",              "kind": "reporting", "url": "https://feeds.feedburner.com/securityweek"},
+  {"id": "darkreading",    "name": "Dark Reading",              "kind": "reporting", "url": "https://www.darkreading.com/rss.xml"},
+  {"id": "wired-ai",       "name": "Wired AI",                  "kind": "reporting", "url": "https://www.wired.com/feed/tag/ai/latest/rss"},
+  {"id": "welivesecurity", "name": "WeLiveSecurity",            "kind": "reporting", "url": "https://www.welivesecurity.com/en/rss/feed/"},
+  {"id": "zscaler",        "name": "Zscaler security research", "kind": "reporting", "url": "https://www.zscaler.com/blogs/feeds/security-research"},
+  {"id": "cisa",           "name": "CISA advisories",           "kind": "official",  "url": "https://www.cisa.gov/cybersecurity-advisories/all.xml"},
+  {"id": "ncsc",           "name": "UK NCSC",                   "kind": "official",  "url": "https://www.ncsc.gov.uk/api/1/services/v1/all-rss-feed.xml"},
+  {"id": "schneier",       "name": "Schneier on Security",      "kind": "context",   "url": "https://www.schneier.com/feed/atom/"},
+  {"id": "securelist",     "name": "Securelist",                "kind": "context",   "url": "https://securelist.com/feed/"},
+  {"id": "ars-ai",         "name": "Ars Technica AI",           "kind": "context",   "url": "https://arstechnica.com/ai/feed/"},
+  {"id": "mit-tr-ai",      "name": "MIT Technology Review AI",  "kind": "context",   "url": "https://www.technologyreview.com/topic/artificial-intelligence/feed"},
+  {"id": "krebs",          "name": "Krebs on Security",         "kind": "context",   "url": "https://krebsonsecurity.com/feed/"}
+ ]
+}

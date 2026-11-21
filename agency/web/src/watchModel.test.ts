@@ -35,3 +35,20 @@ describe('actions and wording', () => {
     expect(statusText(nov)).toBe('Traced: 6 incidents, 8 sources'); expect(statusText(jul)).toBe('Traced: 1 incident, 1 source')
   })
 })
+
+describe('feed candidates', () => {
+  const cols = ['candidate_id', 'title', 'claim_type', 'status', 'first_seen', 'summary', 'verdict', 'open_incidents', 'incidents', 'sources', 'lead_source', 'lead_url']
+  const row = (url: string | null): (string | null)[] => ['1001', 'FAA ground stop: AI hackers', 'ai-attack-claimed', 'not_yet_traced', '2026-11-20', 's', null, null, '0', '2', 'SecurityWeek', url]
+  it('keeps the lead headline link for a candidate the feed created', () => {
+    const c = composeWatch({ columns: cols, rows: [row('https://example.com/a')] })[0]
+    expect(c).toMatchObject({ status: 'not_yet_traced', sources: 2, leadSource: 'SecurityWeek', leadUrl: 'https://example.com/a' })
+    expect(actionFor(c).kind).toBe('wait'); expect(statusText(c)).toBe('Claim not yet tested')
+  })
+  it('never makes a link of anything that is not an http or https address (a feed is outside data)', () => {
+    for (const bad of ['javascript:alert(1)', 'data:text/html,x', '//evil.example', 'https://a b', '']) expect(composeWatch({ columns: cols, rows: [row(bad)] })[0].leadUrl, bad).toBe('')
+    expect(composeWatch({ columns: cols, rows: [row(null)] })[0].leadUrl).toBe('')
+  })
+  it('still reads a list without the lead columns (an older stack)', () => {
+    const c = composeWatch({ columns: cols.slice(0, 10), rows: [row('x').slice(0, 10)] })[0]; expect(c.leadUrl).toBe(''); expect(c.leadSource).toBe('')
+  })
+})

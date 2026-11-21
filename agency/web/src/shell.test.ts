@@ -18,7 +18,7 @@ describe('navigation', () => {
     expect(viewFor('briefs', { canApprove: false })).toBe('briefs')
   })
   it('marks the screens whose build step has not landed, so they say so', () => {
-    expect(NAV.filter((n) => !n.built).map((n) => n.id)).toEqual(['sources'])
+    expect(NAV.filter((n) => !n.built).map((n) => n.id)).toEqual([])
   })
 })
 
