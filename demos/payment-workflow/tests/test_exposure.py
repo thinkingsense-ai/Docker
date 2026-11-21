@@ -15,7 +15,7 @@ class Gold(unittest.TestCase):
     def test_the_sentences_match_the_screen(self):
         self.assertEqual(X.rate(GOLD[0]["answers"])["sentence"], "Critical: set by questions 4 and 5.")
         miss = next(c for c in GOLD if "missing answer" in c["name"])
-        self.assertEqual(X.rate(miss["answers"])["sentence"], "At least Moderate: set by question 1; question 3 could not be scored, so the rating may be higher.")
+        self.assertEqual(X.rate(miss["answers"])["sentence"], "At least Medium: set by question 1; question 3 could not be scored, so the rating may be higher.")
     def test_an_unanswered_question_is_never_zero(self):
         r = X.rate({}); self.assertIsNone(r["level"]); self.assertEqual(r["unknown"], [1, 2, 3, 4, 5]); self.assertFalse(r["complete"])
 

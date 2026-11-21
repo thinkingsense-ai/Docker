@@ -37,7 +37,7 @@ import { ruleLabel, incidentRejection, incidentStage, incidentWords, isIncident,
 describe('the incident brief run', () => {
   const r = (o: Partial<Run>) => run({ definition: 'incident-cluster-rca', ...o })
   it('words the buttons after what the run recommends', () => {
-    expect(incidentWords(r({ recommendation: { action: 'publish', reason: '' } }))).toMatchObject({ approve: 'Publish brief', decline: 'Hold it…', prefix: ON_HOLD })
+    expect(incidentWords(r({ recommendation: { action: 'publish', reason: '' } }))).toMatchObject({ approve: 'Publish problem record', decline: 'Hold it…', prefix: ON_HOLD })
     expect(incidentWords(r({ recommendation: { action: 'hold', reason: '' } }))).toMatchObject({ approve: 'Confirm hold', decline: 'Send back…', prefix: SENT_BACK })
     expect(isIncident(r({}))).toBe(true); expect(isIncident(run({}))).toBe(false)
   })

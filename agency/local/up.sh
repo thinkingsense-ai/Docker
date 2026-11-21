@@ -10,15 +10,15 @@ set -eu
 HERE=$(cd "$(dirname "$0")" && pwd); ROOT=$(cd "$HERE/../.." && pwd); cd "$ROOT"
 F=(-f docker-compose.yml -f demos/all-packs/docker-compose.packs.yml -f addons/thinking-layer/docker-compose.layer.yml -f addons/table-adapter/docker-compose.table.yml
    -f addons/document-adapter/docker-compose.document.yml -f addons/image-adapter/docker-compose.image.yml -f agency/local/docker-compose.agency-local.yml
-   -f demos/it-risk-rca/docker-compose.rca.yml -f demos/it-risk-estate/docker-compose.estate.yml)
-# The IT-risk root-cause case (demos/it-risk-rca) and the simulated exposure estate (demos/it-risk-estate): their questions join the all-packs ones in one file for the question seeder.
+   -f demos/it-risk-rca/docker-compose.rca.yml -f demos/it-risk-estate/docker-compose.estate.yml -f demos/it-risk-register/docker-compose.register.yml)
+# The IT-risk root-cause case (demos/it-risk-rca) and the simulated exposure estate (demos/it-risk-estate) and the register vocabulary (demos/it-risk-register): their questions join the all-packs ones in one file for the question seeder.
 # The live feed (addons/feed-adapter) reads public news feeds from the internet, so it is OFF unless AGENCY_FEED=on: it fills Watch with candidates and Sources with health.
 [ "${AGENCY_FEED:-off}" = "on" ] && F+=(-f addons/feed-adapter/docker-compose.feed.yml)
 # The optional estate event replay (demos/it-risk-estate/docker-compose.estate-replay.yml) is not started here: it changes the third exposure answer on purpose.
 mkdir -p agency/local/.runtime
 python3 - <<'PY'
 import json
-a = json.load(open("demos/all-packs/demo-questions-all-packs.json")); b = json.load(open("demos/it-risk-rca/demo-questions-rca.json")) + json.load(open("demos/it-risk-estate/demo-questions-estate.json"))
+a = json.load(open("demos/all-packs/demo-questions-all-packs.json")); b = json.load(open("demos/it-risk-rca/demo-questions-rca.json")) + json.load(open("demos/it-risk-estate/demo-questions-estate.json")) + json.load(open("demos/it-risk-register/demo-questions-register.json"))
 json.dump(a + b, open("agency/local/.runtime/demo-questions.json", "w"), indent=1)
 PY
 # The workflow API is a commercial-edition feature, so the workflows only exist with the (git-ignored) commercial override. With it, the Temporal workflows (the Incident brief,

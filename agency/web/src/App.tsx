@@ -189,7 +189,7 @@ export default function App() {
       <main>
         {shown === 'briefs' && (pack === BRIEF_PACK
           ? <Brief onSignedOut={() => expired()} me={user ?? ''} canStart={grants.canStart} defs={defs} />
-          : <p className="empty">Briefs are in the IT risk Workspace. Choose it from the Workspace menu at the top right.</p>)}
+          : <p className="empty">Problem records are in the IT risk Workspace. Choose it from the Workspace menu at the top right.</p>)}
         {shown === 'approvals' && <Queue me={user} onSignedOut={() => expired()} onCount={setWaiting} />}
         {shown === 'watch' && <Watch table={watch} sources={sources} onLoaded={setWatch} onSources={setSources} onBrief={() => go('briefs')} onAsk={(q) => { go('ask'); setConvId(null); setTurns([]); void send(q) }} onSignedOut={() => expired()} />}
         {shown === 'exposure' && (pack === BRIEF_PACK

@@ -67,7 +67,7 @@ export const isIncident = (r: Pick<Run, 'definition'>) => r.definition === INCID
 export const incidentWords = (r: Run) => {
   const publish = r.recommendation?.action === 'publish'
   return {
-    approve: publish ? 'Publish brief' : 'Confirm hold', decline: publish ? 'Hold it…' : 'Send back…', prefix: publish ? ON_HOLD : SENT_BACK,
+    approve: publish ? 'Publish problem record' : 'Confirm hold', decline: publish ? 'Hold it…' : 'Send back…', prefix: publish ? ON_HOLD : SENT_BACK,
     ask: publish ? 'What is it waiting for?' : 'What should change before it comes back?', submit: publish ? 'Hold' : 'Send back',
   }
 }

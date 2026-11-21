@@ -1,0 +1,17 @@
+[
+ {
+  "question": "What are the IT-risk categories, and how does each map to NIST CSF, ITIL and the CIS Controls?",
+  "referenceSql": "SELECT p.name AS parent, t.name AS category, t.depth, t.status, t.nist_csf, t.itil_practice, t.cis_control FROM pg.register.taxonomy t LEFT JOIN pg.register.taxonomy p ON p.node_id = t.parent_id WHERE t.depth > 1 ORDER BY t.node_id",
+  "category": "it-risk"
+ },
+ {
+  "question": "What does each rating mean?",
+  "referenceSql": "SELECT rating, rank, meaning FROM pg.register.rating_scale ORDER BY rank DESC",
+  "category": "it-risk"
+ },
+ {
+  "question": "What do the terms used on screen mean, and where do they come from?",
+  "referenceSql": "SELECT term, meaning, source, status FROM pg.register.definitions ORDER BY term",
+  "category": "it-risk"
+ }
+]

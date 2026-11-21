@@ -7,9 +7,9 @@ export const SOURCES_QUESTION = 'Which feeds are we reading, and when did each l
 export const LATE_MINUTES = 90
 
 export const KINDS: Record<string, { label: string; meaning: string }> = {
-  reporting: { label: 'Reporting', meaning: 'News and security sites. A story here can start a candidate; it is only ever a lead, never evidence of a cause.' },
+  reporting: { label: 'Reporting', meaning: 'News and security sites. A story here can start an event under review; it is only ever a lead, never evidence of a cause.' },
   official: { label: 'Official', meaning: 'Government advisories and operators. These can ground a cause once a person has read the primary source.' },
-  context: { label: 'Context', meaning: 'Analysis and commentary, shown as reading. Never starts a candidate and never counts as a source for a link.' },
+  context: { label: 'Context', meaning: 'Analysis and commentary, shown as reading. Never starts an event under review and never counts as a source for a link.' },
 }
 export const kindLabel = (k: string) => KINDS[k]?.label ?? k
 

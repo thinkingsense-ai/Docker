@@ -98,7 +98,7 @@ export function headline(b: Brief): string {
 
 /** Plain text of the brief, for copying into an email or a ticket. */
 export function briefText(b: Brief): string {
-  const L: string[] = ['IT risk root-cause brief: November 2026 incident cluster', headline(b), b.claim ? `Claim: ${b.claim.text} Verdict: ${verdictLabel(b.claim.verdict)}. ${b.claim.sentence}` : '', '']
+  const L: string[] = ['IT risk problem record (root cause): November 2026 incident cluster', headline(b), b.claim ? `Claim: ${b.claim.text} Verdict: ${verdictLabel(b.claim.verdict)}. ${b.claim.sentence}` : '', '']
   for (const i of b.incidents) L.push(`- ${i.operator}: ${i.cause} [${gradeLabel(i.grade)}${i.supported ? `; sources support only ${gradeLabel(i.supported).toLowerCase()}` : ''}, ${i.sources} source${i.sources === 1 ? '' : 's'}]`)
   if (b.open.length) { L.push('', 'Not established:'); for (const o of b.open) L.push(`- ${gradeLabel(o.grade)}: ${o.statement} (${o.reason})`) }
   if (b.controls.length) { L.push('', 'Control to fix:'); for (const c of b.controls.filter((x) => x.caseId === 'nov-2026-cluster')) L.push(`- ${c.control} (${c.owner}); ${c.framework} ${c.category}`) }

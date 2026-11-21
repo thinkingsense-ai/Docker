@@ -56,7 +56,7 @@ export default function Exposure({ answers, onAnswers, onSignedOut }: { answers:
       <header className="brief-head">
         <h2>Exposure to a similar incident</h2>
         <p className="notbuilt" role="note"><strong>Simulated estate.</strong> Invented data for an invented firm: no real database, SharePoint, Slack or object store was read.</p>
-        <p className="muted">Case: the November 2026 incident cluster (see Briefs). Five approved questions are asked as you, and each is scored by a stated rule. The overall rating is the highest score, never an average.</p>
+        <p className="muted">Case: the November 2026 incident cluster (see Problem records). Five approved questions are asked as you, and each is scored by a stated rule. The overall rating is the highest score, never an average.</p>
         <div className="brief-actions">
           <button className="primary" onClick={run} disabled={step !== null}>{step !== null ? `Question ${step + 1} of 5: ${QUESTIONS[step].short}…` : r ? 'Rate it again' : 'Rate the exposure'}</button>
           {step !== null && <button onClick={() => abort.current?.abort()}>Cancel</button>}
@@ -74,7 +74,7 @@ export default function Exposure({ answers, onAnswers, onSignedOut }: { answers:
           {tech.length > 0 && <p className="small">Affected technology here: {tech.join(', ')}.</p>}
           <ol className="qcards">{r.scores.map((s) => <Card key={s.key} s={s} />)}</ol>
           <details><summary>Rules and thresholds (demo constants)</summary>
-            <p className="small">Patch overdue: more than {THRESHOLDS.patchDays} days. Recovery test: older than {THRESHOLDS.recoveryDays} days. Wide: {THRESHOLDS.widePeople} or more people. Levels: {LEVELS.join(', ')}, from the highest of the five scores (0 Low, 1 Moderate, 2 High, 3 Critical). A question that cannot be scored is Unknown, never 0. In a real deployment the head of technology risk owns these numbers.</p>
+            <p className="small">Patch overdue: more than {THRESHOLDS.patchDays} days. Recovery test: older than {THRESHOLDS.recoveryDays} days. Wide: {THRESHOLDS.widePeople} or more people. Levels: {LEVELS.join(', ')}, from the highest of the five scores (0 Low, 1 Medium, 2 High, 3 Critical). A question that cannot be scored is Unknown, never 0. In a real deployment the head of technology risk owns these numbers.</p>
             <ul className="plain small">{QUESTIONS.map((q) => <li key={q.key}><strong>{q.n}. {q.short}:</strong> {RULES[q.key]}</li>)}</ul>
           </details>
         </>

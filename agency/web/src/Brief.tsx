@@ -47,7 +47,7 @@ export default function Brief({ onSignedOut, me, canStart, defs }: { onSignedOut
       setAnswers(got)
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) return onSignedOut()
-      if (!(e instanceof DOMException && e.name === 'AbortError')) setErr(e instanceof Error ? e.message : 'The brief could not be built.')
+      if (!(e instanceof DOMException && e.name === 'AbortError')) setErr(e instanceof Error ? e.message : 'The problem record could not be built.')
     } finally { setStep(null) }
   }, [onSignedOut])
 
@@ -56,13 +56,13 @@ export default function Brief({ onSignedOut, me, canStart, defs }: { onSignedOut
   const novControls = b?.controls.filter((c) => c.caseId === 'nov-2026-cluster') ?? []
 
   return (
-    <section className="brief" aria-label="Incident brief">
+    <section className="brief" aria-label="Problem record">
       <header className="brief-head">
-        <h1>IT risk: root-cause brief</h1>
+        <h1>IT risk: problem record (root cause)</h1>
         <p className="muted small">Scope: six outages, 12 to 17 November 2026 (Microsoft 365, FAA, JPMorgan Chase, United, NSANet, Apple). Claim tested: "The November outages are AI hacking."</p>
         <p className="muted small">The specification of the JPMC advisor, on the invented demo data. Causes are the specification's own, checked there against official statements on 19 November 2026; this system fetched nothing.</p>
         <div className="brief-actions">
-          <button className="primary" onClick={run} disabled={step !== null}>{b ? 'Build it again' : 'Build the brief'}</button>
+          <button className="primary" onClick={run} disabled={step !== null}>{b ? 'Build it again' : 'Build the problem record'}</button>
           {step !== null && <button onClick={() => abort.current?.abort()}>Cancel</button>}
           {b && <><button onClick={copy}>{copied ? 'Copied' : 'Copy as text'}</button> <button onClick={() => window.print()}>Print</button></>}
         </div>
@@ -70,7 +70,7 @@ export default function Brief({ onSignedOut, me, canStart, defs }: { onSignedOut
         {err && <p role="alert" className="error">{err}</p>}
       </header>
 
-      {b && !b.complete && <p className="warn">Not every approved question answered, so the brief cannot be shown. Check that the IT-risk case data is loaded (the demos/it-risk-rca seed) and try again.</p>}
+      {b && !b.complete && <p className="warn">Not every approved question answered, so the problem record cannot be shown. Check that the IT-risk case data is loaded (the demos/it-risk-rca seed) and try again.</p>}
 
       {b?.complete && <>
         <h2 className="brief-headline">{headline(b)}</h2>
@@ -98,14 +98,14 @@ export default function Brief({ onSignedOut, me, canStart, defs }: { onSignedOut
 
         <h2>Decision</h2>
         {!offered && <p className="muted small">The incident workflow is not available on this Server (it needs the commercial edition and a workflow engine), so this page can be read but not sent for approval.</p>}
-        {offered && runState === undefined && <p className="muted small" role="status">Looking for a decision on this brief…</p>}
+        {offered && runState === undefined && <p className="muted small" role="status">Looking for a decision on this problem record…</p>}
         {offered && runState === null && <>
-          <p className="small">A named approver, not you, publishes this brief or puts it on hold. The run re-reads the causes and sources, checks the rules, and recommends one of the two; the approval is bound to the exact brief. Publishing is a dry run: nothing is sent anywhere.</p>
+          <p className="small">A named approver, not you, publishes this problem record or puts it on hold. The run re-reads the causes and sources, checks the rules, and recommends one of the two; the approval is bound to the exact problem record. Publishing is a dry run: nothing is sent anywhere.</p>
           <div className="brief-actions"><button className="primary" onClick={send} disabled={starting || !canStart}>{starting ? 'Sending…' : 'Send for approval'}</button>{!canStart && <span className="muted small" role="note">Your account cannot start workflows.</span>}</div>
           {startErr && <p role="alert" className="error small">{startErr}</p>}
         </>}
         {offered && runState && <>
-          <p className="small muted" role="note">This brief was already sent for approval{runState.initiator ? ` by ${runState.initiator}` : ''}. The run re-reads the sources and applies the same grading as the table above; its card is below.</p>
+          <p className="small muted" role="note">This problem record was already sent for approval{runState.initiator ? ` by ${runState.initiator}` : ''}. The run re-reads the sources and applies the same grading as the table above; its card is below.</p>
           <RunCard initial={runState} me={me} onSignedOut={onSignedOut} />
         </>}
       </>}
