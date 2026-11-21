@@ -232,3 +232,5 @@ nav ul.sections { gap: 2px; margin-bottom: .5rem }
 .srcline { border-radius: 8px; padding: .35rem .7rem; font-size: .88rem } .srcline.ok { background: var(--tint); color: var(--ink) } .srcline.warn { background: var(--warn-bg); color: var(--warn) }
 .tablewrap { overflow-x: auto } .h-ok { color: var(--ok) } .h-late, .h-never, .h-blocked { color: var(--warn) } .h-failing { color: var(--bad, var(--warn)) }
 td.h-ok, td.h-late, td.h-never, td.h-blocked, td.h-failing { white-space: normal }
+
+.prio-rating { display: flex; gap: 8px; align-items: center; flex-wrap: wrap } .prio-rating.l0 { color: var(--ok) } .prio-rating.l1 { color: var(--accent) } .prio-rating.l2 { color: var(--warn) } .prio-rating.l3 { color: var(--bad) } .prio-rating strong { color: var(--ink) }

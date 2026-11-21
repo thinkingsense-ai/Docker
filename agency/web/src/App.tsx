@@ -9,6 +9,8 @@ import { BRIEF_PACK } from './rcaBrief'
 import Sources from './Sources'
 import Watch from './Watch'
 import Exposure, { type ExposureAnswers } from './Exposure'
+import Priorities from './Priorities'
+import { rate as rateExposure } from './exposureModel'
 import type { Table } from './rcaBrief'
 import { navFor, startWorkspace, viewFor, workspaceChoices, type View } from './shell'
 import { AnswerDetails, ProgressView } from './DetailsPane'
@@ -40,6 +42,7 @@ export default function App() {
   const [changed, setChanged] = useState('')
   const [watch, setWatch] = useState<Table | null>(null)      // the Watch list, kept so switching sections does not ask again
   const [sources, setSources] = useState<Table | null>(null)    // the feed list and its health, kept for Watch's health line and the Sources screen
+  const [priorities, setPriorities] = useState<Table | null>(null)   // the Priorities answer, kept so switching sections does not ask again
   const [exposure, setExposure] = useState<ExposureAnswers | null>(null)   // the five exposure answers, kept so switching sections does not ask again
   const [navOpen, setNavOpen] = useState(false)                  // the left navigation as a drawer on a phone
   const [starters, setStarters] = useState<Starter[]>([])
@@ -65,7 +68,7 @@ export default function App() {
   const abort = useRef<AbortController | null>(null)
   const bottom = useRef<HTMLDivElement>(null)
 
-  const leave = useCallback(() => { setUser(null); setTurns([]); setConvId(null); setFile(null); setView('watch'); setWatch(null); setSources(null); setExposure(null); setNavOpen(false); setWaiting(null); setDetailIdx(null) }, [])
+  const leave = useCallback(() => { setUser(null); setTurns([]); setConvId(null); setFile(null); setView('watch'); setWatch(null); setSources(null); setExposure(null); setPriorities(null); setNavOpen(false); setWaiting(null); setDetailIdx(null) }, [])
   const signedOut = useCallback(() => { leave(); setQ(''); setRetry(null); setNotice('') }, [leave])
   // the Server dropped the session (it restarted, or it expired): back to sign-in, saying so, with the unsent question kept in the box
   const expired = useCallback((kept?: boolean) => { leave(); setNotice('Your session ended (the Server may have restarted). Sign in again.' + (kept === true ? ' The question you were asking is kept.' : '')) }, [leave])
@@ -192,6 +195,9 @@ export default function App() {
           : <p className="empty">Problem records are in the IT risk Workspace. Choose it from the Workspace menu at the top right.</p>)}
         {shown === 'approvals' && <Queue me={user} onSignedOut={() => expired()} onCount={setWaiting} />}
         {shown === 'watch' && <Watch table={watch} sources={sources} onLoaded={setWatch} onSources={setSources} onBrief={() => go('briefs')} onAsk={(q) => { go('ask'); setConvId(null); setTurns([]); void send(q) }} onSignedOut={() => expired()} />}
+        {shown === 'priorities' && (pack === BRIEF_PACK
+          ? <Priorities answer={priorities} exposureLevel={exposure ? rateExposure(exposure).level : null} onAnswer={setPriorities} onSignedOut={() => expired()} />
+          : <p className="empty">Priorities is in the IT risk Workspace. Choose it from the Workspace menu at the top right.</p>)}
         {shown === 'exposure' && (pack === BRIEF_PACK
           ? <Exposure answers={exposure} onAnswers={setExposure} onSignedOut={() => expired()} />
           : <p className="empty">Exposure is in the IT risk Workspace. Choose it from the Workspace menu at the top right.</p>)}

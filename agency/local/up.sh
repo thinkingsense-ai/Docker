@@ -18,7 +18,7 @@ F=(-f docker-compose.yml -f demos/all-packs/docker-compose.packs.yml -f addons/t
 mkdir -p agency/local/.runtime
 python3 - <<'PY'
 import json
-a = json.load(open("demos/all-packs/demo-questions-all-packs.json")); b = json.load(open("demos/it-risk-rca/demo-questions-rca.json")) + json.load(open("demos/it-risk-estate/demo-questions-estate.json")) + json.load(open("demos/it-risk-register/demo-questions-register.json"))
+a = json.load(open("demos/all-packs/demo-questions-all-packs.json")); b = json.load(open("demos/it-risk-rca/demo-questions-rca.json")) + json.load(open("demos/it-risk-estate/demo-questions-estate.json")) + json.load(open("demos/it-risk-estate/demo-questions-priorities.json")) + json.load(open("demos/it-risk-register/demo-questions-register.json"))
 json.dump(a + b, open("agency/local/.runtime/demo-questions.json", "w"), indent=1)
 PY
 # The workflow API is a commercial-edition feature, so the workflows only exist with the (git-ignored) commercial override. With it, the Temporal workflows (the Incident brief,
