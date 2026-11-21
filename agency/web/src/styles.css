@@ -234,3 +234,5 @@ nav ul.sections { gap: 2px; margin-bottom: .5rem }
 td.h-ok, td.h-late, td.h-never, td.h-blocked, td.h-failing { white-space: normal }
 
 .prio-rating { display: flex; gap: 8px; align-items: center; flex-wrap: wrap } .prio-rating.l0 { color: var(--ok) } .prio-rating.l1 { color: var(--accent) } .prio-rating.l2 { color: var(--warn) } .prio-rating.l3 { color: var(--bad) } .prio-rating strong { color: var(--ink) }
+.auditform { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end } .auditform label { display: grid; gap: 3px; font-size: .85rem } .auditform input, .auditform select { min-width: 9rem }
+a.button { display: inline-block; border: 1px solid var(--edge); border-radius: 8px; padding: 6px 12px; text-decoration: none; color: var(--accent) } a.button:hover { background: var(--panel) }

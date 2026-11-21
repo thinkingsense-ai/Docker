@@ -38,5 +38,10 @@
   "question": "What notification rules apply after a major incident, and where do they come from?",
   "referenceSql": "SELECT r.rule_id, r.regulator, r.jurisdiction, r.seq, r.stage, r.title, r.hours, r.starts_from, r.also_within_hours_of_awareness, r.report_kind, r.source, r.checked, r.note, p.declared FROM pg.register.notification_rules r JOIN pg.register.firm_profile p ON p.regulator = r.regulator ORDER BY r.regulator, r.seq",
   "category": "it-risk"
+ },
+ {
+  "question": "Which workflow runs wrote the risk register and the major-incident decisions?",
+  "referenceSql": "SELECT 'assessment' AS kind, a.assessment_id AS row_id, a.run_id, a.evidence_digest, a.item_ref AS about, a.set_by FROM pg.register.assessments a WHERE a.source = 'workflow' UNION ALL SELECT 'major incident' AS kind, d.decision_id AS row_id, d.run_id, d.evidence_digest, CAST(d.incident_id AS VARCHAR) AS about, d.set_by FROM pg.register.major_incident_decisions d WHERE d.source = 'workflow'",
+  "category": "it-risk"
  }
 ]

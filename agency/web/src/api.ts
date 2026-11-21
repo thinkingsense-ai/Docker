@@ -20,8 +20,16 @@ export interface Answer {
 }
 export interface Status {
   layer: { version: string }; server: { reachable: boolean; llmConfigured?: boolean }
-  edition?: 'free' | 'commercial'; adminUrl?: string; workflows?: { available: boolean; note: string }; decisions: { readable: boolean; via?: 'server' | 'file' | null }; scopeHint: boolean
+  edition?: 'free' | 'commercial'; adminUrl?: string; workflows?: { available: boolean; note: string }; decisions: { readable: boolean; via?: 'server' | 'file' | null }; scopeHint: boolean; audit?: { enabled: boolean; allowed: boolean }
 }
+export interface AuditRow {
+  n: number; runId: string; definition: string; outcome: 'approved' | 'declined' | 'expired' | 'escalated'; outcomeText: string; startedAt: string | null; decidedAt: string | null
+  approvers: string[]; rejectedBy: string | null; rejectionReason: string | null; action: string | null; controls: string[]; recommendation: string | null; rulesBlocked: string[]
+  writeBack: { mode: string | null; call: string | null; note: string | null } | null; hash: string; prev: string; evidenceDigest: string | null
+}
+export interface AuditView { chainValid: boolean; firstBadEntry: number | null; head: string; total: number; rows: AuditRow[]; definitions: string[]; controls: string[] }
+export type AuditFilters = Partial<Record<'definition' | 'actor' | 'outcome' | 'control' | 'run' | 'since' | 'until', string>>
+export const auditQuery = (f: AuditFilters) => Object.entries(f).filter(([, v]) => v && v.trim()).map(([k, v]) => `${k}=${encodeURIComponent(v!.trim())}`).join('&')
 
 export interface Adapter { id: string; title: string; kind?: string; enabled: boolean; reason?: string; nonCommercial?: boolean; licence?: string; notes?: string; maxBytes?: number; accepts: { extensions: string[]; mime: string[] } }
 export interface Upload {
@@ -69,6 +77,7 @@ export const api = {
   startWorkflow: (definition: string, key: string) => call<{ created: boolean; run: Run }>('POST', '/workflows/start', { definition, key }),
   approveWorkflow: (id: string, payloadHash: string) => call<{ run: Run }>('POST', '/workflows/' + encodeURIComponent(id) + '/approve', { payloadHash }),
   rejectWorkflow: (id: string, reason: string) => call<{ run: Run }>('POST', '/workflows/' + encodeURIComponent(id) + '/reject', { reason }),
+  auditRecords: (f: AuditFilters) => call<AuditView>('GET', '/audit/records?' + auditQuery(f)),
   decisions: (runId: string) => call<Decisions>('GET', '/decisions?runId=' + encodeURIComponent(runId)),
   feedback: (b: { queryId: string; vote: 'UP' | 'DOWN'; category?: string; note?: string; question?: string; answer?: string }) => call<{ success: boolean }>('POST', '/feedback', b),
   askAdmin: (message: string) => call<{ success: boolean }>('POST', '/help', { message }),
