@@ -3,6 +3,8 @@ No model, no network except the Server's governed query path for `export`. Nothi
 
   python3 demos/it-risk-pilot/pilot.py export --out DIR [--sample 40] [--seed 1]   write the three label sheets and manifest.json
   python3 demos/it-risk-pilot/pilot.py score  --dir DIR                           read the labelled sheets, write results.json and results.md
+  python3 demos/it-risk-pilot/pilot.py bundle --dir DIR --to BUNDLE               a BLIND bundle for the reviewer (no ratings, no raised/not-raised split); our key stays in DIR/key.json
+  python3 demos/it-risk-pilot/pilot.py merge  --dir DIR --returned RETURNED       put the reviewer's two returned sheets back, then run score
 
 Three sheets (CSV, one label column each, filled in by the person):
   feed-raised.csv      what the feed raised as events under review      leo_label: relevant | not_for_us | not_real
@@ -102,7 +104,8 @@ def priorities_scores(rows):
 # ------------------------------------------------------------------------------------------------------------------------------------ sheets
 FEED_COLS = ["candidate_id", "source", "source_kind", "claim_type", "first_seen", "headlines", "title", "url", "summary", "leo_label", "leo_note"]
 UNRAISED_COLS = ["item_id", "source", "source_kind", "published_at", "title", "url", "leo_label", "leo_note"]
-PRIO_COLS = ["our_rank", "system_id", "system", "tier", "our_rating", "our_reason", "loss_event", "leo_rating", "leo_rank", "leo_note"]
+FACT_COLS = ["tier", "environment", "data_class", "internet_facing", "dependents", "end_of_support", "open_patches", "known_exploited_open", "max_epss_open", "untested_changes", "days_since_test", "recovery_result", "credentials_wide", "in_scenario", "loss_event"]
+PRIO_COLS = ["our_rank", "system_id", "system", "our_rating", "our_reason"] + FACT_COLS + ["leo_rating", "leo_rank", "leo_note"]
 
 
 def write_csv(path, cols, rows):
@@ -172,6 +175,57 @@ def report(res):
     return "\n".join(L) + "\n"
 
 
+# ------------------------------------------------------------------------------------------------------------------------------------ blind bundle and merge
+# What goes to the reviewer is BLIND: the raised stories and the not-raised sample are shuffled into one sheet with neutral ids, so they cannot tell which the feed raised; the systems come without our rating,
+# rank or reasons, in alphabetical order, so their ratings are their own. The key that maps ids back is ours (key.json) and is never put in the bundle. Showing our answer beside the space for theirs would anchor them.
+HEADLINE_COLS = ["id", "source", "source_kind", "date", "title", "url", "leo_label", "leo_note"]
+SYSTEM_COLS = ["id", "system"] + FACT_COLS + ["leo_rating", "leo_rank", "leo_note"]
+
+
+def bundle(dirpath, to, seed=1):
+    """Writes the blind bundle into `to` and our private key into dirpath/key.json. Returns what was written."""
+    raised = read_csv(os.path.join(dirpath, "feed-raised.csv")); unraised = read_csv(os.path.join(dirpath, "feed-not-raised.csv")); systems = read_csv(os.path.join(dirpath, "priorities.csv"))
+    items = [("raised", r["candidate_id"], {"source": r["source"], "source_kind": r["source_kind"], "date": r["first_seen"], "title": r["title"], "url": r["url"]}) for r in raised]
+    items += [("not_raised", r["item_id"], {"source": r["source"], "source_kind": r["source_kind"], "date": (r["published_at"] or "")[:10], "title": r["title"], "url": r["url"]}) for r in unraised]
+    random.Random(seed).shuffle(items)
+    key = {"headlines": {}, "systems": {}}; hrows = []
+    for i, (origin, ref, row) in enumerate(items, 1):
+        hid = "H%02d" % i; key["headlines"][hid] = {"origin": origin, "ref": ref}; hrows.append(dict(row, id=hid))
+    srows = []
+    for i, r in enumerate(sorted(systems, key=lambda x: x["system"].lower()), 1):
+        sid = "S%02d" % i; key["systems"][sid] = {"system": r["system"], "our_rank": int(r["our_rank"]), "our_rating": r["our_rating"]}; srows.append(dict({c: r.get(c, "") for c in FACT_COLS}, id=sid, system=r["system"]))
+    os.makedirs(to, exist_ok=True)
+    write_csv(os.path.join(to, "1-headlines.csv"), HEADLINE_COLS, hrows); write_csv(os.path.join(to, "2-systems.csv"), SYSTEM_COLS, srows)
+    with open(os.path.join(dirpath, "key.json"), "w") as f: json.dump(key, f, indent=1)
+    return {"headlines": len(hrows), "systems": len(srows)}
+
+
+def merge(dirpath, returned_dir):
+    """Puts the reviewer's returned sheets back into the three sheets `score` reads, using our key. Returns the problems found (an id the key does not know, an id missing from the return)."""
+    with open(os.path.join(dirpath, "key.json")) as f: key = json.load(f)
+    problems = []
+    hret = {r["id"]: r for r in read_csv(os.path.join(returned_dir, "1-headlines.csv"))}; sret = {r["id"]: r for r in read_csv(os.path.join(returned_dir, "2-systems.csv"))}
+    for rid in list(hret) + list(sret):
+        if rid not in key["headlines"] and rid not in key["systems"]: problems.append("the returned sheet has an id we did not send: %s" % rid)
+    for hid in key["headlines"]:
+        if hid not in hret: problems.append("headline %s is missing from the returned sheet" % hid)
+    for sid in key["systems"]:
+        if sid not in sret: problems.append("system %s is missing from the returned sheet" % sid)
+    raised = {r["candidate_id"]: r for r in read_csv(os.path.join(dirpath, "feed-raised.csv"))}; unraised = {r["item_id"]: r for r in read_csv(os.path.join(dirpath, "feed-not-raised.csv"))}
+    for hid, k in key["headlines"].items():
+        got = hret.get(hid)
+        if not got: continue
+        target = raised if k["origin"] == "raised" else unraised
+        if k["ref"] in target: target[k["ref"]]["leo_label"] = got.get("leo_label", ""); target[k["ref"]]["leo_note"] = got.get("leo_note", "")
+    prio = {r["system"]: r for r in read_csv(os.path.join(dirpath, "priorities.csv"))}
+    for sid, k in key["systems"].items():
+        got = sret.get(sid)
+        if got and k["system"] in prio: prio[k["system"]]["leo_rating"] = got.get("leo_rating", ""); prio[k["system"]]["leo_rank"] = got.get("leo_rank", ""); prio[k["system"]]["leo_note"] = got.get("leo_note", "")
+    write_csv(os.path.join(dirpath, "feed-raised.csv"), FEED_COLS, list(raised.values())); write_csv(os.path.join(dirpath, "feed-not-raised.csv"), UNRAISED_COLS, list(unraised.values()))
+    write_csv(os.path.join(dirpath, "priorities.csv"), PRIO_COLS, sorted(prio.values(), key=lambda r: int(r["our_rank"])))
+    return problems
+
+
 # ------------------------------------------------------------------------------------------------------------------------------------ export (needs the Server)
 def export(out, sample, seed):
     here = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, os.path.join(here, "..", "payment-workflow"))
@@ -191,8 +245,9 @@ def export(out, sample, seed):
     if exposure_facts.enabled():
         e = exposure_facts.gather(assess_facts.CASE)
         if e.get("assessed"): level = exposure_rules.rate(e["answers"])["level"]
-    res = priority_rules.prioritise(table, level); ids = {r["system"]: r["system_id"] for r in (dict(zip(cols, x)) for x in rows)}; loss = {r["system"]: r["loss_event"] for r in (dict(zip(cols, x)) for x in rows)}
-    prio = [{"our_rank": i + 1, "system_id": ids[r["system"]], "system": r["system"], "tier": (int(r["tier"]) if r["tier"] is not None else None), "our_rating": r["rating"], "our_reason": r["reason"], "loss_event": loss[r["system"]]} for i, r in enumerate(res["rows"])]
+    res = priority_rules.prioritise(table, level); ids = {r["system"]: r["system_id"] for r in (dict(zip(cols, x)) for x in rows)}
+    byname = {r["system"]: r for r in (dict(zip(cols, x)) for x in rows)}
+    prio = [dict({"our_rank": i + 1, "system_id": ids[r["system"]], "system": r["system"], "our_rating": r["rating"], "our_reason": r["reason"]}, **{c: byname[r["system"]].get(c) for c in FACT_COLS}) for i, r in enumerate(res["rows"])]
     os.makedirs(out, exist_ok=True)
     write_csv(os.path.join(out, "feed-raised.csv"), FEED_COLS, cands); write_csv(os.path.join(out, "feed-not-raised.csv"), UNRAISED_COLS, picked); write_csv(os.path.join(out, "priorities.csv"), PRIO_COLS, prio)
     man = {"created": datetime.date.today().isoformat(), "as_of": priority_rules.AS_OF, "seed": seed, "sample_size": len(picked), "raised_population": len(cands), "unraised_population": len(pool), "systems": len(prio), "exposure_level_applied": level}
@@ -205,8 +260,13 @@ def main(argv):
     ap = argparse.ArgumentParser(); sub = ap.add_subparsers(dest="cmd", required=True)
     e = sub.add_parser("export"); e.add_argument("--out", required=True); e.add_argument("--sample", type=int, default=40); e.add_argument("--seed", type=int, default=1)
     s = sub.add_parser("score"); s.add_argument("--dir", required=True)
+    b = sub.add_parser("bundle"); b.add_argument("--dir", required=True); b.add_argument("--to", required=True); b.add_argument("--seed", type=int, default=1)
+    m = sub.add_parser("merge"); m.add_argument("--dir", required=True); m.add_argument("--returned", required=True)
     a = ap.parse_args(argv)
     if a.cmd == "export": print(json.dumps(export(a.out, a.sample, a.seed), indent=1))
+    elif a.cmd == "bundle": print(json.dumps(bundle(a.dir, a.to, a.seed), indent=1))
+    elif a.cmd == "merge":
+        probs = merge(a.dir, a.returned); print("\n".join(probs) if probs else "merged: every id came back"); print("now: pilot.py score --dir %s" % a.dir)
     else: print(report(score(a.dir)))
 
 

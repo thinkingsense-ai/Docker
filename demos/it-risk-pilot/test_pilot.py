@@ -85,4 +85,42 @@ class Sheets(unittest.TestCase):
             self.assertEqual(r["priorities"]["critical_high"]["precision"]["value"], 1.0); self.assertEqual(r["priorities"]["order"]["he_ranked"], 3)
             md = open(os.path.join(d, "results.md")).read(); self.assertIn("Small samples", md); self.assertIn("no target false-positive rate", md); self.assertTrue(os.path.exists(os.path.join(d, "results.json")))
 
+class Blind(unittest.TestCase):
+    """What goes to the reviewer must not carry our answers, and what comes back must land on the right rows."""
+    def dirs(self):
+        d = tempfile.TemporaryDirectory(); self.addCleanup(d.cleanup); out = os.path.join(d.name, "out"); os.makedirs(out)
+        json.dump({"created": "2026-11-21", "as_of": "2026-11-20", "raised_population": 3, "unraised_population": 30, "seed": 1, "sample_size": 3}, open(os.path.join(out, "manifest.json"), "w"))
+        P.write_csv(os.path.join(out, "feed-raised.csv"), P.FEED_COLS, [{"candidate_id": 1000 + i, "source": "SecurityWeek", "source_kind": "reporting", "claim_type": "ai-attack-claimed", "first_seen": "2026-11-1%d" % i, "headlines": 2,
+                                                                       "title": "Raised story %d" % i, "url": "https://x.example/r%d" % i, "summary": "2 headlines from A, B."} for i in range(3)])
+        P.write_csv(os.path.join(out, "feed-not-raised.csv"), P.UNRAISED_COLS, [{"item_id": 50 + i, "source": "Dark Reading", "source_kind": "reporting", "published_at": "2026-11-1%d 08:00:00" % i, "title": "Quiet story %d" % i, "url": "https://x.example/n%d" % i} for i in range(3)])
+        P.write_csv(os.path.join(out, "priorities.csv"), P.PRIO_COLS, [dict({"our_rank": i + 1, "system_id": i + 1, "system": s, "our_rating": OURS[i], "our_reason": "SECRET REASON %d" % i, "tier": "1", "environment": "production", "loss_event": "x"}) for i, s in enumerate(SYS)])
+        return out, os.path.join(d.name, "bundle"), os.path.join(d.name, "returned")
+    def test_the_bundle_carries_none_of_our_answers_and_does_not_say_which_were_raised(self):
+        out, bundle, _ = self.dirs(); n = P.bundle(out, bundle, 1); self.assertEqual(n, {"headlines": 6, "systems": 11})
+        text = open(os.path.join(bundle, "1-headlines.csv")).read() + open(os.path.join(bundle, "2-systems.csv")).read()
+        for leak in ("SECRET REASON", "ai-attack-claimed", "headlines from", "Critical", "our_rating", "our_rank", "raised", "claim_type", "candidate_id", "item_id"): self.assertNotIn(leak, text, leak)
+        ids = [r["id"] for r in P.read_csv(os.path.join(bundle, "1-headlines.csv"))]; self.assertEqual(ids, ["H%02d" % i for i in range(1, 7)])
+        origins = [json.load(open(os.path.join(out, "key.json")))["headlines"][i]["origin"] for i in ids]; self.assertEqual(sorted(origins), ["not_raised"] * 3 + ["raised"] * 3); self.assertNotEqual(origins, sorted(origins))      # shuffled, not raised-then-sample
+        self.assertEqual([r["system"] for r in P.read_csv(os.path.join(bundle, "2-systems.csv"))], sorted(SYS, key=str.lower))       # alphabetical: the order carries no rank
+    def test_the_key_stays_out_of_the_bundle(self):
+        out, bundle, _ = self.dirs(); P.bundle(out, bundle, 1); self.assertTrue(os.path.exists(os.path.join(out, "key.json"))); self.assertFalse(os.path.exists(os.path.join(bundle, "key.json"))); self.assertEqual(sorted(os.listdir(bundle)), ["1-headlines.csv", "2-systems.csv"])
+    def test_a_returned_sheet_lands_on_the_right_rows_and_scores(self):
+        out, bundle, ret = self.dirs(); P.bundle(out, bundle, 1); os.makedirs(ret)
+        key = json.load(open(os.path.join(out, "key.json")))
+        h = P.read_csv(os.path.join(bundle, "1-headlines.csv"))
+        for r in h: r["leo_label"] = "relevant" if key["headlines"][r["id"]]["origin"] == "raised" else "not_real"          # he says: every raised story is relevant, every quiet one is not
+        P.write_csv(os.path.join(ret, "1-headlines.csv"), P.HEADLINE_COLS, h)
+        sy = P.read_csv(os.path.join(bundle, "2-systems.csv"))
+        for r in sy: r["leo_rating"] = key["systems"][r["id"]]["our_rating"]; r["leo_rank"] = str(key["systems"][r["id"]]["our_rank"]) if key["systems"][r["id"]]["our_rank"] <= 3 else ""      # he agrees with us (planted)
+        P.write_csv(os.path.join(ret, "2-systems.csv"), P.SYSTEM_COLS, sy)
+        self.assertEqual(P.merge(out, ret), [])
+        res = P.score(out)
+        self.assertEqual(res["errors"], []); self.assertEqual((res["feed"]["raised"]["relevant"], res["feed"]["raised"]["labelled"], res["feed"]["not_raised"]["relevant"], res["feed"]["not_raised"]["labelled"]), (3, 3, 0, 3))
+        self.assertEqual((res["priorities"]["critical_high"]["precision"]["value"], res["priorities"]["critical_high"]["recall"]["value"], res["priorities"]["order"]["he_ranked"]), (1.0, 1.0, 3))
+    def test_a_missing_or_foreign_id_is_reported_not_hidden(self):
+        out, bundle, ret = self.dirs(); P.bundle(out, bundle, 1); os.makedirs(ret)
+        h = P.read_csv(os.path.join(bundle, "1-headlines.csv"))[1:] + [{"id": "H99", "leo_label": "relevant"}]; P.write_csv(os.path.join(ret, "1-headlines.csv"), P.HEADLINE_COLS, h)
+        P.write_csv(os.path.join(ret, "2-systems.csv"), P.SYSTEM_COLS, P.read_csv(os.path.join(bundle, "2-systems.csv")))
+        probs = P.merge(out, ret); self.assertTrue(any("H01 is missing" in x for x in probs)); self.assertTrue(any("H99" in x for x in probs))
+
 if __name__ == "__main__": unittest.main()
