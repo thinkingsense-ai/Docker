@@ -641,6 +641,9 @@ class H(BaseHTTPRequestHandler):
         f = {k: v or None for k, v in f.items()}
         sys.stderr.write("AUDIT %s user=%s filters=%s\n" % ("export" if download else "view", s.username, json.dumps({k: v for k, v in f.items() if v}))); sys.stderr.flush()
         path = os.environ["AGENCY_AUDIT_FILE"].strip()
+        if not os.path.exists(path):          # not damaged, and not a verified empty chain either (a deleted file must not read as "all clear"): the file has not been created yet, or is gone
+            if download: return self.err(404, "no_record_yet", "There is no decision record file yet: no run has finished since it was created (or it was removed).")
+            return self.send(200, {"missing": True, "chainValid": None, "firstBadEntry": None, "head": None, "total": 0, "rows": [], "definitions": [], "controls": []})
         try:
             if download: return self.send_text(200, audit.export(path, **f), "application/x-ndjson; charset=utf-8", "decision-record.jsonl")
             return self.send(200, audit.view(path, **f))

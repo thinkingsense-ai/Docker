@@ -28,6 +28,8 @@ class TemporalEngine:
         from assess_workflow import RiskAssessment
         from major_workflow import MajorIncidentDecision
         self.W = PaymentException; self.IW = VulnerabilityException; self.RW = IncidentClusterRca; self.AW = RiskAssessment; self.MW = MajorIncidentDecision
+        from temporalio.common import WorkflowIDReusePolicy
+        self.REUSE = WorkflowIDReusePolicy.REJECT_DUPLICATE     # one run per id, ever: Temporal's default lets a FINISHED id start again, which would collide with the decision record and the register's unique run id
         self.loop = asyncio.new_event_loop(); threading.Thread(target=self.loop.run_forever, daemon=True).start()
         self.client = self._run(temporal_wait.connect())
 
@@ -56,11 +58,11 @@ class TemporalEngine:
         async def go():
             try:
                 meta = {"initiator": spec["initiator"], "queryId": spec["queryId"]}; n = int(spec["id"].split("-")[1])
-                if spec["id"].startswith("vuln-"): await self.client.start_workflow(self.IW.run, args=[n, meta], id=spec["id"], task_queue="payment-exceptions")
-                elif spec["id"].startswith("major-"): await self.client.start_workflow(self.MW.run, args=[n, meta], id=spec["id"], task_queue="payment-exceptions")
-                elif spec["id"].startswith("assess-"): await self.client.start_workflow(self.AW.run, args=[n, meta], id=spec["id"], task_queue="payment-exceptions")
-                elif spec["id"].startswith("rca-"): await self.client.start_workflow(self.RW.run, args=[n, meta], id=spec["id"], task_queue="payment-exceptions")
-                else: await self.client.start_workflow(self.W.run, args=[n, "treasury", meta], id=spec["id"], task_queue="payment-exceptions")
+                if spec["id"].startswith("vuln-"): await self.client.start_workflow(self.IW.run, args=[n, meta], id=spec["id"], task_queue="payment-exceptions", id_reuse_policy=self.REUSE)
+                elif spec["id"].startswith("major-"): await self.client.start_workflow(self.MW.run, args=[n, meta], id=spec["id"], task_queue="payment-exceptions", id_reuse_policy=self.REUSE)
+                elif spec["id"].startswith("assess-"): await self.client.start_workflow(self.AW.run, args=[n, meta], id=spec["id"], task_queue="payment-exceptions", id_reuse_policy=self.REUSE)
+                elif spec["id"].startswith("rca-"): await self.client.start_workflow(self.RW.run, args=[n, meta], id=spec["id"], task_queue="payment-exceptions", id_reuse_policy=self.REUSE)
+                else: await self.client.start_workflow(self.W.run, args=[n, "treasury", meta], id=spec["id"], task_queue="payment-exceptions", id_reuse_policy=self.REUSE)
                 created = True
             except WorkflowAlreadyStartedError: created = False
             return created, await self._state(spec["id"])

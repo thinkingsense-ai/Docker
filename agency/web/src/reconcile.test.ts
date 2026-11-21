@@ -32,6 +32,9 @@ describe('record against register', () => {
     const r = reconcile([row({})], reg([['assessment', '4', 'assess-3', 'd3', 'DC', 'bob'], ['assessment', '7', 'assess-9', 'x', 'HR', 'eve']]))
     expect(r.agree).toBe(1); expect(r.findings).toEqual([expect.objectContaining({ kind: 'no_record', runId: 'assess-9' })])
   })
+  it('is not fooled by the padding the Server puts on a literal in a UNION (found walking the demo: a real row was reported missing)', () => {
+    expect(reconcile([row({})], reg([['assessment    ', '4', 'assess-3', 'd3', 'DC', 'bob']]))).toEqual({ checked: 1, agree: 1, findings: [] })
+  })
   it('a dry run or a hold needs no row, and an unanswered question is not an agreement', () => {
     expect(reconcile([row({ writeBack: { mode: 'dry-run', call: 'x', note: null } })], reg([]))).toEqual({ checked: 0, agree: 0, findings: [] })
     expect(reconcile([row({})], undefined).findings[0].kind).toBe('no_row')

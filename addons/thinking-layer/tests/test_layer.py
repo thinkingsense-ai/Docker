@@ -193,6 +193,10 @@ class LayerTests(unittest.TestCase):
             s, raw, _ = self.c.call("GET", "/audit/records?since=yesterday"); self.assertEqual(s, 400)
             s, raw, r = self.c.call("GET", "/audit/export?definition=risk-assessment")
             self.assertEqual(s, 200); self.assertIn("attachment", r.getheader("Content-Disposition")); hdr = json.loads(raw.splitlines()[0]); self.assertIsNone(hdr["signature"]); self.assertEqual(hdr["entries"], 1); self.assertIn("estate row", raw)
+            os.rename(path, path + ".gone")                                                             # a file that does not exist is its own state, neither damaged nor an all-clear
+            s, raw, _ = self.c.call("GET", "/audit/records"); v = self.J(raw); self.assertEqual((s, v["missing"], v["chainValid"], v["total"]), (200, True, None, 0))
+            s, raw, _ = self.c.call("GET", "/audit/export"); self.assertEqual((s, self.J(raw)["error"]["code"]), (404, "no_record_yet"))
+            os.rename(path + ".gone", path)
             with open(path, "a") as f: f.write("not json\n")                                            # a damaged file is an error, not a silent empty answer
             s, raw, _ = self.c.call("GET", "/audit/records"); self.assertEqual((s, self.J(raw)["error"]["code"]), (502, "audit_unreadable"))
         finally: os.environ.pop("AGENCY_AUDIT_FILE", None); os.environ.pop("AGENCY_AUDIT_USERS", None); d.cleanup()
