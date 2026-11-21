@@ -30,7 +30,7 @@ describe('the questions and the rating', () => {
   it('says the rating may be higher when a question is unknown, and never calls an unknown 0', () => {
     const r = rate(gold.cases[11].answers)
     expect(r.complete).toBe(false); expect(r.scores[2].score).toBeNull(); expect(r.scores[2].label).toBe('Unknown')
-    expect(r.sentence).toBe('At least Moderate: set by question 1; question 3 could not be scored, so the rating may be higher.')
+    expect(r.sentence).toBe('At least Medium: set by question 1; question 3 could not be scored, so the rating may be higher.')
   })
   it('gives each score a reason, the rows behind it and its rule', () => {
     const r = rate(gold.cases[0].answers)

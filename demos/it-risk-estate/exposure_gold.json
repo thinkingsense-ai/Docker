@@ -813,7 +813,7 @@
    ]
   },
   {
-   "name": "a tier 3 system with everything in order is Moderate only because it runs the affected technology",
+   "name": "a tier 3 system with everything in order is Medium only because it runs the affected technology",
    "answers": {
     "systems": {
      "columns": [
@@ -913,7 +913,7 @@
     0,
     0
    ],
-   "level": "Moderate",
+   "level": "Medium",
    "setBy": [
     1
    ]
@@ -1199,7 +1199,7 @@
     0,
     0
    ],
-   "level": "Moderate",
+   "level": "Medium",
    "setBy": [
     1
    ]
@@ -1313,7 +1313,7 @@
     1,
     0
    ],
-   "level": "Moderate",
+   "level": "Medium",
    "setBy": [
     1,
     4
@@ -1832,7 +1832,7 @@
     0,
     0
    ],
-   "level": "Moderate",
+   "level": "Medium",
    "setBy": [
     1
    ],
@@ -1929,7 +1929,7 @@
     0,
     0
    ],
-   "level": "Moderate",
+   "level": "Medium",
    "setBy": [
     1
    ],
@@ -2043,7 +2043,7 @@
     0,
     null
    ],
-   "level": "Moderate",
+   "level": "Medium",
    "setBy": [
     1
    ],

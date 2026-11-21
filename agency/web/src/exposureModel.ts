@@ -2,6 +2,7 @@
 // Each of the five approved questions scores 0 to 3 from a stated rule over the rows it returns; the overall rating is the HIGHEST score, never an average,
 // shown with the question(s) that set it. A question that cannot be answered scores unknown, never 0. Pure, so it is unit-tested against a gold set.
 import { records, type Table } from './rcaBrief'
+import { RATINGS, type Rating as Level_ } from './rating'
 
 export type Key = 'systems' | 'access' | 'places' | 'exposures' | 'recovery'
 export type Score = 0 | 1 | 2 | 3
@@ -19,8 +20,8 @@ export const QUESTIONS: { key: Key; n: number; text: string; short: string; need
 ]
 
 export const SCORE_LABEL = ['No concern', 'Watch', 'Concern', 'Critical'] as const
-export const LEVELS = ['Low', 'Moderate', 'High', 'Critical'] as const
-export type Level = (typeof LEVELS)[number]
+export const LEVELS = RATINGS   // the one scale on every screen (rating.ts): Low, Medium, High, Critical
+export type Level = Level_
 
 /** The rule for each question, in words, as shown beside its score. Keep in step with the functions below. */
 export const RULES: Record<Key, string> = {

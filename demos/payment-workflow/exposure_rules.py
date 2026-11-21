@@ -4,7 +4,7 @@ Each of five answers scores 0 to 3; the overall rating is the HIGHEST score, nev
 Answers are tables {"columns": [...], "rows": [[...]]} as the five approved questions return them."""
 THRESHOLDS = {"patchDays": 15, "recoveryDays": 180, "retestSoonDays": 90, "widePeople": 100}      # demo constants; the head of technology risk owns them in a real deployment
 KEYS = ("systems", "access", "places", "exposures", "recovery")
-LEVELS = ("Low", "Moderate", "High", "Critical")
+LEVELS = ("Low", "Medium", "High", "Critical")      # the one rating scale (agency/web/src/rating.ts)
 SCORE_LABEL = ("No concern", "Watch", "Concern", "Critical")
 NEEDS = {"systems": ["system", "technology", "tier"], "access": ["resource", "data_class", "reachable_by", "people", "reach"], "places": ["system", "location", "kind", "visible_to", "people"],
          "exposures": ["system", "finding", "detail", "days"], "recovery": ["system", "tier", "dependents", "result", "days_since_test"]}
