@@ -13,13 +13,25 @@ CREATE TABLE estate.systems (
   system_id   INT PRIMARY KEY,
   name        VARCHAR(80) NOT NULL,
   technology  VARCHAR(60) NOT NULL,
-  tier        INT NOT NULL CHECK (tier IN (1,2,3)),
-  owner_team  VARCHAR(60) NOT NULL,
+  business_criticality INT NOT NULL CHECK (business_criticality IN (1,2,3)),
+  owned_by    VARCHAR(60) NOT NULL,
+  support_group VARCHAR(60) NOT NULL,
   environment VARCHAR(20) NOT NULL,
   data_class  VARCHAR(20) NOT NULL CHECK (data_class IN ('restricted','confidential','internal')),
-  hosting     VARCHAR(60) NOT NULL
+  hosting     VARCHAR(60) NOT NULL,
+  install_status VARCHAR(20) NOT NULL DEFAULT 'installed',
+  end_of_support DATE,
+  last_discovered DATE NOT NULL DEFAULT DATE '2026-11-20',
+  loss_event  VARCHAR(160) NOT NULL DEFAULT ''
 );
-COMMENT ON TABLE  estate.systems IS 'SIMULATED estate inventory of an invented firm: one row per system. tier 1 is the most critical. technology is what a similar incident would affect.';
+COMMENT ON TABLE  estate.systems IS 'SIMULATED estate inventory of an invented firm: one row per system, named toward the ServiceNow CMDB fields so a real connector changes the source and not the questions. technology is what a similar incident would affect.';
+COMMENT ON COLUMN estate.systems.business_criticality IS 'ServiceNow business_criticality (Datadog tag tier): 1 is the most critical, 3 the least.';
+COMMENT ON COLUMN estate.systems.owned_by IS 'ServiceNow owned_by (Datadog tag team): the team that owns the system.';
+COMMENT ON COLUMN estate.systems.support_group IS 'ServiceNow support_group: the group that supports the system day to day.';
+COMMENT ON COLUMN estate.systems.install_status IS 'ServiceNow install_status: installed, or retiring when the system is on its way out.';
+COMMENT ON COLUMN estate.systems.end_of_support IS 'ServiceNow end_of_support: the date the vendor stops supporting this version; empty when none is announced. Invented values.';
+COMMENT ON COLUMN estate.systems.last_discovered IS 'ServiceNow last_discovered: when discovery last saw the system, as of 2026-11-20.';
+COMMENT ON COLUMN estate.systems.loss_event IS 'What a loss event on this system would look like in plain words: money lost, denial of service to many customers, or a breach with legal risk. Invented text.';
 COMMENT ON COLUMN estate.systems.data_class IS 'restricted (card or customer-identifying data, regulated), confidential, or internal.';
 
 CREATE TABLE estate.scenario_technology (
@@ -60,8 +72,16 @@ CREATE TABLE estate.patches (
   released_on  DATE NOT NULL,
   due_on       DATE NOT NULL,
   applied_on   DATE,
-  days_overdue INT NOT NULL
+  days_overdue INT NOT NULL,
+  cve          VARCHAR(20),
+  cvss_score   NUMERIC(3,1),
+  known_exploited BOOLEAN NOT NULL DEFAULT FALSE,
+  epss         NUMERIC(4,3)
 );
+COMMENT ON COLUMN estate.patches.cve IS 'Datadog cve: the vulnerability identifier the patch closes. INVENTED identifiers (CVE-2026-9xxx), none refers to a real flaw.';
+COMMENT ON COLUMN estate.patches.cvss_score IS 'Datadog cvss.score: base severity 0 to 10. Invented values.';
+COMMENT ON COLUMN estate.patches.known_exploited IS 'Whether the flaw is on a known-exploited-vulnerabilities list (CISA KEV in the real world). Invented values.';
+COMMENT ON COLUMN estate.patches.epss IS 'Exploit prediction score, 0 to 1 (EPSS in the real world): the chance of exploitation in the next 30 days. Invented values.';
 COMMENT ON TABLE  estate.patches IS 'Security patches by system. applied_on is empty while a patch is not applied.';
 COMMENT ON COLUMN estate.patches.days_overdue IS 'Days past due_on as of 2026-11-20 for a patch not yet applied; 0 once applied or not yet due. Stored, not computed from today.';
 
@@ -134,18 +154,18 @@ CREATE TABLE estate.slack_messages (
 COMMENT ON TABLE  estate.slack_messages IS 'SIMULATED Slack messages, landed like the SharePoint items: one row per message with the Kafka position of its event. No real Slack was read. Credentials in the demo are invented placeholders.';
 COMMENT ON COLUMN estate.slack_messages.members IS 'How many people can read the channel. A public channel is readable by everyone in the workspace.';
 
-INSERT INTO estate.systems VALUES
- (1,  'Payment gateway (production)',         'Payment gateway software', 1, 'Payments Engineering', 'production', 'restricted',   'on-premise cluster'),
- (2,  'Payment gateway (disaster recovery)',  'Payment gateway software', 1, 'Payments Engineering', 'dr',         'restricted',   'secondary data centre'),
- (3,  'Domain controllers',                   'Windows Server',           1, 'Platform Operations',  'production', 'confidential', 'on-premise'),
- (4,  'Branch file servers',                  'Windows Server',           2, 'Platform Operations',  'production', 'confidential', 'on-premise'),
- (5,  'Back-office application servers',      'Windows Server',           2, 'Platform Operations',  'production', 'internal',     'on-premise'),
- (6,  'Branch voice and ATM link',            'Legacy TDM telecom',       2, 'Network Operations',   'production', 'internal',     'carrier-leased lines'),
- (7,  'Core banking database',                'Postgres',                 1, 'Data Platform',        'production', 'restricted',   'on-premise cluster'),
- (8,  'Customer web portal',                  'Web application',          1, 'Digital Channels',     'production', 'confidential', 'cloud'),
- (9,  'Analytics warehouse',                  'Postgres',                 3, 'Data Platform',        'production', 'confidential', 'cloud'),
- (10, 'HR system',                            'SaaS HR suite',            3, 'HR Technology',        'production', 'restricted',   'vendor-hosted'),
- (11, 'Backup vault',                         'Backup appliance',         1, 'Platform Operations',  'production', 'restricted',   'secondary data centre');
+INSERT INTO estate.systems (system_id, name, technology, business_criticality, owned_by, support_group, environment, data_class, hosting, install_status, end_of_support, last_discovered, loss_event) VALUES
+ (1, 'Payment gateway (production)', 'Payment gateway software', 1, 'Payments Engineering', 'Payments Engineering', 'production', 'restricted', 'on-premise cluster', 'installed', DATE '2027-06-30', DATE '2026-11-20', 'Failed payments or double postings: direct money lost and a card-scheme reporting duty.'),
+ (2, 'Payment gateway (disaster recovery)', 'Payment gateway software', 1, 'Payments Engineering', 'Payments Engineering', 'dr', 'restricted', 'secondary data centre', 'installed', DATE '2027-06-30', DATE '2026-11-20', 'A failed failover leaves card payments down: denial of service to many customers.'),
+ (3, 'Domain controllers', 'Windows Server', 1, 'Platform Operations', 'Platform Operations', 'production', 'confidential', 'on-premise', 'installed', DATE '2026-12-31', DATE '2026-11-20', 'Loss of sign-in for staff and operators: large-scale denial of service inside the firm.'),
+ (4, 'Branch file servers', 'Windows Server', 2, 'Platform Operations', 'Platform Operations', 'production', 'confidential', 'on-premise', 'installed', NULL, DATE '2026-11-20', 'Branch files unavailable: branch work stops; no customer data leaves.'),
+ (5, 'Back-office application servers', 'Windows Server', 2, 'Platform Operations', 'Platform Operations', 'production', 'internal', 'on-premise', 'installed', NULL, DATE '2026-11-20', 'Back-office processing delayed; limited customer impact.'),
+ (6, 'Branch voice and ATM link', 'Legacy TDM telecom', 2, 'Network Operations', 'Network Operations', 'production', 'internal', 'carrier-leased lines', 'installed', DATE '2026-12-31', DATE '2026-11-20', 'Branch voice and ATM links down: denial of service to branch customers.'),
+ (7, 'Core banking database', 'Postgres', 1, 'Data Platform', 'Data Platform', 'production', 'restricted', 'on-premise cluster', 'installed', NULL, DATE '2026-11-20', 'Ledger corrupted or exposed: money lost and a breach with legal risk.'),
+ (8, 'Customer web portal', 'Web application', 1, 'Digital Channels', 'Digital Channels', 'production', 'confidential', 'cloud', 'installed', NULL, DATE '2026-11-20', 'Portal down or defaced: denial of service to many customers.'),
+ (9, 'Analytics warehouse', 'Postgres', 3, 'Data Platform', 'Data Platform', 'production', 'confidential', 'cloud', 'installed', NULL, DATE '2026-11-20', 'Analytics unavailable; a breach would expose confidential data.'),
+ (10, 'HR system', 'SaaS HR suite', 3, 'HR Technology', 'HR Technology', 'production', 'restricted', 'vendor-hosted', 'installed', NULL, DATE '2026-11-20', 'Employee records exposed: a breach with legal risk.'),
+ (11, 'Backup vault', 'Backup appliance', 1, 'Platform Operations', 'Platform Operations', 'production', 'restricted', 'secondary data centre', 'installed', NULL, DATE '2026-11-20', 'Backups lost or encrypted: recovery impossible after another loss event.');
 
 -- The November 2026 cluster: a latent defect in payment-gateway software on on-premise hardware (the Chase slowdown), a Windows defect (the Microsoft 365 outage), and a legacy
 -- telecom instability (the FAA stop, as the FAA describes it). Those are the three technologies a similar incident would hit here.
@@ -179,6 +199,9 @@ INSERT INTO estate.patches (patch_id, system_id, advisory, severity, released_on
  (3, 4, 'MS-2026-11-B',    'high',     '2026-10-28', '2026-11-11', NULL,         0),
  (4, 5, 'MS-2026-10-C',    'high',     '2026-10-14', '2026-10-28', '2026-11-10', 0),
  (5, 6, 'TDM-FW-2026-02',  'high',     '2026-09-16', '2026-09-30', NULL,         0);
+UPDATE estate.patches p SET cve = v.cve, cvss_score = v.cvss, known_exploited = v.kev, epss = v.epss FROM (VALUES
+ (1, 'CVE-2026-9001', 8.1, FALSE, 0.042), (2, 'CVE-2026-9002', 9.8, TRUE, 0.912), (3, 'CVE-2026-9003', 7.5, FALSE, 0.118),
+ (4, 'CVE-2026-9004', 7.2, FALSE, 0.067), (5, 'CVE-2026-9005', 8.8, FALSE, 0.231)) AS v(id, cve, cvss, kev, epss) WHERE p.patch_id = v.id;
 UPDATE estate.patches SET days_overdue = GREATEST(0, DATE '2026-11-20' - due_on) WHERE applied_on IS NULL;
 
 INSERT INTO estate.changes (change_id, system_id, summary, change_type, deployed_on, days_ago, preprod_tested, peer_reviewed, change_window) VALUES
