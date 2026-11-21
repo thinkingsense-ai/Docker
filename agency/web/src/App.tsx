@@ -12,7 +12,7 @@ import Exposure, { type ExposureAnswers } from './Exposure'
 import Priorities from './Priorities'
 import { rate as rateExposure } from './exposureModel'
 import type { Table } from './rcaBrief'
-import { navFor, startWorkspace, viewFor, workspaceChoices, type View } from './shell'
+import { navFor, roleLabel, startWorkspace, viewFor, workspaceChoices, type View } from './shell'
 import { AnswerDetails, ProgressView } from './DetailsPane'
 import type { ProgressEvent as PEvent } from './progress'
 import { Queue } from './Workflows'
@@ -170,6 +170,7 @@ export default function App() {
               {workspaceChoices(packs).map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
             </select></label>
           <span>{user}</span>
+          <span className="muted small" title={roleLabel(grants).note}>{roleLabel(grants).text}</span>
           <button className="link" onClick={() => api.logout().finally(signedOut)}>Sign out</button>
         </div>
       </header>
@@ -196,7 +197,7 @@ export default function App() {
         {shown === 'approvals' && <Queue me={user} onSignedOut={() => expired()} onCount={setWaiting} />}
         {shown === 'watch' && <Watch table={watch} sources={sources} onLoaded={setWatch} onSources={setSources} onBrief={() => go('briefs')} onAsk={(q) => { go('ask'); setConvId(null); setTurns([]); void send(q) }} onSignedOut={() => expired()} />}
         {shown === 'priorities' && (pack === BRIEF_PACK
-          ? <Priorities answer={priorities} exposureLevel={exposure ? rateExposure(exposure).level : null} onAnswer={setPriorities} onSignedOut={() => expired()} />
+          ? <Priorities me={user ?? ''} canStart={grants.canStart} defs={defs} answer={priorities} exposureLevel={exposure ? rateExposure(exposure).level : null} onAnswer={setPriorities} onSignedOut={() => expired()} />
           : <p className="empty">Priorities is in the IT risk Workspace. Choose it from the Workspace menu at the top right.</p>)}
         {shown === 'exposure' && (pack === BRIEF_PACK
           ? <Exposure answers={exposure} onAnswers={setExposure} onSignedOut={() => expired()} />

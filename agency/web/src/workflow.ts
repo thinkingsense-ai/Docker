@@ -39,7 +39,9 @@ export const shortHash = (h: string | null) => (h ? h.slice(0, 12) + '…' : 'no
 
 export function dryRunLine(w: Run['writeBack']): string {
   if (!w) return ''
-  return w.mode === 'dry_run' ? `Dry run: this would call ${w.call}. Nothing was sent to any system.` : `Write-back (${w.mode}, ${w.status}): ${w.call}`
+  if (w.mode === 'dry_run') return `Dry run: this would call ${w.call}. Nothing was sent to any system.`
+  if (/register\.assessments/.test(w.call)) return `Added to the risk register: ${w.call.replace(/^INSERT /, '')}. The register is append-only: earlier ratings stay.`
+  return `Write-back (${w.mode}, ${w.status}): ${w.call}`
 }
 
 export function approvalLine(r: Run): string {
@@ -64,6 +66,19 @@ export const INCIDENT = 'incident-cluster-rca'
 export const ON_HOLD = 'On hold: '
 export const SENT_BACK = 'Sent back: '
 export const isIncident = (r: Pick<Run, 'definition'>) => r.definition === INCIDENT
+// The risk assessment (docs/agency-risk-register-plan.md): a first-line person proposes a rating for one system; the second line records it in the risk register or sends it back. Approving adds one row to the register
+// (never an edit); a send-back is a rejection whose reason starts with the same fixed phrase.
+export const ASSESSMENT = 'risk-assessment'
+export const isAssessment = (r: Pick<Run, 'definition'>) => r.definition === ASSESSMENT
+export const assessmentWords = (r: Run) => {
+  const record = r.recommendation?.action === 'record'
+  return { approve: record ? 'Record in the register' : 'Confirm hold', decline: 'Send back…', prefix: SENT_BACK, ask: 'What should change before it comes back?', submit: 'Send back' }
+}
+export function assessmentStage(r: Run, s: string): string {
+  if (s === 'written_back') return r.writeBack?.mode === 'dry_run' ? 'Recorded (dry run)' : r.recommendation?.action === 'hold' ? 'Hold recorded' : 'Recorded in the register'
+  if (s === 'rejected') return r.rejection?.reason.startsWith(SENT_BACK) ? 'Sent back' : 'Declined'
+  return stageLabel(s)
+}
 export const incidentWords = (r: Run) => {
   const publish = r.recommendation?.action === 'publish'
   return {

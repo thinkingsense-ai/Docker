@@ -35,6 +35,18 @@
       "inputs": [
         "claim_id"
       ]
+    },
+    {
+      "id": "risk-assessment",
+      "title": "Risk assessment",
+      "entity": "system",
+      "keyField": "system_id",
+      "approverGroup": "Risk (second line)",
+      "approvers": [],
+      "requiredApprovals": 1,
+      "inputs": [
+        "system_id"
+      ]
     }
   ]
 }

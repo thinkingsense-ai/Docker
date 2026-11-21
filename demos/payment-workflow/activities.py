@@ -1,7 +1,7 @@
 """Activities: everything that touches the outside world (thinking sense, the model, the ERP, the decision file). A workflow only decides and waits; these do the I/O and can be retried."""
 import json, os, urllib.request
 from temporalio import activity
-import decisions, facts as facts_mod, it_facts, it_rules, rca_facts, rca_rules, recommend as rec_mod, rules, sap_facts, sap_rules
+import assess_facts, assess_rules, decisions, register_write, facts as facts_mod, it_facts, it_rules, rca_facts, rca_rules, recommend as rec_mod, rules, sap_facts, sap_rules
 
 WRITE_BACK = os.environ.get("WRITE_BACK", "dry-run")             # dry-run (default): record the exact call, send nothing. live: send it to the ERP.
 ERP_URL = os.environ.get("ERP_URL", "http://erp-mock:8086").rstrip("/")
@@ -72,6 +72,22 @@ def build_rca_call(action: dict) -> dict:
 def rca_write_back(action: dict) -> dict:
     """Always a dry run: no distribution or briefing tool is connected, so the exact call is recorded and nothing is sent, whatever WRITE_BACK says."""
     return {"mode": "dry-run", "would_send": build_rca_call(action), "note": "not sent: no briefing or distribution tool is connected"}
+
+@activity.defn
+def assess_gather_facts(system_id: int) -> dict:
+    return assess_facts.gather(system_id)
+
+@activity.defn
+def assess_rules_gate(facts: dict, initiator: str) -> dict:
+    return assess_rules.gate(facts, initiator)
+
+@activity.defn
+def assess_recommend(facts: dict, gate: dict) -> dict:
+    return rec_mod.recommend(facts, gate, "assessment")
+
+@activity.defn
+def assess_write_back(action: dict, prop: dict) -> dict:
+    return register_write.write(action, prop)
 
 def build_call(action: dict) -> dict:
     """The exact API call for an approved action. This is what the approver's hash covers and what dry-run shows."""

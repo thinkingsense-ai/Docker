@@ -43,6 +43,10 @@ class Scale(unittest.TestCase):
 
 
 class Register(unittest.TestCase):
+    def test_the_reload_drops_every_table_it_creates(self):
+        drop = SQL.split("DROP TABLE IF EXISTS", 1)[1].split(";", 1)[0]
+        for t in re.findall(r"CREATE TABLE (register\.\w+)", SQL): self.assertIn(t, drop, t)
+
     def test_assessments_is_append_only_and_inherent_only(self):
         self.assertIn("BEFORE UPDATE OR DELETE ON register.assessments", SQL)
         self.assertIn("BEFORE TRUNCATE ON register.assessments", SQL)

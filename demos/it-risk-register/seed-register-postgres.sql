@@ -4,7 +4,7 @@
 -- proposal (ours, for Leo to accept or move). Later steps add assessments (8b) to this schema. Read-only for the app user. Reload by dropping the schema.
 
 CREATE SCHEMA IF NOT EXISTS register;
-DROP TABLE IF EXISTS register.assessments, register.taxonomy, register.rating_scale, register.definitions CASCADE;
+DROP TABLE IF EXISTS register.assessments, register.item_categories, register.claim_type_category, register.taxonomy, register.rating_scale, register.definitions CASCADE;
 
 CREATE TABLE register.taxonomy (
   node_id     VARCHAR(20) PRIMARY KEY,
@@ -140,7 +140,7 @@ CREATE TABLE register.assessments (
   impact_inputs   VARCHAR(300),
   inherent        BOOLEAN NOT NULL DEFAULT TRUE CHECK (inherent),
   control_evidence VARCHAR(400),
-  set_by          VARCHAR(60) NOT NULL,
+  set_by          VARCHAR(120) NOT NULL,
   role            VARCHAR(10) NOT NULL CHECK (role IN ('second')),
   assessed_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
   run_id          VARCHAR(80),
@@ -153,7 +153,10 @@ COMMENT ON COLUMN register.assessments.inherent IS 'Always true. The register ho
 COMMENT ON COLUMN register.assessments.role IS 'Who set the rating: the second line, by approving. The first line proposes through the workflow and the third line only reads.';
 COMMENT ON COLUMN register.assessments.source IS 'workflow = written by the worker after an approval (needs run_id and evidence_digest). seed-example = invented demo row, no run behind it.';
 
-CREATE FUNCTION register.refuse_change() RETURNS trigger LANGUAGE plpgsql AS $$
+CREATE UNIQUE INDEX assessments_one_per_run ON register.assessments (run_id) WHERE run_id IS NOT NULL;
+COMMENT ON INDEX register.assessments_one_per_run IS 'A workflow run writes at most one row, so a retried write does not duplicate it.';
+
+CREATE OR REPLACE FUNCTION register.refuse_change() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN RAISE EXCEPTION 'register.assessments is append-only: add a new row instead of changing or deleting one'; END $$;
 CREATE TRIGGER assessments_append_only BEFORE UPDATE OR DELETE ON register.assessments FOR EACH ROW EXECUTE FUNCTION register.refuse_change();
 CREATE TRIGGER assessments_no_truncate BEFORE TRUNCATE ON register.assessments FOR EACH STATEMENT EXECUTE FUNCTION register.refuse_change();

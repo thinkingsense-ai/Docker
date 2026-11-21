@@ -4,7 +4,7 @@ Text from invoices, vendors and agent notes is passed as data inside a marked bl
 Without OMNIGATE_LLM_API_KEY a plain rule-based fallback answers, labelled model "rules-only"."""
 import json, os, urllib.request
 from rules import RELEASE, HOLD, ESCALATE
-import rca_rules
+import rca_rules, assess_rules
 MODEL = os.environ.get("WORKFLOW_MODEL", "claude-sonnet-4-5")
 
 PROMPT = """You help a corporate finance team decide what to do with ONE item that is waiting for approval: a payment, or a supplier invoice whose payment is blocked. A human will approve or reject whatever you recommend; you never approve.
@@ -34,6 +34,9 @@ RULES: %s
 PROMPTS = {"payment": PROMPT, "vulnerability": VULN_PROMPT}
 
 def _fallback(facts, gate, domain="payment"):
+    if domain == "assessment":
+        if assess_rules.RECORD in gate["allowed_actions"]: return {"recommendation": assess_rules.RECORD, "confidence": 0.7, "reasons": [gate["proposal"]["reason"]], "checks_to_do": ["a second-line person weighs the control evidence before recording"], "model": "rules-only"}
+        return {"recommendation": assess_rules.HOLD, "confidence": 0.9, "reasons": list(gate["blocks"]), "checks_to_do": ["fix the missing facts, then run the assessment again"], "model": "rules-only"}
     if domain == "incident":
         if rca_rules.PUBLISH in gate["allowed_actions"]: return {"recommendation": rca_rules.PUBLISH, "confidence": 0.7, "reasons": ["every rule holds"] + list(gate["notes"])[:4], "checks_to_do": ["a named approver reads the graded links before publishing"], "model": "rules-only"}
         return {"recommendation": rca_rules.HOLD, "confidence": 0.9, "reasons": list(gate["blocks"]), "checks_to_do": ["find the primary source the rule asks for, then run the brief again"], "model": "rules-only"}
@@ -52,7 +55,7 @@ def _ask_model(facts, gate, domain="payment"):
     return json.loads(text[text.index("{"): text.rindex("}") + 1])
 
 def recommend(facts, gate, domain="payment"):
-    if domain == "incident": return _fallback(facts, gate, domain)             # the incident brief is recommended from the rules alone for now: a model drafting the brief is not built
+    if domain in ("incident", "assessment"): return _fallback(facts, gate, domain)             # the incident brief is recommended from the rules alone for now: a model drafting the brief is not built
     if not (os.environ.get("OMNIGATE_LLM_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")): return _fallback(facts, gate, domain)
     try: out = _ask_model(facts, gate) if domain == "payment" else _ask_model(facts, gate, domain)
     except Exception as e:                                  # an unreachable or confused model must not stall the workflow: escalate to a person

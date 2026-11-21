@@ -29,7 +29,8 @@ export const RULES = {
 
 export interface Priority {
   system: string; tier: number | null; rating: Rating; likelihood: Rating; impact: Rating; triggers: TriggerId[]; lifted: boolean
-  dependents: number; reason: string; lossEvent: string; businessImpact: null; notes: string[]
+  dependents: number; reason: string; lossEvent: string; businessImpact: null; notes: string[]; likelihoodInputs: string; impactInputs: string
+  systemId: string | null; registered: { rating: string; by: string; at: string } | null
 }
 export interface Priorities { rows: Priority[]; ok: boolean; missing: string[]; sentence: string }
 
@@ -81,7 +82,8 @@ function score(r: Rec, asOf: string, exposureLevel: Rating | null): Priority {
   if (lifted) rating = 'High'
   const reason = `${rating}: ${band(l)} likelihood (${lk.length ? lk.join(', ') : 'nothing found that raises it'}), ${band(i)} impact (${im.join(', ')}).` +
     (triggers.length ? ` ${lifted ? 'Lifted to High by' : 'Also hit'}: ${triggers.map((t) => TRIGGERS[t]).join(' ')}` : '')
-  return { system: r.system, tier, rating, likelihood: band(l), impact: band(i), triggers, lifted, dependents: deps, reason, lossEvent: r.loss_event ?? '', businessImpact: null, notes }
+  return { system: r.system, tier, rating, likelihood: band(l), impact: band(i), triggers, lifted, dependents: deps, reason, lossEvent: r.loss_event ?? '', businessImpact: null, notes, likelihoodInputs: lk.join('; ') || 'nothing found that raises it', impactInputs: im.join(', '),
+    systemId: r.system_id || null, registered: r.registered_rating ? { rating: r.registered_rating, by: r.registered_by ?? '', at: r.registered_at ?? '' } : null }
 }
 
 /** Ranks the systems in the answer. `exposureLevel` is the case's exposure rating when the Exposure screen has been run (it feeds one trigger), else null. */

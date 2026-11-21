@@ -37,3 +37,14 @@ describe('workspace menu', () => {
     expect(startWorkspace([], 'it-risk')).toBeNull()
   })
 })
+
+import { roleLabel } from './shell'
+describe('roles', () => {
+  it('reads the line from the grants and says it is inferred', () => {
+    expect(roleLabel({ canStart: true, canApprove: false }).text).toBe('First line: you propose')
+    expect(roleLabel({ canStart: false, canApprove: true }).text).toBe('Second line: you approve')
+    expect(roleLabel({ canStart: true, canApprove: true }).text).toBe('First and second line')
+    expect(roleLabel({ canStart: false, canApprove: false }).text).toBe('Read only')
+    expect(roleLabel({ canStart: false, canApprove: false }).note).toMatch(/Inferred from your grants/)
+  })
+})
