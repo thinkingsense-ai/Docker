@@ -226,3 +226,9 @@ nav ul.sections { gap: 2px; margin-bottom: .5rem }
 .qcard { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 6px } .qcard h3 { margin: 0; font-size: 1rem } .qcard p { margin: 0 }
 .score { display: inline-block; font-size: .78rem; font-weight: 700; border-radius: 999px; padding: 1px 10px; border: 1px solid currentColor; white-space: nowrap }
 .score.s0 { color: var(--ok) } .score.s1 { color: var(--accent) } .score.s2 { color: var(--warn); background: var(--warn-bg) } .score.s3 { color: var(--bad); border-width: 2px } .score.su { color: var(--muted); border-style: dashed }
+
+/* Sources and the feed health line */
+.sources { display: grid; gap: 10px } .sources p { margin: 0 }
+.srcline { border-radius: 8px; padding: .35rem .7rem; font-size: .88rem } .srcline.ok { background: var(--tint); color: var(--ink) } .srcline.warn { background: var(--warn-bg); color: var(--warn) }
+.tablewrap { overflow-x: auto } .h-ok { color: var(--ok) } .h-late, .h-never, .h-blocked { color: var(--warn) } .h-failing { color: var(--bad, var(--warn)) }
+td.h-ok, td.h-late, td.h-never, td.h-blocked, td.h-failing { white-space: normal }

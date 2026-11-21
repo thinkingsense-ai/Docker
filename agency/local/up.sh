@@ -12,6 +12,8 @@ F=(-f docker-compose.yml -f demos/all-packs/docker-compose.packs.yml -f addons/t
    -f addons/document-adapter/docker-compose.document.yml -f addons/image-adapter/docker-compose.image.yml -f agency/local/docker-compose.agency-local.yml
    -f demos/it-risk-rca/docker-compose.rca.yml -f demos/it-risk-estate/docker-compose.estate.yml)
 # The IT-risk root-cause case (demos/it-risk-rca) and the simulated exposure estate (demos/it-risk-estate): their questions join the all-packs ones in one file for the question seeder.
+# The live feed (addons/feed-adapter) reads public news feeds from the internet, so it is OFF unless AGENCY_FEED=on: it fills Watch with candidates and Sources with health.
+[ "${AGENCY_FEED:-off}" = "on" ] && F+=(-f addons/feed-adapter/docker-compose.feed.yml)
 # The optional estate event replay (demos/it-risk-estate/docker-compose.estate-replay.yml) is not started here: it changes the third exposure answer on purpose.
 mkdir -p agency/local/.runtime
 python3 - <<'PY'

@@ -13,23 +13,25 @@ export const claimLabel = (t: string) => CLAIM_TYPES[t]?.label ?? t
 
 export interface Candidate {
   id: string; title: string; claimType: string; status: 'traced' | 'not_yet_traced'; firstSeen: string; summary: string
-  verdict: string; openIncidents: number; incidents: number; sources: number
+  verdict: string; openIncidents: number; incidents: number; sources: number; leadSource: string; leadUrl: string
 }
 
+/** Only an http or https address is ever made a link: a feed is outside data. */
+export const safeUrl = (u: string | undefined) => (/^https?:\/\/[^\s]+$/i.test((u ?? '').trim()) ? (u as string).trim() : '')
 const n = (s: string | undefined) => { const v = Number(s); return Number.isFinite(v) ? v : 0 }
 
 /** Newest first. An unknown status is treated as not yet traced, so nothing looks tested that is not. */
 export function composeWatch(t: Table | undefined): Candidate[] {
   return records(t).map((r) => ({
     id: r.candidate_id, title: r.title, claimType: r.claim_type, status: r.status === 'traced' ? 'traced' as const : 'not_yet_traced' as const,
-    firstSeen: r.first_seen, summary: r.summary, verdict: r.verdict, openIncidents: n(r.open_incidents), incidents: n(r.incidents), sources: n(r.sources),
+    firstSeen: r.first_seen, summary: r.summary, verdict: r.verdict, openIncidents: n(r.open_incidents), incidents: n(r.incidents), sources: n(r.sources), leadSource: r.lead_source ?? '', leadUrl: safeUrl(r.lead_url),
   })).sort((a, b) => b.firstSeen.localeCompare(a.firstSeen))
 }
 
-/** What can be done with a candidate. The November case has the full brief; the July case is read layer by layer through an approved question; an untraced one cannot be traced until the live feed lands. */
+/** What can be done with a candidate. The November case has the full brief; the July case is read layer by layer through an approved question; an untraced one, which comes from the live feed, is a lead only: the trace step is not built yet. */
 export type Action = { kind: 'brief' } | { kind: 'ask'; question: string; label: string } | { kind: 'wait'; why: string }
 export function actionFor(c: Candidate): Action {
-  if (c.status !== 'traced') return { kind: 'wait', why: 'Not yet traced. Tracing a candidate arrives with the live feed (build step 6).' }
+  if (c.status !== 'traced') return { kind: 'wait', why: 'A lead from the feed, not yet traced. The trace step (finding the primary source and grading each link) is not built yet.' }
   if (c.claimType === 'ai-attack-claimed') return { kind: 'brief' }
   return { kind: 'ask', question: 'How does the July 2026 breakout read, layer by layer?', label: 'Read it layer by layer' }
 }

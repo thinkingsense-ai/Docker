@@ -1,0 +1,19 @@
+# Adds the feed adapter to a stack that carries the IT-risk case data (demos/it-risk-rca). OFF unless this file is added: it reads public news feeds from the internet.
+#   docker compose --project-directory . -f <pack compose> -f demos/it-risk-rca/docker-compose.rca.yml -f addons/feed-adapter/docker-compose.feed.yml up --build
+# It connects to Postgres as the feed_writer role (grant-rca.sql); FEED_DB_PASSWORD must match the one that role was created with (the local default is in that file).
+services:
+  feed-adapter:
+    build: addons/feed-adapter
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 128m
+    restart: unless-stopped
+    depends_on: [postgres]
+    environment:
+      PGHOST: postgres
+      PGUSER: feed_writer
+      PGPASSWORD: ${FEED_DB_PASSWORD:-feed-writer-local}
+      PGDATABASE: ${POSTGRES_DB:-postgres}
+      FEED_INTERVAL_MINUTES: ${FEED_INTERVAL_MINUTES:-30}

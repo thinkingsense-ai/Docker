@@ -51,7 +51,12 @@
  },
  {
   "question": "Which incident candidates are we watching, and has each been traced?",
-  "referenceSql": "SELECT c.candidate_id, c.title, c.claim_type, c.status, c.first_seen, c.summary, cl.verdict, cl.open_incidents, (SELECT COUNT(*) FROM pg.rca.events e WHERE e.case_id = c.case_id) AS incidents, (SELECT COUNT(*) FROM pg.rca.candidate_items ci WHERE ci.candidate_id = c.candidate_id) AS sources FROM pg.rca.candidates c LEFT JOIN pg.rca.claims cl ON cl.claim_id = c.claim_id ORDER BY c.first_seen DESC",
+  "referenceSql": "SELECT c.candidate_id, c.title, c.claim_type, c.status, c.first_seen, c.summary, cl.verdict, cl.open_incidents, (SELECT COUNT(*) FROM pg.rca.events e WHERE e.case_id = c.case_id) AS incidents, (SELECT COUNT(*) FROM pg.rca.candidate_items ci WHERE ci.candidate_id = c.candidate_id) + (SELECT COUNT(*) FROM pg.rca.candidate_feed_items cf WHERE cf.candidate_id = c.candidate_id) AS sources, fs.name AS lead_source, fi.url AS lead_url FROM pg.rca.candidates c LEFT JOIN pg.rca.claims cl ON cl.claim_id = c.claim_id LEFT JOIN pg.rca.feed_items fi ON fi.item_id = c.lead_item_id LEFT JOIN pg.rca.feed_sources fs ON fs.source_id = fi.source_id ORDER BY c.first_seen DESC",
   "category": "it-risk"
+ },
+ {
+  "question": "Which feeds are we reading, and when did each last answer?",
+  "category": "it-risk",
+  "referenceSql": "SELECT s.name AS source, s.kind, s.last_status, s.last_success_at, s.items_last_run, (SELECT COUNT(*) FROM pg.rca.feed_items i WHERE i.source_id = s.source_id) AS items_total, (SELECT COUNT(*) FROM pg.rca.feed_items i WHERE i.source_id = s.source_id AND i.matched) AS matched_total, s.last_error FROM pg.rca.feed_sources s WHERE s.enabled ORDER BY s.kind, s.name"
  }
 ]
