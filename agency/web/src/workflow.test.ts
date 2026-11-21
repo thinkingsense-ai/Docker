@@ -60,7 +60,7 @@ describe('ruleLabel', () => {
   })
 })
 
-import { assessmentStage, assessmentWords, isAssessment } from './workflow'
+import { assessmentStage, assessmentWords, isAssessment, isMajor, majorStage, majorWords } from './workflow'
 describe('risk assessment wording', () => {
   const run = (o: object) => ({ definition: 'risk-assessment', recommendation: { action: 'record', reason: '', source: 'workflow' }, rejection: null, writeBack: null, ...o }) as never
   it('words approve and send back for the second line', () => {
@@ -76,5 +76,17 @@ describe('risk assessment wording', () => {
   })
   it('describes a register write as an addition, not a dry run', () => {
     expect(dryRunLine({ mode: 'live', status: 'sent', call: 'INSERT register.assessments #4', at: '' })).toBe('Added to the risk register: register.assessments #4. The register is append-only: earlier ratings stay.')
+  })
+})
+
+describe('major-incident wording', () => {
+  const run = (o: object) => ({ definition: 'major-incident', recommendation: null, rejection: null, writeBack: null, ...o }) as never
+  it('words the decision as the approver\'s, with no recommendation behind it', () => {
+    expect(isMajor(run({}))).toBe(true); expect(majorWords()).toMatchObject({ approve: 'Record as major', decline: 'Not major…', prefix: 'Not major: ' })
+  })
+  it('says the clocks started only when it was recorded, and that a refusal starts none', () => {
+    expect(majorStage(run({}), 'written_back')).toBe('Recorded as major: clocks started')
+    expect(majorStage(run({ rejection: { user: 'bob', reason: 'Not major: 15 minutes, no customer impact', at: '' } }), 'rejected')).toBe('Not recorded as major')
+    expect(incidentRejection(run({ rejection: { user: 'bob', reason: 'Not major: small', at: '' } }))).toBe('Not recorded as major, by bob: small. No clock starts.')
   })
 })

@@ -40,7 +40,7 @@ export const shortHash = (h: string | null) => (h ? h.slice(0, 12) + '…' : 'no
 export function dryRunLine(w: Run['writeBack']): string {
   if (!w) return ''
   if (w.mode === 'dry_run') return `Dry run: this would call ${w.call}. Nothing was sent to any system.`
-  if (/register\.assessments/.test(w.call)) return `Added to the risk register: ${w.call.replace(/^INSERT /, '')}. The register is append-only: earlier ratings stay.`
+  if (/register\./.test(w.call)) return `Added to the risk register: ${w.call.replace(/^INSERT /, '')}. The register is append-only: earlier ratings stay.`
   return `Write-back (${w.mode}, ${w.status}): ${w.call}`
 }
 
@@ -69,6 +69,17 @@ export const isIncident = (r: Pick<Run, 'definition'>) => r.definition === INCID
 // The risk assessment (docs/agency-risk-register-plan.md): a first-line person proposes a rating for one system; the second line records it in the risk register or sends it back. Approving adds one row to the register
 // (never an edit); a send-back is a rejection whose reason starts with the same fixed phrase.
 export const ASSESSMENT = 'risk-assessment'
+// The major-incident decision (docs/agency-risk-register-plan.md, section 5): a second-line person records that an incident is MAJOR, which starts the regulators' notification clocks. No rule decides it.
+// Approving IS the decision; a rejection records nothing and no clock starts. Nothing is sent to any regulator.
+export const MAJOR = 'major-incident'
+export const NOT_MAJOR = 'Not major: '
+export const isMajor = (r: Pick<Run, 'definition'>) => r.definition === MAJOR
+export const majorWords = () => ({ approve: 'Record as major', decline: 'Not major…', prefix: NOT_MAJOR, ask: 'Why is it not major, or what is missing?', submit: 'Not major' })
+export function majorStage(r: Run, s: string): string {
+  if (s === 'written_back') return 'Recorded as major: clocks started'
+  if (s === 'rejected') return r.rejection?.reason.startsWith(NOT_MAJOR) ? 'Not recorded as major' : 'Declined'
+  return stageLabel(s)
+}
 export const isAssessment = (r: Pick<Run, 'definition'>) => r.definition === ASSESSMENT
 export const assessmentWords = (r: Run) => {
   const record = r.recommendation?.action === 'record'
@@ -95,6 +106,7 @@ export function incidentRejection(r: Run): string {
   const x = r.rejection; if (!x) return ''
   if (x.reason.startsWith(ON_HOLD)) return `Put on hold by ${x.user}: ${x.reason.slice(ON_HOLD.length)}`
   if (x.reason.startsWith(SENT_BACK)) return `Sent back by ${x.user}: ${x.reason.slice(SENT_BACK.length)}`
+  if (x.reason.startsWith(NOT_MAJOR)) return `Not recorded as major, by ${x.user}: ${x.reason.slice(NOT_MAJOR.length)}. No clock starts.`
   return `Declined by ${x.user}: ${x.reason}`
 }
 

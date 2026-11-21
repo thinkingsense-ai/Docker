@@ -47,6 +47,18 @@
       "inputs": [
         "system_id"
       ]
+    },
+    {
+      "id": "major-incident",
+      "title": "Major-incident decision",
+      "entity": "incident",
+      "keyField": "incident_id",
+      "approverGroup": "Risk (second line)",
+      "approvers": [],
+      "requiredApprovals": 1,
+      "inputs": [
+        "incident_id"
+      ]
     }
   ]
 }

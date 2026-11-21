@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, ApiError } from './api'
-import { approvalLine, assessmentStage, assessmentWords, dryRunLine, incidentRejection, incidentStage, incidentWords, isAssessment, isIncident, reasonText, ruleLabel, shortHash, stageLabel, TERMINAL, type Decisions, type Run } from './workflow'
+import { approvalLine, assessmentStage, assessmentWords, dryRunLine, incidentRejection, incidentStage, incidentWords, isAssessment, isIncident, isMajor, majorStage, majorWords, reasonText, ruleLabel, shortHash, stageLabel, TERMINAL, type Decisions, type Run } from './workflow'
 
 interface Props { initial: Run; me: string; onSignedOut: () => void; onChange?: (run: Run) => void }
 
@@ -48,8 +48,8 @@ export function RunCard({ initial, me, onSignedOut, onChange }: Props) {
   const canReject = waiting && (run.you.canApprove || run.initiator === me)
   const withdraw = !run.you.canApprove && run.initiator === me      // the Server lets the person who started a run withdraw it, though not approve it
   const simulated = run.recommendation?.source === 'stub'
-  const asm = isAssessment(run); const inc = isIncident(run) || asm; const words = asm ? assessmentWords(run) : incidentWords(run)
-  const stageText = (st: string) => (asm ? assessmentStage(run, st) : inc ? incidentStage(run, st) : stageLabel(st))
+  const asm = isAssessment(run); const mj = isMajor(run); const inc = isIncident(run) || asm || mj; const words = mj ? majorWords() : asm ? assessmentWords(run) : incidentWords(run)
+  const stageText = (st: string) => (mj ? majorStage(run, st) : asm ? assessmentStage(run, st) : inc ? incidentStage(run, st) : stageLabel(st))
   const order = run.stageOrder?.length ? run.stageOrder : ['facts', 'rules', 'recommendation', 'awaiting_approval', 'approved', 'written_back']
   const evidence = Object.entries(run.evidence ?? {}).filter(([k]) => k !== 'definition' && k !== 'key')
 

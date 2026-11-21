@@ -4,7 +4,7 @@
 -- proposal (ours, for Leo to accept or move). Later steps add assessments (8b) to this schema. Read-only for the app user. Reload by dropping the schema.
 
 CREATE SCHEMA IF NOT EXISTS register;
-DROP TABLE IF EXISTS register.assessments, register.item_categories, register.claim_type_category, register.taxonomy, register.rating_scale, register.definitions CASCADE;
+DROP TABLE IF EXISTS register.major_incident_decisions, register.firm_incidents, register.firm_profile, register.notification_rules, register.assessments, register.item_categories, register.claim_type_category, register.taxonomy, register.rating_scale, register.definitions CASCADE;
 
 CREATE TABLE register.taxonomy (
   node_id     VARCHAR(20) PRIMARY KEY,
@@ -166,3 +166,70 @@ INSERT INTO register.assessments (item_type, item_ref, node_id, rating, likeliho
  ('case','nov-2026-cluster','CR.TMF.CHG','High','Medium','High','Four of six causes confirmed as defects or routine change; the driver is inferred.','Six large services affected in six days.','Change and test capacity not yet tested against the firm''s own change calendar.','raj.second','second','2026-11-20 10:00+00','seed-example'),
  ('case','nov-2026-cluster','CR.TMF.CHG','Critical','High','Critical','The Exposure rating read Critical (patch overdue on tier-1 domain controllers, 212 days since a gateway recovery test).','Tier-1 payment gateway and domain controllers.','Recovery test 212 days old on the gateway; one change untested.','raj.second','second','2026-11-21 09:30+00','seed-example'),
  ('system','Domain controllers','CR.AVM.PATCH','High','High','Medium','Known-exploited flaw patched 16 days late.','Tier 1, production, many dependants.','Patch overdue by 16 days; one untested change.','mei.second','second','2026-11-21 11:00+00','seed-example');
+
+-- ------------------------------------------------------------------------------------------------------------------------------------------------ step 8e: notification clocks
+-- What a regulator asks for after a MAJOR incident, and when. Our reading of public summaries, checked in SECONDARY sources on 2026-11-21 and NOT against the regulations themselves: read the primary text
+-- before a customer sees it. The clocks are shown only after a person has recorded the decision that an incident is major; nothing is inferred and nothing is sent. "Material" (bad press) is NOT decided here.
+CREATE TABLE register.notification_rules (
+  rule_id    VARCHAR(30) PRIMARY KEY,
+  regulator  VARCHAR(10) NOT NULL,
+  jurisdiction VARCHAR(30) NOT NULL,
+  seq        INT NOT NULL,
+  stage      VARCHAR(20) NOT NULL CHECK (stage IN ('initial','intermediate','final','notify','root_cause')),
+  title      VARCHAR(80) NOT NULL,
+  hours      INT NOT NULL,
+  starts_from VARCHAR(20) NOT NULL CHECK (starts_from IN ('classified','awareness','previous_report')),
+  also_within_hours_of_awareness INT,
+  report_kind VARCHAR(80) NOT NULL,
+  source     VARCHAR(200) NOT NULL,
+  checked    VARCHAR(60) NOT NULL,
+  note       VARCHAR(300),
+  UNIQUE (regulator, seq)
+);
+COMMENT ON TABLE register.notification_rules IS 'The notification stages for a major incident, per regulator. hours counts from starts_from: classified (when a person recorded that the incident is major), awareness (when the firm became aware) or previous_report (when the stage before it was SENT; nothing is sent here, so the latest possible time assumes it went at its own deadline). also_within_hours_of_awareness is a second limit, whichever comes first. Our reading, not checked against the regulations.';
+INSERT INTO register.notification_rules VALUES
+ ('dora-initial',      'DORA', 'EU', 1, 'initial',      'Initial notification',  4,   'classified',      24,   'Initial notification of a major ICT-related incident', 'DORA incident reporting, secondary sources read 2026-11-21', 'secondary sources, 2026-11-21', 'Within 4 hours of classifying the incident as major and no later than 24 hours after becoming aware of it, whichever comes first.'),
+ ('dora-intermediate', 'DORA', 'EU', 2, 'intermediate', 'Intermediate report',   72,  'previous_report', NULL, 'Intermediate report with the status and updated assessment', 'DORA incident reporting, secondary sources read 2026-11-21', 'secondary sources, 2026-11-21', 'Within 72 hours of the initial notification.'),
+ ('dora-final',        'DORA', 'EU', 3, 'final',        'Final report',          720, 'previous_report', NULL, 'Final report with the root cause and the remediation', 'DORA incident reporting, secondary sources read 2026-11-21', 'secondary sources, 2026-11-21', 'Within one month; here 30 days (720 hours) after the intermediate report. The exact start of the month is not checked.'),
+ ('mas-notify',        'MAS',  'Singapore', 1, 'notify', 'Notify MAS',           1,   'classified',      NULL, 'Notification of a reportable incident', 'MAS notices that replaced Notice 644 (10 May 2024), secondary sources read 2026-11-21', 'secondary sources, 2026-11-21', 'Within 1 hour. Which notice applies depends on the entity type, and when the hour starts is not confirmed: here it starts when the incident is recorded as major.'),
+ ('mas-root-cause',    'MAS',  'Singapore', 2, 'root_cause', 'Root-cause report',  336, 'awareness',       NULL, 'Root cause and impact analysis report', 'MAS notices that replaced Notice 644 (10 May 2024), secondary sources read 2026-11-21', 'secondary sources, 2026-11-21', 'Within 14 days. The start event is not confirmed: here it is when the firm became aware.');
+
+CREATE TABLE register.firm_profile (
+  regulator VARCHAR(10) PRIMARY KEY,
+  declared  BOOLEAN NOT NULL,
+  note      VARCHAR(200) NOT NULL
+);
+COMMENT ON TABLE register.firm_profile IS 'Which regulators this firm says apply to it. The product never works out applicability: a person declares it. INVENTED for the simulated firm (an EU entity and a Singapore entity).';
+INSERT INTO register.firm_profile VALUES ('DORA', TRUE, 'The simulated firm has an EU-regulated entity. Invented.'), ('MAS', TRUE, 'The simulated firm has a Singapore-regulated entity. Invented.');
+
+CREATE TABLE register.firm_incidents (
+  incident_id INT PRIMARY KEY,
+  title       VARCHAR(120) NOT NULL,
+  system_id   INT,
+  awareness_at TIMESTAMPTZ NOT NULL,
+  summary     VARCHAR(300) NOT NULL
+);
+COMMENT ON TABLE register.firm_incidents IS 'INVENTED incidents of the simulated firm (not the real November 2026 outages of real companies). awareness_at is when the firm became aware, the start of the 24-hour and 14-day limits.';
+INSERT INTO register.firm_incidents VALUES
+ (1, 'Payment gateway slowdown', 1, TIMESTAMPTZ '2026-11-20 08:15:00+00', 'Card payments failed or ran slowly for about 40 minutes. Invented.'),
+ (2, 'Domain controller outage', 3, TIMESTAMPTZ '2026-11-19 14:05:00+00', 'Staff sign-in was down for about 15 minutes. No customer impact. Invented.'),
+ (3, 'Gateway credential posted in a public channel', 1, TIMESTAMPTZ '2026-11-20 14:05:00+00', 'A credential for the production gateway sat in a public Slack channel. No evidence it was used. Invented.');
+
+CREATE TABLE register.major_incident_decisions (
+  decision_id     BIGSERIAL PRIMARY KEY,
+  incident_id     INT NOT NULL REFERENCES register.firm_incidents(incident_id),
+  decision        VARCHAR(10) NOT NULL DEFAULT 'major' CHECK (decision = 'major'),
+  classified_at   TIMESTAMPTZ NOT NULL,
+  regimes         VARCHAR(60) NOT NULL,
+  set_by          VARCHAR(120) NOT NULL,
+  role            VARCHAR(10) NOT NULL CHECK (role IN ('second')),
+  run_id          VARCHAR(80),
+  evidence_digest VARCHAR(80),
+  source          VARCHAR(12) NOT NULL DEFAULT 'workflow' CHECK (source IN ('workflow','seed-example')),
+  CHECK (source = 'seed-example' OR (run_id IS NOT NULL AND evidence_digest IS NOT NULL))
+);
+CREATE UNIQUE INDEX major_decision_one_per_incident ON register.major_incident_decisions (incident_id);
+CREATE UNIQUE INDEX major_decision_one_per_run ON register.major_incident_decisions (run_id) WHERE run_id IS NOT NULL;
+COMMENT ON TABLE register.major_incident_decisions IS 'The recorded human decision that an incident is MAJOR, which is what starts the notification clocks. Appended through an approved workflow, never edited or deleted. regimes are the declared regulators at that moment. Only "major" is recorded: a person who decides it is not major records nothing, and no clock starts.';
+CREATE TRIGGER major_decisions_append_only BEFORE UPDATE OR DELETE ON register.major_incident_decisions FOR EACH ROW EXECUTE FUNCTION register.refuse_change();
+CREATE TRIGGER major_decisions_no_truncate BEFORE TRUNCATE ON register.major_incident_decisions FOR EACH STATEMENT EXECUTE FUNCTION register.refuse_change();

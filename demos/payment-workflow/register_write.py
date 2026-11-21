@@ -29,3 +29,31 @@ def write(action, prop):
     got = r.stdout.strip().splitlines()[0] if r.stdout.strip() else ""
     return {"mode": "live", "sent": {"method": "INSERT", "path": "register.assessments #%s" % got if got else "register.assessments (already written by this run)"}, "assessment_id": got or None}
 
+
+MAJOR_INSERT = """INSERT INTO register.major_incident_decisions (incident_id, decision, classified_at, regimes, set_by, role, run_id, evidence_digest, source)
+SELECT x.incident_id, 'major', x.classified_at::timestamptz, x.regimes, x.set_by, x.role, x.run_id, x.evidence_digest, 'workflow'
+FROM json_to_record(:'payload'::json) AS x(incident_id int, classified_at text, regimes text, set_by text, role text, run_id text, evidence_digest text)
+ON CONFLICT DO NOTHING RETURNING decision_id;"""
+
+
+def build_major_row(action, classified_at):
+    """The exact row an approved decision adds. classified_at is when the approval completed, which is when the clocks start."""
+    return {"incident_id": action["incident_id"], "classified_at": classified_at, "regimes": ",".join(action["regimes"])[:60], "set_by": ", ".join(action["approvers"])[:120], "role": "second",
+            "run_id": action["idempotency_key"], "evidence_digest": action["proposal_digest"]}
+
+
+def _psql(sql, row):
+    env = dict(os.environ, PGPASSWORD=os.environ.get("REGISTER_DB_PASSWORD", ""))
+    cmd = ["psql", "-X", "-q", "-t", "-A", "-v", "ON_ERROR_STOP=1", "-v", "payload=" + json.dumps(row), "-h", os.environ.get("REGISTER_DB_HOST", "postgres"), "-p", os.environ.get("REGISTER_DB_PORT", "5432"),
+           "-U", os.environ.get("REGISTER_DB_USER", "register_writer"), "-d", os.environ.get("REGISTER_DB_NAME", "postgres"), "-f", "-"]
+    r = subprocess.run(cmd, input=sql, capture_output=True, text=True, env=env, timeout=30)
+    if r.returncode != 0: raise RuntimeError("the register write failed: %s" % r.stderr.strip()[:200])
+    return r.stdout.strip().splitlines()[0] if r.stdout.strip() else ""
+
+
+def write_major(action, classified_at):
+    """Adds ONE decision row as register_writer (INSERT only). Nothing is sent to any regulator. REGISTER_WRITE=dry-run records the row without adding it."""
+    row = build_major_row(action, classified_at)
+    if REGISTER_WRITE != "live": return {"mode": "dry-run", "would_send": {"method": "INSERT", "path": "register.major_incident_decisions", "body": row}, "note": "not written: REGISTER_WRITE is dry-run"}
+    got = _psql(MAJOR_INSERT, row)
+    return {"mode": "live", "sent": {"method": "INSERT", "path": "register.major_incident_decisions #%s" % got if got else "register.major_incident_decisions (already recorded)"}, "decision_id": got or None}
