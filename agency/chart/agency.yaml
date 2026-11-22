@@ -1,0 +1,148 @@
+{{- if .Values.agency.enabled }}
+{{- $fullname := include "omnigate.fullname" . }}
+# Agency, the second front end (React UI plus the "thinking layer", standard-library Python) installed beside the Ask app. Single source: agency/chart/agency.yaml in the Docker
+# repository, copied into the four stack charts by scripts/sync-agency-addon.py. There is NO image to publish: the layer's code and the built UI come from the two ConfigMaps
+# below and run on the stock python image (the same approach as the payment-workflow add-on), so the same chart works on all four clouds with no registry of our own.
+#
+# The layer holds nothing but sessions in memory. It signs people in with the app's own business-user logins (it keeps no passwords), asks the app's internal address, and lets
+# the app decide who may see what. It is a client of the released app: nothing from the app's source is copied.
+#   - Public address: its own Service (type from agency.service.type, same allowed client addresses as the Ask app), on port agency.service.port.
+#   - A restart signs everyone out (sessions, uploads and preferences are in memory).
+#   - Workflow screens need the commercial edition and the workflow engine (a later step); on the free edition the layer reports workflows as off and the screens stay hidden.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fullname }}-agency-src
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agency
+data:
+{{ (.Files.Glob "files/agency/*.py").AsConfig | indent 2 }}
+  contract.json: |
+{{ .Files.Get "files/agency/contract.json" | indent 4 }}
+  catalogue.json: |
+{{ .Files.Get "files/agency/catalogue.json" | indent 4 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fullname }}-agency-web
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agency
+binaryData:
+  web.tgz: {{ .Files.Get "files/agency/web.tgz" | b64enc }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-agency
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agency
+spec:
+  replicas: 1                                   # sessions are in memory, so one replica; a second would sign people out at random
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: agency
+  template:
+    metadata:
+      labels:
+        {{- include "omnigate.labels" . | nindent 8 }}
+        app.kubernetes.io/component: agency
+      annotations:
+        checksum/src: {{ printf "%s%s" (.Files.Glob "files/agency/*.py").AsConfig (.Files.Get "files/agency/web.tgz" | b64enc) | sha256sum }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: unpack-web
+          image: {{ .Values.agency.pythonImage }}
+          command: ["python", "-c", "import tarfile; tarfile.open('/in/web.tgz').extractall('/web', filter='data')"]
+          securityContext: &locked
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: { cpu: 20m, memory: 32Mi }
+            limits: { memory: 128Mi }
+          volumeMounts:
+            - { name: web-in, mountPath: /in, readOnly: true }
+            - { name: web, mountPath: /web }
+      containers:
+        - name: agency
+          image: {{ .Values.agency.pythonImage }}
+          workingDir: /app
+          command: ["python", "app.py"]
+          ports:
+            - { name: http, containerPort: 8097 }
+          env:
+            - { name: SERVER_URL, value: "http://{{ $fullname }}-omnigate-internal:8080" }
+            - { name: AGENCY_WEB_DIST, value: /web }
+            - { name: PACKS_CATALOGUE, value: /app/catalogue.json }
+            - { name: PORT, value: "8097" }
+            - { name: PYTHONDONTWRITEBYTECODE, value: "1" }
+            - { name: AGENCY_PUBLIC_URL, value: {{ .Values.agency.publicUrl | quote }} }
+            - { name: AGENCY_ADMIN_URL, value: {{ .Values.agency.adminUrl | quote }} }
+            - { name: AGENCY_SCOPE_HINT, value: "off" }
+          securityContext: *locked
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 50m, memory: 96Mi }
+            limits: { memory: 256Mi }
+          volumeMounts:
+            - { name: src, mountPath: /app, readOnly: true }
+            - { name: web, mountPath: /web, readOnly: true }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: src
+          configMap: { name: {{ $fullname }}-agency-src }
+        - name: web-in
+          configMap: { name: {{ $fullname }}-agency-web }
+        - name: web
+          emptyDir: {}
+        - name: tmp
+          emptyDir: { sizeLimit: 64Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}-agency
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agency
+  {{- with .Values.agency.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.agency.service.type }}
+  {{- if eq .Values.agency.service.type "LoadBalancer" }}
+  {{- with compact (.Values.service.loadBalancerSourceRanges | default list) }}
+  loadBalancerSourceRanges:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- end }}
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: agency
+  ports:
+    - name: http
+      port: {{ .Values.agency.service.port }}
+      targetPort: http
+{{- end }}

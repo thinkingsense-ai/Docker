@@ -1,0 +1,269 @@
+{
+  "packs": [
+    {
+      "id": "bom",
+      "title": "Manufacturing BOM and sourcing",
+      "summary": "Products, assemblies, parts, facilities, certifications and engineering changes in one Postgres schema.",
+      "extends": null,
+      "demoDataset": "bom",
+      "sources": [
+        {
+          "id": "pg",
+          "schemas": [
+            "bom"
+          ]
+        }
+      ],
+      "tables": 22,
+      "questions": {
+        "approved": 24,
+        "crossSource": 0
+      },
+      "modalities": [
+        "table"
+      ],
+      "needsEmbeddingModel": true,
+      "capabilities": [],
+      "inAllPacks": true,
+      "editions": [
+        "free",
+        "commercial"
+      ],
+      "licence": {
+        "data": "synthetic",
+        "nonCommercial": false
+      }
+    },
+    {
+      "id": "it-risk",
+      "title": "IT and operational risk",
+      "summary": "Risk register, incidents, vendors and vulnerabilities across Postgres and MariaDB.",
+      "extends": null,
+      "demoDataset": "it-risk",
+      "sources": [
+        {
+          "id": "pg",
+          "schemas": [
+            "risk"
+          ]
+        },
+        {
+          "id": "mdb",
+          "schemas": [
+            "security"
+          ]
+        }
+      ],
+      "tables": 11,
+      "questions": {
+        "approved": 12,
+        "crossSource": 4
+      },
+      "modalities": [
+        "table"
+      ],
+      "needsEmbeddingModel": false,
+      "capabilities": [],
+      "inAllPacks": true,
+      "editions": [
+        "free",
+        "commercial"
+      ],
+      "licence": {
+        "data": "synthetic",
+        "nonCommercial": false
+      }
+    },
+    {
+      "id": "manufacturing",
+      "title": "Manufacturing sourcing",
+      "summary": "Parts, bills of materials, supplier capabilities and quotes, added to the supply-chain schemas.",
+      "extends": "supply-chain",
+      "demoDataset": null,
+      "sources": [
+        {
+          "id": "pg",
+          "schemas": [
+            "suppliers",
+            "inventory",
+            "procurement"
+          ]
+        }
+      ],
+      "tables": 9,
+      "questions": {
+        "approved": 6,
+        "crossSource": 0
+      },
+      "modalities": [
+        "table"
+      ],
+      "needsEmbeddingModel": false,
+      "capabilities": [],
+      "inAllPacks": true,
+      "editions": [
+        "free",
+        "commercial"
+      ],
+      "licence": {
+        "data": "synthetic",
+        "nonCommercial": false
+      }
+    },
+    {
+      "id": "smithsonian",
+      "title": "Smithsonian Open Access sample",
+      "summary": "A sample of Smithsonian Open Access records and a museum directory.",
+      "extends": null,
+      "demoDataset": null,
+      "sources": [
+        {
+          "id": "pg",
+          "schemas": [
+            "smithsonian"
+          ]
+        },
+        {
+          "id": "files",
+          "schemas": [
+            "museums"
+          ]
+        }
+      ],
+      "tables": null,
+      "questions": {
+        "approved": 5,
+        "crossSource": 1
+      },
+      "modalities": [
+        "table"
+      ],
+      "needsEmbeddingModel": false,
+      "capabilities": [],
+      "inAllPacks": true,
+      "editions": [
+        "free",
+        "commercial"
+      ],
+      "licence": {
+        "data": "Smithsonian Open Access (CC0 records only in the sample)",
+        "nonCommercial": false
+      }
+    },
+    {
+      "id": "sounds",
+      "title": "Bird and fish sounds",
+      "summary": "Recordings, species, licences and model annotations, with audio vectors (Docker only).",
+      "extends": null,
+      "demoDataset": null,
+      "sources": [
+        {
+          "id": "pg",
+          "schemas": [
+            "sounds"
+          ]
+        }
+      ],
+      "tables": 4,
+      "questions": {
+        "approved": 24,
+        "crossSource": 0
+      },
+      "modalities": [
+        "table",
+        "audio",
+        "vector"
+      ],
+      "needsEmbeddingModel": false,
+      "capabilities": [
+        "audio-identify"
+      ],
+      "inAllPacks": false,
+      "editions": [
+        "docker"
+      ],
+      "licence": {
+        "data": "Xeno-canto and FishSounds recordings, non-commercial licences",
+        "nonCommercial": true
+      }
+    },
+    {
+      "id": "supply-chain",
+      "title": "Supply chain",
+      "summary": "Suppliers, inventory and procurement across three Postgres schemas.",
+      "extends": null,
+      "demoDataset": "supply-chain",
+      "sources": [
+        {
+          "id": "pg",
+          "schemas": [
+            "suppliers",
+            "inventory",
+            "procurement"
+          ]
+        }
+      ],
+      "tables": 4,
+      "questions": {
+        "approved": 5,
+        "crossSource": 0
+      },
+      "modalities": [
+        "table"
+      ],
+      "needsEmbeddingModel": false,
+      "capabilities": [],
+      "inAllPacks": true,
+      "editions": [
+        "free",
+        "commercial"
+      ],
+      "licence": {
+        "data": "synthetic",
+        "nonCommercial": false
+      }
+    },
+    {
+      "id": "treasury",
+      "title": "Treasury",
+      "summary": "Cash, payables, hedges, debt and an agent action log across Postgres and MariaDB.",
+      "extends": null,
+      "demoDataset": "treasury",
+      "sources": [
+        {
+          "id": "pg",
+          "schemas": [
+            "treasury"
+          ]
+        },
+        {
+          "id": "mdb",
+          "schemas": [
+            "erp"
+          ]
+        }
+      ],
+      "tables": 17,
+      "questions": {
+        "approved": 24,
+        "crossSource": 4
+      },
+      "modalities": [
+        "table"
+      ],
+      "needsEmbeddingModel": true,
+      "capabilities": [
+        "workflow:payment-exceptions"
+      ],
+      "inAllPacks": true,
+      "editions": [
+        "free",
+        "commercial"
+      ],
+      "licence": {
+        "data": "synthetic",
+        "nonCommercial": false
+      }
+    }
+  ]
+}

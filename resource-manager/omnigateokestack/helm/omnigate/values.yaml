@@ -317,3 +317,19 @@ paymentWorkflow:
   gateway:
     enabled: false
     token: ""
+
+# Opt-in second front end (off by default): Agency, installed beside the Ask app. The layer's code and the built UI come from ConfigMaps and run on the stock python image, so there is
+# no image to publish. It signs people in with the app's own business-user logins and asks the app's internal address; a restart signs everyone out (sessions are in memory).
+# It gets its own public Service (the same allowed client addresses as the Ask app apply). The workflow screens need the commercial edition and the workflow engine (not wired here yet).
+agency:
+  enabled: false
+  pythonImage: docker.io/library/python:3.12-slim
+  # Where browsers reach Agency (needed only for single sign-on: the provider returns here). Leave empty otherwise.
+  publicUrl: ""
+  # Optional link shown in the header to the admin console (a convenience, not a control: the console has its own sign-in).
+  adminUrl: ""
+  service:
+    type: LoadBalancer
+    port: 8097
+    annotations:
+      oci.oraclecloud.com/load-balancer-type: "nlb"
