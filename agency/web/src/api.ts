@@ -27,7 +27,7 @@ export interface AuditRow {
   approvers: string[]; rejectedBy: string | null; rejectionReason: string | null; action: string | null; controls: string[]; recommendation: string | null; rulesBlocked: string[]
   writeBack: { mode: string | null; call: string | null; note: string | null } | null; hash: string; prev: string; evidenceDigest: string | null
 }
-export interface AuditView { chainValid: boolean; firstBadEntry: number | null; head: string; total: number; rows: AuditRow[]; definitions: string[]; controls: string[] }
+export interface AuditView { missing?: boolean; chainValid: boolean | null; firstBadEntry: number | null; head: string | null; total: number; rows: AuditRow[]; definitions: string[]; controls: string[] }
 export type AuditFilters = Partial<Record<'definition' | 'actor' | 'outcome' | 'control' | 'run' | 'since' | 'until', string>>
 export const auditQuery = (f: AuditFilters) => Object.entries(f).filter(([, v]) => v && v.trim()).map(([k, v]) => `${k}=${encodeURIComponent(v!.trim())}`).join('&')
 

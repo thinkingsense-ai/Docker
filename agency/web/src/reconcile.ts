@@ -17,7 +17,8 @@ export function claimedRow(r: AuditRow): { kind: string; id: string } | null {
 }
 
 export function reconcile(audit: AuditRow[], registerTable: Table | undefined): Reconciliation {
-  const reg = records(registerTable); const byRun = new Map(reg.map((r) => [r.run_id, r])); const claimed = new Set<string>()
+  // The Server types a string literal in a UNION to the longest branch and pads it ('assessment    '), so every value is trimmed before it is compared.
+  const reg = records(registerTable).map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, String(v ?? '').trim()]))); const byRun = new Map(reg.map((r) => [r.run_id, r])); const claimed = new Set<string>()
   const findings: Finding[] = []; let checked = 0, agree = 0
   for (const r of audit) {
     const c = claimedRow(r); if (!c) continue

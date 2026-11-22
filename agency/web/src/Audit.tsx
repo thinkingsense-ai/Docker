@@ -56,9 +56,10 @@ export default function Audit({ onSignedOut }: { onSignedOut: () => void }) {
         </form>
         {err && <p role="alert" className="error">{err}</p>}
       </header>
-      {v && (
+      {v?.missing && <p role="status" className="error"><strong>There is no decision record yet.</strong> The file has not been created: no run has finished since it was set up. This is not a verified empty chain. If runs have finished and this still shows, the file has been removed.</p>}
+      {v && !v.missing && (
         <>
-          <p role="status" className={v.chainValid ? '' : 'error'}><strong>{v.chainValid ? 'The hash chain verifies' : `The hash chain is BROKEN at entry ${v.firstBadEntry}`}</strong> across all {v.total} runs in the record (head <code title={v.head}>{short(v.head)}</code>). {v.rows.length === v.total ? 'All of them are shown.' : `${v.rows.length} match the filters.`}</p>
+          <p role="status" className={v.chainValid ? '' : 'error'}><strong>{v.chainValid ? 'The hash chain verifies' : `The hash chain is BROKEN at entry ${v.firstBadEntry}`}</strong> across all {v.total} runs in the record (head <code title={v.head ?? ''}>{short(v.head ?? '')}</code>). {v.rows.length === v.total ? 'All of them are shown.' : `${v.rows.length} match the filters.`}</p>
           <p className="brief-actions"><button onClick={check} disabled={checking || v.rows.length === 0}>{checking ? 'Reading the register…' : 'Check these against the register'}</button>
             <span className="muted small">Asks the register, as you, which rows these runs wrote, and compares run, row and evidence digest.</span></p>
           {rec && (rec.findings.length === 0
