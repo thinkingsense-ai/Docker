@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, ApiError } from './api'
 import type { View } from './shell'
+import Flow from './Flow'
+import { STEP_FOCUS } from './flowModel'
 import { PERSONAS, STEPS, stepLabel, type StepState, type TourStep } from './tourScript'
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
@@ -21,7 +23,7 @@ async function waitFor(sel: string, ms: number, stop: () => boolean, enabled: bo
  * The guided click-through (tourScript.ts). Local demo sandbox only: the layer offers it when AGENCY_DEMO_TOUR=on. It signs in as the demo person for each step and presses the same buttons a person would,
  * so what the audience sees is the real product on the real Server. It adds no data path of its own.
  */
-export default function Tour({ user, go, switchTo, docked, min, onMin, onClose }: { user: string; go: (v: View) => void; switchTo: (persona: string) => Promise<void>; docked: boolean; min: boolean; onMin: (m: boolean) => void; onClose: () => void }) {
+export default function Tour({ user, go, switchTo, docked, min, onMin, onFocus, onClose }: { user: string; go: (v: View) => void; switchTo: (persona: string) => Promise<void>; docked: boolean; min: boolean; onMin: (m: boolean) => void; onFocus: (ids: string[]) => void; onClose: () => void }) {
   const [idx, setIdx] = useState(-1)                                   // -1 = the start page
   const [states, setStates] = useState<StepState[]>(() => STEPS.map(() => 'todo'))
   const [note, setNote] = useState('')
@@ -50,7 +52,7 @@ export default function Tour({ user, go, switchTo, docked, min, onMin, onClose }
 
   async function perform(i: number): Promise<StepState> {
     const step: TourStep = STEPS[i]
-    setIdx(i); setBusy(true); setNote(''); setState(i, 'doing')
+    onFocus(STEP_FOCUS[STEPS[i].id] ?? []); setIdx(i); setBusy(true); setNote(''); setState(i, 'doing')
     try {
       if (userRef.current !== step.persona) setNote(`Signing in as ${step.persona}…`)
       await switchTo(step.persona)                         // the app compares with who is signed in now and does nothing when it is already this person
@@ -114,6 +116,7 @@ export default function Tour({ user, go, switchTo, docked, min, onMin, onClose }
         <p className="small muted">{step.act} · {stepLabel(idx)}</p>
         <h3>{step.title}</h3>
         <p className="small">Signed in as <strong>{user}</strong>{user !== step.persona ? <> (this step: <strong>{step.persona}</strong>)</> : null}. <span className="muted">{PERSONAS[step.persona]}</span></p>
+        <Flow compact focus={STEP_FOCUS[step.id] ?? []} />
         <p><strong>Say:</strong> {step.say}</p>
         <p className="muted"><strong>Look at:</strong> {step.look}</p>
         {note && <p role="status" aria-live="polite" className={'small' + (states[idx] === 'failed' ? ' error' : '')}>{note}</p>}

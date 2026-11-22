@@ -260,3 +260,25 @@ a.button { display: inline-block; border: 1px solid var(--edge); border-radius: 
   .shell.with-tour header { grid-column: 1 / -1 }
   .tour.docked { position: sticky; top: 0; right: auto; bottom: auto; width: auto; max-height: 100vh; height: 100vh; border-radius: 0; border-width: 0 0 0 2px; box-shadow: none; align-self: start }
 }
+
+/* data flow picture */
+.flow > svg { width: 100%; height: auto; display: block; background: var(--panel); border: 1px solid var(--line); border-radius: 10px }
+.flow-controls { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin: 8px 0 }
+.flow-controls input[type=range] { vertical-align: middle; width: 160px }
+.flow-group { font-size: 15px; font-weight: 600; fill: var(--muted) }
+.flow-route { fill: none; stroke-width: 2; opacity: .22 } .flow-route.on { opacity: .8; stroke-width: 3 }
+.flow-node rect { fill: var(--panel); stroke: var(--edge); stroke-width: 1.5 }
+.flow-node.g-layer rect { fill: var(--accent-tint) } .flow-node.g-decision rect { fill: var(--head) }
+.flow-node.planned rect { stroke-dasharray: 5 4 } .flow-node.planned text { opacity: .6 }
+.flow-node.focus rect { stroke: var(--accent); stroke-width: 4 }
+.flow-label { font-size: 14px; font-weight: 600; fill: var(--ink) } .flow-sub { font-size: 12px; fill: var(--muted) }
+.flow-disc { fill: var(--panel); stroke: currentColor; stroke-width: 2.5 }
+.flow-glyph { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round }
+.flow-node.hit rect { stroke: var(--accent); stroke-width: 3 }
+.flow.present { position: fixed; inset: 0; z-index: 100; background: var(--bg); padding: 16px 24px; overflow: auto; display: flex; flex-direction: column }
+.flow.present > svg { flex: 1; min-height: 0; max-height: calc(100vh - 190px) }
+.flow:fullscreen { background: var(--bg) }
+@media (prefers-reduced-motion: reduce) { .flow-node rect { transition: none } }
+.flow-legend { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 10px 0 }
+.flow-legend svg { width: 20px; height: 20px; vertical-align: -5px; background: none; border: 0 } .flow-legend .on { font-weight: 700 }
+.flow.compact > svg { border-radius: 6px } .flow.compact .flow-controls { margin: 4px 0; font-size: .85rem } .flow.compact .flow-controls input[type=range] { width: 100px }

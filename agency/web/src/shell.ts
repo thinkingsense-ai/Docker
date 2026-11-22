@@ -2,12 +2,13 @@
 import type { Pack } from './api'
 import { BRIEF_PACK } from './rcaBrief'
 
-export type View = 'watch' | 'exposure' | 'priorities' | 'clocks' | 'audit' | 'briefs' | 'approvals' | 'sources' | 'ask'
+export type View = 'flow' | 'watch' | 'exposure' | 'priorities' | 'clocks' | 'audit' | 'briefs' | 'approvals' | 'sources' | 'ask'
 
 export interface NavItem { id: View; label: string; hint: string; built: boolean }
 
 // Order is the order in the left navigation. `built` is false for a screen whose build step has not landed (none now).
 export const NAV: NavItem[] = [
+  { id: 'flow', label: 'Data flow', hint: 'How data moves from sources to decisions', built: true },
   { id: 'watch', label: 'Watch', hint: 'Incidents in the news that may be AI hacking', built: true },
   { id: 'exposure', label: 'Exposure', hint: 'Could this happen to our systems', built: true },
   { id: 'priorities', label: 'Priorities', hint: 'Which systems to fix first', built: true },

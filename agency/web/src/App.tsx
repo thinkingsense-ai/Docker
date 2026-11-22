@@ -15,6 +15,7 @@ import Audit from './Audit'
 import { rate as rateExposure } from './exposureModel'
 import type { Table } from './rcaBrief'
 import Tour from './Tour'
+import Flow from './Flow'
 import { navFor, roleLabel, startWorkspace, viewFor, workspaceChoices, type View } from './shell'
 import { AnswerDetails, ProgressView } from './DetailsPane'
 import type { ProgressEvent as PEvent } from './progress'
@@ -72,6 +73,7 @@ export default function App() {
   const [waiting, setWaiting] = useState<number | null>(null)
   const [tourOpen, setTourOpen] = useState(false)
   const [tourMin, setTourMin] = useState(false)
+  const [tourFocus, setTourFocus] = useState<string[]>([])
   const [wide, setWide] = useState(() => window.innerWidth >= 1100)
   useEffect(() => { const f = () => setWide(window.innerWidth >= 1100); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f) }, [])
   const userNow = useRef<string | null | undefined>(undefined)       // the tour's play loop outlives the render it started in, so it asks for who is signed in NOW, not who was when it began
@@ -230,6 +232,7 @@ export default function App() {
         {shown === 'exposure' && (pack === BRIEF_PACK
           ? <Exposure answers={exposure} onAnswers={setExposure} onSignedOut={() => expired()} />
           : <p className="empty">Exposure is in the IT risk Workspace. Choose it from the Workspace menu at the top right.</p>)}
+        {shown === 'flow' && <Flow focus={tourFocus} />}
         {shown === 'sources' && <Sources table={sources} onLoaded={setSources} onSignedOut={() => expired()} />}
         {shown === 'ask' && <>
         {packNote && <p className="muted small">{packNote}</p>}
@@ -265,7 +268,7 @@ export default function App() {
         </form>
         </>}
       </main>
-      {tourOpen && user && <Tour user={user} go={go} switchTo={switchTo} docked={wide} min={tourMin} onMin={setTourMin} onClose={() => { setTourOpen(false); setTourMin(false) }} />}
+      {tourOpen && user && <Tour user={user} go={go} switchTo={switchTo} docked={wide} min={tourMin} onMin={setTourMin} onFocus={setTourFocus} onClose={() => { setTourOpen(false); setTourMin(false); setTourFocus([]) }} />}
       {paneOpen && (
         <aside id="pane" className="pane" aria-label="Details">
           <button className="link close-pane" onClick={togglePane}>Close</button>
