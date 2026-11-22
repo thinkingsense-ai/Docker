@@ -7,10 +7,10 @@ AGENCY_SCOPE_HINT=on to add the pack's data sets to the question when no Workspa
 AGENCY_SESSION_HOURS (default 8), AGENCY_WEB_DIST (the built Agency UI, served at / when the folder exists), AGENCY_PREFS_FILE (per-user preferences, kept in
 memory when unset), AGENCY_ADAPTERS (comma-separated adapter base URLs), AGENCY_UPLOAD_HOURS (record lifetime, default 1), AGENCY_UPLOAD_SHARING (off, the default, or workspace), AGENCY_UPLOAD_ADMINS (comma-separated Server usernames who may unshare or delete shared records), AGENCY_ADMIN_URL (the admin console, shown as a quiet Manage link) and AGENCY_ADMIN_USERS (optional: only these usernames see it), AGENCY_PUBLIC_URL (where browsers reach the layer; turns on single sign-on, and PUBLIC_URL/app/oidc/callback must be registered with the identity provider), PORT (default 8097).
 The layer logs no question text and no file content."""
-import json, mimetypes, os, secrets, threading, time
+import json, mimetypes, os, re, secrets, sys, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs, quote
-import adapters, catalogue, decisions, tools, uploads
+import adapters, audit, catalogue, decisions, tools, uploads
 from evidence import Evidence
 from upstream import Upstream, Unauthorized
 
@@ -89,6 +89,16 @@ def admin_link(user):
     return url if not only or user in only else None
 
 
+def audit_enabled(): return bool(os.environ.get("AGENCY_AUDIT_FILE", "").strip())
+
+
+def audit_allowed(user):
+    """May this signed-in person read the workflow decision record? Only the users listed in AGENCY_AUDIT_USERS, and only when AGENCY_AUDIT_FILE is set. A convenience, NOT a Server-enforced control:
+    the Server has no read-only audit grant yet (design note S1), so the layer keeps its own list and says so."""
+    only = {u.strip() for u in os.environ.get("AGENCY_AUDIT_USERS", "").split(",") if u.strip()}
+    return audit_enabled() and user in only
+
+
 def hint_for(pack):
     sets = ", ".join("%s.%s" % (s["id"], x) for s in pack["sources"] for x in s["schemas"])
     return " (Use only these data sets: %s.)" % sets
@@ -105,6 +115,12 @@ class H(BaseHTTPRequestHandler):
         self.send_response(code); self.send_header("Content-Type", "application/json"); self.send_header("Content-Length", str(len(b)))
         self.send_header("Cache-Control", "no-store"); self.send_header("X-Content-Type-Options", "nosniff"); self.send_header("Content-Security-Policy", "frame-ancestors 'none'")
         for k, v in headers: self.send_header(k, v)
+        self.end_headers(); self.wfile.write(b)
+
+    def send_text(self, code, text, ctype, filename):
+        b = text.encode("utf-8")
+        self.send_response(code); self.send_header("Content-Type", ctype); self.send_header("Content-Length", str(len(b))); self.send_header("Cache-Control", "no-store"); self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Content-Disposition", 'attachment; filename="%s"' % filename); self.send_header("Content-Security-Policy", "frame-ancestors 'none'")
         self.end_headers(); self.wfile.write(b)
 
     def err(self, code, name, msg, **detail): self.send(code, {"error": {"code": name, "message": msg, "detail": detail}})
@@ -144,6 +160,8 @@ class H(BaseHTTPRequestHandler):
             if u.path == "/packs": return self.packs()
             if u.path == "/whoami": return self.whoami()
             if u.path == "/decisions": return self.decisions((q.get("runId") or [""])[0])
+            if u.path == "/audit/records": return self.audit_records(q, False)
+            if u.path == "/audit/export": return self.audit_records(q, True)
             if u.path == "/starters": return self.starters((q.get("pack") or [""])[0])
             if u.path == "/conversations": return self.passthrough("/app/conversations")
             if u.path == "/conversations/get": return self.passthrough("/app/conversations/get?id=" + quote((q.get("id") or [""])[0], safe=""))
@@ -412,6 +430,7 @@ class H(BaseHTTPRequestHandler):
             code, cfg = SERVER.json("GET", "/app/public-config"); out["server"].update(reachable=code == 200, llmConfigured=cfg.get("llmConfigured"))
         except (OSError, Unauthorized): pass
         t, s = self.session()
+        out["audit"] = {"enabled": audit_enabled(), "allowed": bool(s and audit_allowed(s.username))}
         if s:
             url = admin_link(s.username)
             if url: out["adminUrl"] = url
@@ -603,6 +622,29 @@ class H(BaseHTTPRequestHandler):
         except OSError: return self.err(502, "decisions_unreadable", "The decision file could not be read.")
         ok, bad = decisions.verify(es); mine = [e for e in es if e.get("runId") == run_id]
         self.send(200, {"runId": run_id, "source": "file", "chainValid": ok, "firstBadSeq": bad, "totalEntries": len(es), "count": len(mine), "entriesVerified": all(decisions.entry_hash(e) == e.get("hash") for e in mine), "entries": mine})
+
+
+    # -- audit ---------------------------------------------------------------------------------------------------------------------------------------------
+    DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+    def audit_records(self, q, download):
+        """The workflow decision record with filters, or its export. Not an MCP tool on purpose: the record holds the facts each decision was made on. Every read is logged (user, route, filters) to the layer's output."""
+        t, s = self.need_session()
+        if not s: return
+        if not audit_enabled(): return self.err(404, "audit_off", "The audit view is not set up on this deployment (AGENCY_AUDIT_FILE is unset).")
+        if not audit_allowed(s.username): return self.err(403, "not_an_auditor", "Your account is not on this deployment's audit list.")
+        f = {k: (q.get(k) or [""])[0].strip() for k in ("definition", "actor", "outcome", "control", "run", "since", "until")}
+        if any(len(v) > 100 for v in f.values()): return self.err(400, "bad_request", "A filter is too long.")
+        if f["outcome"] and f["outcome"] not in audit.OUTCOMES: return self.err(400, "bad_request", "outcome must be one of: %s." % ", ".join(audit.OUTCOMES))
+        for k in ("since", "until"):
+            if f[k] and not self.DATE.match(f[k]): return self.err(400, "bad_request", "%s must be a date, YYYY-MM-DD." % k)
+        f = {k: v or None for k, v in f.items()}
+        sys.stderr.write("AUDIT %s user=%s filters=%s\n" % ("export" if download else "view", s.username, json.dumps({k: v for k, v in f.items() if v}))); sys.stderr.flush()
+        path = os.environ["AGENCY_AUDIT_FILE"].strip()
+        try:
+            if download: return self.send_text(200, audit.export(path, **f), "application/x-ndjson; charset=utf-8", "decision-record.jsonl")
+            return self.send(200, audit.view(path, **f))
+        except (OSError, ValueError, KeyError, TypeError): return self.err(502, "audit_unreadable", "The decision record could not be read or is not in the expected form.")
 
 
 def main():

@@ -168,6 +168,37 @@ class LayerTests(unittest.TestCase):
             os.environ["AGENCY_ADMIN_USERS"] = "alice"; s, raw, _ = self.c.call("GET", "/status"); self.assertIn("adminUrl", self.J(raw))
         finally: os.environ.pop("AGENCY_ADMIN_URL", None); os.environ.pop("AGENCY_ADMIN_USERS", None)
 
+    def test_the_audit_view_is_off_unless_configured_and_limited_to_the_listed_auditors(self):
+        import audit as A
+        d = tempfile.TemporaryDirectory(); path = os.path.join(d.name, "decisions.jsonl")
+        prev, lines = "genesis", []
+        for b in ({"decision_id": "assess-3", "definition": "risk-assessment", "started_at": "2026-11-21T09:00:00+00:00", "outcome": "record approved by bob: live", "approvals": [{"approver": "bob", "at": "2026-11-21T10:00:00+00:00"}], "facts": {"secret": "estate row"}},
+                  {"decision_id": "rca-1", "definition": "incident-cluster-rca", "started_at": "2026-11-20T09:00:00+00:00", "outcome": "declined by carol", "approvals": [], "rejection": {"approver": "carol", "reason": "Sent back: x", "at": "2026-11-20T11:00:00+00:00"}}):
+            h = A.entry_hash(prev, b); lines.append({"prev": prev, "body": b, "hash": h}); prev = h
+        with open(path, "w") as f: f.write("".join(json.dumps(l) + "\n" for l in lines))
+        self.signin()
+        try:
+            s, raw, _ = self.c.call("GET", "/status"); self.assertEqual(self.J(raw)["audit"], {"enabled": False, "allowed": False})
+            s, raw, _ = self.c.call("GET", "/audit/records"); self.assertEqual((s, self.J(raw)["error"]["code"]), (404, "audit_off"))
+            os.environ["AGENCY_AUDIT_FILE"] = path
+            s, raw, _ = self.c.call("GET", "/status"); self.assertEqual(self.J(raw)["audit"], {"enabled": True, "allowed": False})               # nobody is listed: nobody may read it
+            s, raw, _ = self.c.call("GET", "/audit/records"); self.assertEqual((s, self.J(raw)["error"]["code"]), (403, "not_an_auditor"))
+            s, raw, _ = self.c.call("GET", "/audit/export"); self.assertEqual(s, 403)
+            os.environ["AGENCY_AUDIT_USERS"] = "bob"; s, raw, _ = self.c.call("GET", "/audit/records"); self.assertEqual(s, 403)                       # alice is not listed
+            os.environ["AGENCY_AUDIT_USERS"] = "alice, bob"
+            s, raw, _ = self.c.call("GET", "/status"); self.assertEqual(self.J(raw)["audit"], {"enabled": True, "allowed": True})
+            s, raw, _ = self.c.call("GET", "/audit/records"); v = self.J(raw); self.assertEqual((s, v["chainValid"], v["total"], len(v["rows"])), (200, True, 2, 2)); self.assertNotIn("estate row", raw)
+            s, raw, _ = self.c.call("GET", "/audit/records?outcome=declined&actor=carol"); self.assertEqual([r["runId"] for r in self.J(raw)["rows"]], ["rca-1"])
+            s, raw, _ = self.c.call("GET", "/audit/records?outcome=maybe"); self.assertEqual(s, 400)
+            s, raw, _ = self.c.call("GET", "/audit/records?since=yesterday"); self.assertEqual(s, 400)
+            s, raw, r = self.c.call("GET", "/audit/export?definition=risk-assessment")
+            self.assertEqual(s, 200); self.assertIn("attachment", r.getheader("Content-Disposition")); hdr = json.loads(raw.splitlines()[0]); self.assertIsNone(hdr["signature"]); self.assertEqual(hdr["entries"], 1); self.assertIn("estate row", raw)
+            with open(path, "a") as f: f.write("not json\n")                                            # a damaged file is an error, not a silent empty answer
+            s, raw, _ = self.c.call("GET", "/audit/records"); self.assertEqual((s, self.J(raw)["error"]["code"]), (502, "audit_unreadable"))
+        finally: os.environ.pop("AGENCY_AUDIT_FILE", None); os.environ.pop("AGENCY_AUDIT_USERS", None); d.cleanup()
+    def test_the_audit_record_is_not_an_mcp_tool(self):
+        self.assertFalse([t["name"] for t in tools.tool_list() if "audit" in t["name"] or "export" in t["name"]])
+
     def test_tools_are_generated_from_the_contract_and_never_include_approval(self):
         names = [t["name"] for t in tools.tool_list()]
         self.assertEqual(names, ["list_packs", "ask", "get_decisions", "status", "list_adapters", "list_uploads", "list_workflow_definitions", "list_workflows", "get_workflow_run"])

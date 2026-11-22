@@ -11,6 +11,7 @@ import Watch from './Watch'
 import Exposure, { type ExposureAnswers } from './Exposure'
 import Priorities from './Priorities'
 import Clocks, { type ClockAnswers } from './Clocks'
+import Audit from './Audit'
 import { rate as rateExposure } from './exposureModel'
 import type { Table } from './rcaBrief'
 import { navFor, roleLabel, startWorkspace, viewFor, workspaceChoices, type View } from './shell'
@@ -153,7 +154,8 @@ export default function App() {
   if (user === null) return <Login notice={notice} onDone={() => { setNotice(''); api.whoami().then((w) => setUser(w.username ?? w.layerUser ?? 'signed in')).catch(() => setUser(null)) }} />
 
   const wf = status?.workflows
-  const shown = viewFor(view, grants)
+  const navGrants = { ...grants, audit: status?.audit?.allowed === true }
+  const shown = viewFor(view, navGrants)
   const go = (v: View) => { setView(v); setNavOpen(false); setErr('') }
   return (
     <div className={'shell' + (paneOpen ? ' with-pane' : '')}>
@@ -178,8 +180,8 @@ export default function App() {
       </header>
       <nav id="sidenav" aria-label="Sections" className={navOpen ? 'open' : ''}>
         <ul className="sections">
-          {navFor(grants).map((n) => {
-            const on = viewFor(view, grants) === n.id
+          {navFor(navGrants).map((n) => {
+            const on = viewFor(view, navGrants) === n.id
             return <li key={n.id}><button className={'navitem' + (on ? ' on' : '')} aria-current={on ? 'page' : undefined} title={n.hint} onClick={() => go(n.id)}>
               {n.label}{n.id === 'approvals' && waiting ? <span className="count" aria-label={`${waiting} waiting`}>{waiting}</span> : null}</button></li>
           })}
@@ -198,6 +200,7 @@ export default function App() {
           : <p className="empty">Problem records are in the IT risk Workspace. Choose it from the Workspace menu at the top right.</p>)}
         {shown === 'approvals' && <Queue me={user} onSignedOut={() => expired()} onCount={setWaiting} />}
         {shown === 'watch' && <Watch table={watch} sources={sources} onLoaded={setWatch} onSources={setSources} onBrief={() => go('briefs')} onAsk={(q) => { go('ask'); setConvId(null); setTurns([]); void send(q) }} onSignedOut={() => expired()} />}
+        {shown === 'audit' && <Audit onSignedOut={() => expired()} />}
         {shown === 'clocks' && (pack === BRIEF_PACK
           ? <Clocks me={user ?? ''} canStart={grants.canStart} defs={defs} answers={clocks} onAnswers={setClocks} onSignedOut={() => expired()} />
           : <p className="empty">Notifications is in the IT risk Workspace. Choose it from the Workspace menu at the top right.</p>)}

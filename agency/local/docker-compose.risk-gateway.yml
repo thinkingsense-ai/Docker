@@ -44,6 +44,11 @@ services:
       OMNIGATE_WORKFLOW_ENGINE_TOKEN: ${WORKFLOW_GATEWAY_TOKEN:?run agency/local/up.sh}
       OMNIGATE_WORKFLOW_MANIFEST: /etc/omnigate/workflows.json
       OMNIGATE_AUTH_API_TOKENS: "${AGENCY_ADMIN_API_TOKEN:?run agency/local/up.sh}:admin"
+  thinking-layer:                                    # the audit view reads the worker's decision record, read-only
+    volumes: [workflow-data:/data/workflow:ro]
+    environment:
+      AGENCY_AUDIT_FILE: /data/workflow/decisions.jsonl
+      AGENCY_AUDIT_USERS: curator                    # a list this layer keeps: NOT a Server-enforced role (the read-only audit grant does not exist yet)
 volumes:
   temporal-data:
   workflow-data:
