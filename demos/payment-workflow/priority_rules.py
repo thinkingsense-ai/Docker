@@ -67,7 +67,7 @@ def _score(r, as_of, exposure_level):
     if lifted: rating = "High"
     reason = "%s: %s likelihood (%s), %s impact (%s)." % (rating, _band(l), ", ".join(lk) if lk else "nothing found that raises it", _band(i), ", ".join(im))
     if trig: reason += " %s: %s" % ("Lifted to High by" if lifted else "Also hit", " ".join(TRIGGERS[t] for t in trig))
-    return {"system": r.get("system", ""), "tier": tier, "rating": rating, "likelihood": _band(l), "impact": _band(i), "triggers": trig, "lifted": lifted, "dependents": deps, "reason": reason, "notes": notes}
+    return {"system": r.get("system", ""), "tier": tier, "rating": rating, "likelihood": _band(l), "impact": _band(i), "triggers": trig, "lifted": lifted, "dependents": deps, "reason": reason, "notes": notes, "likelihood_inputs": "; ".join(lk) or "nothing found that raises it", "impact_inputs": ", ".join(im)}
 
 
 def prioritise(t, exposure_level=None, as_of=AS_OF):

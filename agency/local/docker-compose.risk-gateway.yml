@@ -24,6 +24,8 @@ services:
       SQL_SCHEMA_CONNECTORS: "treasury=pg,erp=mdb,risk=pg,security=mdb"
       OMNIGATE_LLM_API_KEY: ""                      # empty on purpose: recommendations come from the rules ("rules-only"), never a dummy key
       WRITE_BACK: dry-run
+      REGISTER_DB_HOST: postgres                     # the risk register is the product's own schema: the worker adds rows as register_writer, which can only INSERT
+      REGISTER_DB_PASSWORD: register-writer-local
       DECISIONS_FILE: /data/decisions.jsonl
     volumes: [workflow-data:/data]
   gateway:

@@ -59,3 +59,22 @@ describe('ruleLabel', () => {
     expect(ruleLabel({ name: 'allowed_actions', passed: true, detail: '' })).toBe('Allowed:'); expect(ruleLabel({ name: 'patch_within_policy', passed: false, detail: '' })).toBe('Failed patch within policy:')
   })
 })
+
+import { assessmentStage, assessmentWords, isAssessment } from './workflow'
+describe('risk assessment wording', () => {
+  const run = (o: object) => ({ definition: 'risk-assessment', recommendation: { action: 'record', reason: '', source: 'workflow' }, rejection: null, writeBack: null, ...o }) as never
+  it('words approve and send back for the second line', () => {
+    expect(isAssessment(run({}))).toBe(true)
+    expect(assessmentWords(run({}))).toMatchObject({ approve: 'Record in the register', decline: 'Send back…', prefix: 'Sent back: ' })
+    expect(assessmentWords(run({ recommendation: { action: 'hold', reason: '' } })).approve).toBe('Confirm hold')
+  })
+  it('says where it ended, and does not claim a dry run before anything is written', () => {
+    expect(assessmentStage(run({}), 'written_back')).toBe('Recorded in the register')
+    expect(assessmentStage(run({ writeBack: { mode: 'dry_run', status: 'simulated', call: 'x', at: '' } }), 'written_back')).toBe('Recorded (dry run)')
+    expect(assessmentStage(run({ writeBack: { mode: 'live', status: 'sent', call: 'INSERT register.assessments #4', at: '' } }), 'written_back')).toBe('Recorded in the register')
+    expect(assessmentStage(run({ rejection: { user: 'bob', reason: 'Sent back: x', at: '' } }), 'rejected')).toBe('Sent back')
+  })
+  it('describes a register write as an addition, not a dry run', () => {
+    expect(dryRunLine({ mode: 'live', status: 'sent', call: 'INSERT register.assessments #4', at: '' })).toBe('Added to the risk register: register.assessments #4. The register is append-only: earlier ratings stay.')
+  })
+})

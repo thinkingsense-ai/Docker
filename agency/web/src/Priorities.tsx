@@ -1,5 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
-import { ask, ApiError } from './api'
+import { api, ask, ApiError } from './api'
+import { RunCard } from './Workflows'
+import { ASSESSMENT, reasonText, type Definition, type Run } from './workflow'
 import { BRIEF_PACK, type Table } from './rcaBrief'
 import { RULES, THRESHOLDS, TRIGGERS, PRIORITY_QUESTION, prioritiesText, prioritise } from './priorityModel'
 import { ratingRank, type Rating } from './rating'
@@ -7,11 +9,21 @@ import { ratingRank, type Rating } from './rating'
 const Meter = ({ n }: { n: number }) => <span className="meter" aria-hidden="true">{[0, 1, 2, 3].map((i) => <i key={i} className={i < n ? 'on' : ''} />)}</span>
 
 /** Priorities: which systems to fix first. One approved question over the simulated estate, asked as the signed-in person, ranked by the stated rules in priorityModel.ts. Nothing is written or sent. */
-export default function Priorities({ answer, exposureLevel, onAnswer, onSignedOut }: { answer: Table | null; exposureLevel: Rating | null; onAnswer: (t: Table) => void; onSignedOut: () => void }) {
+export default function Priorities({ me, canStart, defs, answer, exposureLevel, onAnswer, onSignedOut }: { me: string; canStart: boolean; defs: Definition[]; answer: Table | null; exposureLevel: Rating | null; onAnswer: (t: Table) => void; onSignedOut: () => void }) {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [copied, setCopied] = useState(false)
   const abort = useRef<AbortController | null>(null)
+  const [runs, setRuns] = useState<Record<string, Run>>({})
+  const [sending, setSending] = useState<string | null>(null)
+  const [sendErr, setSendErr] = useState<Record<string, string>>({})
+  const offered = defs.some((d) => d.id === ASSESSMENT)
+  async function assess(id: string) {
+    setSending(id); setSendErr((e) => ({ ...e, [id]: '' }))
+    try { const r = await api.startWorkflow(ASSESSMENT, id); setRuns((x) => ({ ...x, [id]: r.run })) }
+    catch (e) { if (e instanceof ApiError && e.status === 401) return onSignedOut(); setSendErr((x) => ({ ...x, [id]: e instanceof ApiError ? reasonText(e.code) || e.message : (e as Error).message })) }
+    finally { setSending(null) }
+  }
 
   const run = useCallback(async () => {
     setErr(''); setCopied(false); setBusy(true); abort.current = new AbortController()
@@ -56,6 +68,12 @@ export default function Priorities({ answer, exposureLevel, onAnswer, onSignedOu
                   {r.lossEvent && <p className="muted small">If it fails: {r.lossEvent}</p>}
                   {r.notes.map((n) => <p key={n} className="muted small">{n}</p>)}
                   <p className="muted small">Business impact: not scored.</p>
+                  <p className="small">{r.registered ? <>In the risk register: <strong>{r.registered.rating}</strong>, set by {r.registered.by}{r.registered.at ? ` on ${r.registered.at.slice(0, 10)}` : ''}.</> : 'Not in the risk register yet.'}</p>
+                  {offered && r.systemId && !runs[r.systemId] && (
+                    <p className="brief-actions"><button onClick={() => assess(r.systemId!)} disabled={!canStart || sending === r.systemId}>{sending === r.systemId ? 'Sending…' : 'Send for assessment'}</button>
+                      {!canStart && <span className="muted small" role="note">Your account cannot start workflows. A first-line person proposes; a second-line person records it.</span>}</p>)}
+                  {r.systemId && sendErr[r.systemId] && <p role="alert" className="error small">{sendErr[r.systemId]}</p>}
+                  {r.systemId && runs[r.systemId] && <RunCard initial={runs[r.systemId]} me={me} onSignedOut={onSignedOut} />}
                 </li>
               )
             })}

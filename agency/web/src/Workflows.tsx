@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, ApiError } from './api'
-import { approvalLine, dryRunLine, incidentRejection, incidentStage, incidentWords, isIncident, reasonText, ruleLabel, shortHash, stageLabel, TERMINAL, type Decisions, type Run } from './workflow'
+import { approvalLine, assessmentStage, assessmentWords, dryRunLine, incidentRejection, incidentStage, incidentWords, isAssessment, isIncident, reasonText, ruleLabel, shortHash, stageLabel, TERMINAL, type Decisions, type Run } from './workflow'
 
 interface Props { initial: Run; me: string; onSignedOut: () => void; onChange?: (run: Run) => void }
 
@@ -48,14 +48,14 @@ export function RunCard({ initial, me, onSignedOut, onChange }: Props) {
   const canReject = waiting && (run.you.canApprove || run.initiator === me)
   const withdraw = !run.you.canApprove && run.initiator === me      // the Server lets the person who started a run withdraw it, though not approve it
   const simulated = run.recommendation?.source === 'stub'
-  const inc = isIncident(run); const words = incidentWords(run)
-  const stageText = (st: string) => (inc ? incidentStage(run, st) : stageLabel(st))
+  const asm = isAssessment(run); const inc = isIncident(run) || asm; const words = asm ? assessmentWords(run) : incidentWords(run)
+  const stageText = (st: string) => (asm ? assessmentStage(run, st) : inc ? incidentStage(run, st) : stageLabel(st))
   const order = run.stageOrder?.length ? run.stageOrder : ['facts', 'rules', 'recommendation', 'awaiting_approval', 'approved', 'written_back']
   const evidence = Object.entries(run.evidence ?? {}).filter(([k]) => k !== 'definition' && k !== 'key')
 
   return (
     <article className="run" aria-label={`${run.title} ${run.key}`}>
-      <h3>{run.title} <span className="tag">{run.key}</span> <span className="muted small">started by {run.initiator}</span></h3>
+      <h3>{run.title} <span className="tag">{asm && typeof run.evidence?.system === 'string' ? run.evidence.system : run.key}</span> <span className="muted small">started by {run.initiator}</span></h3>
       <ol className="stages" aria-label="Progress">
         {order.filter((s) => s !== 'approved' || run.stage === 'approved').map((s) => (
           <li key={s} aria-current={s === run.stage ? 'step' : undefined} className={s === run.stage ? 'now' : order.indexOf(s) < order.indexOf(run.stage) ? 'past' : ''}>{stageText(s)}</li>

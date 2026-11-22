@@ -9,9 +9,11 @@ import hmac, re
 DEFINITION = "payment-exception"
 IT_DEFINITION = "vulnerability-exception"
 RCA_DEFINITION = "incident-cluster-rca"
+ASSESS_DEFINITION = "risk-assessment"
 DEFINITIONS = {DEFINITION: {"prefix": "payment", "key": "payment_id", "what": "a payment id"}, IT_DEFINITION: {"prefix": "vuln", "key": "vuln_id", "what": "a vulnerability id"},
-               RCA_DEFINITION: {"prefix": "rca", "key": "claim_id", "what": "a claim id"}}
-RUN_ID = re.compile(r"^(payment|vuln|rca)-(\d{1,12})$")
+               RCA_DEFINITION: {"prefix": "rca", "key": "claim_id", "what": "a claim id"},
+               ASSESS_DEFINITION: {"prefix": "assess", "key": "system_id", "what": "a system id"}}
+RUN_ID = re.compile(r"^(payment|vuln|rca|assess)-(\d{1,12})$")
 STAGES = {"starting": "facts", "facts": "facts", "rules": "rules", "recommendation": "recommendation", "awaiting_approval": "awaiting_approval",
           "writing_back": "approved", "done": "written_back", "rejected": "rejected", "escalated": "rejected", "expired": "rejected"}
 AGENTS = {"treasury-agent", "policy-auto", "ai", "claude"}            # rules.AGENT_ACTORS: automation never approves
@@ -22,7 +24,7 @@ class Refusal(Exception):
 
 
 def definition_of(rid):
-    """The definition a run id belongs to (payment-35 -> payment-exception, vuln-6 -> vulnerability-exception, rca-1 -> incident-cluster-rca)."""
+    """The definition a run id belongs to (payment-35 -> payment-exception, vuln-6 -> vulnerability-exception, rca-1 -> incident-cluster-rca, assess-3 -> risk-assessment)."""
     return next(d for d, x in DEFINITIONS.items() if rid.startswith(x["prefix"] + "-"))
 
 

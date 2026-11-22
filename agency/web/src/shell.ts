@@ -41,3 +41,12 @@ export function startWorkspace(packs: Pack[], want: string | null | undefined): 
   const options = workspaceChoices(packs)
   return (options.find((p) => p.id === want) ?? options[0])?.id ?? null
 }
+
+/** The line the person holds, as far as it can be told. The Server has grants for starting and approving; a read-only grant for audit does not exist yet, so the third line is inferred from having neither. */
+export function roleLabel(g: { canStart: boolean; canApprove: boolean }): { text: string; note: string } {
+  const note = 'Inferred from your grants: starting a run is the first line, approving is the second, and neither is read-only (the third line). The Server enforces the grants on every call.'
+  if (g.canStart && g.canApprove) return { text: 'First and second line', note }
+  if (g.canApprove) return { text: 'Second line: you approve', note }
+  if (g.canStart) return { text: 'First line: you propose', note }
+  return { text: 'Read only', note }
+}

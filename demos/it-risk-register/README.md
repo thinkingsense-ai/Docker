@@ -33,3 +33,16 @@ curl -X PUT localhost:8080/api/config/schema-discovery -H "Authorization: Bearer
 ```
 
 Verified 2026-11-21 against the sandbox: a schema created while the Server was running was queryable through `/api/query` after that call, and the three reference queries return 33, 4 and 13 rows. Not in the cloud charts.
+
+## Writing the register: the risk-assessment workflow (step 8d)
+
+`demos/payment-workflow` has a fourth workflow definition, `risk-assessment` (run id `assess-<system_id>`), the only way a rating gets into `register.assessments`:
+
+1. **Propose (first line).** Someone with the start grant sends one system from the Priorities screen. The run reads that system's estate row (the same SQL as the Priorities question, one system), the register's current rating for it and the exposure rating of the case, then proposes the rating the Priorities rules give (`priority_rules.py`, the same module the screen's port is tested against), a category (the finding that drives the likelihood; ours, to be confirmed) and the **control evidence** as plain text built from the row.
+2. **Approve (second line).** A person with the approve grant records it or sends it back with a reason. The initiator and AI or service identities cannot approve; a stale hash is refused; **a Critical rating needs two different people** (a demo constant, as for the kill switch). The approval is bound to a digest of the exact row, exposure rating, rating, category and evidence.
+3. **Record.** The worker adds ONE row as `register_writer` (INSERT only; the table refuses UPDATE, DELETE and TRUNCATE). `set_by` is the approvers the Server's workflow API delivered, `role` is `second`, `run_id` and `evidence_digest` point back at the run, and a unique index on `run_id` means a retried write adds nothing twice. Earlier ratings stay: the current one is the newest row. A hold or a send-back adds nothing. `REGISTER_WRITE=dry-run` records the exact row without adding it.
+4. **Record of the decision.** The usual hash-chained decision record.
+
+Roles on screen are inferred from the grants (start = first line, approve = second line, neither = read only, the third line); a read-only audit grant does not exist in the Server yet. The recommendation is from the rules alone (`rules-only`); no model drafts anything. Limits: one run per system ever (as with the other definitions), so a second assessment of the same system needs a new run id (not built); the treatment decision (accept, mitigate, transfer, avoid) is not part of this run; the cloud charts do not carry the register or this definition.
+
+The worker needs `psql` (the image now installs `postgresql-client`) and `REGISTER_DB_HOST`, `REGISTER_DB_PASSWORD` (and optionally `_USER`, `_NAME`, `_PORT`); the local sandbox sets them in `agency/local/docker-compose.risk-gateway.yml`. After changing the manifest, restart the app. Existing stacks need the register schema reloaded (run `grant-register.sql` AFTER every reload) and the changed Priorities question replaced in the question bank (the seeder skips a question whose text is already there: delete the old entry with `POST /api/question-bank/delete`, then re-run the seed container).
