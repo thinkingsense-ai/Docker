@@ -24,6 +24,12 @@
 {{- range $questions }}{{- if include "omnigate.has" (dict "ctx" $ "pack" .category) }}{{- $kept = append $kept . }}{{- end }}{{- end }}
 {{- $questions = $kept }}
 {{- end }}
+{{- if include "omnigate.has" (dict "ctx" . "pack" "agency-risk") }}
+{{- /* The Agency IT-risk screens ask these approved questions: the incident case, the simulated estate, the priorities list and the risk register. */ -}}
+{{- range $f := list "files/demo-questions-rca.json" "files/demo-questions-estate.json" "files/demo-questions-priorities.json" "files/demo-questions-register.json" }}
+{{- $questions = concat $questions ($.Files.Get $f | fromJsonArray) }}
+{{- end }}
+{{- end }}
 {{- end }}
 # Approves a few trusted questions for the seeded supply-chain demo (files/demo-questions.json), so the
 # Ask app's first screen offers questions that this data can answer. With an empty question bank the app

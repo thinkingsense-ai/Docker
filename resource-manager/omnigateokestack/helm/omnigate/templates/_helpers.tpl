@@ -480,7 +480,7 @@ must not start before both are there. Runs before ensure-readonly-role so that r
 {{- define "omnigate.postgresSeedName" -}}{{- if include "omnigate.packs" . }}seed-packs-postgres{{ else if eq (include "omnigate.dataset" .) "it-risk" }}seed-it-risk-postgres{{ else if eq (include "omnigate.dataset" .) "bom" }}seed-bom-postgres{{ else if eq (include "omnigate.dataset" .) "treasury" }}seed-treasury-postgres{{ else }}seed-supply-chain{{ end -}}{{- end -}}
 
 {{- /* The embedding model Deployment and question matching (approved questions served from their saved SQL): all-packs, and the bom and treasury sets. */ -}}
-{{- define "omnigate.embedding" -}}{{- if or (eq (include "omnigate.dataset" .) "all-packs") (eq (include "omnigate.dataset" .) "bom") (eq (include "omnigate.dataset" .) "treasury") (and (eq (include "omnigate.dataset" .) "mix") (or (include "omnigate.has" (dict "ctx" . "pack" "bom")) (include "omnigate.has" (dict "ctx" . "pack" "treasury")))) }}true{{ end -}}{{- end -}}
+{{- define "omnigate.embedding" -}}{{- if or (eq (include "omnigate.dataset" .) "all-packs") (eq (include "omnigate.dataset" .) "bom") (eq (include "omnigate.dataset" .) "treasury") (and (eq (include "omnigate.dataset" .) "mix") (or (include "omnigate.has" (dict "ctx" . "pack" "bom")) (include "omnigate.has" (dict "ctx" . "pack" "treasury")) (include "omnigate.has" (dict "ctx" . "pack" "agency-risk")))) }}true{{ end -}}{{- end -}}
 {{- /* Waits for the embedding model to answer before the app starts (the bom and treasury sets; all-packs has this inside packsWaitInit). */ -}}
 {{- define "omnigate.embedWaitInit" -}}
 - name: wait-for-embedding-model
@@ -498,16 +498,18 @@ all-packs for those, and "mix" for any other combination, which is deployed the 
 */ -}}
 {{- define "omnigate.selection" -}}
 {{- if .Values.demoDatasets -}}
-{{- $known := list "supply-chain" "manufacturing" "it-risk" "smithsonian" "bom" "treasury" -}}
+{{- $known := list "supply-chain" "manufacturing" "it-risk" "smithsonian" "bom" "treasury" "agency-risk" -}}
 {{- $sel := list -}}
 {{- range .Values.demoDatasets -}}
 {{- if not (has . $known) -}}{{- fail (printf "demoDatasets: %q is not a pack the charts can deploy (known: %s)" . (join ", " $known)) -}}{{- end -}}
 {{- $sel = append $sel . -}}
 {{- end -}}
 {{- if and (has "manufacturing" $sel) (not (has "supply-chain" $sel)) -}}{{- $sel = append $sel "supply-chain" -}}{{- end -}}
+{{- /* agency-risk (the Agency IT-risk investigation data: schemas rca, estate, register) reads beside the IT and operational risk pack, so it brings that pack in. */ -}}
+{{- if and (has "agency-risk" $sel) (not (has "it-risk" $sel)) -}}{{- $sel = append $sel "it-risk" -}}{{- end -}}
 {{- $out := list -}}
 {{- range $known -}}{{- if has . $sel -}}{{- $out = append $out . -}}{{- end -}}{{- end -}}
-{{- if and (has "smithsonian" $out) (ne (len $out) (len $known)) -}}{{- fail "demoDatasets: the Smithsonian pack (object store, loader, vocabulary) is only deployed together with all six packs for now; leave it out of a smaller selection or select every pack" -}}{{- end -}}
+{{- if and (has "smithsonian" $out) (ne (len (without $out "agency-risk")) 6) -}}{{- fail "demoDatasets: the Smithsonian pack (object store, loader, vocabulary) is only deployed together with all six packs for now; leave it out of a smaller selection or select every pack" -}}{{- end -}}
 {{- toJson $out -}}
 {{- end -}}
 {{- end -}}
@@ -517,7 +519,7 @@ all-packs for those, and "mix" for any other combination, which is deployed the 
 {{- if not $sel -}}{{ .Values.demoDataset }}
 {{- else -}}
 {{- $l := $sel | fromJsonArray -}}
-{{- if eq (len $l) 6 -}}all-packs
+{{- if and (eq (len $l) 6) (not (has "agency-risk" $l)) -}}all-packs
 {{- else if and (eq (len $l) 1) (has (first $l) (list "supply-chain" "it-risk" "bom" "treasury")) -}}{{ first $l }}
 {{- else if and (has "supply-chain" $l) (le (len $l) 2) (not (has "it-risk" $l)) (not (has "bom" $l)) (not (has "treasury" $l)) -}}supply-chain
 {{- else -}}mix
@@ -529,7 +531,7 @@ all-packs for those, and "mix" for any other combination, which is deployed the 
 {{- define "omnigate.has" -}}
 {{- $sel := include "omnigate.selection" .ctx -}}
 {{- if $sel -}}{{- if has .pack ($sel | fromJsonArray) -}}true{{- end -}}
-{{- else if eq .ctx.Values.demoDataset "all-packs" -}}true
+{{- else if and (eq .ctx.Values.demoDataset "all-packs") (ne .pack "agency-risk") -}}true
 {{- else if eq .ctx.Values.demoDataset .pack -}}true
 {{- end -}}
 {{- end -}}
@@ -550,7 +552,7 @@ all-packs for those, and "mix" for any other combination, which is deployed the 
 {{- /* The schemas the federation planner may discover, in the order the all-packs set always listed them. */ -}}
 {{- define "omnigate.federationSchemas" -}}
 {{- $out := list -}}
-{{- range $p := list (list "suppliers" "supply-chain") (list "inventory" "supply-chain") (list "procurement" "supply-chain") (list "risk" "it-risk") (list "smithsonian" "smithsonian") (list "security" "it-risk") (list "museums" "smithsonian") (list "bom" "bom") (list "treasury" "treasury") (list "erp" "treasury") -}}
+{{- range $p := list (list "suppliers" "supply-chain") (list "inventory" "supply-chain") (list "procurement" "supply-chain") (list "risk" "it-risk") (list "smithsonian" "smithsonian") (list "security" "it-risk") (list "museums" "smithsonian") (list "bom" "bom") (list "treasury" "treasury") (list "erp" "treasury") (list "rca" "agency-risk") (list "estate" "agency-risk") (list "register" "agency-risk") -}}
 {{- if include "omnigate.has" (dict "ctx" $ "pack" (index $p 1)) -}}{{- $out = append $out (index $p 0) -}}{{- end -}}
 {{- end -}}
 {{- join "," $out -}}

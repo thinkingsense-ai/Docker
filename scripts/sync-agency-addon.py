@@ -17,6 +17,10 @@ CHARTS = {
     "resource-manager/omnigategkestack/helm/omnigate": {},
     "resource-manager/omnigateaksstack/helm/omnigate": {"service.beta.kubernetes.io/azure-load-balancer-internal": "false"},
 }
+# The Agency IT-risk investigation data (the `agency-risk` pack): seeds and approved questions, copied to each chart's files/ (not files/agency/) so the pack composer can read them.
+DATA = [("seed-rca-postgres.sql", "demos/it-risk-rca/seed-rca-postgres.sql"), ("seed-estate-postgres.sql", "demos/it-risk-estate/seed-estate-postgres.sql"), ("seed-register-postgres.sql", "demos/it-risk-register/seed-register-postgres.sql"),
+        ("demo-questions-rca.json", "demos/it-risk-rca/demo-questions-rca.json"), ("demo-questions-estate.json", "demos/it-risk-estate/demo-questions-estate.json"),
+        ("demo-questions-priorities.json", "demos/it-risk-estate/demo-questions-priorities.json"), ("demo-questions-register.json", "demos/it-risk-register/demo-questions-register.json")]
 def values(annotations):
     ann = "".join('      %s: "%s"\n' % (k, v) for k, v in annotations.items())
     return '''
@@ -42,7 +46,7 @@ def main(check):
     tpl = open(os.path.join(ROOT, "agency/chart/agency.yaml"), "rb").read()
     for chart, ann in CHARTS.items():
         base = os.path.join(ROOT, chart)
-        jobs = [(os.path.join(base, "templates/agency.yaml"), tpl)] + [(os.path.join(base, "files/agency", n), open(src, "rb").read()) for n, src in FILES]
+        jobs = [(os.path.join(base, "templates/agency.yaml"), tpl)] + [(os.path.join(base, "files/agency", n), open(src, "rb").read()) for n, src in FILES] + [(os.path.join(base, "files", n), open(os.path.join(ROOT, src), "rb").read()) for n, src in DATA]
         for path, content in jobs:
             if not want(path, content):
                 bad.append(os.path.relpath(path, ROOT))

@@ -1,0 +1,62 @@
+[
+ {
+  "question": "Which incidents in the November 2026 cluster have a confirmed cause, and which do not?",
+  "referenceSql": "SELECT e.operator, e.label, l.grade FROM pg.rca.events e JOIN pg.rca.links l ON l.event_id = e.event_id AND l.layer = 'cause' WHERE e.case_id = 'nov-2026-cluster' ORDER BY CASE l.grade WHEN 'confirmed' THEN 1 ELSE 2 END, e.started_on",
+  "category": "it-risk"
+ },
+ {
+  "question": "For each November 2026 incident, what is the cause and how well is it supported?",
+  "referenceSql": "SELECT e.operator, l.statement AS cause, l.grade, COUNT(ls.signal_id) AS sources FROM pg.rca.events e JOIN pg.rca.links l ON l.event_id = e.event_id AND l.layer = 'cause' LEFT JOIN pg.rca.link_sources ls ON ls.link_id = l.link_id WHERE e.case_id = 'nov-2026-cluster' GROUP BY e.operator, l.statement, l.grade, e.started_on ORDER BY e.started_on",
+  "category": "it-risk"
+ },
+ {
+  "question": "Which links in the November 2026 cluster are only inferred or still to be tested?",
+  "referenceSql": "SELECT l.layer, l.statement, l.grade, l.reason FROM pg.rca.links l WHERE l.case_id = 'nov-2026-cluster' AND l.grade IN ('inferred','to_be_tested') ORDER BY l.link_id",
+  "category": "it-risk"
+ },
+ {
+  "question": "Which November 2026 incidents have a disputed or unnamed cause, and why?",
+  "referenceSql": "SELECT e.operator, l.grade, l.statement, l.reason FROM pg.rca.events e JOIN pg.rca.links l ON l.event_id = e.event_id AND l.layer = 'cause' WHERE e.case_id = 'nov-2026-cluster' AND l.grade IN ('disputed','not_named') ORDER BY e.started_on",
+  "category": "it-risk"
+ },
+ {
+  "question": "What is the verdict on the claim that the November outages are AI hacking?",
+  "referenceSql": "SELECT c.claim, c.verdict, c.open_incidents, c.note FROM pg.rca.claims c WHERE c.case_id = 'nov-2026-cluster'",
+  "category": "it-risk"
+ },
+ {
+  "question": "Which control owns each root condition, and which framework category does it map to?",
+  "referenceSql": "SELECT l.case_id, l.statement AS root_condition, l.grade, m.owning_control, m.owner_role, m.framework, m.category FROM pg.rca.links l JOIN pg.rca.control_map m ON m.root_condition = l.control_root WHERE l.layer = 'root_condition' ORDER BY l.case_id DESC",
+  "category": "it-risk"
+ },
+ {
+  "question": "Who said each confirmed cause, and where?",
+  "referenceSql": "SELECT e.operator, s.speaker, s.speaker_kind, s.publisher, s.url FROM pg.rca.links l JOIN pg.rca.events e ON e.event_id = l.event_id JOIN pg.rca.link_sources ls ON ls.link_id = l.link_id JOIN pg.rca.signals s ON s.signal_id = ls.signal_id WHERE l.layer = 'cause' AND l.grade = 'confirmed' AND e.case_id = 'nov-2026-cluster' ORDER BY e.started_on",
+  "category": "it-risk"
+ },
+ {
+  "question": "How many links in each case have a source, and how many do not?",
+  "referenceSql": "SELECT l.case_id, COUNT(*) AS links, SUM(CASE WHEN EXISTS (SELECT 1 FROM pg.rca.link_sources ls WHERE ls.link_id = l.link_id) THEN 1 ELSE 0 END) AS with_source, SUM(CASE WHEN EXISTS (SELECT 1 FROM pg.rca.link_sources ls WHERE ls.link_id = l.link_id) THEN 0 ELSE 1 END) AS without_source FROM pg.rca.links l GROUP BY l.case_id ORDER BY l.case_id",
+  "category": "it-risk"
+ },
+ {
+  "question": "How does the July 2026 breakout read, layer by layer?",
+  "referenceSql": "SELECT l.layer, l.statement, l.grade, l.reason FROM pg.rca.links l WHERE l.case_id = 'jul-2026-breakout' ORDER BY CASE l.layer WHEN 'symptom' THEN 1 WHEN 'cause' THEN 2 WHEN 'driver' THEN 3 ELSE 4 END",
+  "category": "it-risk"
+ },
+ {
+  "question": "Which causes rest on a news page that quotes a source rather than on a statement we can name?",
+  "referenceSql": "SELECT e.operator, l.grade, s.publisher, s.speaker, s.note FROM pg.rca.links l JOIN pg.rca.events e ON e.event_id = l.event_id JOIN pg.rca.link_sources ls ON ls.link_id = l.link_id JOIN pg.rca.signals s ON s.signal_id = ls.signal_id WHERE l.layer = 'cause' AND s.speaker_kind = 'reporting' AND e.case_id = 'nov-2026-cluster'",
+  "category": "it-risk"
+ },
+ {
+  "question": "Which incident candidates are we watching, and has each been traced?",
+  "referenceSql": "SELECT c.candidate_id, c.title, c.claim_type, c.status, c.first_seen, c.summary, cl.verdict, cl.open_incidents, (SELECT COUNT(*) FROM pg.rca.events e WHERE e.case_id = c.case_id) AS incidents, (SELECT COUNT(*) FROM pg.rca.candidate_items ci WHERE ci.candidate_id = c.candidate_id) + (SELECT COUNT(*) FROM pg.rca.candidate_feed_items cf WHERE cf.candidate_id = c.candidate_id) AS sources, fs.name AS lead_source, fi.url AS lead_url FROM pg.rca.candidates c LEFT JOIN pg.rca.claims cl ON cl.claim_id = c.claim_id LEFT JOIN pg.rca.feed_items fi ON fi.item_id = c.lead_item_id LEFT JOIN pg.rca.feed_sources fs ON fs.source_id = fi.source_id ORDER BY c.first_seen DESC",
+  "category": "it-risk"
+ },
+ {
+  "question": "Which feeds are we reading, and when did each last answer?",
+  "category": "it-risk",
+  "referenceSql": "SELECT s.name AS source, s.kind, s.last_status, s.last_success_at, s.items_last_run, (SELECT COUNT(*) FROM pg.rca.feed_items i WHERE i.source_id = s.source_id) AS items_total, (SELECT COUNT(*) FROM pg.rca.feed_items i WHERE i.source_id = s.source_id AND i.matched) AS matched_total, s.last_error FROM pg.rca.feed_sources s WHERE s.enabled ORDER BY s.kind, s.name"
+ }
+]
