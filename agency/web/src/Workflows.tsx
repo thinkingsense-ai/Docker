@@ -54,7 +54,7 @@ export function RunCard({ initial, me, onSignedOut, onChange }: Props) {
   const evidence = Object.entries(run.evidence ?? {}).filter(([k]) => k !== 'definition' && k !== 'key')
 
   return (
-    <article className="run" aria-label={`${run.title} ${run.key}`}>
+    <article className="run" data-tour="wf-card" data-stage={run.stage} aria-label={`${run.title} ${run.key}`}>
       <h3>{run.title} <span className="tag">{asm && typeof run.evidence?.system === 'string' ? run.evidence.system : run.key}</span> <span className="muted small">started by {run.initiator}</span></h3>
       <ol className="stages" aria-label="Progress">
         {order.filter((s) => s !== 'approved' || run.stage === 'approved').map((s) => (
@@ -74,7 +74,7 @@ export function RunCard({ initial, me, onSignedOut, onChange }: Props) {
       {run.writeBack && <p className="small">{dryRunLine(run.writeBack)}</p>}
       {waiting && (
         <div className="actions">
-          <button className="primary" disabled={busy || !run.you.canApprove || !run.payloadHash} onClick={() => act(() => api.approveWorkflow(run.id, run.payloadHash!))}>{inc ? words.approve : 'Approve'}</button>
+          <button className="primary" data-tour="wf-approve" disabled={busy || !run.you.canApprove || !run.payloadHash} onClick={() => act(() => api.approveWorkflow(run.id, run.payloadHash!))}>{inc ? words.approve : 'Approve'}</button>
           {canReject && !rejecting && <button disabled={busy} onClick={() => setRejecting(true)}>{inc ? (withdraw ? 'Withdraw…' : words.decline) : withdraw ? 'Withdraw…' : 'Reject…'}</button>}
           {!run.you.canApprove && <span className="muted small" role="note">You cannot approve: {reasonText(run.you.reason) || 'not available.'}</span>}
         </div>
@@ -112,7 +112,7 @@ export function Queue({ me, onSignedOut, onCount }: { me: string; onSignedOut: (
   return (
     <section aria-label="Waiting for me">
       <h2>Waiting for me</h2>
-      <p className="small"><button className="link" onClick={load}>Refresh</button></p>
+      <p className="small"><button className="link" data-tour="queue-refresh" onClick={load}>Refresh</button></p>
       {err && <p role="alert" className="error">{err}</p>}
       {runs && runs.length === 0 && handled.length === 0 && !err && <p className="muted">Nothing is waiting for your approval. Runs you started yourself never appear here: someone else has to approve them.</p>}
       {runs?.filter((r) => !handled.some((h) => h.id === r.id)).map((r) => <RunCard key={r.id} initial={r} me={me} onSignedOut={onSignedOut} onChange={(run) => { setHandled((h) => [run, ...h.filter((x) => x.id !== run.id)]); load() }} />)}

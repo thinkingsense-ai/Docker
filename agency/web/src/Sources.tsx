@@ -34,7 +34,7 @@ export default function Sources({ table, onLoaded, onSignedOut }: { table: Table
       {line && <p className={line.ok ? 'srcline ok' : 'srcline warn'} role="status">{line.text}</p>}
       {table && list.length > 0 && (
         <div className="tablewrap">
-          <table>
+          <table data-tour="sources-table">
             <thead><tr><th>Feed</th><th>Kind</th><th>Health</th><th>Items read</th><th>Kept as leads</th></tr></thead>
             <tbody>
               {list.map((s) => {

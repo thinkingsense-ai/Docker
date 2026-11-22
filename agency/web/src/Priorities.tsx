@@ -46,7 +46,7 @@ export default function Priorities({ me, canStart, defs, answer, exposureLevel, 
         <p className="notbuilt" role="note"><strong>Simulated estate.</strong> Invented data for an invented firm. This is a method, not a standard: likelihood and impact are added on one four-value scale, and a trigger can lift a system to High.</p>
         <p className="muted">One approved question is asked as you; each system is ranked by the stated rules, and every row says why. Business impact is not scored: it needs the firm&apos;s own business services.</p>
         <div className="brief-actions">
-          <button className="primary" onClick={run} disabled={busy}>{busy ? 'Asking…' : p ? 'Rank again' : 'Rank the systems'}</button>
+          <button className="primary" data-tour="priorities-run" onClick={run} disabled={busy}>{busy ? 'Asking…' : p ? 'Rank again' : 'Rank the systems'}</button>
           {busy && <button onClick={() => abort.current?.abort()}>Cancel</button>}
           {p?.ok && <><button onClick={copy}>{copied ? 'Copied' : 'Copy as text'}</button><button onClick={() => window.print()}>Print</button></>}
         </div>
@@ -57,7 +57,7 @@ export default function Priorities({ me, canStart, defs, answer, exposureLevel, 
       {p?.ok && (
         <>
           <p role="status"><strong>{p.sentence}</strong>{exposureLevel === 'Critical' ? ' The exposure rating is Critical, so systems running the affected technology are at least High.' : ' Run Exposure first to include its trigger.'}</p>
-          <ol className="qcards prio">
+          <ol className="qcards prio" data-tour="priorities-list">
             {p.rows.map((r, i) => {
               const k = ratingRank(r.rating) ?? 0
               return (
@@ -70,7 +70,7 @@ export default function Priorities({ me, canStart, defs, answer, exposureLevel, 
                   <p className="muted small">Business impact: not scored.</p>
                   <p className="small">{r.registered ? <>In the risk register: <strong>{r.registered.rating}</strong>, set by {r.registered.by}{r.registered.at ? ` on ${r.registered.at.slice(0, 10)}` : ''}.</> : 'Not in the risk register yet.'}</p>
                   {offered && r.systemId && !runs[r.systemId] && (
-                    <p className="brief-actions"><button onClick={() => assess(r.systemId!)} disabled={!canStart || sending === r.systemId}>{sending === r.systemId ? 'Sending…' : 'Send for assessment'}</button>
+                    <p className="brief-actions"><button data-tour="assess" onClick={() => assess(r.systemId!)} disabled={!canStart || sending === r.systemId}>{sending === r.systemId ? 'Sending…' : 'Send for assessment'}</button>
                       {!canStart && <span className="muted small" role="note">Your account cannot start workflows. A first-line person proposes; a second-line person records it.</span>}</p>)}
                   {r.systemId && sendErr[r.systemId] && <p role="alert" className="error small">{sendErr[r.systemId]}</p>}
                   {r.systemId && runs[r.systemId] && <RunCard initial={runs[r.systemId]} me={me} onSignedOut={onSignedOut} />}

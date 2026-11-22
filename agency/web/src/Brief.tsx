@@ -62,7 +62,7 @@ export default function Brief({ onSignedOut, me, canStart, defs }: { onSignedOut
         <p className="muted small">Scope: six outages, 12 to 17 November 2026 (Microsoft 365, FAA, JPMorgan Chase, United, NSANet, Apple). Claim tested: "The November outages are AI hacking."</p>
         <p className="muted small">The specification of the JPMC advisor, on the invented demo data. Causes are the specification's own, checked there against official statements on 19 November 2026; this system fetched nothing.</p>
         <div className="brief-actions">
-          <button className="primary" onClick={run} disabled={step !== null}>{b ? 'Build it again' : 'Build the problem record'}</button>
+          <button className="primary" data-tour="brief-build" onClick={run} disabled={step !== null}>{b ? 'Build it again' : 'Build the problem record'}</button>
           {step !== null && <button onClick={() => abort.current?.abort()}>Cancel</button>}
           {b && <><button onClick={copy}>{copied ? 'Copied' : 'Copy as text'}</button> <button onClick={() => window.print()}>Print</button></>}
         </div>
@@ -73,7 +73,7 @@ export default function Brief({ onSignedOut, me, canStart, defs }: { onSignedOut
       {b && !b.complete && <p className="warn">Not every approved question answered, so the problem record cannot be shown. Check that the IT-risk case data is loaded (the demos/it-risk-rca seed) and try again.</p>}
 
       {b?.complete && <>
-        <h2 className="brief-headline">{headline(b)}</h2>
+        <h2 className="brief-headline" data-tour="brief-headline">{headline(b)}</h2>
         {b.claim && <div className="verdict"><strong>Verdict on the claim: {verdictLabel(b.claim.verdict)}.</strong> {b.claim.sentence}</div>}
 
         <h2>Incidents and their causes</h2>
@@ -101,7 +101,7 @@ export default function Brief({ onSignedOut, me, canStart, defs }: { onSignedOut
         {offered && runState === undefined && <p className="muted small" role="status">Looking for a decision on this problem record…</p>}
         {offered && runState === null && <>
           <p className="small">A named approver, not you, publishes this problem record or puts it on hold. The run re-reads the causes and sources, checks the rules, and recommends one of the two; the approval is bound to the exact problem record. Publishing is a dry run: nothing is sent anywhere.</p>
-          <div className="brief-actions"><button className="primary" onClick={send} disabled={starting || !canStart}>{starting ? 'Sending…' : 'Send for approval'}</button>{!canStart && <span className="muted small" role="note">Your account cannot start workflows.</span>}</div>
+          <div className="brief-actions"><button className="primary" data-tour="brief-send" onClick={send} disabled={starting || !canStart}>{starting ? 'Sending…' : 'Send for approval'}</button>{!canStart && <span className="muted small" role="note">Your account cannot start workflows.</span>}</div>
           {startErr && <p role="alert" className="error small">{startErr}</p>}
         </>}
         {offered && runState && <>

@@ -53,7 +53,7 @@ export default function Clocks({ me, canStart, defs, answers, onAnswers, onSigne
         <p className="notbuilt" role="note"><strong>Simulated firm. Nothing is sent to any regulator.</strong> The incidents are invented. The rules are our reading of public summaries, checked in secondary sources on 2026-11-21: read the regulation before relying on them.</p>
         <p className="muted">Whether an incident is major is a person&apos;s decision, recorded here by a second-line approval; no rule makes it, and whether it is material (bad press) is not decided at all. The clocks start only after that decision.</p>
         <div className="brief-actions">
-          <button className="primary" onClick={load} disabled={busy}>{busy ? 'Loading…' : answers ? 'Refresh' : 'Load the incidents'}</button>
+          <button className="primary" data-tour="clocks-load" onClick={load} disabled={busy}>{busy ? 'Loading…' : answers ? 'Refresh' : 'Load the incidents'}</button>
           {busy && <button onClick={() => abort.current?.abort()}>Cancel</button>}
         </div>
         {err && <p role="alert" className="error">{err}</p>}
@@ -77,7 +77,7 @@ export default function Clocks({ me, canStart, defs, answers, onAnswers, onSigne
                         <td className="small">{c.basis}{c.flags.length > 0 && <><br /><em>{c.flags.join('; ')}.</em></>}</td></tr>))}</tbody></table></div>)}
                 {cl && cl.state !== 'clocks' && <p className="muted small">{cl.state === 'no_regulator' ? 'No regulator is declared, so there is no clock.' : 'The decision has no readable time, so no clock is shown.'}</p>}
                 {!decided && offered && !runs[inc.incident_id] && (
-                  <p className="brief-actions"><button onClick={() => record(inc.incident_id)} disabled={!canStart || sending === inc.incident_id}>{sending === inc.incident_id ? 'Sending…' : 'Send for a major-incident decision'}</button>
+                  <p className="brief-actions"><button data-tour="clocks-send" onClick={() => record(inc.incident_id)} disabled={!canStart || sending === inc.incident_id}>{sending === inc.incident_id ? 'Sending…' : 'Send for a major-incident decision'}</button>
                     {!canStart && <span className="muted small" role="note">Your account cannot start workflows. A first-line person proposes; a second-line person decides.</span>}</p>)}
                 {sendErr[inc.incident_id] && <p role="alert" className="error small">{sendErr[inc.incident_id]}</p>}
                 {runs[inc.incident_id] && <RunCard initial={runs[inc.incident_id]} me={me} onSignedOut={onSignedOut} />}
