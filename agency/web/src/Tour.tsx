@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { api } from './api'
+import { api, ApiError } from './api'
 import type { View } from './shell'
 import { PERSONAS, STEPS, stepLabel, type StepState, type TourStep } from './tourScript'
 
@@ -36,7 +36,7 @@ export default function Tour({ user, go, switchTo, docked, min, onMin, onClose }
   useEffect(() => () => { stopped.current = true }, [])
 
   useEffect(() => {
-    Promise.all([api.status().catch(() => null), api.tourInfo().catch(() => null), api.workflowRun('rca-1').then((r) => r.run).catch(() => undefined)]).then(([st, info, run]) => {
+    Promise.all([api.status().catch(() => null), api.tourInfo().catch(() => null), api.workflowRun('rca-1').then((r) => r.run ?? null).catch((e) => (e instanceof ApiError && (e.status === 404 || e.code === 'unknown_run') ? null : undefined))]).then(([st, info, run]) => {
       const need = ['alice', 'bob', 'carol', 'curator']
       setPre([
         { ok: !!st?.server.reachable, fatal: true, text: st?.server.reachable ? 'The Server is reachable.' : 'The Server is not reachable. Start the sandbox (agency/local/up.sh).' },
