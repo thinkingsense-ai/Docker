@@ -29,6 +29,23 @@ python3 demos/it-risk-pilot/pilot.py score --dir demos/it-risk-pilot/out
 
 writes `results.json` and `results.md` (also printed). Tests: `python3 -m unittest demos/it-risk-pilot/test_pilot.py` (15, no network).
 
+## Sending the sheets to a reviewer: the blind bundle
+
+The three sheets above show OUR answers (rating, rank, reasons, which headlines the feed raised). Giving those to the person who is judging would anchor them, so do not send them. Build a blind bundle instead:
+
+```bash
+python3 demos/it-risk-pilot/pilot.py bundle --dir demos/it-risk-pilot/out --to demos/it-risk-pilot/out/bundle
+```
+
+`1-headlines.csv` shuffles the raised stories and the not-raised sample into one sheet with neutral ids (H01, H02, ...); `2-systems.csv` lists the systems alphabetically with their facts, without our rating, rank or reasons. Send those two files with `for-the-reviewer.md` (instructions, about 30 to 45 minutes). **Keep `out/key.json`**: it maps the ids back and is never put in the bundle. When the reviewer returns the two files:
+
+```bash
+python3 demos/it-risk-pilot/pilot.py merge --dir demos/it-risk-pilot/out --returned PATH_TO_RETURNED_FILES
+python3 demos/it-risk-pilot/pilot.py score --dir demos/it-risk-pilot/out
+```
+
+`merge` puts their labels back on the right rows and reports any id that is missing or that we did not send. The bundle's sources of bias are limited, not removed: the reviewer still sees real headlines and our systems' facts, and a person can sometimes guess a feed's habits.
+
 ## What is measured
 
 - **Feed precision** of what it raised (real and relevant; real at all), with a 95% Wilson interval.

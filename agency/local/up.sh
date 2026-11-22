@@ -37,6 +37,8 @@ esac
 export OMNIGATE_LLM_API_KEY=${OMNIGATE_LLM_API_KEY:-dummy}
 dc up --build -d
 python3 "$HERE/bootstrap.py"
+# A question whose SQL changed after it was first seeded is skipped by the seeder (it matches on text): replace those entries so the screens do not fail with errors such as "column s.tier does not exist".
+python3 "$HERE/refresh-questions.py" --seed || true
 echo
 echo "Agency  http://localhost:8097   sign in as curator / Curator-SI-1 (everything), alice / demo (starts workflows), bob and carol / demo (approve), public / Public-SI-1 (restricted)"
 echo "Ask     http://localhost:8080   Admin  http://localhost:8080/admin  admin / Admin-SI-1"
