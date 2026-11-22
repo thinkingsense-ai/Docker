@@ -2,7 +2,7 @@
 import type { Pack } from './api'
 import { BRIEF_PACK } from './rcaBrief'
 
-export type View = 'watch' | 'exposure' | 'priorities' | 'briefs' | 'approvals' | 'sources' | 'ask'
+export type View = 'watch' | 'exposure' | 'priorities' | 'clocks' | 'briefs' | 'approvals' | 'sources' | 'ask'
 
 export interface NavItem { id: View; label: string; hint: string; built: boolean }
 
@@ -11,6 +11,7 @@ export const NAV: NavItem[] = [
   { id: 'watch', label: 'Watch', hint: 'Incidents in the news that may be AI hacking', built: true },
   { id: 'exposure', label: 'Exposure', hint: 'Could this happen to our systems', built: true },
   { id: 'priorities', label: 'Priorities', hint: 'Which systems to fix first', built: true },
+  { id: 'clocks', label: 'Notifications', hint: 'Regulator clocks after a major incident', built: true },
   { id: 'briefs', label: 'Problem records', hint: 'Root-cause problem records and their approval', built: true },
   { id: 'approvals', label: 'Approvals', hint: 'Problem records waiting for you', built: true },
   { id: 'sources', label: 'Sources', hint: 'Where the feed comes from', built: true },

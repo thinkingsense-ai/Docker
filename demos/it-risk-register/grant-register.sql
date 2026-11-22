@@ -10,3 +10,5 @@ GRANT USAGE ON SCHEMA register TO register_writer;
 GRANT SELECT ON ALL TABLES IN SCHEMA register TO register_writer;
 GRANT INSERT ON register.assessments TO register_writer;
 GRANT USAGE ON SEQUENCE register.assessments_assessment_id_seq TO register_writer;
+GRANT INSERT ON register.major_incident_decisions TO register_writer;
+GRANT USAGE ON SEQUENCE register.major_incident_decisions_decision_id_seq TO register_writer;

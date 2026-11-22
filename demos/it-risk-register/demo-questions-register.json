@@ -28,5 +28,15 @@
   "question": "Which risk category does each incident in the November 2026 cluster fall under?",
   "referenceSql": "SELECT e.operator, e.label, t.name AS category, c.basis FROM pg.rca.events e JOIN pg.register.item_categories c ON c.item_type = 'event' AND c.item_ref = CAST(e.event_id AS VARCHAR) JOIN pg.register.taxonomy t ON t.node_id = c.node_id WHERE e.case_id = 'nov-2026-cluster' ORDER BY e.event_id",
   "category": "it-risk"
+ },
+ {
+  "question": "Which incidents has the firm recorded, and which have been classified as major?",
+  "referenceSql": "SELECT i.incident_id, i.title, i.awareness_at, i.summary, d.classified_at, d.regimes, d.set_by FROM pg.register.firm_incidents i LEFT JOIN pg.register.major_incident_decisions d ON d.incident_id = i.incident_id ORDER BY i.incident_id",
+  "category": "it-risk"
+ },
+ {
+  "question": "What notification rules apply after a major incident, and where do they come from?",
+  "referenceSql": "SELECT r.rule_id, r.regulator, r.jurisdiction, r.seq, r.stage, r.title, r.hours, r.starts_from, r.also_within_hours_of_awareness, r.report_kind, r.source, r.checked, r.note, p.declared FROM pg.register.notification_rules r JOIN pg.register.firm_profile p ON p.regulator = r.regulator ORDER BY r.regulator, r.seq",
+  "category": "it-risk"
  }
 ]

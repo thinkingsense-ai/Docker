@@ -1,7 +1,7 @@
 """Activities: everything that touches the outside world (thinking sense, the model, the ERP, the decision file). A workflow only decides and waits; these do the I/O and can be retried."""
 import json, os, urllib.request
 from temporalio import activity
-import assess_facts, assess_rules, decisions, register_write, facts as facts_mod, it_facts, it_rules, rca_facts, rca_rules, recommend as rec_mod, rules, sap_facts, sap_rules
+import assess_facts, assess_rules, major_facts, major_rules, decisions, register_write, facts as facts_mod, it_facts, it_rules, rca_facts, rca_rules, recommend as rec_mod, rules, sap_facts, sap_rules
 
 WRITE_BACK = os.environ.get("WRITE_BACK", "dry-run")             # dry-run (default): record the exact call, send nothing. live: send it to the ERP.
 ERP_URL = os.environ.get("ERP_URL", "http://erp-mock:8086").rstrip("/")
@@ -88,6 +88,18 @@ def assess_recommend(facts: dict, gate: dict) -> dict:
 @activity.defn
 def assess_write_back(action: dict, prop: dict) -> dict:
     return register_write.write(action, prop)
+
+@activity.defn
+def major_gather_facts(incident_id: int) -> dict:
+    return major_facts.gather(incident_id)
+
+@activity.defn
+def major_rules_gate(facts: dict, initiator: str) -> dict:
+    return major_rules.gate(facts, initiator)
+
+@activity.defn
+def major_write_back(action: dict, classified_at: str) -> dict:
+    return register_write.write_major(action, classified_at)
 
 def build_call(action: dict) -> dict:
     """The exact API call for an approved action. This is what the approver's hash covers and what dry-run shows."""

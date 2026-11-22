@@ -1,0 +1,683 @@
+{
+ "about": "Gold set for the notification clocks (agency/web/src/clockModel.ts, demos/payment-workflow/clock_rules.py). The rules are the rows of register.notification_rules; expected due times were worked out by hand. The later DORA stages are the LATEST possible times, assuming each earlier report goes at its own deadline. PLANTED cases are the errors a careless rule would make.",
+ "cases": [
+  {
+   "name": "DORA only: classified two hours after awareness, so 4 hours after classification governs (awareness + 6 h); later stages are the latest possible",
+   "rules": [
+    {
+     "rule_id": "dora-initial",
+     "regulator": "DORA",
+     "seq": "1",
+     "stage": "initial",
+     "title": "Initial notification",
+     "hours": "4",
+     "starts_from": "classified",
+     "also_within_hours_of_awareness": "24"
+    },
+    {
+     "rule_id": "dora-intermediate",
+     "regulator": "DORA",
+     "seq": "2",
+     "stage": "intermediate",
+     "title": "Intermediate report",
+     "hours": "72",
+     "starts_from": "previous_report",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "dora-final",
+     "regulator": "DORA",
+     "seq": "3",
+     "stage": "final",
+     "title": "Final report",
+     "hours": "720",
+     "starts_from": "previous_report",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "mas-notify",
+     "regulator": "MAS",
+     "seq": "1",
+     "stage": "notify",
+     "title": "Notify MAS",
+     "hours": "1",
+     "starts_from": "classified",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "mas-root-cause",
+     "regulator": "MAS",
+     "seq": "2",
+     "stage": "root_cause",
+     "title": "Root-cause report",
+     "hours": "336",
+     "starts_from": "awareness",
+     "also_within_hours_of_awareness": null
+    }
+   ],
+   "declared": [
+    "DORA"
+   ],
+   "decision": {
+    "awareness_at": "2026-11-20 08:15:00.0",
+    "classified_at": "2026-11-20 10:15:00.0"
+   },
+   "now": "2026-11-21 12:00:00",
+   "expect": [
+    [
+     "dora-initial",
+     "2026-11-20T14:15:00Z",
+     "overdue"
+    ],
+    [
+     "dora-intermediate",
+     "2026-11-23T14:15:00Z",
+     "open"
+    ],
+    [
+     "dora-final",
+     "2026-12-23T14:15:00Z",
+     "open"
+    ]
+   ],
+   "state": "clocks"
+  },
+  {
+   "name": "DORA: classified 22 hours after awareness, so the 24-hour limit from awareness governs (26 hours would be too late)",
+   "rules": [
+    {
+     "rule_id": "dora-initial",
+     "regulator": "DORA",
+     "seq": "1",
+     "stage": "initial",
+     "title": "Initial notification",
+     "hours": "4",
+     "starts_from": "classified",
+     "also_within_hours_of_awareness": "24"
+    },
+    {
+     "rule_id": "dora-intermediate",
+     "regulator": "DORA",
+     "seq": "2",
+     "stage": "intermediate",
+     "title": "Intermediate report",
+     "hours": "72",
+     "starts_from": "previous_report",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "dora-final",
+     "regulator": "DORA",
+     "seq": "3",
+     "stage": "final",
+     "title": "Final report",
+     "hours": "720",
+     "starts_from": "previous_report",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "mas-notify",
+     "regulator": "MAS",
+     "seq": "1",
+     "stage": "notify",
+     "title": "Notify MAS",
+     "hours": "1",
+     "starts_from": "classified",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "mas-root-cause",
+     "regulator": "MAS",
+     "seq": "2",
+     "stage": "root_cause",
+     "title": "Root-cause report",
+     "hours": "336",
+     "starts_from": "awareness",
+     "also_within_hours_of_awareness": null
+    }
+   ],
+   "declared": [
+    "DORA"
+   ],
+   "decision": {
+    "awareness_at": "2026-11-20 08:00:00",
+    "classified_at": "2026-11-21 06:00:00"
+   },
+   "now": "2026-11-21 12:00:00",
+   "expect": [
+    [
+     "dora-initial",
+     "2026-11-21T08:00:00Z",
+     "overdue"
+    ],
+    [
+     "dora-intermediate",
+     "2026-11-24T08:00:00Z",
+     "open"
+    ],
+    [
+     "dora-final",
+     "2026-12-24T08:00:00Z",
+     "open"
+    ]
+   ],
+   "state": "clocks"
+  },
+  {
+   "name": "PLANTED: classified 30 hours after awareness, so the initial deadline had already passed when it was recorded",
+   "rules": [
+    {
+     "rule_id": "dora-initial",
+     "regulator": "DORA",
+     "seq": "1",
+     "stage": "initial",
+     "title": "Initial notification",
+     "hours": "4",
+     "starts_from": "classified",
+     "also_within_hours_of_awareness": "24"
+    },
+    {
+     "rule_id": "dora-intermediate",
+     "regulator": "DORA",
+     "seq": "2",
+     "stage": "intermediate",
+     "title": "Intermediate report",
+     "hours": "72",
+     "starts_from": "previous_report",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "dora-final",
+     "regulator": "DORA",
+     "seq": "3",
+     "stage": "final",
+     "title": "Final report",
+     "hours": "720",
+     "starts_from": "previous_report",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "mas-notify",
+     "regulator": "MAS",
+     "seq": "1",
+     "stage": "notify",
+     "title": "Notify MAS",
+     "hours": "1",
+     "starts_from": "classified",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "mas-root-cause",
+     "regulator": "MAS",
+     "seq": "2",
+     "stage": "root_cause",
+     "title": "Root-cause report",
+     "hours": "336",
+     "starts_from": "awareness",
+     "also_within_hours_of_awareness": null
+    }
+   ],
+   "declared": [
+    "DORA"
+   ],
+   "decision": {
+    "awareness_at": "2026-11-19 06:00:00",
+    "classified_at": "2026-11-20 12:00:00"
+   },
+   "now": "2026-11-20 13:00:00",
+   "expect": [
+    [
+     "dora-initial",
+     "2026-11-20T06:00:00Z",
+     "overdue"
+    ],
+    [
+     "dora-intermediate",
+     "2026-11-23T06:00:00Z",
+     "open"
+    ],
+    [
+     "dora-final",
+     "2026-12-23T06:00:00Z",
+     "open"
+    ]
+   ],
+   "state": "clocks"
+  },
+  {
+   "name": "both regulators declared: MAS adds one hour from the decision and 14 days from awareness",
+   "rules": [
+    {
+     "rule_id": "dora-initial",
+     "regulator": "DORA",
+     "seq": "1",
+     "stage": "initial",
+     "title": "Initial notification",
+     "hours": "4",
+     "starts_from": "classified",
+     "also_within_hours_of_awareness": "24"
+    },
+    {
+     "rule_id": "dora-intermediate",
+     "regulator": "DORA",
+     "seq": "2",
+     "stage": "intermediate",
+     "title": "Intermediate report",
+     "hours": "72",
+     "starts_from": "previous_report",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "dora-final",
+     "regulator": "DORA",
+     "seq": "3",
+     "stage": "final",
+     "title": "Final report",
+     "hours": "720",
+     "starts_from": "previous_report",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "mas-notify",
+     "regulator": "MAS",
+     "seq": "1",
+     "stage": "notify",
+     "title": "Notify MAS",
+     "hours": "1",
+     "starts_from": "classified",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "mas-root-cause",
+     "regulator": "MAS",
+     "seq": "2",
+     "stage": "root_cause",
+     "title": "Root-cause report",
+     "hours": "336",
+     "starts_from": "awareness",
+     "also_within_hours_of_awareness": null
+    }
+   ],
+   "declared": [
+    "DORA",
+    "MAS"
+   ],
+   "decision": {
+    "awareness_at": "2026-11-20 08:15:00.0",
+    "classified_at": "2026-11-20 10:15:00.0"
+   },
+   "now": "2026-11-21 12:00:00",
+   "expect": [
+    [
+     "dora-initial",
+     "2026-11-20T14:15:00Z",
+     "overdue"
+    ],
+    [
+     "dora-intermediate",
+     "2026-11-23T14:15:00Z",
+     "open"
+    ],
+    [
+     "dora-final",
+     "2026-12-23T14:15:00Z",
+     "open"
+    ],
+    [
+     "mas-notify",
+     "2026-11-20T11:15:00Z",
+     "overdue"
+    ],
+    [
+     "mas-root-cause",
+     "2026-12-04T08:15:00Z",
+     "open"
+    ]
+   ],
+   "state": "clocks"
+  },
+  {
+   "name": "PLANTED: a regulator the firm did not declare gets no clock",
+   "rules": [
+    {
+     "rule_id": "dora-initial",
+     "regulator": "DORA",
+     "seq": "1",
+     "stage": "initial",
+     "title": "Initial notification",
+     "hours": "4",
+     "starts_from": "classified",
+     "also_within_hours_of_awareness": "24"
+    },
+    {
+     "rule_id": "dora-intermediate",
+     "regulator": "DORA",
+     "seq": "2",
+     "stage": "intermediate",
+     "title": "Intermediate report",
+     "hours": "72",
+     "starts_from": "previous_report",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "dora-final",
+     "regulator": "DORA",
+     "seq": "3",
+     "stage": "final",
+     "title": "Final report",
+     "hours": "720",
+     "starts_from": "previous_report",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "mas-notify",
+     "regulator": "MAS",
+     "seq": "1",
+     "stage": "notify",
+     "title": "Notify MAS",
+     "hours": "1",
+     "starts_from": "classified",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "mas-root-cause",
+     "regulator": "MAS",
+     "seq": "2",
+     "stage": "root_cause",
+     "title": "Root-cause report",
+     "hours": "336",
+     "starts_from": "awareness",
+     "also_within_hours_of_awareness": null
+    }
+   ],
+   "declared": [
+    "MAS"
+   ],
+   "decision": {
+    "awareness_at": "2026-11-20 08:15:00",
+    "classified_at": "2026-11-20 10:15:00"
+   },
+   "now": "2026-11-21 12:00:00",
+   "expect": [
+    [
+     "mas-notify",
+     "2026-11-20T11:15:00Z",
+     "overdue"
+    ],
+    [
+     "mas-root-cause",
+     "2026-12-04T08:15:00Z",
+     "open"
+    ]
+   ],
+   "state": "clocks"
+  },
+  {
+   "name": "PLANTED: no recorded decision means no clock, whatever the incident looks like",
+   "rules": [
+    {
+     "rule_id": "dora-initial",
+     "regulator": "DORA",
+     "seq": "1",
+     "stage": "initial",
+     "title": "Initial notification",
+     "hours": "4",
+     "starts_from": "classified",
+     "also_within_hours_of_awareness": "24"
+    },
+    {
+     "rule_id": "dora-intermediate",
+     "regulator": "DORA",
+     "seq": "2",
+     "stage": "intermediate",
+     "title": "Intermediate report",
+     "hours": "72",
+     "starts_from": "previous_report",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "dora-final",
+     "regulator": "DORA",
+     "seq": "3",
+     "stage": "final",
+     "title": "Final report",
+     "hours": "720",
+     "starts_from": "previous_report",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "mas-notify",
+     "regulator": "MAS",
+     "seq": "1",
+     "stage": "notify",
+     "title": "Notify MAS",
+     "hours": "1",
+     "starts_from": "classified",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "mas-root-cause",
+     "regulator": "MAS",
+     "seq": "2",
+     "stage": "root_cause",
+     "title": "Root-cause report",
+     "hours": "336",
+     "starts_from": "awareness",
+     "also_within_hours_of_awareness": null
+    }
+   ],
+   "declared": [
+    "DORA",
+    "MAS"
+   ],
+   "decision": null,
+   "now": "2026-11-21 12:00:00",
+   "expect": [],
+   "state": "no_decision"
+  },
+  {
+   "name": "PLANTED: a decision with no readable time means no clock",
+   "rules": [
+    {
+     "rule_id": "dora-initial",
+     "regulator": "DORA",
+     "seq": "1",
+     "stage": "initial",
+     "title": "Initial notification",
+     "hours": "4",
+     "starts_from": "classified",
+     "also_within_hours_of_awareness": "24"
+    },
+    {
+     "rule_id": "dora-intermediate",
+     "regulator": "DORA",
+     "seq": "2",
+     "stage": "intermediate",
+     "title": "Intermediate report",
+     "hours": "72",
+     "starts_from": "previous_report",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "dora-final",
+     "regulator": "DORA",
+     "seq": "3",
+     "stage": "final",
+     "title": "Final report",
+     "hours": "720",
+     "starts_from": "previous_report",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "mas-notify",
+     "regulator": "MAS",
+     "seq": "1",
+     "stage": "notify",
+     "title": "Notify MAS",
+     "hours": "1",
+     "starts_from": "classified",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "mas-root-cause",
+     "regulator": "MAS",
+     "seq": "2",
+     "stage": "root_cause",
+     "title": "Root-cause report",
+     "hours": "336",
+     "starts_from": "awareness",
+     "also_within_hours_of_awareness": null
+    }
+   ],
+   "declared": [
+    "DORA"
+   ],
+   "decision": {
+    "awareness_at": "2026-11-20 08:15:00",
+    "classified_at": "not a time"
+   },
+   "now": "2026-11-21 12:00:00",
+   "expect": [],
+   "state": "no_decision"
+  },
+  {
+   "name": "no declared regulator gives no clocks and says why",
+   "rules": [
+    {
+     "rule_id": "dora-initial",
+     "regulator": "DORA",
+     "seq": "1",
+     "stage": "initial",
+     "title": "Initial notification",
+     "hours": "4",
+     "starts_from": "classified",
+     "also_within_hours_of_awareness": "24"
+    },
+    {
+     "rule_id": "dora-intermediate",
+     "regulator": "DORA",
+     "seq": "2",
+     "stage": "intermediate",
+     "title": "Intermediate report",
+     "hours": "72",
+     "starts_from": "previous_report",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "dora-final",
+     "regulator": "DORA",
+     "seq": "3",
+     "stage": "final",
+     "title": "Final report",
+     "hours": "720",
+     "starts_from": "previous_report",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "mas-notify",
+     "regulator": "MAS",
+     "seq": "1",
+     "stage": "notify",
+     "title": "Notify MAS",
+     "hours": "1",
+     "starts_from": "classified",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "mas-root-cause",
+     "regulator": "MAS",
+     "seq": "2",
+     "stage": "root_cause",
+     "title": "Root-cause report",
+     "hours": "336",
+     "starts_from": "awareness",
+     "also_within_hours_of_awareness": null
+    }
+   ],
+   "declared": [],
+   "decision": {
+    "awareness_at": "2026-11-20 08:15:00",
+    "classified_at": "2026-11-20 10:15:00"
+   },
+   "now": "2026-11-21 12:00:00",
+   "expect": [],
+   "state": "no_regulator"
+  },
+  {
+   "name": "a timestamp with an offset is read in UTC (09:00+02:00 is 07:00Z)",
+   "rules": [
+    {
+     "rule_id": "dora-initial",
+     "regulator": "DORA",
+     "seq": "1",
+     "stage": "initial",
+     "title": "Initial notification",
+     "hours": "4",
+     "starts_from": "classified",
+     "also_within_hours_of_awareness": "24"
+    },
+    {
+     "rule_id": "dora-intermediate",
+     "regulator": "DORA",
+     "seq": "2",
+     "stage": "intermediate",
+     "title": "Intermediate report",
+     "hours": "72",
+     "starts_from": "previous_report",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "dora-final",
+     "regulator": "DORA",
+     "seq": "3",
+     "stage": "final",
+     "title": "Final report",
+     "hours": "720",
+     "starts_from": "previous_report",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "mas-notify",
+     "regulator": "MAS",
+     "seq": "1",
+     "stage": "notify",
+     "title": "Notify MAS",
+     "hours": "1",
+     "starts_from": "classified",
+     "also_within_hours_of_awareness": null
+    },
+    {
+     "rule_id": "mas-root-cause",
+     "regulator": "MAS",
+     "seq": "2",
+     "stage": "root_cause",
+     "title": "Root-cause report",
+     "hours": "336",
+     "starts_from": "awareness",
+     "also_within_hours_of_awareness": null
+    }
+   ],
+   "declared": [
+    "MAS"
+   ],
+   "decision": {
+    "awareness_at": "2026-11-20T09:00:00+02:00",
+    "classified_at": "2026-11-20T09:30:00+02:00"
+   },
+   "now": "2026-11-21 12:00:00",
+   "expect": [
+    [
+     "mas-notify",
+     "2026-11-20T08:30:00Z",
+     "overdue"
+    ],
+    [
+     "mas-root-cause",
+     "2026-12-04T07:00:00Z",
+     "open"
+    ]
+   ],
+   "state": "clocks"
+  }
+ ]
+}
