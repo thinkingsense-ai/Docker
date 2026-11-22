@@ -58,9 +58,9 @@ export default function Exposure({ answers, onAnswers, onSignedOut }: { answers:
         <p className="notbuilt" role="note"><strong>Simulated estate.</strong> Invented data for an invented firm: no real database, SharePoint, Slack or object store was read.</p>
         <p className="muted">Case: the November 2026 incident cluster (see Problem records). Five approved questions are asked as you, and each is scored by a stated rule. The overall rating is the highest score, never an average.</p>
         <div className="brief-actions">
-          <button className="primary" onClick={run} disabled={step !== null}>{step !== null ? `Question ${step + 1} of 5: ${QUESTIONS[step].short}…` : r ? 'Rate it again' : 'Rate the exposure'}</button>
+          <button className="primary" data-tour="exposure-run" onClick={run} disabled={step !== null}>{step !== null ? `Question ${step + 1} of 5: ${QUESTIONS[step].short}…` : r ? 'Rate it again' : 'Rate the exposure'}</button>
           {step !== null && <button onClick={() => abort.current?.abort()}>Cancel</button>}
-          {r && <><button onClick={copy}>{copied ? 'Copied' : 'Copy as text'}</button><button onClick={() => window.print()}>Print</button></>}
+          {r && <><button data-tour="exposure-done" onClick={copy}>{copied ? 'Copied' : 'Copy as text'}</button><button onClick={() => window.print()}>Print</button></>}
         </div>
         {err && <p role="alert" className="error">{err}</p>}
       </header>

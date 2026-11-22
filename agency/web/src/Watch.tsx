@@ -43,7 +43,7 @@ export default function Watch({ table, sources, onLoaded, onSources, onBrief, on
         {list.map((c) => {
           const act = actionFor(c)
           return (
-            <li key={c.id} className="candidate">
+            <li key={c.id} className="candidate" data-tour="watch-card">
               <h3>{c.title}</h3>
               <p className="cmeta">
                 <span className="grade" title={CLAIM_TYPES[c.claimType]?.meaning}>{claimLabel(c.claimType)}</span>

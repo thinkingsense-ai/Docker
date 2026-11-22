@@ -89,6 +89,16 @@ def admin_link(user):
     return url if not only or user in only else None
 
 
+def tour_personas():
+    """The demo people the tour may sign in as: AGENCY_DEMO_PERSONAS="alice:pw,bob:pw", honoured only when AGENCY_DEMO_TOUR=on. Local demo sandbox only."""
+    if os.environ.get("AGENCY_DEMO_TOUR") != "on": return {}
+    out = {}
+    for part in os.environ.get("AGENCY_DEMO_PERSONAS", "").split(","):
+        n, _, pw = part.strip().partition(":")
+        if n and pw: out[n] = pw
+    return out
+
+
 def audit_enabled(): return bool(os.environ.get("AGENCY_AUDIT_FILE", "").strip())
 
 
@@ -154,6 +164,7 @@ class H(BaseHTTPRequestHandler):
             if u.path == "/health": return self.send(200, {"ok": True, "version": VERSION})
             if u.path == "/tools": return self.send(200, {"tools": tools.tool_list()})
             if u.path == "/status": return self.status()
+            if u.path == "/tour": return self.tour_info()
             if u.path == "/sso/config": return self.sso_config()
             if u.path == "/sso/login": return self.sso_login()
             if u.path == "/app/oidc/callback": return self.sso_callback(u.query)
@@ -193,6 +204,7 @@ class H(BaseHTTPRequestHandler):
         try:
             if u.path == "/login": return self.login()
             if u.path == "/logout": return self.logout()
+            if u.path == "/tour/signin": return self.tour_signin(self.body())
             if u.path == "/ask": return self.ask()
             if u.path == "/preferences": return self.preferences(self.body())
             if u.path == "/uploads": return self.upload(parse_qs(u.query))
@@ -347,12 +359,29 @@ class H(BaseHTTPRequestHandler):
     def login(self):
         b = self.body(); u, p = b.get("username"), b.get("password")
         if not isinstance(u, str) or not isinstance(p, str) or not u: return self.err(400, "bad_request", "username and password are required.")
+        self.sign_in(u, p)
+
+    # -- demo tour: switch between the demo people without typing a password. Only when AGENCY_DEMO_TOUR=on; the passwords stay here and are never sent to the browser. ---
+    def tour_info(self):
+        ps = tour_personas(); self.send(200, {"enabled": bool(ps), "personas": list(ps)})
+
+    def tour_signin(self, body):
+        ps = tour_personas(); name = body.get("persona")
+        if not ps: return self.err(404, "not_found", "The demo tour is not switched on (AGENCY_DEMO_TOUR=on).")
+        if not isinstance(name, str) or name not in ps: return self.err(400, "unknown_persona", "Unknown demo person. Choose one of: %s." % ", ".join(ps))
+        self.sign_in(name, ps[name], retire=self.session())      # the new session exists before the old one ends, so a request already in flight is not refused in between
+
+    def sign_in(self, u, p, retire=None):
         try: ok, cookie, data = SERVER.login(u, p)
         except OSError: return self.err(502, "server_unreachable", "The OmniGate Server could not be reached.")
         if not ok: return self.err(401, "login_refused", str(data.get("error") or "Sign-in was refused."))
         try: token = new_session(u, cookie)
         except RuntimeError: return self.err(503, "too_many_sessions", "Too many active sessions.")
         threading.Thread(target=prefetch_starters, args=(SESSIONS[token],), daemon=True).start()
+        if retire and retire[1]:
+            try: SERVER.json("POST", "/app/logout", retire[1].cookie)
+            except (OSError, Unauthorized): pass
+            SESSIONS.pop(retire[0], None)
         self.send(200, {"success": True, "username": u}, [("Set-Cookie", "%s=%s; Path=/; HttpOnly; SameSite=Strict; Max-Age=%d" % (COOKIE, token, int(SESSION_SECONDS)))])
 
     # -- single sign-on: the Server's own OIDC redirect, relayed. The Server sets its session cookie on whoever finishes the callback, so the layer finishes it (the provider returns
@@ -430,6 +459,7 @@ class H(BaseHTTPRequestHandler):
         try:
             code, cfg = SERVER.json("GET", "/app/public-config"); out["server"].update(reachable=code == 200, llmConfigured=cfg.get("llmConfigured"))
         except (OSError, Unauthorized): pass
+        out["tour"] = {"enabled": bool(tour_personas())}
         t, s = self.session()
         out["audit"] = {"enabled": audit_enabled(), "allowed": bool(s and audit_allowed(s.username))}
         if s:

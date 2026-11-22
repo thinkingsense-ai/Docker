@@ -50,7 +50,7 @@ export default function Audit({ onSignedOut }: { onSignedOut: () => void }) {
           <label>Run <input value={f.run ?? ''} onChange={set('run')} placeholder="e.g. assess-3" maxLength={100} /></label>
           <label>From <input type="date" value={f.since ?? ''} onChange={set('since')} /></label>
           <label>To <input type="date" value={f.until ?? ''} onChange={set('until')} /></label>
-          <div className="brief-actions"><button className="primary" disabled={busy}>{busy ? 'Loading…' : v ? 'Apply filters' : 'Show the record'}</button>
+          <div className="brief-actions"><button className="primary" data-tour="audit-show" disabled={busy}>{busy ? 'Loading…' : v ? 'Apply filters' : 'Show the record'}</button>
             {v && <button type="button" onClick={clear} disabled={busy}>Clear</button>}
             {v && <a className="button" href={'/audit/export' + (q ? '?' + q : '')} download="decision-record.jsonl">Download these {v.rows.length} as JSON lines</a>}</div>
         </form>
@@ -60,11 +60,11 @@ export default function Audit({ onSignedOut }: { onSignedOut: () => void }) {
       {v && !v.missing && (
         <>
           <p role="status" className={v.chainValid ? '' : 'error'}><strong>{v.chainValid ? 'The hash chain verifies' : `The hash chain is BROKEN at entry ${v.firstBadEntry}`}</strong> across all {v.total} runs in the record (head <code title={v.head ?? ''}>{short(v.head ?? '')}</code>). {v.rows.length === v.total ? 'All of them are shown.' : `${v.rows.length} match the filters.`}</p>
-          <p className="brief-actions"><button onClick={check} disabled={checking || v.rows.length === 0}>{checking ? 'Reading the register…' : 'Check these against the register'}</button>
+          <p className="brief-actions"><button data-tour="audit-check" onClick={check} disabled={checking || v.rows.length === 0}>{checking ? 'Reading the register…' : 'Check these against the register'}</button>
             <span className="muted small">Asks the register, as you, which rows these runs wrote, and compares run, row and evidence digest.</span></p>
           {rec && (rec.findings.length === 0
-            ? <p role="status"><strong>The record and the register agree</strong> for the {rec.checked} run{rec.checked === 1 ? '' : 's'} that wrote a row.</p>
-            : <div role="alert" className="error"><p><strong>{rec.findings.length} thing{rec.findings.length === 1 ? '' : 's'} do not line up</strong> ({rec.agree} of {rec.checked} runs that wrote a row agree). A mismatch is a finding for a person, not a verdict on why.</p>
+            ? <p role="status" data-tour="audit-result"><strong>The record and the register agree</strong> for the {rec.checked} run{rec.checked === 1 ? '' : 's'} that wrote a row.</p>
+            : <div role="alert" className="error" data-tour="audit-result"><p><strong>{rec.findings.length} thing{rec.findings.length === 1 ? '' : 's'} do not line up</strong> ({rec.agree} of {rec.checked} runs that wrote a row agree). A mismatch is a finding for a person, not a verdict on why.</p>
               <ul className="plain small">{rec.findings.map((x, i) => <li key={i}><code>{x.runId}</code>: {x.detail}</li>)}</ul></div>)}
           {v.rows.length === 0 ? <p className="muted">No run matches these filters.</p> : (
             <div className="tablewrap"><table>

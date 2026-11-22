@@ -48,7 +48,9 @@ services:
     volumes: [workflow-data:/data/workflow:ro]
     environment:
       AGENCY_AUDIT_FILE: /data/workflow/decisions.jsonl
-      AGENCY_AUDIT_USERS: curator                    # a list this layer keeps: NOT a Server-enforced role (the read-only audit grant does not exist yet)
+      AGENCY_DEMO_TOUR: "on"                         # the guided tour signs in as these demo people; the passwords stay in the layer. Local sandbox only: never set on a real deployment
+      AGENCY_DEMO_PERSONAS: "curator:Curator-SI-1,alice:demo,bob:demo,carol:demo"
+      AGENCY_AUDIT_USERS: curator                   # a list this layer keeps: NOT a Server-enforced role (the read-only audit grant does not exist yet)
 volumes:
   temporal-data:
   workflow-data:

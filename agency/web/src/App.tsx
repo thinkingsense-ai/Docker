@@ -14,6 +14,7 @@ import Clocks, { type ClockAnswers } from './Clocks'
 import Audit from './Audit'
 import { rate as rateExposure } from './exposureModel'
 import type { Table } from './rcaBrief'
+import Tour from './Tour'
 import { navFor, roleLabel, startWorkspace, viewFor, workspaceChoices, type View } from './shell'
 import { AnswerDetails, ProgressView } from './DetailsPane'
 import type { ProgressEvent as PEvent } from './progress'
@@ -69,14 +70,18 @@ export default function App() {
   const [defs, setDefs] = useState<Definition[]>([])
   const [view, setView] = useState<View>('watch')
   const [waiting, setWaiting] = useState<number | null>(null)
+  const [tourOpen, setTourOpen] = useState(false)
+  const userNow = useRef<string | null | undefined>(undefined)       // the tour's play loop outlives the render it started in, so it asks for who is signed in NOW, not who was when it began
+  userNow.current = user
+  const switching = useRef(false)                         // the guided tour is changing who is signed in: a refusal from the person it replaced is not a lost session
   const abort = useRef<AbortController | null>(null)
   const bottom = useRef<HTMLDivElement>(null)
 
   const leave = useCallback(() => { setUser(null); setTurns([]); setConvId(null); setFile(null); setView('watch'); setWatch(null); setSources(null); setExposure(null); setPriorities(null); setClocks(null); setNavOpen(false); setWaiting(null); setDetailIdx(null) }, [])
   const signedOut = useCallback(() => { leave(); setQ(''); setRetry(null); setNotice('') }, [leave])
   // the Server dropped the session (it restarted, or it expired): back to sign-in, saying so, with the unsent question kept in the box
-  const expired = useCallback((kept?: boolean) => { leave(); setNotice('Your session ended (the Server may have restarted). Sign in again.' + (kept === true ? ' The question you were asking is kept.' : '')) }, [leave])
-  const guard = useCallback((e: unknown) => { if (e instanceof ApiError && e.status === 401) expired(); else setErr((e as Error).message) }, [expired])
+  const expired = useCallback((kept?: boolean) => { if (switching.current) return; leave(); setNotice('Your session ended (the Server may have restarted). Sign in again.' + (kept === true ? ' The question you were asking is kept.' : '')) }, [leave])
+  const guard = useCallback((e: unknown) => { if (e instanceof ApiError && e.status === 401) { if (!switching.current) expired() } else setErr((e as Error).message) }, [expired])
 
   useEffect(() => { api.whoami().then((w) => setUser(w.username ?? w.layerUser ?? 'signed in')).catch(() => setUser(null)) }, [])
 
@@ -155,6 +160,16 @@ export default function App() {
   if (user === null) return <Login notice={notice} onDone={() => { setNotice(''); api.whoami().then((w) => setUser(w.username ?? w.layerUser ?? 'signed in')).catch(() => setUser(null)) }} />
 
   const wf = status?.workflows
+  // the guided tour (local demo sandbox): the layer signs in as the named demo person; everything this person saw is dropped, as on any sign-out, but the screen stays
+  async function switchTo(name: string) {
+    if (name === userNow.current) return
+    switching.current = true
+    try {
+      await api.tourSignin(name)
+      setTurns([]); setConvId(null); setFile(null); setWatch(null); setSources(null); setExposure(null); setPriorities(null); setClocks(null); setWaiting(null); setDetailIdx(null); setStatus(null); setDefs([]); setGrants({ canStart: false, canApprove: false })
+      userNow.current = name; setUser(name)
+    } finally { setTimeout(() => { switching.current = false }, 1500) }
+  }
   const navGrants = { ...grants, audit: status?.audit?.allowed === true }
   const shown = viewFor(view, navGrants)
   const go = (v: View) => { setView(v); setNavOpen(false); setErr('') }
@@ -167,6 +182,7 @@ export default function App() {
           <span title="Server reachability">{status ? (status.server.reachable ? 'Server reachable' : 'Server not reachable') : '…'}</span>
           {status?.edition && <span title="The edition the Server reports for this session">{status.edition === 'commercial' ? 'Commercial edition' : 'Free edition'}</span>}
           {wf && <span title={wf.note}>{wf.available ? 'Workflows available' : 'Workflows off'}</span>}
+          {status?.tour?.enabled && <button className="primary" onClick={() => setTourOpen(true)} title="A click-through of the whole demo">Quickstart tour</button>}
           <button className="link" aria-expanded={paneOpen} aria-controls="pane" onClick={togglePane}>{paneOpen ? 'Hide details' : 'Show details'}</button>
           {status?.adminUrl && <a className="link quiet" href={status.adminUrl} target="_blank" rel="noopener noreferrer" title="Opens the admin console, which has its own sign-in">Manage<span className="sr-only"> (opens the admin console in a new tab)</span></a>}
           <label className="ws"><span className="sr">Workspace</span>
@@ -246,6 +262,7 @@ export default function App() {
         </form>
         </>}
       </main>
+      {tourOpen && user && <Tour user={user} go={go} switchTo={switchTo} onClose={() => setTourOpen(false)} />}
       {paneOpen && (
         <aside id="pane" className="pane" aria-label="Details">
           <button className="link close-pane" onClick={togglePane}>Close</button>

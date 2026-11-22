@@ -202,6 +202,19 @@ class LayerTests(unittest.TestCase):
             with open(path, "a") as f: f.write("not json\n")                                            # a damaged file is an error, not a silent empty answer
             s, raw, _ = self.c.call("GET", "/audit/records"); self.assertEqual((s, self.J(raw)["error"]["code"]), (502, "audit_unreadable"))
         finally: os.environ.pop("AGENCY_AUDIT_FILE", None); os.environ.pop("AGENCY_AUDIT_USERS", None); d.cleanup()
+    def test_demo_tour_is_off_by_default_and_signs_in_named_people_without_exposing_passwords(self):
+        os.environ.pop("AGENCY_DEMO_TOUR", None); os.environ.pop("AGENCY_DEMO_PERSONAS", None)
+        s, raw, _ = self.c.call("GET", "/tour"); self.assertEqual((s, self.J(raw)["enabled"]), (200, False))
+        s, raw, _ = self.c.call("POST", "/tour/signin", {"persona": "alice"}); self.assertEqual((s, self.J(raw)["error"]["code"]), (404, "not_found"))
+        os.environ["AGENCY_DEMO_TOUR"] = "on"; os.environ["AGENCY_DEMO_PERSONAS"] = "alice:pw,bob:pw"
+        try:
+            s, raw, _ = self.c.call("GET", "/tour"); d = self.J(raw); self.assertEqual((d["enabled"], d["personas"]), (True, ["alice", "bob"])); self.assertNotIn("pw", raw)
+            s, raw, _ = self.c.call("GET", "/status"); self.assertTrue(self.J(raw)["tour"]["enabled"])
+            s, raw, _ = self.c.call("POST", "/tour/signin", {"persona": "mallory"}); self.assertEqual((s, self.J(raw)["error"]["code"]), (400, "unknown_persona"))
+            self.signin(); first = self.c.cookie
+            s, raw, _ = self.c.call("POST", "/tour/signin", {"persona": "bob"}); self.assertEqual((s, self.J(raw)["username"]), (200, "bob")); self.assertNotEqual(self.c.cookie, first)
+            self.assertEqual(len(app.SESSIONS), 1)                                  # the old session ended once the new one existed
+        finally: os.environ.pop("AGENCY_DEMO_TOUR", None); os.environ.pop("AGENCY_DEMO_PERSONAS", None)
     def test_cancel_relays_the_query_id_to_the_server_as_the_signed_in_user_and_refuses_a_bad_id(self):
         self.signin(); Fake.cancels.clear()
         s, raw, _ = self.c.call("POST", "/cancel", {"queryId": "11111111-2222-3333-4444-555555555555"}); self.assertEqual((s, self.J(raw)), (200, {"success": True, "cancelled": True}))
