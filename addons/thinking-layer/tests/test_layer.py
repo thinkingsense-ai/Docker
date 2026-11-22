@@ -7,7 +7,7 @@ from upstream import Upstream
 
 class Fake:
     sso = True; sso_hosts = []; simple_posts = []; simple_refuse = None; server_uploads = []; upload_refuse = None
-    namespaces = [{"id": "treasury", "name": "Treasury"}]; packs = [{"id": "bom"}]; ask_posts = []; ns_posts = []; ask_status = 200; can_upload = True; user_ns = {}; wf_off = False; wf_refuse = None; wf_posts = []; decisions_route = False; edition = None; starters_need_default = False; starter_calls = 0
+    cancels = []; namespaces = [{"id": "treasury", "name": "Treasury"}]; packs = [{"id": "bom"}]; ask_posts = []; ns_posts = []; ask_status = 200; can_upload = True; user_ns = {}; wf_off = False; wf_refuse = None; wf_posts = []; decisions_route = False; edition = None; starters_need_default = False; starter_calls = 0
 
 class FakeServer(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
@@ -67,6 +67,8 @@ class FakeServer(BaseHTTPRequestHandler):
             Fake.wf_posts.append((self.path, b, self.user()))
             if Fake.wf_refuse: st, code, extra = Fake.wf_refuse; return self._j(st, dict({"success": False, "error": "refused: " + code, "code": code}, **extra))
             return self._j(201 if self.path.endswith("/start") else 200, {"created": True, "run": {"id": "run-1", "stage": "facts"}})
+        if self.path == "/api/ask/cancel":
+            Fake.cancels.append((b.get("queryId"), self.user())); return self._j(200, {"success": True, "cancelled": b.get("queryId") == "11111111-2222-3333-4444-555555555555"})
         if self.path in ("/app/feedback", "/app/help-request", "/app/questions/save-as-reusable"):
             Fake.simple_posts.append((self.path, b, self.user()))
             if Fake.simple_refuse: return self._j(200, {"success": False, "error": Fake.simple_refuse})
@@ -200,6 +202,15 @@ class LayerTests(unittest.TestCase):
             with open(path, "a") as f: f.write("not json\n")                                            # a damaged file is an error, not a silent empty answer
             s, raw, _ = self.c.call("GET", "/audit/records"); self.assertEqual((s, self.J(raw)["error"]["code"]), (502, "audit_unreadable"))
         finally: os.environ.pop("AGENCY_AUDIT_FILE", None); os.environ.pop("AGENCY_AUDIT_USERS", None); d.cleanup()
+    def test_cancel_relays_the_query_id_to_the_server_as_the_signed_in_user_and_refuses_a_bad_id(self):
+        self.signin(); Fake.cancels.clear()
+        s, raw, _ = self.c.call("POST", "/cancel", {"queryId": "11111111-2222-3333-4444-555555555555"}); self.assertEqual((s, self.J(raw)), (200, {"success": True, "cancelled": True}))
+        self.assertEqual(Fake.cancels, [("11111111-2222-3333-4444-555555555555", "alice")])
+        s, raw, _ = self.c.call("POST", "/cancel", {"queryId": "99999999-0000-0000-0000-000000000000"}); self.assertEqual(self.J(raw)["cancelled"], False)          # nothing running under that id: not an error
+        for bad in ({}, {"queryId": ""}, {"queryId": "../../x"}, {"queryId": "a b"}, {"queryId": "x" * 200}):
+            s, raw, _ = self.c.call("POST", "/cancel", bad); self.assertEqual(s, 400, bad)
+        self.assertEqual(len(Fake.cancels), 2)                                                                                                         # a refused id never reached the Server
+        self.c.cookie = None; s, raw, _ = self.c.call("POST", "/cancel", {"queryId": "11111111-2222-3333-4444-555555555555"}); self.assertEqual(s, 401)
     def test_the_audit_record_is_not_an_mcp_tool(self):
         self.assertFalse([t["name"] for t in tools.tool_list() if "audit" in t["name"] or "export" in t["name"]])
 

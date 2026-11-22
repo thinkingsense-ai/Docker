@@ -102,12 +102,18 @@ export async function ask(question: string, workspaceId: string | null, conversa
   }
   const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = ''
   let evidence: Evidence | null = null; let final: ProgressEvent | null = null
+  // Aborting the browser request does not stop the Server's work. The first event carries the question's queryId; on an abort Agency tells the Server to cancel it (it flags the question and interrupts the
+  // running SQL; a model call already in flight is only noticed at the next step, Server#143). An abort before the first event arrives has no id yet, so nothing can be cancelled.
+  let queryId: string | null = null
+  const cancelOnServer = () => { if (queryId) void fetch('/cancel', { method: 'POST', credentials: 'same-origin', keepalive: true, headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'agency' }, body: JSON.stringify({ queryId }) }).catch(() => {}) }
+  signal.addEventListener('abort', cancelOnServer, { once: true })
   const handle = (frame: string) => {
     for (const line of frame.split('\n')) {
       if (!line.startsWith('data: ')) continue
       let e: ProgressEvent
       try { e = JSON.parse(line.slice(6)) } catch { continue }
       if (e.step === 'evidence') { evidence = e.evidence; continue }
+      if (!queryId && typeof e.queryId === 'string') { queryId = e.queryId; if (signal.aborted) cancelOnServer() }
       onEvent(e)
       if (['done', 'error', 'stopped', 'approval_needed'].includes(e.step)) final = e
     }

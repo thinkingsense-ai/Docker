@@ -53,6 +53,7 @@ export default function App() {
   const [convId, setConvId] = useState<string | null>(null)
   const [file, setFile] = useState<{ id: string; name: string } | null>(null)    // a table being asked about: questions carry it until the person lets go or starts over
   const [turns, setTurns] = useState<Turn[]>([])
+  const [early, setEarly] = useState<{ columns: string[]; rows: (string | null)[][] } | null>(null)   // the rows, shown as soon as the Server sends them: the written answer follows (the Server calls a model for the prose after the rows are ready, Server#143)
   const [q, setQ] = useState('')
   const [steps, setSteps] = useState<PEvent[]>([])
   const [startedAt, setStartedAt] = useState(0)
@@ -121,9 +122,9 @@ export default function App() {
 
   async function send(text: string, uploadId?: string, uploadName?: string) {
     const question = text.trim(); if (!question || busy) return
-    setBusy(true); setAsking(question); setErr(''); setRetry(null); setSteps([]); setStartedAt(Date.now()); setQ(''); const ac = new AbortController(); abort.current = ac
+    setBusy(true); setAsking(question); setErr(''); setRetry(null); setSteps([]); setEarly(null); setStartedAt(Date.now()); setQ(''); const ac = new AbortController(); abort.current = ac
     try {
-      const a = await ask(question, pack, convId, (e) => setSteps((s) => [...s, { ...e, t: Date.now() }]), ac.signal, uploadId ?? file?.id)
+      const a = await ask(question, pack, convId, (e) => { setSteps((s) => [...s, { ...e, t: Date.now() }]); if (e.step === 'results' && Array.isArray(e.columns) && Array.isArray(e.rows)) setEarly({ columns: e.columns, rows: e.rows }) }, ac.signal, uploadId ?? file?.id)
       setTurns((t) => { setDetailIdx(t.length); return [...t, { question, answer: a }] }); if (a.conversationId) setConvId(a.conversationId)
       if (uploadId) setFile({ id: uploadId, name: uploadName ?? 'your file' })
       api.conversations().then((c) => setConvs(c.conversations ?? [])).catch(() => {})
@@ -137,7 +138,7 @@ export default function App() {
         if ((e as { code?: string }).code === 'server_unreachable') setStatus((st) => (st ? { ...st, server: { ...st.server, reachable: false } } : st))
         if (expiredSession) expired(true); else { setRetry(question); guard(e) }
       }
-    } finally { setBusy(false); setAsking(''); setSteps([]); abort.current = null }
+    } finally { setBusy(false); setAsking(''); setSteps([]); setEarly(null); abort.current = null }
   }
 
   async function open(id: string) {
@@ -220,7 +221,16 @@ export default function App() {
         {turns.length === 0 && !busy && <StarterTiles key={pack ?? 'all'} items={starters} label={pack ? `Approved questions: ${packs.find((p) => p.id === pack)?.title ?? pack}` : 'Approved questions'} onPick={send} />}
         <Uploads compact={turns.length > 0} workspaceId={pack} onAsk={(q, id, n) => send(q, id, n)} onSignedOut={() => expired()} />
         {turns.map((t, i) => <Answer key={i} a={t.answer} question={t.question} onFollow={send} onDetails={() => { setDetailIdx(i); if (!paneOpen) togglePane() }} active={paneOpen && detailIdx === i} wf={defs.length ? { defs, canStart: grants.canStart, me: user, onSignedOut: () => expired(), onChange: refreshWaiting } : undefined} />)}
-        {busy && asking && <article className="answer pending" aria-label="Question being answered"><h2 className="q">{asking}</h2></article>}
+        {busy && asking && (
+          <article className="answer pending" aria-label="Question being answered"><h2 className="q">{asking}</h2>
+            {early && early.rows.length > 0 && (
+              <>
+                <p className="muted small" role="status">The rows are ready; the written answer is still being prepared.</p>
+                <div className="tablewrap"><table><thead><tr>{early.columns.map((c) => <th key={c}>{c}</th>)}</tr></thead>
+                  <tbody>{early.rows.slice(0, 20).map((r, i) => <tr key={i}>{r.map((v, j) => <td key={j}>{v ?? ''}</td>)}</tr>)}</tbody></table></div>
+                {early.rows.length > 20 && <p className="muted small">First 20 of {early.rows.length} rows.</p>}
+              </>)}
+          </article>)}
         {busy && !paneOpen && (
           <div className="progress" role="status" aria-live="polite">
             <span>Working on it… <Elapsed since={startedAt} /></span> <button onClick={() => abort.current?.abort()}>Cancel</button> <button className="link" onClick={togglePane}>Show progress</button>
