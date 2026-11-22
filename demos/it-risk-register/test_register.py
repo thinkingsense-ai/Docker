@@ -42,13 +42,33 @@ class Scale(unittest.TestCase):
         self.assertNotIn("Moderate", SQL)
 
 
+class Register(unittest.TestCase):
+    def test_assessments_is_append_only_and_inherent_only(self):
+        self.assertIn("BEFORE UPDATE OR DELETE ON register.assessments", SQL)
+        self.assertIn("BEFORE TRUNCATE ON register.assessments", SQL)
+        self.assertIn("CHECK (inherent)", SQL)
+        self.assertIn("CHECK (source = 'seed-example' OR (run_id IS NOT NULL AND evidence_digest IS NOT NULL))", SQL)
+
+    def test_the_writer_role_can_only_insert(self):
+        g = open(os.path.join(HERE, "grant-register.sql")).read()
+        self.assertIn("GRANT INSERT ON register.assessments TO register_writer", g)
+        self.assertNotRegex(g, r"GRANT[^;]*(UPDATE|DELETE|TRUNCATE)[^;]*register_writer")
+
+    def test_every_seeded_category_and_rating_exists(self):
+        ids = {r[0] for r in taxonomy_rows()}
+        for node in re.findall(r"\('(?:event|candidate)','\w+','([A-Z.]+)'", SQL): self.assertIn(node, ids, node)
+        for node in re.findall(r"^ \('(?:ai-[a-z-]+)',\s*'([A-Z.]+)'", SQL, re.M): self.assertIn(node, ids, node)
+        for node, rating in re.findall(r"^ \('(?:case|system)','[^']*','([A-Z.]+)','(\w+)'", SQL, re.M):
+            self.assertIn(node, ids); self.assertIn(rating, ("Low", "Medium", "High", "Critical"))
+
+
 class Questions(unittest.TestCase):
     def test_each_question_reads_a_register_table_and_is_in_the_it_risk_category(self):
         for q in QUESTIONS:
             self.assertEqual(q["category"], "it-risk")
             tables = re.findall(r"pg\.register\.(\w+)", q["referenceSql"])
             self.assertTrue(tables, q["question"])
-            for t in tables: self.assertIn(f"CREATE TABLE register.{t} ", SQL)
+            for t in tables: self.assertIn(f"CREATE TABLE register.{t} (", SQL)
 
     def test_no_window_functions_until_server_139_is_fixed(self):
         for q in QUESTIONS: self.assertNotRegex(q["referenceSql"].upper(), r"\bOVER\s*\(")

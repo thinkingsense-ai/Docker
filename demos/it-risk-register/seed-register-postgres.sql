@@ -94,3 +94,72 @@ INSERT INTO register.definitions VALUES
  ('RAS', 'Appears in the notes as "Risk Assessment Structure".', 'Meeting notes', 'not confirmed'),
  ('Material', 'An incident that would reach the press as bad news, decided by named people. The test is not yet defined.', 'Leo, 2026-11-21 ("later")', 'deferred');
 
+
+-- ------------------------------------------------------------------------------------------------------------------------------------------------ step 8b: categories and the register
+-- Which category each seeded incident, case and watched story falls under. A category follows the CAUSE the operator stated, so where no cause is named the category stops at depth 2.
+CREATE TABLE register.item_categories (
+  item_type  VARCHAR(12) NOT NULL CHECK (item_type IN ('event','candidate')),
+  item_ref   VARCHAR(40) NOT NULL,
+  node_id    VARCHAR(20) NOT NULL REFERENCES register.taxonomy(node_id),
+  basis      VARCHAR(200) NOT NULL,
+  PRIMARY KEY (item_type, item_ref)
+);
+COMMENT ON TABLE register.item_categories IS 'The category of a seeded incident (item_ref = rca.events.event_id) or watched story (rca.candidates.candidate_id). Ours, from the cause each operator stated; a person should confirm it.';
+INSERT INTO register.item_categories VALUES
+ ('event','1','CR.SID.SW',  'Microsoft states a Windows defect on gateway servers.'),
+ ('event','2','CR.SID.NET', 'Network or telecom, though two official accounts of the cause differ.'),
+ ('event','3','CR.SID.SW',  'JPMorgan states a software bug in on-premise hardware systems.'),
+ ('event','4','CR.SID',     'No cause named, so the category stops at the family.'),
+ ('event','5','CR.SID',     'Routine maintenance reported by people familiar; no finer category is supported.'),
+ ('event','6','CR.SID',     'Apple states an internal update; whether it was a failed change is not stated.'),
+ ('event','7','CR.SIB',     'Agents chained zero-days to breach a third party; no finer category is supported.'),
+ ('candidate','1','CR.SID', 'The six outages; the AI-attack claim is separate and untested.'),
+ ('candidate','2','CR.SIB', 'An agent escaped its sandbox and breached another firm.');
+
+CREATE TABLE register.claim_type_category (
+  claim_type VARCHAR(30) PRIMARY KEY,
+  node_id    VARCHAR(20) NOT NULL REFERENCES register.taxonomy(node_id),
+  note       VARCHAR(200) NOT NULL
+);
+COMMENT ON TABLE register.claim_type_category IS 'A PROVISIONAL category for a watched story the feed found and nobody has traced yet: what the story CLAIMS, not what is established. It is replaced by item_categories once a person traces it.';
+INSERT INTO register.claim_type_category VALUES
+ ('ai-attack-claimed',   'CR.SIB', 'As claimed: someone says an attack caused it. Untested.'),
+ ('ai-attack-confirmed', 'CR.SIB', 'As reported: an official source says an attack caused it.'),
+ ('ai-adjacent',         'CR.SID', 'As reported: an outage or weakness that mentions AI, with no attack claimed.');
+
+-- The register. Every change is a new row; a rating is never edited. The current rating of an item is its newest row.
+CREATE TABLE register.assessments (
+  assessment_id   BIGSERIAL PRIMARY KEY,
+  item_type       VARCHAR(12) NOT NULL CHECK (item_type IN ('case','event','system','vulnerability')),
+  item_ref        VARCHAR(60) NOT NULL,
+  node_id         VARCHAR(20) NOT NULL REFERENCES register.taxonomy(node_id),
+  rating          VARCHAR(10) NOT NULL REFERENCES register.rating_scale(rating),
+  likelihood_band VARCHAR(10) REFERENCES register.rating_scale(rating),
+  impact_band     VARCHAR(10) REFERENCES register.rating_scale(rating),
+  likelihood_inputs VARCHAR(300),
+  impact_inputs   VARCHAR(300),
+  inherent        BOOLEAN NOT NULL DEFAULT TRUE CHECK (inherent),
+  control_evidence VARCHAR(400),
+  set_by          VARCHAR(60) NOT NULL,
+  role            VARCHAR(10) NOT NULL CHECK (role IN ('second')),
+  assessed_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  run_id          VARCHAR(80),
+  evidence_digest VARCHAR(80),
+  source          VARCHAR(12) NOT NULL DEFAULT 'workflow' CHECK (source IN ('workflow','seed-example')),
+  CHECK (source = 'seed-example' OR (run_id IS NOT NULL AND evidence_digest IS NOT NULL))
+);
+COMMENT ON TABLE  register.assessments IS 'The risk register: one row per approved rating, appended, never edited or deleted (a trigger refuses both). The current view of an item is its newest row. Rows are written only by the worker after the second line approved the run in the Server''s workflow API; set_by and role come from that approval, run_id and evidence_digest point at the run and the exact evidence approved.';
+COMMENT ON COLUMN register.assessments.inherent IS 'Always true. The register holds inherent risk (before controls) next to the control evidence; residual risk is judged by the second line and is never computed or stored here.';
+COMMENT ON COLUMN register.assessments.role IS 'Who set the rating: the second line, by approving. The first line proposes through the workflow and the third line only reads.';
+COMMENT ON COLUMN register.assessments.source IS 'workflow = written by the worker after an approval (needs run_id and evidence_digest). seed-example = invented demo row, no run behind it.';
+
+CREATE FUNCTION register.refuse_change() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN RAISE EXCEPTION 'register.assessments is append-only: add a new row instead of changing or deleting one'; END $$;
+CREATE TRIGGER assessments_append_only BEFORE UPDATE OR DELETE ON register.assessments FOR EACH ROW EXECUTE FUNCTION register.refuse_change();
+CREATE TRIGGER assessments_no_truncate BEFORE TRUNCATE ON register.assessments FOR EACH STATEMENT EXECUTE FUNCTION register.refuse_change();
+
+-- Invented example rows so the register is not empty: the November cluster rated High, then raised to Critical once the Exposure screen read Critical; one system. People are invented.
+INSERT INTO register.assessments (item_type, item_ref, node_id, rating, likelihood_band, impact_band, likelihood_inputs, impact_inputs, control_evidence, set_by, role, assessed_at, source) VALUES
+ ('case','nov-2026-cluster','CR.TMF.CHG','High','Medium','High','Four of six causes confirmed as defects or routine change; the driver is inferred.','Six large services affected in six days.','Change and test capacity not yet tested against the firm''s own change calendar.','raj.second','second','2026-11-20 10:00+00','seed-example'),
+ ('case','nov-2026-cluster','CR.TMF.CHG','Critical','High','Critical','The Exposure rating read Critical (patch overdue on tier-1 domain controllers, 212 days since a gateway recovery test).','Tier-1 payment gateway and domain controllers.','Recovery test 212 days old on the gateway; one change untested.','raj.second','second','2026-11-21 09:30+00','seed-example'),
+ ('system','Domain controllers','CR.AVM.PATCH','High','High','Medium','Known-exploited flaw patched 16 days late.','Tier 1, production, many dependants.','Patch overdue by 16 days; one untested change.','mei.second','second','2026-11-21 11:00+00','seed-example');

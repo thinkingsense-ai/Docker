@@ -13,5 +13,20 @@
   "question": "What do the terms used on screen mean, and where do they come from?",
   "referenceSql": "SELECT term, meaning, source, status FROM pg.register.definitions ORDER BY term",
   "category": "it-risk"
+ },
+ {
+  "question": "What is the current rating of each item in the risk register, and who set it?",
+  "referenceSql": "SELECT a.item_type, a.item_ref, t.name AS category, a.rating, a.likelihood_band, a.impact_band, a.set_by, a.assessed_at FROM pg.register.assessments a JOIN (SELECT item_type, item_ref, MAX(assessment_id) AS latest FROM pg.register.assessments GROUP BY item_type, item_ref) m ON m.latest = a.assessment_id JOIN pg.register.taxonomy t ON t.node_id = a.node_id ORDER BY a.rating, a.item_ref",
+  "category": "it-risk"
+ },
+ {
+  "question": "How has the rating of the November 2026 cluster changed, and why?",
+  "referenceSql": "SELECT a.assessed_at, a.rating, a.likelihood_band, a.impact_band, a.likelihood_inputs, a.control_evidence, a.set_by FROM pg.register.assessments a WHERE a.item_type = 'case' AND a.item_ref = 'nov-2026-cluster' ORDER BY a.assessment_id",
+  "category": "it-risk"
+ },
+ {
+  "question": "Which risk category does each incident in the November 2026 cluster fall under?",
+  "referenceSql": "SELECT e.operator, e.label, t.name AS category, c.basis FROM pg.rca.events e JOIN pg.register.item_categories c ON c.item_type = 'event' AND c.item_ref = CAST(e.event_id AS VARCHAR) JOIN pg.register.taxonomy t ON t.node_id = c.node_id WHERE e.case_id = 'nov-2026-cluster' ORDER BY e.event_id",
+  "category": "it-risk"
  }
 ]
