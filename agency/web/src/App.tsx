@@ -71,6 +71,9 @@ export default function App() {
   const [view, setView] = useState<View>('watch')
   const [waiting, setWaiting] = useState<number | null>(null)
   const [tourOpen, setTourOpen] = useState(false)
+  const [tourMin, setTourMin] = useState(false)
+  const [wide, setWide] = useState(() => window.innerWidth >= 1100)
+  useEffect(() => { const f = () => setWide(window.innerWidth >= 1100); window.addEventListener('resize', f); return () => window.removeEventListener('resize', f) }, [])
   const userNow = useRef<string | null | undefined>(undefined)       // the tour's play loop outlives the render it started in, so it asks for who is signed in NOW, not who was when it began
   userNow.current = user
   const switching = useRef(false)                         // the guided tour is changing who is signed in: a refusal from the person it replaced is not a lost session
@@ -174,7 +177,7 @@ export default function App() {
   const shown = viewFor(view, navGrants)
   const go = (v: View) => { setView(v); setNavOpen(false); setErr('') }
   return (
-    <div className={'shell' + (paneOpen ? ' with-pane' : '')}>
+    <div className={'shell' + (paneOpen ? ' with-pane' : '') + (tourOpen && wide && !tourMin ? ' with-tour' : '')}>
       <header>
         <button className="link menu" aria-expanded={navOpen} aria-controls="sidenav" onClick={() => setNavOpen((o) => !o)}>Menu</button>
         <h1 className="brand">Agency <span className="by">by</span> <img src="/thinkingsense-wordmark.png" alt="Thinking Sense" width="117" height="26" /></h1>
@@ -262,7 +265,7 @@ export default function App() {
         </form>
         </>}
       </main>
-      {tourOpen && user && <Tour user={user} go={go} switchTo={switchTo} onClose={() => setTourOpen(false)} />}
+      {tourOpen && user && <Tour user={user} go={go} switchTo={switchTo} docked={wide} min={tourMin} onMin={setTourMin} onClose={() => { setTourOpen(false); setTourMin(false) }} />}
       {paneOpen && (
         <aside id="pane" className="pane" aria-label="Details">
           <button className="link close-pane" onClick={togglePane}>Close</button>

@@ -252,3 +252,11 @@ a.button { display: inline-block; border: 1px solid var(--edge); border-radius: 
 [data-tour-hl] { outline: 3px solid var(--accent) !important; outline-offset: 3px; animation: tourpulse 1s ease-in-out infinite }
 @keyframes tourpulse { 50% { outline-offset: 6px } }
 @media (prefers-reduced-motion: reduce) { [data-tour-hl] { animation: none } }
+
+/* guided tour docked beside the content on wide windows: a column, like the details pane, so it never covers what the audience reads */
+@media (min-width: 1100px) {
+  .shell.with-tour { grid-template-columns: 220px minmax(0, 1fr) 380px }
+  .shell.with-tour.with-pane { grid-template-columns: 220px minmax(0, 1fr) 340px 380px }
+  .shell.with-tour header { grid-column: 1 / -1 }
+  .tour.docked { position: sticky; top: 0; right: auto; bottom: auto; width: auto; max-height: 100vh; height: 100vh; border-radius: 0; border-width: 0 0 0 2px; box-shadow: none; align-self: start }
+}

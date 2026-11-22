@@ -59,6 +59,7 @@ import type { Decisions, Definition, Run } from './workflow'
 export const api = {
   login: (username: string, password: string) => call<{ username: string }>('POST', '/login', { username, password }),
   logout: () => call<unknown>('POST', '/logout', {}),
+  tourInfo: () => call<{ enabled: boolean; personas: string[] }>('GET', '/tour'),
   tourSignin: (persona: string) => call<{ username: string }>('POST', '/tour/signin', { persona }),
   whoami: () => call<Record<string, any>>('GET', '/whoami'),
   packs: () => call<{ packs: Pack[]; note: string | null }>('GET', '/packs'),
