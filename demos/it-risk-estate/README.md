@@ -24,3 +24,20 @@ docker run --rm --network agency-risk_default -e ESTATE_REPLAY_SECONDS=5 \
 **Loading into an existing stack.** Postgres runs init files only on a fresh volume, so either wipe it (`agency/local/up.sh down`) or load the seed by hand (`psql ... < seed-estate-postgres.sql`, then `grant-estate.sql`) and re-run `agency/local/up.sh` so the question bank indexes the new questions.
 
 **Checked (2026-11-20):** each reference SQL run on the stack's Postgres (6, 12, 8, 6 and 6 rows); the five questions asked through Agency as `curator` came back with the same row counts, the one whose evidence was read in full was answered from the question bank (`origin: question_bank`, no model), 5 to 9 s each; the replay script run against the stack. **Not checked:** the rating (step 4), the cloud charts (they do not carry this schema), a real connector.
+
+## Field names (step 8f)
+
+The tables are named toward the real systems' fields, so a ServiceNow or Datadog connector later changes the source and not the questions. The values are invented.
+
+| Column | ServiceNow CMDB | Datadog |
+|---|---|---|
+| `systems.business_criticality` | `business_criticality` | tag `tier` |
+| `systems.owned_by`, `support_group` | `owned_by`, `support_group` | tag `team` |
+| `systems.environment` | `environment` | tag `env` |
+| `systems.install_status`, `end_of_support` | `install_status`, `end_of_support` | none |
+| `systems.last_discovered` | `last_discovered` | agent reporting |
+| `patches.cve`, `cvss_score` | none | `cve`, `cvss.score` |
+| `patches.known_exploited`, `epss` | none | none (public KEV and EPSS lists in the real world) |
+| `systems.loss_event` | none | none (plain words: money lost, denial of service to many customers, or a breach with legal risk) |
+
+The mapping is ours and has not been checked against a real tenant. The five approved questions still return `tier` and `owner_team` as column names (aliases), so the Exposure screen, its gold set and the workflow gate are unchanged. The new columns (`end_of_support`, `known_exploited`, `epss`, `loss_event`) are for the Priorities list (step 8c). The CVE identifiers are invented and do not refer to real flaws. Reload the schema (drop and create) on an existing stack.
