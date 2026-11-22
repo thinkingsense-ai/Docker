@@ -192,7 +192,7 @@ These five are a proposal, not Leo's list; open question 1 asks him to confirm o
 Rule-based, like the judge, so a risk partner can challenge each rule.
 
 - Each question gets 0 (no concern), 1 (watch), 2 (concern) or 3 (critical), from a short stated rule over the returned rows. Examples: Q2 scores 3 if a system with `restricted` data is reachable by a group wider than its owner team; Q4 scores 2 if any in-scope system has a security patch overdue by more than 15 days; Q5 scores 3 if a tier-1 service has no recovery test in the last 180 days.
-- The overall rating is the highest of the five, shown as Low, Moderate, High or Critical, **with the question that set it**. Not an average, because one unrecoverable tier-1 system is not diluted by four clean answers.
+- The overall rating is the highest of the five, shown as Low, Medium, High or Critical, **with the question that set it**. Not an average, because one unrecoverable tier-1 system is not diluted by four clean answers.
 - Every score shows the rows behind it and the rule that produced it. A question that cannot be answered (a source is not loaded) scores *unknown*, never 0, and the overall rating says so.
 - Thresholds (days overdue, recovery window) are demo constants, listed on screen, owned by the head of technology risk in a real deployment.
 
@@ -269,9 +269,9 @@ Each question says why it matters and what the build assumes if it stays unanswe
 Why it matters: they decide what the rating is built from. Assumed if unanswered: the five as written.
 **Answer:** Yes, start with these five, in this order.
 
-**Q2. What should the rating look like to a head of technology risk: four levels (Low, Moderate, High, Critical), a number, or a heat map?**
+**Q2. What should the rating look like to a head of technology risk: four levels (Low, Medium, High, Critical), a number, or a heat map?**
 Why it matters: the rating is the thing people will quote. Assumed if unanswered: four levels, the highest of the five question scores, with the question that set it.
-**Answer:** Use the four levels: Low, Moderate, High, Critical.
+**Answer:** Use the four levels: Low, Medium, High, Critical (renamed from Moderate on 2026-11-21, the scale Leo asked for).
 
 **Q3. Which news sources would you trust for the feed, and do you want X for the story only?**
 Why it matters: the feed is only as good as its sources, and X needs a paid plan we have not bought. Assumed if unanswered: RSS from technical news and official status pages first, no X.

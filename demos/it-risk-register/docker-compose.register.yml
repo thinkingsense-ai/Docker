@@ -1,0 +1,11 @@
+# Adds the IT-risk register vocabulary (schema `register`: taxonomy, rating scale, definitions) to the all-packs stack, for the local Agency sandbox. Add it after the estate file (agency/local/up.sh does).
+# Postgres runs init files only on a FRESH volume, so an existing stack must be wiped (agency/local/up.sh down) or the seed loaded by hand (see README).
+# The approved questions are merged by agency/local/up.sh into agency/local/.runtime/demo-questions.json. Not in the cloud charts.
+services:
+  postgres:
+    volumes:
+      - ./demos/it-risk-register/seed-register-postgres.sql:/docker-entrypoint-initdb.d/03d-register.sql:ro
+      - ./demos/it-risk-register/grant-register.sql:/docker-entrypoint-initdb.d/07c-register-grant.sql:ro
+  omnigate:
+    environment:
+      OMNIGATE_FEDERATION_SCHEMA_INCLUDE: "suppliers,inventory,procurement,risk,smithsonian,security,museums,bom,treasury,erp,rca,estate,register"

@@ -34,11 +34,11 @@ export default function Watch({ table, sources, onLoaded, onSources, onBrief, on
         <h2 id="watch-h">Watch</h2>
         <button onClick={load} disabled={busy}>{busy ? 'Loading…' : 'Refresh'}</button>
       </header>
-      <p className="muted small">Incident stories being followed. Nothing is traced or published without a person pressing a button. Candidates marked &ldquo;claim not yet tested&rdquo; come from the feed and are leads to read, not findings; the two traced ones are the seeded cases.</p>
+      <p className="muted small">Incident stories being followed. Nothing is traced or published without a person pressing a button. Events under review marked &ldquo;claim not yet tested&rdquo; come from the feed and are leads to read, not findings; the two traced ones are the seeded cases.</p>
       {health && <p className={health.ok ? 'srcline ok' : 'srcline warn'} role="status">Feed: {health.text}</p>}
       {err && <p role="alert" className="error">{err}</p>}
-      {busy && !table && <p role="status" className="muted">Loading candidates…</p>}
-      {table && list.length === 0 && <p className="empty">The Server returned no candidates. This stack may not carry the incident data.</p>}
+      {busy && !table && <p role="status" className="muted">Loading events under review…</p>}
+      {table && list.length === 0 && <p className="empty">The Server returned no events under review. This stack may not carry the incident data.</p>}
       <ul className="candidates">
         {list.map((c) => {
           const act = actionFor(c)
@@ -54,7 +54,7 @@ export default function Watch({ table, sources, onLoaded, onSources, onBrief, on
               {c.leadUrl && <p className="small">Lead: <a href={c.leadUrl} target="_blank" rel="noopener noreferrer">{c.leadSource || 'open the headline'}</a> <span className="muted">(opens the publisher's page)</span></p>}
               {c.status === 'traced' && c.verdict && <p className="verdict small">Verdict on the claim: <strong>{verdictLabel(c.verdict)}</strong>{c.openIncidents ? `; ${c.openIncidents} incident${c.openIncidents === 1 ? '' : 's'} still open` : ''}.</p>}
               <p>
-                {act.kind === 'brief' && <button className="primary" onClick={onBrief}>Open the brief</button>}
+                {act.kind === 'brief' && <button className="primary" onClick={onBrief}>Open the problem record</button>}
                 {act.kind === 'ask' && <button className="primary" onClick={() => onAsk(act.question)}>{act.label}</button>}
                 {act.kind === 'wait' && <span className="muted small">{act.why}</span>}
               </p>
