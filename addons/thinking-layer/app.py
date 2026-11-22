@@ -199,6 +199,7 @@ class H(BaseHTTPRequestHandler):
             if u.path.startswith("/uploads/") and u.path.endswith("/share"): return self.share(u.path[9:-6], self.body())
             if u.path == "/workflows/start": return self.wf_start(self.body())
             if u.path == "/feedback": return self.feedback(self.body())
+            if u.path == "/cancel": return self.cancel(self.body())
             if u.path == "/help": return self.help_request(self.body())
             if u.path == "/reusable": return self.reusable(self.body())
             if u.path.startswith("/workflows/") and u.path.endswith(("/approve", "/reject")): return self.wf_run(u.path[11:].rsplit("/", 1)[0], u.path.rsplit("/", 1)[1], self.body())
@@ -548,7 +549,17 @@ class H(BaseHTTPRequestHandler):
         if code == 404: return self.err(404, "not_available", "This Server does not offer that.")
         if code >= 400 or not isinstance(d, dict): return self.err(code if code >= 400 else 502, "server_error", (d.get("error") if isinstance(d, dict) and isinstance(d.get("error"), str) else "The Server refused the request (HTTP %d)." % code))
         if d.get("success") is False: return self.err(422, "refused", str(d.get("error") or "The Server did not accept it."))
-        self.send(200, {k: d[k] for k in ("success", "alreadySaved") if k in d})
+        self.send(200, {k: d[k] for k in ("success", "alreadySaved", "cancelled") if k in d})
+
+    QUERY_ID = re.compile(r"^[A-Za-z0-9-]{8,80}$")
+
+    def cancel(self, body):
+        """Stops a running question on the Server (POST /api/ask/cancel, as the signed-in person: the Server only cancels what that user is running). It flags the question and interrupts its running
+        SQL; a model call already in flight is only noticed at the next step (Server#143). The browser's own abort does not do this, which is why a Cancel used to leave the work running."""
+        try: qid = self._text(body, "queryId", 80, True)
+        except ValueError as e: return self.err(400, "bad_request", str(e))
+        if not self.QUERY_ID.match(qid): return self.err(400, "bad_request", "queryId is not a query id.")
+        self._post_simple("/api/ask/cancel", {"queryId": qid}, None)
 
     def feedback(self, body):
         try:
