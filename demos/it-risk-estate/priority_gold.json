@@ -1,0 +1,1377 @@
+{
+ "about": "Gold set for the Priorities list (agency/web/src/priorityModel.ts, demos/payment-workflow/priority_rules.py). The first three cases are the real rows from the simulated estate (demos/it-risk-estate) at start-up, with the exposure rating Critical, and after the replay; the expected orders and ratings were worked out by hand from the stated rules. PLANTED cases are the errors a careless rule would make.",
+ "cases": [
+  {
+   "name": "start-up estate: the domain controllers are Critical, the gateway High, five Medium, two Low",
+   "answer": {
+    "columns": [
+     "system",
+     "tier",
+     "environment",
+     "data_class",
+     "internet_facing",
+     "dependents",
+     "end_of_support",
+     "open_patches",
+     "known_exploited_open",
+     "max_epss_open",
+     "max_cvss_open",
+     "untested_changes",
+     "days_since_test",
+     "recovery_result",
+     "credentials_wide",
+     "in_scenario",
+     "loss_event"
+    ],
+    "rows": [
+     [
+      "Payment gateway (production)",
+      "1",
+      "production",
+      "restricted",
+      "f",
+      "2",
+      "2027-06-30",
+      "0",
+      "0",
+      null,
+      null,
+      "0",
+      "212",
+      "passed over target",
+      "0",
+      "1",
+      "Failed payments or double postings: direct money lost and a card-scheme reporting duty."
+     ],
+     [
+      "Payment gateway (disaster recovery)",
+      "1",
+      "dr",
+      "restricted",
+      "f",
+      "1",
+      "2027-06-30",
+      "0",
+      "0",
+      null,
+      null,
+      "1",
+      "212",
+      "passed over target",
+      "0",
+      "1",
+      "A failed failover leaves card payments down: denial of service to many customers."
+     ],
+     [
+      "Domain controllers",
+      "1",
+      "production",
+      "confidential",
+      "f",
+      "4",
+      "2026-12-31",
+      "1",
+      "1",
+      "0.912",
+      "9.8",
+      "1",
+      "69",
+      "passed",
+      "0",
+      "1",
+      "Loss of sign-in for staff and operators: large-scale denial of service inside the firm."
+     ],
+     [
+      "Core banking database",
+      "1",
+      "production",
+      "restricted",
+      "f",
+      "0",
+      null,
+      "0",
+      "0",
+      null,
+      null,
+      "0",
+      null,
+      null,
+      "0",
+      "0",
+      "Ledger corrupted or exposed: money lost and a breach with legal risk."
+     ],
+     [
+      "Customer web portal",
+      "1",
+      "production",
+      "confidential",
+      "t",
+      "0",
+      null,
+      "0",
+      "0",
+      null,
+      null,
+      "0",
+      null,
+      null,
+      "0",
+      "0",
+      "Portal down or defaced: denial of service to many customers."
+     ],
+     [
+      "Backup vault",
+      "1",
+      "production",
+      "restricted",
+      "f",
+      "0",
+      null,
+      "0",
+      "0",
+      null,
+      null,
+      "0",
+      null,
+      null,
+      "0",
+      "0",
+      "Backups lost or encrypted: recovery impossible after another loss event."
+     ],
+     [
+      "Branch file servers",
+      "2",
+      "production",
+      "confidential",
+      "f",
+      "0",
+      null,
+      "1",
+      "0",
+      "0.118",
+      "7.5",
+      "0",
+      "172",
+      "passed",
+      "0",
+      "1",
+      "Branch files unavailable: branch work stops; no customer data leaves."
+     ],
+     [
+      "Back-office application servers",
+      "2",
+      "production",
+      "internal",
+      "f",
+      "0",
+      null,
+      "0",
+      "0",
+      null,
+      null,
+      "1",
+      "92",
+      "passed",
+      "0",
+      "1",
+      "Back-office processing delayed; limited customer impact."
+     ],
+     [
+      "Branch voice and ATM link",
+      "2",
+      "production",
+      "internal",
+      "f",
+      "1",
+      "2026-12-31",
+      "1",
+      "0",
+      "0.231",
+      "8.8",
+      "0",
+      null,
+      "never tested",
+      "0",
+      "1",
+      "Branch voice and ATM links down: denial of service to branch customers."
+     ],
+     [
+      "Analytics warehouse",
+      "3",
+      "production",
+      "confidential",
+      "f",
+      "0",
+      null,
+      "0",
+      "0",
+      null,
+      null,
+      "0",
+      null,
+      null,
+      "0",
+      "0",
+      "Analytics unavailable; a breach would expose confidential data."
+     ],
+     [
+      "HR system",
+      "3",
+      "production",
+      "restricted",
+      "t",
+      "0",
+      null,
+      "0",
+      "0",
+      null,
+      null,
+      "0",
+      null,
+      null,
+      "0",
+      "0",
+      "Employee records exposed: a breach with legal risk."
+     ]
+    ]
+   },
+   "order": [
+    "Domain controllers",
+    "Payment gateway (production)",
+    "Payment gateway (disaster recovery)",
+    "Branch voice and ATM link",
+    "Backup vault",
+    "Core banking database",
+    "Customer web portal",
+    "Back-office application servers",
+    "Branch file servers",
+    "Analytics warehouse",
+    "HR system"
+   ],
+   "ratings": [
+    "Critical",
+    "High",
+    "High",
+    "Medium",
+    "Medium",
+    "Medium",
+    "Medium",
+    "Medium",
+    "Medium",
+    "Low",
+    "Low"
+   ],
+   "triggers": {}
+  },
+  {
+   "name": "start-up estate with the exposure rating Critical: the technology in scope is lifted to at least High",
+   "answer": {
+    "columns": [
+     "system",
+     "tier",
+     "environment",
+     "data_class",
+     "internet_facing",
+     "dependents",
+     "end_of_support",
+     "open_patches",
+     "known_exploited_open",
+     "max_epss_open",
+     "max_cvss_open",
+     "untested_changes",
+     "days_since_test",
+     "recovery_result",
+     "credentials_wide",
+     "in_scenario",
+     "loss_event"
+    ],
+    "rows": [
+     [
+      "Payment gateway (production)",
+      "1",
+      "production",
+      "restricted",
+      "f",
+      "2",
+      "2027-06-30",
+      "0",
+      "0",
+      null,
+      null,
+      "0",
+      "212",
+      "passed over target",
+      "0",
+      "1",
+      "Failed payments or double postings: direct money lost and a card-scheme reporting duty."
+     ],
+     [
+      "Payment gateway (disaster recovery)",
+      "1",
+      "dr",
+      "restricted",
+      "f",
+      "1",
+      "2027-06-30",
+      "0",
+      "0",
+      null,
+      null,
+      "1",
+      "212",
+      "passed over target",
+      "0",
+      "1",
+      "A failed failover leaves card payments down: denial of service to many customers."
+     ],
+     [
+      "Domain controllers",
+      "1",
+      "production",
+      "confidential",
+      "f",
+      "4",
+      "2026-12-31",
+      "1",
+      "1",
+      "0.912",
+      "9.8",
+      "1",
+      "69",
+      "passed",
+      "0",
+      "1",
+      "Loss of sign-in for staff and operators: large-scale denial of service inside the firm."
+     ],
+     [
+      "Core banking database",
+      "1",
+      "production",
+      "restricted",
+      "f",
+      "0",
+      null,
+      "0",
+      "0",
+      null,
+      null,
+      "0",
+      null,
+      null,
+      "0",
+      "0",
+      "Ledger corrupted or exposed: money lost and a breach with legal risk."
+     ],
+     [
+      "Customer web portal",
+      "1",
+      "production",
+      "confidential",
+      "t",
+      "0",
+      null,
+      "0",
+      "0",
+      null,
+      null,
+      "0",
+      null,
+      null,
+      "0",
+      "0",
+      "Portal down or defaced: denial of service to many customers."
+     ],
+     [
+      "Backup vault",
+      "1",
+      "production",
+      "restricted",
+      "f",
+      "0",
+      null,
+      "0",
+      "0",
+      null,
+      null,
+      "0",
+      null,
+      null,
+      "0",
+      "0",
+      "Backups lost or encrypted: recovery impossible after another loss event."
+     ],
+     [
+      "Branch file servers",
+      "2",
+      "production",
+      "confidential",
+      "f",
+      "0",
+      null,
+      "1",
+      "0",
+      "0.118",
+      "7.5",
+      "0",
+      "172",
+      "passed",
+      "0",
+      "1",
+      "Branch files unavailable: branch work stops; no customer data leaves."
+     ],
+     [
+      "Back-office application servers",
+      "2",
+      "production",
+      "internal",
+      "f",
+      "0",
+      null,
+      "0",
+      "0",
+      null,
+      null,
+      "1",
+      "92",
+      "passed",
+      "0",
+      "1",
+      "Back-office processing delayed; limited customer impact."
+     ],
+     [
+      "Branch voice and ATM link",
+      "2",
+      "production",
+      "internal",
+      "f",
+      "1",
+      "2026-12-31",
+      "1",
+      "0",
+      "0.231",
+      "8.8",
+      "0",
+      null,
+      "never tested",
+      "0",
+      "1",
+      "Branch voice and ATM links down: denial of service to branch customers."
+     ],
+     [
+      "Analytics warehouse",
+      "3",
+      "production",
+      "confidential",
+      "f",
+      "0",
+      null,
+      "0",
+      "0",
+      null,
+      null,
+      "0",
+      null,
+      null,
+      "0",
+      "0",
+      "Analytics unavailable; a breach would expose confidential data."
+     ],
+     [
+      "HR system",
+      "3",
+      "production",
+      "restricted",
+      "t",
+      "0",
+      null,
+      "0",
+      "0",
+      null,
+      null,
+      "0",
+      null,
+      null,
+      "0",
+      "0",
+      "Employee records exposed: a breach with legal risk."
+     ]
+    ]
+   },
+   "exposureLevel": "Critical",
+   "order": [
+    "Domain controllers",
+    "Payment gateway (production)",
+    "Payment gateway (disaster recovery)",
+    "Branch voice and ATM link",
+    "Back-office application servers",
+    "Branch file servers",
+    "Backup vault",
+    "Core banking database",
+    "Customer web portal",
+    "Analytics warehouse",
+    "HR system"
+   ],
+   "ratings": [
+    "Critical",
+    "High",
+    "High",
+    "High",
+    "High",
+    "High",
+    "Medium",
+    "Medium",
+    "Medium",
+    "Low",
+    "Low"
+   ],
+   "triggers": {
+    "Payment gateway (production)": [
+     "exposure_critical"
+    ],
+    "Payment gateway (disaster recovery)": [
+     "exposure_critical"
+    ],
+    "Domain controllers": [
+     "exposure_critical"
+    ],
+    "Branch file servers": [
+     "exposure_critical"
+    ],
+    "Back-office application servers": [
+     "exposure_critical"
+    ],
+    "Branch voice and ATM link": [
+     "exposure_critical"
+    ]
+   },
+   "lifted": [
+    "Branch file servers",
+    "Back-office application servers",
+    "Branch voice and ATM link"
+   ]
+  },
+  {
+   "name": "after the replay: a credential for the production gateway is public, so it becomes Critical and moves first",
+   "answer": {
+    "columns": [
+     "system",
+     "tier",
+     "environment",
+     "data_class",
+     "internet_facing",
+     "dependents",
+     "end_of_support",
+     "open_patches",
+     "known_exploited_open",
+     "max_epss_open",
+     "max_cvss_open",
+     "untested_changes",
+     "days_since_test",
+     "recovery_result",
+     "credentials_wide",
+     "in_scenario",
+     "loss_event"
+    ],
+    "rows": [
+     [
+      "Payment gateway (production)",
+      "1",
+      "production",
+      "restricted",
+      "f",
+      "2",
+      "2027-06-30",
+      "0",
+      "0",
+      null,
+      null,
+      "0",
+      "212",
+      "passed over target",
+      "2",
+      "1",
+      "Failed payments or double postings: direct money lost and a card-scheme reporting duty."
+     ],
+     [
+      "Payment gateway (disaster recovery)",
+      "1",
+      "dr",
+      "restricted",
+      "f",
+      "1",
+      "2027-06-30",
+      "0",
+      "0",
+      null,
+      null,
+      "1",
+      "212",
+      "passed over target",
+      "0",
+      "1",
+      "A failed failover leaves card payments down: denial of service to many customers."
+     ],
+     [
+      "Domain controllers",
+      "1",
+      "production",
+      "confidential",
+      "f",
+      "4",
+      "2026-12-31",
+      "1",
+      "1",
+      "0.912",
+      "9.8",
+      "1",
+      "69",
+      "passed",
+      "0",
+      "1",
+      "Loss of sign-in for staff and operators: large-scale denial of service inside the firm."
+     ],
+     [
+      "Core banking database",
+      "1",
+      "production",
+      "restricted",
+      "f",
+      "0",
+      null,
+      "0",
+      "0",
+      null,
+      null,
+      "0",
+      null,
+      null,
+      "0",
+      "0",
+      "Ledger corrupted or exposed: money lost and a breach with legal risk."
+     ],
+     [
+      "Customer web portal",
+      "1",
+      "production",
+      "confidential",
+      "t",
+      "0",
+      null,
+      "0",
+      "0",
+      null,
+      null,
+      "0",
+      null,
+      null,
+      "0",
+      "0",
+      "Portal down or defaced: denial of service to many customers."
+     ],
+     [
+      "Backup vault",
+      "1",
+      "production",
+      "restricted",
+      "f",
+      "0",
+      null,
+      "0",
+      "0",
+      null,
+      null,
+      "0",
+      null,
+      null,
+      "0",
+      "0",
+      "Backups lost or encrypted: recovery impossible after another loss event."
+     ],
+     [
+      "Branch file servers",
+      "2",
+      "production",
+      "confidential",
+      "f",
+      "0",
+      null,
+      "1",
+      "0",
+      "0.118",
+      "7.5",
+      "0",
+      "172",
+      "passed",
+      "0",
+      "1",
+      "Branch files unavailable: branch work stops; no customer data leaves."
+     ],
+     [
+      "Back-office application servers",
+      "2",
+      "production",
+      "internal",
+      "f",
+      "0",
+      null,
+      "0",
+      "0",
+      null,
+      null,
+      "1",
+      "92",
+      "passed",
+      "0",
+      "1",
+      "Back-office processing delayed; limited customer impact."
+     ],
+     [
+      "Branch voice and ATM link",
+      "2",
+      "production",
+      "internal",
+      "f",
+      "1",
+      "2026-12-31",
+      "1",
+      "0",
+      "0.231",
+      "8.8",
+      "0",
+      null,
+      "never tested",
+      "0",
+      "1",
+      "Branch voice and ATM links down: denial of service to branch customers."
+     ],
+     [
+      "Analytics warehouse",
+      "3",
+      "production",
+      "confidential",
+      "f",
+      "0",
+      null,
+      "0",
+      "0",
+      null,
+      null,
+      "0",
+      null,
+      null,
+      "0",
+      "0",
+      "Analytics unavailable; a breach would expose confidential data."
+     ],
+     [
+      "HR system",
+      "3",
+      "production",
+      "restricted",
+      "t",
+      "0",
+      null,
+      "0",
+      "0",
+      null,
+      null,
+      "0",
+      null,
+      null,
+      "0",
+      "0",
+      "Employee records exposed: a breach with legal risk."
+     ]
+    ]
+   },
+   "order": [
+    "Payment gateway (production)",
+    "Domain controllers",
+    "Payment gateway (disaster recovery)",
+    "Branch voice and ATM link",
+    "Backup vault",
+    "Core banking database",
+    "Customer web portal",
+    "Back-office application servers",
+    "Branch file servers",
+    "Analytics warehouse",
+    "HR system"
+   ],
+   "ratings": [
+    "Critical",
+    "Critical",
+    "High",
+    "Medium",
+    "Medium",
+    "Medium",
+    "Medium",
+    "Medium",
+    "Medium",
+    "Low",
+    "Low"
+   ],
+   "triggers": {
+    "Payment gateway (production)": [
+     "credential_shared"
+    ]
+   }
+  },
+  {
+   "name": "PLANTED: a known-exploited flaw on a tier 1 system that is NOT internet-facing does not fire the exposed trigger",
+   "answer": {
+    "columns": [
+     "system",
+     "tier",
+     "environment",
+     "data_class",
+     "internet_facing",
+     "dependents",
+     "end_of_support",
+     "open_patches",
+     "known_exploited_open",
+     "max_epss_open",
+     "max_cvss_open",
+     "untested_changes",
+     "days_since_test",
+     "recovery_result",
+     "credentials_wide",
+     "in_scenario",
+     "loss_event"
+    ],
+    "rows": [
+     [
+      "Test system",
+      "1",
+      "production",
+      "internal",
+      "false",
+      "0",
+      null,
+      "1",
+      "1",
+      "0.9",
+      null,
+      "0",
+      "30",
+      "passed",
+      "0",
+      "0",
+      ""
+     ]
+    ]
+   },
+   "order": [
+    "Test system"
+   ],
+   "ratings": [
+    "High"
+   ],
+   "triggers": {}
+  },
+  {
+   "name": "PLANTED: a known-exploited flaw on an internet-facing tier 3 system does not fire the tier 1 trigger",
+   "answer": {
+    "columns": [
+     "system",
+     "tier",
+     "environment",
+     "data_class",
+     "internet_facing",
+     "dependents",
+     "end_of_support",
+     "open_patches",
+     "known_exploited_open",
+     "max_epss_open",
+     "max_cvss_open",
+     "untested_changes",
+     "days_since_test",
+     "recovery_result",
+     "credentials_wide",
+     "in_scenario",
+     "loss_event"
+    ],
+    "rows": [
+     [
+      "Test system",
+      "3",
+      "production",
+      "internal",
+      "true",
+      "0",
+      null,
+      "1",
+      "1",
+      null,
+      null,
+      "0",
+      "30",
+      "passed",
+      "0",
+      "0",
+      ""
+     ]
+    ]
+   },
+   "order": [
+    "Test system"
+   ],
+   "ratings": [
+    "Medium"
+   ],
+   "triggers": {}
+  },
+  {
+   "name": "a known-exploited flaw on an internet-facing tier 1 system fires the trigger and is Critical with restricted data",
+   "answer": {
+    "columns": [
+     "system",
+     "tier",
+     "environment",
+     "data_class",
+     "internet_facing",
+     "dependents",
+     "end_of_support",
+     "open_patches",
+     "known_exploited_open",
+     "max_epss_open",
+     "max_cvss_open",
+     "untested_changes",
+     "days_since_test",
+     "recovery_result",
+     "credentials_wide",
+     "in_scenario",
+     "loss_event"
+    ],
+    "rows": [
+     [
+      "Test system",
+      "1",
+      "production",
+      "restricted",
+      "true",
+      "0",
+      null,
+      "1",
+      "1",
+      null,
+      null,
+      "0",
+      "30",
+      "passed",
+      "0",
+      "0",
+      ""
+     ]
+    ]
+   },
+   "order": [
+    "Test system"
+   ],
+   "ratings": [
+    "Critical"
+   ],
+   "triggers": {
+    "Test system": [
+     "kev_exposed"
+    ]
+   }
+  },
+  {
+   "name": "PLANTED: a credential visible too widely lifts a low system to High, and says it was lifted",
+   "answer": {
+    "columns": [
+     "system",
+     "tier",
+     "environment",
+     "data_class",
+     "internet_facing",
+     "dependents",
+     "end_of_support",
+     "open_patches",
+     "known_exploited_open",
+     "max_epss_open",
+     "max_cvss_open",
+     "untested_changes",
+     "days_since_test",
+     "recovery_result",
+     "credentials_wide",
+     "in_scenario",
+     "loss_event"
+    ],
+    "rows": [
+     [
+      "Test system",
+      "3",
+      "production",
+      "internal",
+      "false",
+      "0",
+      null,
+      "0",
+      "0",
+      null,
+      null,
+      "0",
+      "30",
+      "passed",
+      "1",
+      "0",
+      ""
+     ]
+    ]
+   },
+   "order": [
+    "Test system"
+   ],
+   "ratings": [
+    "High"
+   ],
+   "triggers": {
+    "Test system": [
+     "credential_shared"
+    ]
+   },
+   "lifted": [
+    "Test system"
+   ]
+  },
+  {
+   "name": "PLANTED: an internet-facing system never recovery-tested is lifted to High although the matrix says Low",
+   "answer": {
+    "columns": [
+     "system",
+     "tier",
+     "environment",
+     "data_class",
+     "internet_facing",
+     "dependents",
+     "end_of_support",
+     "open_patches",
+     "known_exploited_open",
+     "max_epss_open",
+     "max_cvss_open",
+     "untested_changes",
+     "days_since_test",
+     "recovery_result",
+     "credentials_wide",
+     "in_scenario",
+     "loss_event"
+    ],
+    "rows": [
+     [
+      "Test system",
+      "3",
+      "production",
+      "internal",
+      "true",
+      "0",
+      null,
+      "0",
+      "0",
+      null,
+      null,
+      "0",
+      null,
+      "never tested",
+      "0",
+      "0",
+      ""
+     ]
+    ]
+   },
+   "order": [
+    "Test system"
+   ],
+   "ratings": [
+    "High"
+   ],
+   "triggers": {
+    "Test system": [
+     "exposed_untested"
+    ]
+   },
+   "lifted": [
+    "Test system"
+   ]
+  },
+  {
+   "name": "PLANTED: no recovery record is not the same as never tested (no points, no trigger)",
+   "answer": {
+    "columns": [
+     "system",
+     "tier",
+     "environment",
+     "data_class",
+     "internet_facing",
+     "dependents",
+     "end_of_support",
+     "open_patches",
+     "known_exploited_open",
+     "max_epss_open",
+     "max_cvss_open",
+     "untested_changes",
+     "days_since_test",
+     "recovery_result",
+     "credentials_wide",
+     "in_scenario",
+     "loss_event"
+    ],
+    "rows": [
+     [
+      "Test system",
+      "3",
+      "production",
+      "internal",
+      "true",
+      "0",
+      null,
+      "0",
+      "0",
+      null,
+      null,
+      "0",
+      null,
+      null,
+      "0",
+      "0",
+      ""
+     ]
+    ]
+   },
+   "order": [
+    "Test system"
+   ],
+   "ratings": [
+    "Low"
+   ],
+   "triggers": {}
+  },
+  {
+   "name": "a system outside production loses one step of impact",
+   "answer": {
+    "columns": [
+     "system",
+     "tier",
+     "environment",
+     "data_class",
+     "internet_facing",
+     "dependents",
+     "end_of_support",
+     "open_patches",
+     "known_exploited_open",
+     "max_epss_open",
+     "max_cvss_open",
+     "untested_changes",
+     "days_since_test",
+     "recovery_result",
+     "credentials_wide",
+     "in_scenario",
+     "loss_event"
+    ],
+    "rows": [
+     [
+      "Test system",
+      "1",
+      "test",
+      "restricted",
+      "false",
+      "0",
+      null,
+      "0",
+      "0",
+      null,
+      null,
+      "0",
+      "30",
+      "passed",
+      "0",
+      "0",
+      ""
+     ]
+    ]
+   },
+   "order": [
+    "Test system"
+   ],
+   "ratings": [
+    "Medium"
+   ],
+   "triggers": {}
+  },
+  {
+   "name": "support that has already ended raises likelihood to Medium",
+   "answer": {
+    "columns": [
+     "system",
+     "tier",
+     "environment",
+     "data_class",
+     "internet_facing",
+     "dependents",
+     "end_of_support",
+     "open_patches",
+     "known_exploited_open",
+     "max_epss_open",
+     "max_cvss_open",
+     "untested_changes",
+     "days_since_test",
+     "recovery_result",
+     "credentials_wide",
+     "in_scenario",
+     "loss_event"
+    ],
+    "rows": [
+     [
+      "Test system",
+      "3",
+      "production",
+      "internal",
+      "false",
+      "0",
+      "2026-11-01",
+      "0",
+      "0",
+      null,
+      null,
+      "0",
+      "30",
+      "passed",
+      "0",
+      "0",
+      ""
+     ]
+    ]
+   },
+   "order": [
+    "Test system"
+   ],
+   "ratings": [
+    "Low"
+   ],
+   "triggers": {}
+  },
+  {
+   "name": "an exploit score of exactly 0.5 is High likelihood",
+   "answer": {
+    "columns": [
+     "system",
+     "tier",
+     "environment",
+     "data_class",
+     "internet_facing",
+     "dependents",
+     "end_of_support",
+     "open_patches",
+     "known_exploited_open",
+     "max_epss_open",
+     "max_cvss_open",
+     "untested_changes",
+     "days_since_test",
+     "recovery_result",
+     "credentials_wide",
+     "in_scenario",
+     "loss_event"
+    ],
+    "rows": [
+     [
+      "Test system",
+      "2",
+      "production",
+      "internal",
+      "false",
+      "0",
+      null,
+      "1",
+      "0",
+      "0.5",
+      null,
+      "0",
+      "30",
+      "passed",
+      "0",
+      "0",
+      ""
+     ]
+    ]
+   },
+   "order": [
+    "Test system"
+   ],
+   "ratings": [
+    "Medium"
+   ],
+   "triggers": {}
+  },
+  {
+   "name": "boolean text t and an internet-facing system with an open flaw is High likelihood",
+   "answer": {
+    "columns": [
+     "system",
+     "tier",
+     "environment",
+     "data_class",
+     "internet_facing",
+     "dependents",
+     "end_of_support",
+     "open_patches",
+     "known_exploited_open",
+     "max_epss_open",
+     "max_cvss_open",
+     "untested_changes",
+     "days_since_test",
+     "recovery_result",
+     "credentials_wide",
+     "in_scenario",
+     "loss_event"
+    ],
+    "rows": [
+     [
+      "Test system",
+      "1",
+      "production",
+      "internal",
+      "t",
+      "0",
+      null,
+      "1",
+      "0",
+      "0.05",
+      null,
+      "0",
+      "30",
+      "passed",
+      "0",
+      "0",
+      ""
+     ]
+    ]
+   },
+   "order": [
+    "Test system"
+   ],
+   "ratings": [
+    "High"
+   ],
+   "triggers": {}
+  },
+  {
+   "name": "an answer without the columns the rules need gives no list",
+   "answer": {
+    "columns": [
+     "system",
+     "tier"
+    ],
+    "rows": [
+     [
+      "A",
+      "1"
+     ]
+    ]
+   },
+   "ok": false,
+   "order": [],
+   "ratings": [],
+   "triggers": {}
+  }
+ ]
+}

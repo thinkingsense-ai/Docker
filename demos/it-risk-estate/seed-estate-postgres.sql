@@ -245,3 +245,8 @@ INSERT INTO estate.slack_messages VALUES
  (2, '#it-help',         'public',  640,  'svc-desk',  'recovery', 4,    'Reminder: branch shares are restored from the nightly vault job; ask Platform Operations to start it.',        '2026-11-05 08:45', 'slack.messages', 0, 202),
  (3, '#network-ops',     'private', 14,   'r.okafor',  'runbook',  6,    'The carrier escalation line is in the pinned document; ask for the senior engineer on the 24 hour desk.',      '2026-10-30 17:02', 'slack.messages', 0, 203),
  (4, '#eng-general',     'public',  1240, 'j.patel',   'chat',     NULL, 'Anyone free to review the retail PR before lunch?',                                                             '2026-11-19 11:48', 'slack.messages', 0, 204);
+
+-- Step 8c: whether a system can be reached from the internet. Invented: the customer portal and the vendor-hosted HR suite are; everything else is internal or private-network only.
+ALTER TABLE estate.systems ADD COLUMN internet_facing BOOLEAN NOT NULL DEFAULT FALSE;
+COMMENT ON COLUMN estate.systems.internet_facing IS 'Whether the system can be reached from the internet. Invented values. A real estate would take it from the CMDB or an external attack-surface scan.';
+UPDATE estate.systems SET internet_facing = TRUE WHERE system_id IN (8, 10);

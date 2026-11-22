@@ -6,7 +6,7 @@ const pack = (id: string) => ({ id, title: id.toUpperCase() } as unknown as Pack
 
 describe('navigation', () => {
   it('lists Watch, Exposure, Briefs, Approvals, Sources and Ask in that order', () => {
-    expect(NAV.map((n) => n.id)).toEqual(['watch', 'exposure', 'briefs', 'approvals', 'sources', 'ask'])
+    expect(NAV.map((n) => n.id)).toEqual(['watch', 'exposure', 'priorities', 'briefs', 'approvals', 'sources', 'ask'])
   })
   it('hides Approvals without the approve grant and shows it with', () => {
     expect(navFor({ canApprove: false }).map((n) => n.id)).not.toContain('approvals')
