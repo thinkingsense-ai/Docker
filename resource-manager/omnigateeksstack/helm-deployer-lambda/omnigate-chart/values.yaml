@@ -212,7 +212,7 @@ paymentWorkflow:
   enabled: false
   pythonImage: docker.io/library/python:3.12-slim   # the bootstrap Job and the workflow pod run on this
   # The Agency image (addons/thinking-layer/Dockerfile: the layer and the built UI), built by the Build images workflow.
-  image: ghcr.io/thinkingsense-ai/omnigate-agency:0.1.0
+  image: ghcr.io/thinkingsense-ai/omnigate-agency:0.1.0@sha256:e3c49b58dbbeb64c994e1c881838bbae1108e822ddb65b1672ded968d6cec41f
   # Temporal CLI image (its dev server), v1.5.1, pinned by digest.
   temporalImage: docker.io/temporalio/temporal@sha256:597a5dbbcc6e7716b326dde4a51622d5ea0879eb0cf06ff8a94381361d0a987d
   temporalSdkVersion: "1.30.0"
@@ -253,7 +253,7 @@ agency:
   workflows:
     enabled: false
     # Built from demos/payment-workflow/Dockerfile by the Build Agency image workflow (the code, the Temporal SDK and the psql client).
-    image: ghcr.io/thinkingsense-ai/omnigate-agency-workflows:0.1.0
+    image: ghcr.io/thinkingsense-ai/omnigate-agency-workflows:0.1.0@sha256:bc28b2bd929c08b358235e3decc30a8ba420684403dcfc7a1695b0eb6cc90387
     writeBack: dry-run
     recommendations: rules-only
     approvalTimeoutMinutes: 2880
