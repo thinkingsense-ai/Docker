@@ -38,6 +38,12 @@ spec:
         fsGroup: 10001
         seccompProfile:
           type: RuntimeDefault
+      # GKE taints its arm64 nodes (kubernetes.io/arch=arm64:NoSchedule); without this the pod sits Pending.
+      tolerations:
+        - key: "kubernetes.io/arch"
+          operator: "Equal"
+          value: "arm64"
+          effect: "NoSchedule"
       containers:
         - name: agency
           image: {{ .Values.agency.image }}

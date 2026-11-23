@@ -42,5 +42,5 @@ if [ "${VERIFY_ASK:-1}" != 0 ]; then
   if echo "$out" | grep -q '"rows"'; then printf 'PASS  %-52s %s\n' "an approved question is answered with rows" "$(echo "$out" | head -c 80)"; else printf 'FAIL  %-52s %s\n' "an approved question is answered with rows" "$(echo "$out" | head -c 160)"; fail=1; fi
 fi
 wf=$(code -b "$JAR" "$BASE/workflows/definitions")
-case "$wf" in 200) printf 'INFO  %-52s %s\n' "workflows (commercial edition)" "on";; 404|502|503) printf 'INFO  %-52s %s\n' "workflows (commercial edition)" "off ($wf: expected on the free edition)";; *) check "workflow routes answer sensibly" "200 or 404" "$wf";; esac
+case "$wf" in 200) printf 'INFO  %-52s %s\n' "workflows (commercial edition)" "on";; 403) printf 'INFO  %-52s %s\n' "workflows (commercial edition)" "on (403: this login has no workflow grant)";; 404|502|503) printf 'INFO  %-52s %s\n' "workflows (commercial edition)" "off ($wf: expected on the free edition)";; *) check "workflow routes answer sensibly" "200 or 404" "$wf";; esac
 [ $fail = 0 ] && echo "ALL PASS" || echo "FAILED"; exit $fail
