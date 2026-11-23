@@ -37,5 +37,35 @@ class T(unittest.TestCase):
         o = json.load(open(os.path.join(HERE, "..", "..", "..", "packs", "deploy-options.json")))
         self.assertEqual(sorted(handler.KNOWN_PACKS), sorted(p["id"] for p in o["packs"]))
 
+    def test_agency_off_changes_nothing(self):
+        self.assertEqual(handler.agency_values({}, None, "supply-chain"), {})
+        self.assertEqual(handler.agency_values({"InstallAgency": "false"}, "{bom}", "supply-chain"), {})
+
+    def test_agency_adds_its_pack_to_the_choice(self):
+        on = {"InstallAgency": "true"}
+        self.assertEqual(handler.agency_values(on, None, "supply-chain"), {"agency.enabled": "true", "demoDatasets": "{supply-chain,agency-risk}"})
+        self.assertEqual(handler.agency_values(on, "{bom,treasury}", "supply-chain")["demoDatasets"], "{bom,treasury,agency-risk}")
+        self.assertEqual(handler.agency_values(on, None, "all-packs")["demoDatasets"], "{" + ",".join(handler.SIX_PACKS) + ",agency-risk}")
+        self.assertEqual(handler.agency_values(on, "{it-risk,agency-risk}", "x")["demoDatasets"], "{it-risk,agency-risk}")
+
+    def test_agency_workflows_need_agency(self):
+        self.assertEqual(handler.agency_values({"InstallAgency": "true", "AgencyWorkflows": "true"}, None, "it-risk")["agency.workflows.enabled"], "true")
+        with self.assertRaises(ValueError): handler.agency_values({"AgencyWorkflows": "true"}, None, "it-risk")
+
+    def test_secret_values_are_redacted_from_an_error_message(self):
+        a = ["upgrade", "--set", "omnigate.llmApiKey=sk-ant-SECRET", "--set", "omnigate.adminApiToken=tok", "--set", "omnigate.appUsers=demo:hash::", "--set", "demoDataset=it-risk",
+             "--set-file", "omnigate.license=/tmp/omnigate-license", "--set", "tls.httpsOnly=true"]
+        r = " ".join(handler.redact_args(a))
+        for secret in ("sk-ant-SECRET", "=tok", "demo:hash", "/tmp/omnigate-license"): self.assertNotIn(secret, r)
+        for kept in ("demoDataset=it-risk", "tls.httpsOnly=true", "--set-file"): self.assertIn(kept, r)
+
+    def test_agency_image_override(self):
+        self.assertEqual(handler.agency_values({"InstallAgency": "true", "AgencyImage": " 123.dkr.ecr.us-east-1.amazonaws.com/agency:x "}, None, "it-risk")["agency.image"], "123.dkr.ecr.us-east-1.amazonaws.com/agency:x")
+        self.assertNotIn("agency.image", handler.agency_values({"InstallAgency": "true", "AgencyImage": ""}, None, "it-risk"))
+
+    def test_agency_workflows_image_override(self):
+        v = handler.agency_values({"InstallAgency": "true", "AgencyWorkflows": "true", "AgencyWorkflowsImage": " r.example/wf:1 "}, None, "it-risk")
+        self.assertEqual(v["agency.workflows.image"], "r.example/wf:1")
+
 
 if __name__ == "__main__": unittest.main()

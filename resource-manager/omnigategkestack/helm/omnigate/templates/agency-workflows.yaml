@@ -1,0 +1,269 @@
+{{- if and .Values.agency.workflows.enabled (not .Values.agency.enabled) }}
+{{- fail "agency.workflows.enabled needs agency.enabled=true" }}
+{{- end }}
+{{- if include "omnigate.agencyWorkflows" . }}
+{{- $fullname := include "omnigate.fullname" . }}
+{{- if and .Values.paymentWorkflow.enabled .Values.paymentWorkflow.gateway.enabled }}
+{{- fail "agency.workflows and paymentWorkflow.gateway both put a workflow engine behind the app, and the app has one: turn one of them off" }}
+{{- end }}
+{{- if not (include "omnigate.has" (dict "ctx" . "pack" "agency-risk")) }}
+{{- fail "agency.workflows.enabled needs the agency-risk pack (demoDatasets: [agency-risk, ...]): the workflows read the rca, estate and register schemas" }}
+{{- end }}
+{{- $licName := printf "%s-omnigate-license" $fullname }}
+{{- $existing := lookup "v1" "Secret" .Release.Namespace $licName }}
+{{- $licensed := or .Values.omnigate.license (and $existing $existing.data (hasKey $existing.data "license") (ne (index $existing.data "license") "")) }}
+{{- if not $licensed }}
+{{- fail "agency.workflows.enabled puts the workflows behind the app's own workflow API, which is a commercial-edition feature: set omnigate.license (or install a licence with scripts/set-licence.sh first)" }}
+{{- end }}
+{{- if and (not .Values.agency.workflows.gatewayToken) (not .Values.omnigate.adminApiToken) }}
+{{- fail "agency.workflows.enabled needs omnigate.adminApiToken (the worker reads the governed data with it, and the gateway token is derived from it) or agency.workflows.gatewayToken" }}
+{{- end }}
+{{- $token := .Values.agency.workflows.gatewayToken | default (printf "agency-workflows:%s:%s" $fullname .Values.omnigate.adminApiToken | sha256sum) }}
+{{- $regpw := .Values.agency.workflows.registerWriterPassword | default (printf "register-writer:%s:%s" $fullname .Values.omnigate.adminApiToken | sha256sum) }}
+{{- $manifest := .Files.Get "files/agency-workflows/manifest.gateway.json" | fromJson }}
+{{- $defs := list }}
+{{- range $d := $manifest.definitions }}
+{{- if or (ne $d.id "payment-exception") (include "omnigate.has" (dict "ctx" $ "pack" "treasury")) }}{{- $defs = append $defs $d }}{{- end }}
+{{- end }}
+{{- $connectors := "risk=pg,security=mdb" }}
+{{- if include "omnigate.has" (dict "ctx" . "pack" "treasury") }}{{- $connectors = printf "treasury=pg,erp=mdb,%s" $connectors }}{{- end }}
+# The Agency workflows (incident brief, vulnerability exception, risk assessment, major-incident decision, and the payment exception when the Treasury pack is in the selection),
+# behind the app's own workflow API (single source: agency/chart/agency-workflows.yaml). COMMERCIAL EDITION ONLY. One pod holds a Temporal dev server, the worker and the gateway
+# (port 8094, bearer token, reachable only from the app's pods). There is no approval inbox: the app's own API starts and decides runs, and Agency shows them. The code comes from an
+# image (agency.workflows.image, built from demos/payment-workflow/Dockerfile: the code, the Temporal SDK and the psql client the register write uses), not from chart files: a Helm
+# release is stored in one Secret capped at 1 MiB. Nothing is ever sent to a real system: write-back is a dry run.
+# The worker reads the governed data through the app with the admin API token (it holds admin rights: a reason the pod is private). It adds rows to the risk register as its own
+# database role, which can only INSERT (created at pod start). Recommendations are the rules' only (no model) unless agency.workflows.recommendations is "model".
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $fullname }}-agency-workflows
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agency-workflows
+stringData:
+  ASK_ADMIN_TOKEN: {{ .Values.omnigate.adminApiToken | quote }}
+  OMNIGATE_LLM_API_KEY: {{ ternary (.Values.omnigate.llmApiKey | default "") "" (eq .Values.agency.workflows.recommendations "model") | quote }}
+  GATEWAY_TOKEN: {{ $token | quote }}
+  REGISTER_DB_PASSWORD: {{ $regpw | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fullname }}-agency-workflows-manifest
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agency-workflows
+data:
+  workflows.json: |
+{{ dict "definitions" $defs | toPrettyJson | indent 4 }}
+---
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $fullname }}-agency-workflows
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agency-workflows
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: {{ .Values.storageClassName }}
+  resources:
+    requests:
+      storage: {{ .Values.agency.workflows.storageSize }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-agency-workflows
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agency-workflows
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate          # one ReadWriteOnce volume: the old pod must let go of it first
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: agency-workflows
+  template:
+    metadata:
+      labels:
+        {{- include "omnigate.labels" . | nindent 8 }}
+        app.kubernetes.io/component: agency-workflows
+      annotations:
+        checksum/src: {{ printf "%s%s" .Values.agency.workflows.image ($defs | toJson) | sha256sum }}
+        checksum/secret: {{ printf "%s%s%s" .Values.omnigate.adminApiToken $token $regpw | sha256sum }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      # GKE taints its arm64 nodes (kubernetes.io/arch=arm64:NoSchedule); without this the pod sits Pending.
+      tolerations:
+        - key: "kubernetes.io/arch"
+          operator: "Equal"
+          value: "arm64"
+          effect: "NoSchedule"
+      initContainers:
+        # The register's writer role may only ADD rows to the assessments and the major-incident decisions (a trigger also refuses UPDATE and DELETE for everyone). Created or
+        # refreshed at every pod start, once the register schema exists (the database seeds it on a fresh volume).
+        - name: ensure-register-writer
+          image: {{ .Values.postgres.image }}
+          env:
+            - { name: PGHOST, value: {{ include "omnigate.postgresHost" . | quote }} }
+            - { name: PGDATABASE, value: {{ .Values.postgres.database | quote }} }
+            - name: PGUSER
+              valueFrom: { secretKeyRef: { name: {{ $fullname }}-postgres-secret, key: POSTGRES_USER } }
+            - name: PGPASSWORD
+              valueFrom: { secretKeyRef: { name: {{ $fullname }}-postgres-secret, key: POSTGRES_PASSWORD } }
+            - name: WRITER_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ $fullname }}-agency-workflows, key: REGISTER_DB_PASSWORD } }
+          command:
+            - sh
+            - -c
+            - |
+              until [ "$(psql -tAc "SELECT to_regclass('register.assessments') IS NOT NULL" 2>/dev/null)" = t ]; do echo "waiting for the register schema"; sleep 3; done
+              psql -v ON_ERROR_STOP=1 -v pw="$WRITER_PASSWORD" <<'SQL'
+              SELECT format('CREATE ROLE register_writer LOGIN PASSWORD %L', :'pw') WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'register_writer') \gexec
+              SELECT format('ALTER ROLE register_writer PASSWORD %L', :'pw') \gexec
+              GRANT USAGE ON SCHEMA register TO register_writer;
+              GRANT SELECT ON ALL TABLES IN SCHEMA register TO register_writer;
+              GRANT INSERT ON register.assessments TO register_writer;
+              GRANT USAGE ON SEQUENCE register.assessments_assessment_id_seq TO register_writer;
+              GRANT INSERT ON register.major_incident_decisions TO register_writer;
+              GRANT USAGE ON SEQUENCE register.major_incident_decisions_decision_id_seq TO register_writer;
+              SQL
+          securityContext: &locked
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      containers:
+        - name: temporal
+          image: {{ .Values.paymentWorkflow.temporalImage }}
+          args: ["server", "start-dev", "--ip", "0.0.0.0", "--headless", "--db-filename", "/data/temporal.db"]
+          env:
+            - { name: HOME, value: /tmp }
+            - { name: USER, value: temporal }      # uid 10001 has no passwd entry; without $USER the server stops at "user: Current requires cgo or $USER set"
+          ports:
+            - { name: temporal, containerPort: 7233 }
+          readinessProbe:
+            tcpSocket: { port: 7233 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          securityContext: *locked
+          resources:
+            requests: { cpu: 100m, memory: 192Mi }
+            limits: { memory: 512Mi }
+          volumeMounts:
+            - { name: data, mountPath: /data }
+            - { name: tmp, mountPath: /tmp }
+        - name: worker
+          image: {{ .Values.agency.workflows.image }}
+          command: ["python", "/app/worker.py"]
+          workingDir: /app
+          env:
+            - { name: PYTHONDONTWRITEBYTECODE, value: "1" }
+            - { name: HOME, value: /tmp }
+            - { name: TEMPORAL_ADDRESS, value: "localhost:7233" }
+            - { name: ASK_URL, value: "http://{{ $fullname }}-omnigate-internal:8080" }
+            - { name: WRITE_BACK, value: {{ .Values.agency.workflows.writeBack | quote }} }
+            - { name: APPROVAL_TIMEOUT_MINUTES, value: {{ .Values.agency.workflows.approvalTimeoutMinutes | quote }} }
+            - { name: DECISIONS_FILE, value: /data/decisions.jsonl }
+            - { name: RCA_TABLE_PREFIX, value: "pg." }                 # the all-packs way: tables are addressed connector.schema.table
+            - { name: RCA_WORKSPACE, value: it-risk }                  # /api/query runs inside a Workspace (loaded by the Agency bootstrap Job; the Default one is empty once every source is in a pack Workspace)
+            - { name: QUERY_WORKSPACE, value: all-data }
+            - { name: SQL_SCHEMA_CONNECTORS, value: {{ $connectors | quote }} }
+            - { name: REGISTER_DB_HOST, value: {{ include "omnigate.postgresHost" . | quote }} }
+            - { name: REGISTER_DB_NAME, value: {{ .Values.postgres.database | quote }} }
+          envFrom:
+            - secretRef:
+                name: {{ $fullname }}-agency-workflows
+          securityContext: *locked
+          resources:
+            requests: { cpu: 100m, memory: 160Mi }
+            limits: { memory: 384Mi }
+          volumeMounts: &mounts
+            - { name: data, mountPath: /data }
+            - { name: tmp, mountPath: /tmp }
+        - name: gateway
+          image: {{ .Values.agency.workflows.image }}
+          command: ["python", "/app/gateway.py"]
+          workingDir: /app
+          env:
+            - { name: PYTHONDONTWRITEBYTECODE, value: "1" }
+            - { name: HOME, value: /tmp }
+            - { name: TEMPORAL_ADDRESS, value: "localhost:7233" }
+            - { name: GATEWAY_PORT, value: "8094" }
+            - name: GATEWAY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $fullname }}-agency-workflows
+                  key: GATEWAY_TOKEN
+          ports:
+            - { name: gateway, containerPort: 8094 }
+          readinessProbe:
+            httpGet: { path: /health, port: 8094 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          securityContext: *locked
+          resources:
+            requests: { cpu: 25m, memory: 64Mi }
+            limits: { memory: 160Mi }
+          volumeMounts: *mounts
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ $fullname }}-agency-workflows
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}-agency-workflows
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agency-workflows
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: agency-workflows
+  ports:
+    - { name: gateway, port: 8094, targetPort: 8094 }
+{{- if .Values.networkPolicy.enabled }}
+---
+# Only the app's own pods may reach the gateway port; kubectl port-forward is not affected. Enforced only where the cluster's network plugin enforces policies.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $fullname }}-agency-workflows
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agency-workflows
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: agency-workflows
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ .Release.Name }}
+              app.kubernetes.io/component: omnigate
+      ports:
+        - { protocol: TCP, port: 8094 }
+{{- end }}
+{{- end }}

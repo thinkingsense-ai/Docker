@@ -1,0 +1,106 @@
+{{- if .Values.agency.enabled }}
+{{- $fullname := include "omnigate.fullname" . }}
+# Agency, the second front end (React UI plus the "thinking layer", standard-library Python) installed beside the Ask app. Single source: agency/chart/agency.yaml in the Docker
+# repository, copied into the four stack charts by scripts/sync-agency-addon.py. It runs from ONE small image (addons/thinking-layer/Dockerfile, built by the Build images workflow
+# and published to ghcr; agency.image names it). The code is deliberately NOT carried in the chart: a Helm release is stored in a single Secret capped at 1 MiB, and the built UI plus
+# the layer's code, stored once as chart files and again in the rendered manifest, took the release past it (found in the first AWS clean-room).
+#
+# The layer holds nothing but sessions in memory. It signs people in with the app's own business-user logins (it keeps no passwords), asks the app's internal address, and lets
+# the app decide who may see what. It is a client of the released app: nothing from the app's source is copied.
+#   - Public address: its own Service (type from agency.service.type, same allowed client addresses as the Ask app), on port agency.service.port.
+#   - A restart signs everyone out (sessions, uploads and preferences are in memory).
+#   - Workflow screens need the commercial edition and the workflow engine (agency.workflows); on the free edition the layer reports workflows as off and the screens stay hidden.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-agency
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agency
+spec:
+  replicas: 1                                   # sessions are in memory, so one replica; a second would sign people out at random
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: agency
+  template:
+    metadata:
+      labels:
+        {{- include "omnigate.labels" . | nindent 8 }}
+        app.kubernetes.io/component: agency
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      # GKE taints its arm64 nodes (kubernetes.io/arch=arm64:NoSchedule); without this the pod sits Pending.
+      tolerations:
+        - key: "kubernetes.io/arch"
+          operator: "Equal"
+          value: "arm64"
+          effect: "NoSchedule"
+      containers:
+        - name: agency
+          image: {{ .Values.agency.image }}
+          ports:
+            - { name: http, containerPort: 8097 }
+          env:
+            - { name: SERVER_URL, value: "http://{{ $fullname }}-omnigate-internal:8080" }
+            - { name: PORT, value: "8097" }
+            - { name: PYTHONDONTWRITEBYTECODE, value: "1" }
+            - { name: AGENCY_PUBLIC_URL, value: {{ .Values.agency.publicUrl | quote }} }
+            - { name: AGENCY_ADMIN_URL, value: {{ .Values.agency.adminUrl | quote }} }
+            - { name: AGENCY_SCOPE_HINT, value: "off" }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 50m, memory: 96Mi }
+            limits: { memory: 256Mi }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: { sizeLimit: 64Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}-agency
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agency
+  {{- with .Values.agency.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.agency.service.type }}
+  {{- if eq .Values.agency.service.type "LoadBalancer" }}
+  {{- with compact (.Values.service.loadBalancerSourceRanges | default list) }}
+  loadBalancerSourceRanges:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- end }}
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: agency
+  ports:
+    - name: http
+      port: {{ .Values.agency.service.port }}
+      targetPort: http
+{{- end }}

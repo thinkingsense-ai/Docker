@@ -1,0 +1,27 @@
+[
+ {
+  "question": "For the November 2026 incident cluster, which of our systems run the affected technology?",
+  "referenceSql": "SELECT s.name AS system, s.technology, s.business_criticality AS tier, s.owned_by AS owner_team, s.environment, s.hosting FROM pg.estate.systems s JOIN pg.estate.scenario_technology t ON t.technology = s.technology AND t.case_id = 'nov-2026-cluster' ORDER BY s.business_criticality, s.system_id",
+  "category": "it-risk"
+ },
+ {
+  "question": "Which of those systems and buckets hold restricted or confidential data, and who can reach them?",
+  "referenceSql": "SELECT s.name AS resource, 'system' AS kind, s.data_class, a.principal AS reachable_by, a.people, a.level, CASE WHEN a.principal = s.owned_by THEN 'owner team' ELSE 'wider than the owner team' END AS reach FROM pg.estate.systems s JOIN pg.estate.scenario_technology t ON t.technology = s.technology AND t.case_id = 'nov-2026-cluster' JOIN pg.estate.access_paths a ON a.system_id = s.system_id WHERE s.data_class IN ('restricted','confidential') UNION ALL SELECT b.name AS resource, 'bucket' AS kind, b.data_class, CASE WHEN b.public_read THEN 'anyone (public read)' ELSE b.write_group END AS reachable_by, b.write_people AS people, 'write' AS level, CASE WHEN b.public_read OR b.write_group <> s.owned_by THEN 'wider than the owner team' ELSE 'owner team' END AS reach FROM pg.estate.buckets b JOIN pg.estate.systems s ON s.system_id = b.system_id JOIN pg.estate.scenario_technology t ON t.technology = s.technology AND t.case_id = 'nov-2026-cluster' WHERE b.data_class IN ('restricted','confidential')",
+  "category": "it-risk"
+ },
+ {
+  "question": "Where do runbooks, credentials or recovery steps for those systems sit, and who can see them?",
+  "referenceSql": "SELECT s.name AS system, 'SharePoint: ' || i.site || ' / ' || i.library AS location, i.name AS item, i.kind, i.shared_with AS visible_to, i.audience AS people FROM pg.estate.sharepoint_items i JOIN pg.estate.systems s ON s.system_id = i.system_id JOIN pg.estate.scenario_technology t ON t.technology = s.technology AND t.case_id = 'nov-2026-cluster' WHERE i.kind IN ('runbook','credential','recovery') UNION ALL SELECT s.name AS system, 'Slack: ' || m.channel AS location, m.excerpt AS item, m.kind, m.channel_kind AS visible_to, m.members AS people FROM pg.estate.slack_messages m JOIN pg.estate.systems s ON s.system_id = m.system_id JOIN pg.estate.scenario_technology t ON t.technology = s.technology AND t.case_id = 'nov-2026-cluster' WHERE m.kind IN ('runbook','credential','recovery')",
+  "category": "it-risk"
+ },
+ {
+  "question": "Which of those systems have a security patch overdue or a recent change that skipped pre-production testing?",
+  "referenceSql": "SELECT s.name AS system, 'security patch overdue' AS finding, p.advisory AS detail, p.severity, p.days_overdue AS days FROM pg.estate.patches p JOIN pg.estate.systems s ON s.system_id = p.system_id JOIN pg.estate.scenario_technology t ON t.technology = s.technology AND t.case_id = 'nov-2026-cluster' WHERE p.applied_on IS NULL AND p.days_overdue > 0 UNION ALL SELECT s.name AS system, 'change without a pre-production test' AS finding, c.summary AS detail, c.change_type AS severity, c.days_ago AS days FROM pg.estate.changes c JOIN pg.estate.systems s ON s.system_id = c.system_id JOIN pg.estate.scenario_technology t ON t.technology = s.technology AND t.case_id = 'nov-2026-cluster' WHERE c.preprod_tested = FALSE AND c.days_ago <= 30",
+  "category": "it-risk"
+ },
+ {
+  "question": "What depends on those systems, and when was each last tested for recovery?",
+  "referenceSql": "SELECT s.name AS system, s.business_criticality AS tier, (SELECT COUNT(*) FROM pg.estate.dependencies d WHERE d.system_id = s.system_id) AS dependents, r.tested_on, r.result, r.rto_target_minutes, r.rto_actual_minutes, r.days_since_test FROM pg.estate.systems s JOIN pg.estate.scenario_technology t ON t.technology = s.technology AND t.case_id = 'nov-2026-cluster' LEFT JOIN pg.estate.recovery_tests r ON r.system_id = s.system_id ORDER BY s.business_criticality, s.system_id",
+  "category": "it-risk"
+ }
+]

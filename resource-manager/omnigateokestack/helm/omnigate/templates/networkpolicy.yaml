@@ -40,6 +40,12 @@ spec:
               app.kubernetes.io/instance: {{ .Release.Name }}
               app.kubernetes.io/component: packs-loader
 {{- end }}
+{{- if include "omnigate.agencyWorkflows" . }}
+        - podSelector:               # the Agency workflow pod adds rows to the risk register (its own INSERT-only role) and creates that role at start
+            matchLabels:
+              app.kubernetes.io/instance: {{ .Release.Name }}
+              app.kubernetes.io/component: agency-workflows
+{{- end }}
       ports:
         - protocol: TCP
           port: 5432

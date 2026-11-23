@@ -45,6 +45,13 @@ Metadata:
         Parameters:
           - AllowedClientCidrs
       - Label:
+          default: "Agency (second front end, optional)"
+        Parameters:
+          - InstallAgency
+          - AgencyWorkflows
+          - AgencyImage
+          - AgencyWorkflowsImage
+      - Label:
           default: "NL2SQL (needed to use the Ask app)"
         Parameters:
           - OmnigateLlmApiKey
@@ -94,6 +101,14 @@ Metadata:
         default: "Registry token (commercial only)"
       AllowedClientCidrs:
         default: "Restrict access to these addresses (optional)"
+      InstallAgency:
+        default: "Install Agency beside the Ask app"
+      AgencyWorkflows:
+        default: "Agency workflows (commercial edition)"
+      AgencyImage:
+        default: "Agency image (optional)"
+      AgencyWorkflowsImage:
+        default: "Agency workflows image (optional)"
       OmnigateLlmApiKey:
         default: "Anthropic API key"
       ClusterName:
@@ -191,6 +206,24 @@ Parameters:
     Type: String
     Default: ""
     Description: "Optional. Comma-separated CIDR ranges (e.g. 203.0.113.7/32) allowed to reach OmniGate. Blank = open to the internet, fine for a first try-out. Worth setting once real data is connected, as one more layer on top of the logins."
+  InstallAgency:
+    Type: String
+    Default: "false"
+    AllowedValues: ["false", "true"]
+    Description: "Install Agency, a second front end for risk management, beside the Ask app: own address, same sign-in, plus the IT-risk investigation data. Needs about 1 GiB more memory (use 8 GiB nodes or more)."
+  AgencyWorkflows:
+    Type: String
+    Default: "false"
+    AllowedValues: ["false", "true"]
+    Description: "Commercial edition only, with Agency: run the Agency workflows behind the app's workflow API. Needs the licence and the Admin API token. Write-back is a dry run."
+  AgencyImage:
+    Type: String
+    Default: ""
+    Description: "Optional. Image Agency runs from; blank = the one this release names (ghcr.io/thinkingsense-ai/omnigate-agency). Set it for your own build or a mirror."
+  AgencyWorkflowsImage:
+    Type: String
+    Default: ""
+    Description: "Optional. Image the Agency workflow pod runs from (commercial only); blank = ghcr.io/thinkingsense-ai/omnigate-agency-workflows. Set it for your own build or a mirror."
   OmnigateLlmApiKey:
     Type: String
     NoEcho: true
@@ -965,6 +998,10 @@ Resources:
       TlsKeystorePassword: !Ref TlsKeystorePassword
       TlsKeystoreSecretArn: !Ref TlsKeystoreSecretArn
       AllowedClientCidrs: !Ref AllowedClientCidrs
+      InstallAgency: !Ref InstallAgency
+      AgencyWorkflows: !Ref AgencyWorkflows
+      AgencyImage: !Ref AgencyImage
+      AgencyWorkflowsImage: !Ref AgencyWorkflowsImage
       LlmApiKey: !Ref OmnigateLlmApiKey
 
   # ============================== Final security-group sweep ==============================

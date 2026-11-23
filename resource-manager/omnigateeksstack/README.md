@@ -223,6 +223,10 @@ token as `Authorization: Bearer <token>`.
 
 Since app v0.10.5 the Ask app's agent endpoint (`/mcp/agent`) needs the admin API token like the rest of the admin surface. On v0.10.4 and earlier it answered without a login, so keep the address restriction below set on any stack still running those. To limit who can connect, set `AllowedClientCidrs` to your address or network. Blank = open to the internet, which suits a first try-out.
 
+## Agency (optional)
+
+**Install Agency beside the Ask app** (CloudFormation parameter `InstallAgency`, default false) adds Agency, a second front end for risk management, with its own load balancer address and the same sign-in, plus the IT-risk investigation data (schemas `rca`, `estate`, `register`), the embedding model and Workspaces. It needs about 1 GiB more memory than the Ask app alone, so use a node type with 8 GiB or more. `AgencyWorkflows` (default false) is for the commercial edition only. Details and limits: `agency/chart/README.md` in the repository; check a deployment with `scripts/verify-agency.sh`.
+
 ## Publishing a release (maintainers)
 
 > **Update (v0.10.8, Docker #72):** the stacks no longer download the app's `omnigate.jar` to hash the login passwords (the hash is

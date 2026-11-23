@@ -36,6 +36,33 @@ def pack_selection(raw):
     return "{" + ",".join(packs) + "}" if packs else None
 
 
+SIX_PACKS = ("supply-chain", "manufacturing", "it-risk", "smithsonian", "bom", "treasury")
+
+
+def agency_values(props, packs, dataset):
+    """The form's `InstallAgency` and `AgencyWorkflows` as chart values. Agency needs the chart-only `agency-risk` pack (the IT-risk investigation data), which is added to whatever
+    the form chose: the DemoPacks list if it has one, else the single Demo data (all-packs means all six). Returns {} when Agency is not installed. `packs` is pack_selection()'s
+    "{a,b}" string or None."""
+    install = str(props.get("InstallAgency", "false")).strip().lower() == "true"
+    workflows = str(props.get("AgencyWorkflows", "false")).strip().lower() == "true"
+    if workflows and not install:
+        raise ValueError("AgencyWorkflows needs InstallAgency=true")
+    if not install:
+        return {}
+    base = packs[1:-1].split(",") if packs else (list(SIX_PACKS) if dataset == "all-packs" else [dataset or "supply-chain"])
+    sel = base + [p for p in ("agency-risk",) if p not in base]
+    out = {"agency.enabled": "true", "demoDatasets": "{" + ",".join(sel) + "}"}
+    if workflows:
+        out["agency.workflows.enabled"] = "true"
+    image = str(props.get("AgencyImage") or "").strip()
+    if image:
+        out["agency.image"] = image
+    wf_image = str(props.get("AgencyWorkflowsImage") or "").strip()
+    if wf_image:
+        out["agency.workflows.image"] = wf_image
+    return out
+
+
 def send_response(event, context, status, reason="", data=None, physical_resource_id=None):
     response_body = json.dumps({
         "Status": status,
@@ -104,6 +131,19 @@ users:
         f.write(kubeconfig)
 
 
+SECRET_WORDS = ("password", "token", "apikey", "license", "licence", "keystore", "secret", "appusers", "authusers")
+
+
+def redact_args(args):
+    """The command line for an error message, with the value of every `key=value` whose key names a secret replaced: the message goes into the CloudFormation stack events and the
+    CloudWatch log, where anyone who can read the stack can see it (a failed Helm step once put the Anthropic key and the admin token there)."""
+    out = []
+    for a in args:
+        k, sep, _ = str(a).partition("=")
+        out.append(k + "=<redacted>" if sep and any(w in k.lower() for w in SECRET_WORDS) else str(a))
+    return out
+
+
 def run_cmd(binary, args, timeout=540):
     env = dict(os.environ)
     env["KUBECONFIG"] = KUBECONFIG_PATH
@@ -117,7 +157,7 @@ def run_cmd(binary, args, timeout=540):
     print(f"{binary} stdout:", result.stdout)
     print(f"{binary} stderr:", result.stderr)
     if result.returncode != 0:
-        safe_args = " ".join(a for a in args if "password" not in a.lower())
+        safe_args = " ".join(redact_args(args))
         raise RuntimeError(f"{binary} command failed: {safe_args}\n{result.stderr}")
     return result.stdout
 
@@ -333,6 +373,7 @@ def lambda_handler(event, context):
             set_values = dict(props.get("HelmSetValues", {}))
             set_values.setdefault("storageClassName", "gp3")
             if packs: set_values["demoDatasets"] = packs             # wins over demoDataset in the chart; the Rules on the form stop both being used
+            set_values.update(agency_values(props, packs, set_values.get("demoDataset")))     # Agency adds its own pack to the choice
             # Local admin login for the admin console, admin API and /mcp: without it those are open
             # to anyone who can reach the load balancer.
             set_sensitive_values = {

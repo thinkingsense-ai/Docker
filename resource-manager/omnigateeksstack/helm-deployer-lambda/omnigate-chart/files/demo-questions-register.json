@@ -1,0 +1,47 @@
+[
+ {
+  "question": "What are the IT-risk categories, and how does each map to NIST CSF, ITIL and the CIS Controls?",
+  "referenceSql": "SELECT p.name AS parent, t.name AS category, t.depth, t.status, t.nist_csf, t.itil_practice, t.cis_control FROM pg.register.taxonomy t LEFT JOIN pg.register.taxonomy p ON p.node_id = t.parent_id WHERE t.depth > 1 ORDER BY t.node_id",
+  "category": "it-risk"
+ },
+ {
+  "question": "What does each rating mean?",
+  "referenceSql": "SELECT rating, rank, meaning FROM pg.register.rating_scale ORDER BY rank DESC",
+  "category": "it-risk"
+ },
+ {
+  "question": "What do the terms used on screen mean, and where do they come from?",
+  "referenceSql": "SELECT term, meaning, source, status FROM pg.register.definitions ORDER BY term",
+  "category": "it-risk"
+ },
+ {
+  "question": "What is the current rating of each item in the risk register, and who set it?",
+  "referenceSql": "SELECT a.item_type, a.item_ref, t.name AS category, a.rating, a.likelihood_band, a.impact_band, a.set_by, a.assessed_at FROM pg.register.assessments a JOIN (SELECT item_type, item_ref, MAX(assessment_id) AS latest FROM pg.register.assessments GROUP BY item_type, item_ref) m ON m.latest = a.assessment_id JOIN pg.register.taxonomy t ON t.node_id = a.node_id ORDER BY a.rating, a.item_ref",
+  "category": "it-risk"
+ },
+ {
+  "question": "How has the rating of the November 2026 cluster changed, and why?",
+  "referenceSql": "SELECT a.assessed_at, a.rating, a.likelihood_band, a.impact_band, a.likelihood_inputs, a.control_evidence, a.set_by FROM pg.register.assessments a WHERE a.item_type = 'case' AND a.item_ref = 'nov-2026-cluster' ORDER BY a.assessment_id",
+  "category": "it-risk"
+ },
+ {
+  "question": "Which risk category does each incident in the November 2026 cluster fall under?",
+  "referenceSql": "SELECT e.operator, e.label, t.name AS category, c.basis FROM pg.rca.events e JOIN pg.register.item_categories c ON c.item_type = 'event' AND c.item_ref = CAST(e.event_id AS VARCHAR) JOIN pg.register.taxonomy t ON t.node_id = c.node_id WHERE e.case_id = 'nov-2026-cluster' ORDER BY e.event_id",
+  "category": "it-risk"
+ },
+ {
+  "question": "Which incidents has the firm recorded, and which have been classified as major?",
+  "referenceSql": "SELECT i.incident_id, i.title, i.awareness_at, i.summary, d.classified_at, d.regimes, d.set_by FROM pg.register.firm_incidents i LEFT JOIN pg.register.major_incident_decisions d ON d.incident_id = i.incident_id ORDER BY i.incident_id",
+  "category": "it-risk"
+ },
+ {
+  "question": "What notification rules apply after a major incident, and where do they come from?",
+  "referenceSql": "SELECT r.rule_id, r.regulator, r.jurisdiction, r.seq, r.stage, r.title, r.hours, r.starts_from, r.also_within_hours_of_awareness, r.report_kind, r.source, r.checked, r.note, p.declared FROM pg.register.notification_rules r JOIN pg.register.firm_profile p ON p.regulator = r.regulator ORDER BY r.regulator, r.seq",
+  "category": "it-risk"
+ },
+ {
+  "question": "Which workflow runs wrote the risk register and the major-incident decisions?",
+  "referenceSql": "SELECT 'assessment' AS kind, a.assessment_id AS row_id, a.run_id, a.evidence_digest, a.item_ref AS about, a.set_by FROM pg.register.assessments a WHERE a.source = 'workflow' UNION ALL SELECT 'major incident' AS kind, d.decision_id AS row_id, d.run_id, d.evidence_digest, CAST(d.incident_id AS VARCHAR) AS about, d.set_by FROM pg.register.major_incident_decisions d WHERE d.source = 'workflow'",
+  "category": "it-risk"
+ }
+]

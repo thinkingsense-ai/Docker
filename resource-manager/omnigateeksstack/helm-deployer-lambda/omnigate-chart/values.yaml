@@ -112,6 +112,9 @@ manufacturingDemo:
 # means demoDataset below rules, exactly as before. One pack, or all six, gives the same stack as the matching demoDataset; any other mix is deployed
 # the all-packs way (one connector per kind, schemas discovered) holding only the chosen packs. `python3 scripts/deploy_options.py resolve <packs>` says
 # what a selection costs.
+# `agency-risk` is a seventh, chart-only pack for the Agency IT-risk screens: the schemas rca (incident cases), estate (a simulated estate) and register (the risk
+# taxonomy, register and notification rules), 27 more approved questions, and the embedding model so those questions are answered from the bank. It reads beside the IT &
+# operational risk pack and brings it in, so `demoDatasets: [agency-risk]` is IT risk plus the Agency data. All invented data; it is not part of all-packs.
 demoDatasets: []
 demoDataset: supply-chain
 # "all-packs" loads every demo pack at once -- supply chain, manufacturing, IT & operational risk, the Smithsonian Open Access sample, BOM & sourcing and Treasury -- behind
@@ -207,7 +210,9 @@ configEncryption:
 # ConfigMap and runs on the stock python image; the Temporal SDK is installed from PyPI when the pod starts. Nothing is ever written to a real ERP.
 paymentWorkflow:
   enabled: false
-  pythonImage: docker.io/library/python:3.12-slim
+  pythonImage: docker.io/library/python:3.12-slim   # the bootstrap Job and the workflow pod run on this
+  # The Agency image (addons/thinking-layer/Dockerfile: the layer and the built UI), built by the Build images workflow.
+  image: ghcr.io/thinkingsense-ai/omnigate-agency:0.1.0
   # Temporal CLI image (its dev server), v1.5.1, pinned by digest.
   temporalImage: docker.io/temporalio/temporal@sha256:597a5dbbcc6e7716b326dde4a51622d5ea0879eb0cf06ff8a94381361d0a987d
   temporalSdkVersion: "1.30.0"
@@ -221,3 +226,40 @@ paymentWorkflow:
   gateway:
     enabled: false
     token: ""
+
+# Opt-in second front end (off by default): Agency, installed beside the Ask app. The layer's code and the built UI come from ConfigMaps and run on the stock python image, so there is
+# no image to publish. It signs people in with the app's own business-user logins and asks the app's internal address; a restart signs everyone out (sessions are in memory).
+# It gets its own public Service (the same allowed client addresses as the Ask app apply). The workflow screens need the commercial edition and the workflow engine (not wired here yet).
+agency:
+  enabled: false
+  pythonImage: docker.io/library/python:3.12-slim
+  # Where browsers reach Agency (needed only for single sign-on: the provider returns here). Leave empty otherwise.
+  publicUrl: ""
+  # Optional link shown in the header to the admin console (a convenience, not a control: the console has its own sign-in).
+  adminUrl: ""
+  # After install and upgrade a Job loads one Workspace per pack plus `all-data` (only when the Server has no Workspace yet; it never overwrites yours) and sets what the logins
+  # listed in `grants` may do. Nothing is granted unless listed. Example entry:
+  #   - { username: alice, canSeeSql: false, canSeeSources: false, canUploadFiles: true, canStartWorkflows: true, canApprove: false }
+  bootstrap:
+    enabled: true
+    grants: []
+  # Commercial edition only. The Agency workflows (incident brief, vulnerability exception, risk assessment, major-incident decision; the payment exception too with the Treasury pack)
+  # behind the app's own workflow API: one pod with a Temporal dev server, the worker and the gateway. Needs agency.enabled, the agency-risk pack, a signed licence and
+  # omnigate.adminApiToken; excludes paymentWorkflow.gateway. Write-back is a dry run; recommendations come from the rules unless set to "model" (then omnigate.llmApiKey is used).
+  workflows:
+    enabled: false
+    # Built from demos/payment-workflow/Dockerfile by the Build Agency image workflow (the code, the Temporal SDK and the psql client).
+    image: ghcr.io/thinkingsense-ai/omnigate-agency-workflows:0.1.0
+    writeBack: dry-run
+    recommendations: rules-only
+    approvalTimeoutMinutes: 2880
+    storageSize: 1Gi
+    gatewayToken: ""            # empty derives one from omnigate.adminApiToken
+    registerWriterPassword: ""  # empty derives one from omnigate.adminApiToken
+  service:
+    type: LoadBalancer
+    port: 8097
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: "external"
+      service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "instance"
+      service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"

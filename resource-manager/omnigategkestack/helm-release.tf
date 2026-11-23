@@ -151,6 +151,36 @@ resource "helm_release" "omnigate" {
     name  = "demoDataset"
     value = var.demo_dataset
   }
+  # Agency (optional): the chart-only agency-risk pack is added to whatever demo data was chosen (all-packs means all six).
+  set {
+    name  = "agency.enabled"
+    value = var.install_agency
+  }
+  set {
+    name  = "agency.workflows.enabled"
+    value = var.agency_workflows
+  }
+  dynamic "set" {
+    for_each = var.install_agency && var.agency_workflows_image != "" ? [1] : []
+    content {
+      name  = "agency.workflows.image"
+      value = var.agency_workflows_image
+    }
+  }
+  dynamic "set" {
+    for_each = var.install_agency && var.agency_image != "" ? [1] : []
+    content {
+      name  = "agency.image"
+      value = var.agency_image
+    }
+  }
+  dynamic "set" {
+    for_each = var.install_agency ? [1] : []
+    content {
+      name  = "demoDatasets"
+      value = "{${var.demo_dataset == "all-packs" ? "supply-chain,manufacturing,it-risk,smithsonian,bom,treasury" : var.demo_dataset},agency-risk}"
+    }
+  }
   set {
     name  = "postgres.storageSize"
     value = "${var.postgres_storage_gb}Gi"

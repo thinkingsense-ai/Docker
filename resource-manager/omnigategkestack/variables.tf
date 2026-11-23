@@ -148,6 +148,20 @@ variable "demo_dataset" {
   }
 }
 
+# --- Agency (optional second front end) -----------------------------------------------------
+
+variable "install_agency" {
+  description = "Install Agency beside the Ask app: a risk-management screen set (watch, exposure, priorities, notifications, problem records) with its own address and the same sign-in. It adds the IT-risk investigation data (schemas rca, estate and register; 39 approved questions with the IT-risk pack), the embedding model and Workspaces, and needs about 1 GiB more memory than the Ask app alone: use nodes of 8 GiB or more."
+  type        = bool
+  default     = false
+}
+
+variable "agency_workflows" {
+  description = "Commercial edition only, and only with install_agency: run the Agency workflows (incident brief, vulnerability exception, risk assessment, major-incident decision) behind the app's workflow API. Needs the commercial licence and the admin API token. Nothing is ever sent to a real system: write-back is a dry run."
+  type        = bool
+  default     = false
+}
+
 # --- Storage ---------------------------------------------------------------------------------
 
 variable "postgres_storage_gb" {
@@ -188,4 +202,16 @@ variable "tls_https_only" {
   description = "With HTTPS on: close plain HTTP on the load balancer (port 8080), so passwords and answers never travel unencrypted. On by default; turn off to also allow plain HTTP."
   type        = bool
   default     = true
+}
+
+variable "agency_image" {
+  description = "Optional. The image Agency runs from. Blank = the one this release names (ghcr.io/thinkingsense-ai/omnigate-agency). Set it to run your own build or a mirror in your own registry."
+  type        = string
+  default     = ""
+}
+
+variable "agency_workflows_image" {
+  description = "Optional. The image the Agency workflow worker and gateway run from (commercial edition only). Blank = the one this release names (ghcr.io/thinkingsense-ai/omnigate-agency-workflows)."
+  type        = string
+  default     = ""
 }

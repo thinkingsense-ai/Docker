@@ -113,6 +113,14 @@ data:
   04-seed-treasury-postgres.sql: |
 {{ .Files.Get "files/seed-treasury-postgres.sql" | indent 4 }}
 {{- end }}
+{{- if include "omnigate.has" (dict "ctx" . "pack" "agency-risk") }}
+  05-seed-agency-rca.sql: |
+{{ .Files.Get "files/seed-rca-postgres.sql" | indent 4 }}
+  06-seed-agency-estate.sql: |
+{{ .Files.Get "files/seed-estate-postgres.sql" | indent 4 }}
+  07-seed-agency-register.sql: |
+{{ .Files.Get "files/seed-register-postgres.sql" | indent 4 }}
+{{- end }}
 {{- end }}
 
 {{- if eq (include "omnigate.dataset" .) "bom" }}
