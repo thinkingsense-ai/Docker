@@ -228,6 +228,20 @@ variable "demo_dataset" {
   }
 }
 
+# --- Agency (optional second front end) -----------------------------------------------------
+
+variable "install_agency" {
+  description = "Install Agency beside the Ask app: a risk-management screen set (watch, exposure, priorities, notifications, problem records) with its own address and the same sign-in. It adds the IT-risk investigation data (schemas rca, estate and register; 39 approved questions with the IT-risk pack), the embedding model and Workspaces, and needs about 1 GiB more memory than the Ask app alone: use nodes of 8 GiB or more."
+  type        = bool
+  default     = false
+}
+
+variable "agency_workflows" {
+  description = "Commercial edition only, and only with install_agency: run the Agency workflows (incident brief, vulnerability exception, risk assessment, major-incident decision) behind the app's workflow API. Needs the commercial licence and the admin API token. Nothing is ever sent to a real system: write-back is a dry run."
+  type        = bool
+  default     = false
+}
+
 variable "enable_tpch_demo" {
   description = "Also load a TPC-H demo dataset: LINEITEM as Parquet in an in-cluster S3-compatible store, the other seven tables in a `tpch` database in the existing Postgres. Adds two data backends on top of the three supply-chain ones, so it needs a commercial-edition image (the free edition caps at three). The loader runs on first deploy and takes several minutes at scale factor 1; the OmniGate pods wait for it."
   type        = bool

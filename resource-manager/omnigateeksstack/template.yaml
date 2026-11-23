@@ -45,6 +45,11 @@ Metadata:
         Parameters:
           - AllowedClientCidrs
       - Label:
+          default: "Agency (second front end, optional)"
+        Parameters:
+          - InstallAgency
+          - AgencyWorkflows
+      - Label:
           default: "NL2SQL (needed to use the Ask app)"
         Parameters:
           - OmnigateLlmApiKey
@@ -94,6 +99,10 @@ Metadata:
         default: "Registry token (commercial only)"
       AllowedClientCidrs:
         default: "Restrict access to these addresses (optional)"
+      InstallAgency:
+        default: "Install Agency beside the Ask app"
+      AgencyWorkflows:
+        default: "Agency workflows (commercial edition)"
       OmnigateLlmApiKey:
         default: "Anthropic API key"
       ClusterName:
@@ -191,6 +200,16 @@ Parameters:
     Type: String
     Default: ""
     Description: "Optional. Comma-separated CIDR ranges (e.g. 203.0.113.7/32) allowed to reach OmniGate. Blank = open to the internet, fine for a first try-out. Worth setting once real data is connected, as one more layer on top of the logins."
+  InstallAgency:
+    Type: String
+    Default: "false"
+    AllowedValues: ["false", "true"]
+    Description: "Install Agency, the second front end, beside the Ask app: a risk-management screen set (watch, exposure, priorities, notifications, problem records) with its own address and the same sign-in. It adds the IT-risk investigation data (schemas rca, estate and register, 39 approved questions with the IT-risk pack), the embedding model, and Workspaces. It needs about 1 GiB more memory than the Ask app alone: use a node size of 8 GiB or more."
+  AgencyWorkflows:
+    Type: String
+    Default: "false"
+    AllowedValues: ["false", "true"]
+    Description: "Commercial edition only, and only with Agency installed: run the Agency workflows (incident brief, vulnerability exception, risk assessment, major-incident decision) behind the app's workflow API. Needs the Commercial licence above and the Admin API token. Nothing is ever sent to a real system: write-back is a dry run."
   OmnigateLlmApiKey:
     Type: String
     NoEcho: true
@@ -965,6 +984,8 @@ Resources:
       TlsKeystorePassword: !Ref TlsKeystorePassword
       TlsKeystoreSecretArn: !Ref TlsKeystoreSecretArn
       AllowedClientCidrs: !Ref AllowedClientCidrs
+      InstallAgency: !Ref InstallAgency
+      AgencyWorkflows: !Ref AgencyWorkflows
       LlmApiKey: !Ref OmnigateLlmApiKey
 
   # ============================== Final security-group sweep ==============================

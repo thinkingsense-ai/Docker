@@ -244,6 +244,10 @@ the parallel join, which on a clustered deployment can be shared across replicas
   dedicated load-balancer security list in `network.tf` (it has no such block), or change the node list by hand.
 - **The helm provider is capped below 2.17** (see `versions.tf`) because 2.17.x crashed intermittently.
 
+## Agency (optional)
+
+**Install Agency beside the Ask app** (variable `install_agency`, default false; a checkbox in the Resource Manager form) adds Agency, a second front end for risk management, with its own network load balancer address and the same sign-in, plus the IT-risk investigation data (schemas `rca`, `estate`, `register`), the embedding model and Workspaces. It needs about 1 GiB more memory than the Ask app alone, so use nodes with 8 GiB or more. `agency_workflows` (default false) is for the commercial edition only. Details and limits: `agency/chart/README.md` in the repository; check a deployment with `scripts/verify-agency.sh`.
+
 ## Publishing a release (maintainers)
 
 > **Update (v0.10.8, Docker #72):** the stacks no longer download the app's `omnigate.jar` to hash the login passwords (the hash is

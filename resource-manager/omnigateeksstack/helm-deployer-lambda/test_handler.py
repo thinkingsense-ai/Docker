@@ -37,5 +37,20 @@ class T(unittest.TestCase):
         o = json.load(open(os.path.join(HERE, "..", "..", "..", "packs", "deploy-options.json")))
         self.assertEqual(sorted(handler.KNOWN_PACKS), sorted(p["id"] for p in o["packs"]))
 
+    def test_agency_off_changes_nothing(self):
+        self.assertEqual(handler.agency_values({}, None, "supply-chain"), {})
+        self.assertEqual(handler.agency_values({"InstallAgency": "false"}, "{bom}", "supply-chain"), {})
+
+    def test_agency_adds_its_pack_to_the_choice(self):
+        on = {"InstallAgency": "true"}
+        self.assertEqual(handler.agency_values(on, None, "supply-chain"), {"agency.enabled": "true", "demoDatasets": "{supply-chain,agency-risk}"})
+        self.assertEqual(handler.agency_values(on, "{bom,treasury}", "supply-chain")["demoDatasets"], "{bom,treasury,agency-risk}")
+        self.assertEqual(handler.agency_values(on, None, "all-packs")["demoDatasets"], "{" + ",".join(handler.SIX_PACKS) + ",agency-risk}")
+        self.assertEqual(handler.agency_values(on, "{it-risk,agency-risk}", "x")["demoDatasets"], "{it-risk,agency-risk}")
+
+    def test_agency_workflows_need_agency(self):
+        self.assertEqual(handler.agency_values({"InstallAgency": "true", "AgencyWorkflows": "true"}, None, "it-risk")["agency.workflows.enabled"], "true")
+        with self.assertRaises(ValueError): handler.agency_values({"AgencyWorkflows": "true"}, None, "it-risk")
+
 
 if __name__ == "__main__": unittest.main()

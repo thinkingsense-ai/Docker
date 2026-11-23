@@ -12,3 +12,7 @@ omnigate_llm_api_key   = "CHANGE_ME" # from console.anthropic.com -- required, N
 # expose_wire_protocols = false
 # node_pool_size         = 1
 # node_machine_type      = "t2a-standard-2" # arm64 -- must match the published image's architecture
+
+# Agency, the second front end, beside the Ask app (optional; about 1 GiB more memory, so use nodes of 8 GiB or more):
+# install_agency   = true
+# agency_workflows = false   # commercial edition only; needs the licence and the admin API token
