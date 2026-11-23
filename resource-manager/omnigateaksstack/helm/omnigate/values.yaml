@@ -244,6 +244,23 @@ agency:
   publicUrl: ""
   # Optional link shown in the header to the admin console (a convenience, not a control: the console has its own sign-in).
   adminUrl: ""
+  # After install and upgrade a Job loads one Workspace per pack plus `all-data` (only when the Server has no Workspace yet; it never overwrites yours) and sets what the logins
+  # listed in `grants` may do. Nothing is granted unless listed. Example entry:
+  #   - { username: alice, canSeeSql: false, canSeeSources: false, canUploadFiles: true, canStartWorkflows: true, canApprove: false }
+  bootstrap:
+    enabled: true
+    grants: []
+  # Commercial edition only. The Agency workflows (incident brief, vulnerability exception, risk assessment, major-incident decision; the payment exception too with the Treasury pack)
+  # behind the app's own workflow API: one pod with a Temporal dev server, the worker and the gateway. Needs agency.enabled, the agency-risk pack, a signed licence and
+  # omnigate.adminApiToken; excludes paymentWorkflow.gateway. Write-back is a dry run; recommendations come from the rules unless set to "model" (then omnigate.llmApiKey is used).
+  workflows:
+    enabled: false
+    writeBack: dry-run
+    recommendations: rules-only
+    approvalTimeoutMinutes: 2880
+    storageSize: 1Gi
+    gatewayToken: ""            # empty derives one from omnigate.adminApiToken
+    registerWriterPassword: ""  # empty derives one from omnigate.adminApiToken
   service:
     type: LoadBalancer
     port: 8097

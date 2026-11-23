@@ -207,13 +207,13 @@ spec:
         # annotation above, so changing it does not roll the pods.
         - name: OMNIGATE_LICENSE_FILE
           value: /etc/omnigate-license/license
-{{- if and .Values.paymentWorkflow.enabled .Values.paymentWorkflow.gateway.enabled }}
+{{- if include "omnigate.engineName" . }}
         - name: OMNIGATE_WORKFLOW_ENGINE
-          value: "http://{{ include "omnigate.fullname" . }}-payment-workflow:8094"
+          value: "http://{{ include "omnigate.fullname" . }}-{{ include "omnigate.engineName" . }}:8094"
         - name: OMNIGATE_WORKFLOW_ENGINE_TOKEN
           valueFrom:
             secretKeyRef:
-              name: {{ include "omnigate.fullname" . }}-payment-workflow
+              name: {{ include "omnigate.fullname" . }}-{{ include "omnigate.engineName" . }}
               key: GATEWAY_TOKEN
         - name: OMNIGATE_WORKFLOW_MANIFEST
           value: /etc/omnigate-workflows/workflows.json
@@ -257,7 +257,7 @@ spec:
         - name: license
           mountPath: /etc/omnigate-license
           readOnly: true
-{{- if and .Values.paymentWorkflow.enabled .Values.paymentWorkflow.gateway.enabled }}
+{{- if include "omnigate.engineName" . }}
         - name: workflows
           mountPath: /etc/omnigate-workflows
           readOnly: true
@@ -290,10 +290,10 @@ spec:
       secret:
         secretName: {{ include "omnigate.fullname" . }}-omnigate-license
         optional: true
-{{- if and .Values.paymentWorkflow.enabled .Values.paymentWorkflow.gateway.enabled }}
+{{- if include "omnigate.engineName" . }}
     - name: workflows
       configMap:
-        name: {{ include "omnigate.fullname" . }}-workflow-manifest
+        name: {{ include "omnigate.engineManifest" . }}
 {{- end }}
 {{- if include "omnigate.tlsCustom" . }}
     - name: tls

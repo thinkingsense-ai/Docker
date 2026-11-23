@@ -1,0 +1,161 @@
+{{- if and .Values.agency.enabled .Values.agency.bootstrap.enabled (include "omnigate.packs" .) }}
+{{- $fullname := include "omnigate.fullname" . }}
+# Makes the stack ready for Agency after install and upgrade (single source: agency/chart/agency-bootstrap.yaml; copied into the four charts by scripts/sync-agency-addon.py).
+#   1. Loads one Workspace per pack in the selection, plus `all-data`, through the admin API, but ONLY when the Server has no Workspace configured yet (it never overwrites a
+#      customer's own). Without Workspaces Agency uses the default scope. Workspaces scope by backend (pg, mdb, files), not by schema, so a pack on the shared Postgres still sees
+#      the other packs' schemas until the Server scopes Workspaces to schemas (Server#109).
+#   2. Sets what each named login may do (agency.bootstrap.grants), for logins the Server knows. Nothing is granted unless you list it.
+# It never fails the release: if the app is slow or the admin login is refused it logs why and exits 0.
+{{- $packs := list
+      (list "supply-chain" "Supply chain" (list "pg"))
+      (list "manufacturing" "Manufacturing sourcing" (list "pg"))
+      (list "it-risk" "IT and operational risk" (list "pg" "mdb"))
+      (list "smithsonian" "Smithsonian Open Access sample" (list "pg" "files"))
+      (list "bom" "Manufacturing BOM and sourcing" (list "pg"))
+      (list "treasury" "Treasury" (list "pg" "mdb")) }}
+{{- $all := list "pg" }}
+{{- if include "omnigate.hasMariadb" . }}{{- $all = append $all "mdb" }}{{- end }}
+{{- if include "omnigate.hasSmithsonian" . }}{{- $all = append $all "files" }}{{- end }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $fullname }}-agency-bootstrap
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+stringData:
+  ADMIN_USER: {{ .Values.seedDemoQuestions.adminUser | quote }}
+  ADMIN_PASSWORD: {{ .Values.seedDemoQuestions.adminPassword | quote }}
+  ADMIN_TOKEN: {{ .Values.omnigate.adminApiToken | quote }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fullname }}-agency-bootstrap
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+data:
+  groups.yaml: |
+    namespaces:
+      - id: all-data
+        name: "All data"
+        backends: {{ $all | sortAlpha | toJson }}
+    {{- range $p := $packs }}
+    {{- if include "omnigate.has" (dict "ctx" $ "pack" (index $p 0)) }}
+      - id: {{ index $p 0 }}
+        name: {{ index $p 1 | quote }}
+        backends: {{ index $p 2 | sortAlpha | toJson }}
+    {{- end }}
+    {{- end }}
+  grants.json: |
+{{ toPrettyJson .Values.agency.bootstrap.grants | indent 4 }}
+  bootstrap.py: |
+    import json, os, sys, time, urllib.request, urllib.parse, http.cookiejar
+    base = os.environ.get("APP_URL", "http://{{ $fullname }}-omnigate-internal:8080")
+    def log(m): print("agency-bootstrap:", m, flush=True)
+    jar = http.cookiejar.CookieJar()
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, *a, **k): return None
+    op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar), NoRedirect)
+    token = os.environ.get("ADMIN_TOKEN", "")
+    def call(path, body=None, form=None, method=None):
+        data, headers = None, {}
+        if body is not None: data, headers = json.dumps(body).encode(), {"Content-Type": "application/json"}
+        if form is not None: data, headers = urllib.parse.urlencode(form).encode(), {"Content-Type": "application/x-www-form-urlencoded"}
+        if token: headers["Authorization"] = "Bearer " + token
+        headers["X-Requested-With"] = "agency-bootstrap"
+        try:
+            with op.open(urllib.request.Request(base + path, data=data, headers=headers, method=method), timeout=30) as r:
+                return r.status, r.read().decode()
+        except urllib.error.HTTPError as e:
+            return e.code, ""
+    try:
+        for _ in range(int(os.environ.get("WAIT_TRIES", "90"))):
+            try:
+                if call("/api/deployment-readiness")[0] in (200, 401, 403): break
+            except Exception: pass
+            time.sleep(float(os.environ.get("WAIT_SECONDS", "5")))
+        if not token:
+            code, _ = call("/admin/login", form={"username": os.environ["ADMIN_USER"], "password": os.environ["ADMIN_PASSWORD"]})
+            if code not in (200, 302, 303): log("admin login refused (%s); leaving Workspaces and grants alone" % code); sys.exit(0)
+        code, text = call("/api/groups")
+        if code != 200: log("cannot read the Workspaces (%s); leaving them alone" % code); sys.exit(0)
+        have = json.loads(text).get("groups", [])
+        if have:
+            log("the Server already has %d Workspace(s) (%s); not loading ours" % (len(have), ", ".join(g.get("id", "?") for g in have)))
+        else:
+            code, text = call("/api/config/groups", {"yaml": open(os.path.join(os.environ.get("BOOTSTRAP_DIR", "/bootstrap"), "groups.yaml")).read()}, method="PUT")
+            log("Workspaces %s" % ("loaded" if code == 200 else "NOT loaded (%s)" % code))
+        grants = json.load(open(os.path.join(os.environ.get("BOOTSTRAP_DIR", "/bootstrap"), "grants.json")))
+        if grants:
+            code, text = call("/api/app-user-access")
+            known = {u["username"] for u in json.loads(text).get("users", [])} if code == 200 else set()
+            for g in grants:
+                if g["username"] not in known: log("%s: no such login, skipped" % g["username"]); continue
+                body = {"username": g["username"]}
+                for k in ("canSeeSql", "canSeeSources", "canUploadFiles", "canStartWorkflows", "canApprove"): body[k] = bool(g.get(k, False))
+                code, _ = call("/api/app-user-access/update", body)
+                log("%s: %s" % (g["username"], "ok" if code == 200 else "status %s" % code))
+    except Exception as e:
+        log("skipped: %r" % (e,))
+    sys.exit(0)
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $fullname }}-agency-bootstrap
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agency-bootstrap
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "6"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: agency-bootstrap
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      # GKE taints its arm64 nodes (kubernetes.io/arch=arm64:NoSchedule); without this the Job sits Pending until the hook times out.
+      tolerations:
+        - key: "kubernetes.io/arch"
+          operator: "Equal"
+          value: "arm64"
+          effect: "NoSchedule"
+      containers:
+        - name: bootstrap
+          image: {{ .Values.agency.pythonImage }}
+          command: ["python", "/bootstrap/bootstrap.py"]
+          envFrom:
+            - secretRef:
+                name: {{ $fullname }}-agency-bootstrap
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: bootstrap
+              mountPath: /bootstrap
+      volumes:
+        - name: bootstrap
+          configMap:
+            name: {{ $fullname }}-agency-bootstrap
+{{- end }}
