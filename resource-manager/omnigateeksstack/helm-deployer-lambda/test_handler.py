@@ -52,5 +52,12 @@ class T(unittest.TestCase):
         self.assertEqual(handler.agency_values({"InstallAgency": "true", "AgencyWorkflows": "true"}, None, "it-risk")["agency.workflows.enabled"], "true")
         with self.assertRaises(ValueError): handler.agency_values({"AgencyWorkflows": "true"}, None, "it-risk")
 
+    def test_secret_values_are_redacted_from_an_error_message(self):
+        a = ["upgrade", "--set", "omnigate.llmApiKey=sk-ant-SECRET", "--set", "omnigate.adminApiToken=tok", "--set", "omnigate.appUsers=demo:hash::", "--set", "demoDataset=it-risk",
+             "--set-file", "omnigate.license=/tmp/omnigate-license", "--set", "tls.httpsOnly=true"]
+        r = " ".join(handler.redact_args(a))
+        for secret in ("sk-ant-SECRET", "=tok", "demo:hash", "/tmp/omnigate-license"): self.assertNotIn(secret, r)
+        for kept in ("demoDataset=it-risk", "tls.httpsOnly=true", "--set-file"): self.assertIn(kept, r)
+
 
 if __name__ == "__main__": unittest.main()

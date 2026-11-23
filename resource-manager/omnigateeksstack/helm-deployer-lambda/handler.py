@@ -125,6 +125,19 @@ users:
         f.write(kubeconfig)
 
 
+SECRET_WORDS = ("password", "token", "apikey", "license", "licence", "keystore", "secret", "appusers", "authusers")
+
+
+def redact_args(args):
+    """The command line for an error message, with the value of every `key=value` whose key names a secret replaced: the message goes into the CloudFormation stack events and the
+    CloudWatch log, where anyone who can read the stack can see it (a failed Helm step once put the Anthropic key and the admin token there)."""
+    out = []
+    for a in args:
+        k, sep, _ = str(a).partition("=")
+        out.append(k + "=<redacted>" if sep and any(w in k.lower() for w in SECRET_WORDS) else str(a))
+    return out
+
+
 def run_cmd(binary, args, timeout=540):
     env = dict(os.environ)
     env["KUBECONFIG"] = KUBECONFIG_PATH
@@ -138,7 +151,7 @@ def run_cmd(binary, args, timeout=540):
     print(f"{binary} stdout:", result.stdout)
     print(f"{binary} stderr:", result.stderr)
     if result.returncode != 0:
-        safe_args = " ".join(a for a in args if "password" not in a.lower())
+        safe_args = " ".join(redact_args(args))
         raise RuntimeError(f"{binary} command failed: {safe_args}\n{result.stderr}")
     return result.stdout
 
