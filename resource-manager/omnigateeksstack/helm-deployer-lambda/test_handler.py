@@ -59,5 +59,9 @@ class T(unittest.TestCase):
         for secret in ("sk-ant-SECRET", "=tok", "demo:hash", "/tmp/omnigate-license"): self.assertNotIn(secret, r)
         for kept in ("demoDataset=it-risk", "tls.httpsOnly=true", "--set-file"): self.assertIn(kept, r)
 
+    def test_agency_image_override(self):
+        self.assertEqual(handler.agency_values({"InstallAgency": "true", "AgencyImage": " 123.dkr.ecr.us-east-1.amazonaws.com/agency:x "}, None, "it-risk")["agency.image"], "123.dkr.ecr.us-east-1.amazonaws.com/agency:x")
+        self.assertNotIn("agency.image", handler.agency_values({"InstallAgency": "true", "AgencyImage": ""}, None, "it-risk"))
+
 
 if __name__ == "__main__": unittest.main()

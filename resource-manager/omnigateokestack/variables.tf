@@ -344,3 +344,9 @@ variable "omnigate_data_storage_gb" {
   type        = number
   default     = 2
 }
+
+variable "agency_image" {
+  description = "Optional. The image Agency runs from. Blank = the one this release names (ghcr.io/thinkingsense-ai/omnigate-agency). Set it to run your own build or a mirror in your own registry."
+  type        = string
+  default     = ""
+}

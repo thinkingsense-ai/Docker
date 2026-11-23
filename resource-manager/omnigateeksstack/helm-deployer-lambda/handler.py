@@ -54,6 +54,9 @@ def agency_values(props, packs, dataset):
     out = {"agency.enabled": "true", "demoDatasets": "{" + ",".join(sel) + "}"}
     if workflows:
         out["agency.workflows.enabled"] = "true"
+    image = str(props.get("AgencyImage") or "").strip()
+    if image:
+        out["agency.image"] = image
     return out
 
 

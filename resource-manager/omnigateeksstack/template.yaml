@@ -49,6 +49,7 @@ Metadata:
         Parameters:
           - InstallAgency
           - AgencyWorkflows
+          - AgencyImage
       - Label:
           default: "NL2SQL (needed to use the Ask app)"
         Parameters:
@@ -103,6 +104,8 @@ Metadata:
         default: "Install Agency beside the Ask app"
       AgencyWorkflows:
         default: "Agency workflows (commercial edition)"
+      AgencyImage:
+        default: "Agency image (optional)"
       OmnigateLlmApiKey:
         default: "Anthropic API key"
       ClusterName:
@@ -210,6 +213,10 @@ Parameters:
     Default: "false"
     AllowedValues: ["false", "true"]
     Description: "Commercial edition only, and only with Agency installed: run the Agency workflows (incident brief, vulnerability exception, risk assessment, major-incident decision) behind the app's workflow API. Needs the Commercial licence above and the Admin API token. Nothing is ever sent to a real system: write-back is a dry run."
+  AgencyImage:
+    Type: String
+    Default: ""
+    Description: "Optional. The image Agency runs from. Blank = the one this release names (ghcr.io/thinkingsense-ai/omnigate-agency). Set it to run your own build or a mirror in your own registry, for example in an air-gapped account."
   OmnigateLlmApiKey:
     Type: String
     NoEcho: true
@@ -986,6 +993,7 @@ Resources:
       AllowedClientCidrs: !Ref AllowedClientCidrs
       InstallAgency: !Ref InstallAgency
       AgencyWorkflows: !Ref AgencyWorkflows
+      AgencyImage: !Ref AgencyImage
       LlmApiKey: !Ref OmnigateLlmApiKey
 
   # ============================== Final security-group sweep ==============================

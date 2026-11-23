@@ -1,0 +1,69 @@
+# Builds the Agency image (the thinking layer and the built UI: addons/thinking-layer/Dockerfile) and publishes it to ghcr, which is public and needs no secret beyond the
+# workflow's own token. The cloud stacks run it as `agency.image`. It is not tied to an app release: run it by hand, or push a tag `agency-image-vX.Y.Z`.
+#   Actions > Build Agency image > Run workflow (tag: 0.1.1, push on), or: git tag agency-image-v0.1.1 && git push origin agency-image-v0.1.1
+# Multi-architecture (amd64 and arm64: the stacks run on Graviton, Ampere and x86 nodes). After the FIRST publish, set the package's visibility to Public once (Packages >
+# omnigate-agency > Package settings), or the clusters cannot pull it. The step summary prints the digest to pin in the charts' values (agency.image).
+name: Build Agency image
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag, e.g. 0.1.1"
+        required: true
+      push:
+        description: "Push the image. Leave off for a dry run that only builds it."
+        type: boolean
+        default: false
+  push:
+    tags: ["agency-image-v*"]
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/thinkingsense-ai/omnigate-agency
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Work out the tag
+        id: vars
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_PUSH: ${{ inputs.push }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ "$EVENT" = workflow_dispatch ]; then tag="$INPUT_TAG"; push="$INPUT_PUSH"; else tag="${REF_NAME#agency-image-v}"; push=true; fi
+          printf '%s' "$tag" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$' || { echo "::error::'$tag' is not a version like 0.1.1"; exit 1; }
+          { echo "tag=$tag"; echo "push=$push"; } >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Log in to ghcr
+        if: steps.vars.outputs.push == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build (and push)
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: addons/thinking-layer/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ steps.vars.outputs.push == 'true' }}
+          tags: ${{ env.IMAGE }}:${{ steps.vars.outputs.tag }}
+      - name: Digest to pin
+        if: steps.vars.outputs.push == 'true'
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          TAG: ${{ steps.vars.outputs.tag }}
+        run: |
+          echo "### Agency image published" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`$IMAGE:$TAG\` digest \`$DIGEST\`: set \`agency.image: $IMAGE@$DIGEST\` in the stack charts' values (scripts/sync-agency-addon.py), then run the stack's clean-room." >> "$GITHUB_STEP_SUMMARY"

@@ -217,6 +217,13 @@ resource "helm_release" "omnigate" {
     value = var.agency_workflows
   }
   dynamic "set" {
+    for_each = var.install_agency && var.agency_image != "" ? [1] : []
+    content {
+      name  = "agency.image"
+      value = var.agency_image
+    }
+  }
+  dynamic "set" {
     for_each = var.install_agency ? [1] : []
     content {
       name  = "demoDatasets"

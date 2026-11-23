@@ -2,15 +2,15 @@
 
 Installs Agency (the React UI and the thinking layer) beside the Ask app in the four stack charts. Off by default (`agency.enabled=false`); with it on, a stack gets one Deployment, two ConfigMaps and a Service.
 
-- **No image to publish.** The layer is standard-library Python and runs on the stock `python:3.12-slim`; its code (`files/agency/*.py`, `contract.json`, `catalogue.json`) and the built UI (`files/agency/web.tgz`, unpacked by an init step) come from ConfigMaps. The same chart therefore works on AWS, OCI, GCP and Azure with no registry of our own.
-- **Single source, four copies.** `agency/chart/agency.yaml` (template), `addons/thinking-layer` (code), `packs/catalogue.json` and `agency/chart/web.tgz` are copied into each chart by `scripts/sync-agency-addon.py`. Before a stack release run `scripts/sync-agency-addon.py --check`; it also fails when `web.tgz` was built from older UI sources (rebuild with `scripts/agency_bundle.py build`; needs node).
+- **One small image.** The layer and the built UI run from an image built from `addons/thinking-layer/Dockerfile` and published by the **Build Agency image** workflow (`.github/workflows/build-agency-image.yml`) to `ghcr.io/thinkingsense-ai/omnigate-agency` (amd64 and arm64); `agency.image` names it (pin a digest after publishing; set the package public once). The code is NOT carried in the chart: a Helm release is stored in one Secret capped at 1 MiB, and the first design (code and UI in ConfigMaps) made the release about 1.08 MB, so the first AWS clean-room failed at the last step with `Secret "sh.helm.release.v1.omnigate.v1" is invalid: data: Too long`. `agency/chart/tests/test_release_size.py` now estimates the stored size for every chart and the selections that matter and keeps them under 80% of the cap (it-risk plus Agency is about 0.5 MB; all six plus Agency about 0.64 MB).
+- **Single source, four copies.** `agency/chart/*.yaml` and `_agency.tpl` (templates) are copied into each chart by `scripts/sync-agency-addon.py`; run `--check` before a stack release.
 - **Public address.** Its own Service (`agency.service.type`, default LoadBalancer, port 8097) with the same cloud annotations as that cloud's Ask Service and the same `service.loadBalancerSourceRanges` (OKE: restrict in the load balancer subnet's security list, as for the Ask app). Plain HTTP unless you terminate TLS in front of it; the session cookie is HttpOnly and SameSite=Strict, with no `Secure` flag until it is served over HTTPS.
 - **State.** Sessions, uploads and preferences are in memory, one replica: a restart signs everyone out.
 - **Sign-in.** With the app's own business-user logins (`omnigate.appUsers`); the layer keeps no passwords. Single sign-on needs `agency.publicUrl` registered with the provider.
 
 ## Checked
 - `helm template` of all four charts, five data sets each, Agency off: identical to `main` once random secrets are masked. Agency on renders on all four; `helm lint` passes.
-- `agency/chart/tests/pod-smoke.sh`: the init step and the layer under the chart's security settings (uid 10001, read-only root, no capabilities) from the same files the ConfigMaps carry, beside a live stack: health, UI page, status, sign-in.
+- `agency/chart/tests/pod-smoke.sh`: builds the image and runs it under the chart's security settings (uid 10001, read-only root, no capabilities) beside a live stack: health, UI page, status, sign-in.
 
 ## Slice 2: the IT-risk data (`agency-risk`, a chart-only pack)
 `demoDatasets: [agency-risk]` (it brings `it-risk` in; it mixes with the other packs and with all six; `all-packs` and a single `it-risk` do not gain it) deploys the all-packs way (connectors `pg` and `mdb`, tables addressed `pg.rca.events`) and adds:

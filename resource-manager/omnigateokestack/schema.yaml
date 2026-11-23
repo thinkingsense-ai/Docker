@@ -67,6 +67,7 @@ variableGroups:
     variables:
       - install_agency
       - agency_workflows
+      - agency_image
 
   - title: "Demo dataset (optional)"
     visible: true
@@ -436,6 +437,13 @@ variables:
     title: "Install Agency beside the Ask app"
     description: "A risk-management screen set (watch, exposure, priorities, notifications, problem records) with its own address and the same sign-in. Adds the IT-risk investigation data, the embedding model and Workspaces; needs about 1 GiB more memory, so use nodes of 8 GiB or more."
     default: false
+    required: false
+
+  agency_image:
+    type: string
+    title: "Agency image (optional)"
+    description: "Blank = the image this release names. Set it to run your own build or a mirror in your own registry."
+    default: ""
     required: false
 
   agency_workflows:

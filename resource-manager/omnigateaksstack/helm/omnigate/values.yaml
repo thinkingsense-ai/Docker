@@ -219,7 +219,9 @@ configEncryption:
 # ConfigMap and runs on the stock python image; the Temporal SDK is installed from PyPI when the pod starts. Nothing is ever written to a real ERP.
 paymentWorkflow:
   enabled: false
-  pythonImage: docker.io/library/python:3.12-slim
+  pythonImage: docker.io/library/python:3.12-slim   # the bootstrap Job and the workflow pod run on this
+  # The Agency image (addons/thinking-layer/Dockerfile: the layer and the built UI), built by the Build images workflow.
+  image: ghcr.io/thinkingsense-ai/omnigate-agency:0.1.0
   # Temporal CLI image (its dev server), v1.5.1, pinned by digest.
   temporalImage: docker.io/temporalio/temporal@sha256:597a5dbbcc6e7716b326dde4a51622d5ea0879eb0cf06ff8a94381361d0a987d
   temporalSdkVersion: "1.30.0"
