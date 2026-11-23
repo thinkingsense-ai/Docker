@@ -30,6 +30,10 @@ agency:
   pythonImage: docker.io/library/python:3.12-slim   # the bootstrap Job and the workflow pod run on this
   # The Agency image (addons/thinking-layer/Dockerfile: the layer and the built UI), built by the Build images workflow.
   image: ghcr.io/thinkingsense-ai/omnigate-agency:0.1.0
+  # HTTPS for Agency, like the Ask app: a self-signed certificate is made at install (and kept across upgrades) unless secretName names your own kubernetes.io/tls Secret.
+  tls:
+    enabled: true
+    secretName: ""
   # Where browsers reach Agency (needed only for single sign-on: the provider returns here). Leave empty otherwise.
   publicUrl: ""
   # Optional link shown in the header to the admin console (a convenience, not a control: the console has its own sign-in).
@@ -95,6 +99,12 @@ def main(check):
             if not check:
                 import shutil; shutil.rmtree(stale)
         vp = os.path.join(base, "values.yaml"); v = open(vp).read()
+        if "\nagency:\n" in v and "\n  tls:\n    enabled" not in v.split("\nagency:\n", 1)[1]:
+            bad.append(os.path.relpath(vp, ROOT))
+            if not check:
+                assert "\n  # Where browsers reach Agency" in v, vp
+                v = v.replace("\n  # Where browsers reach Agency", "\n  # HTTPS for Agency, like the Ask app: a self-signed certificate is made at install (and kept across upgrades) unless secretName names your own kubernetes.io/tls Secret.\n  tls:\n    enabled: true\n    secretName: \"\"\n  # Where browsers reach Agency", 1)
+                open(vp, "w").write(v)
         if "\n  workflows:\n    enabled: false" in v and "omnigate-agency-workflows" not in v:
             bad.append(os.path.relpath(vp, ROOT))
             if not check:

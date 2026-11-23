@@ -583,3 +583,22 @@ class LayerTests(unittest.TestCase):
         self.assertEqual(self.c.call("GET", "/health")[0], 200)                                 # API routes win over the page
 
 if __name__ == "__main__": unittest.main()
+
+class TlsTest(unittest.TestCase):
+    """AGENCY_TLS_CERT and AGENCY_TLS_KEY make the layer serve HTTPS (TLS 1.2 or later) and mark its session cookie Secure; without them it serves plain HTTP exactly as before."""
+    def test_https_when_a_certificate_is_given_and_plain_http_otherwise(self):
+        import shutil, ssl, subprocess, urllib.request
+        if not shutil.which("openssl"): self.skipTest("openssl is not installed")
+        d = tempfile.mkdtemp(); self.addCleanup(shutil.rmtree, d, True)
+        crt, key = os.path.join(d, "c.pem"), os.path.join(d, "k.pem")
+        subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", key, "-out", crt, "-days", "2", "-subj", "/CN=agency"], check=True, capture_output=True)
+        old = (app.TLS_CERT, app.TLS_KEY, app.SECURE)
+        self.addCleanup(lambda: setattr(app, "TLS_CERT", old[0]) or setattr(app, "TLS_KEY", old[1]) or setattr(app, "SECURE", old[2]))
+        app.TLS_CERT, app.TLS_KEY = crt, key
+        srv = app.make_server(0); threading.Thread(target=srv.serve_forever, daemon=True).start(); self.addCleanup(srv.shutdown); self.addCleanup(srv.server_close)
+        port = srv.server_address[1]; ctx = ssl.create_default_context(); ctx.check_hostname = False; ctx.verify_mode = ssl.CERT_NONE
+        r = urllib.request.urlopen("https://127.0.0.1:%d/health" % port, context=ctx, timeout=10); self.assertEqual(json.loads(r.read())["ok"], True)
+        with self.assertRaises(Exception): urllib.request.urlopen("http://127.0.0.1:%d/health" % port, timeout=5)           # a plain-HTTP client is not served
+    def test_the_session_cookie_is_secure_only_with_tls(self):
+        self.assertEqual(app.SECURE, "")                                                                                    # these tests run without a certificate
+

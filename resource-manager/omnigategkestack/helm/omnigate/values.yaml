@@ -233,6 +233,10 @@ paymentWorkflow:
 agency:
   enabled: false
   pythonImage: docker.io/library/python:3.12-slim
+  # HTTPS for Agency, like the Ask app: a self-signed certificate is made at install (and kept across upgrades) unless secretName names your own kubernetes.io/tls Secret.
+  tls:
+    enabled: true
+    secretName: ""
   # Where browsers reach Agency (needed only for single sign-on: the provider returns here). Leave empty otherwise.
   publicUrl: ""
   # Optional link shown in the header to the admin console (a convenience, not a control: the console has its own sign-in).

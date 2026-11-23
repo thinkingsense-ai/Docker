@@ -26,6 +26,10 @@ check "the demo tour sign-in route is closed"         404 "$(code -X POST -H 'X-
 for p in /whoami /conversations /workflows/queue; do check "anonymous $p refused" 401 "$(code "$BASE$p")"; done
 check "login without the CSRF header refused"         403 "$(code -b "$JAR" -c "$JAR" -H 'Cookie: x=1' -H 'Content-Type: application/json' -d "{\"username\":\"$USER_NAME\",\"password\":\"x\"}" "$BASE/login")"
 check "a wrong password is refused"                   400 "$(code -X POST -H 'X-Requested-With: verify' -H 'Content-Type: application/json' -d "{\"username\":\"$USER_NAME\",\"password\":\"definitely-wrong\"}" "$BASE/login")"
+if [ "${BASE#https}" != "$BASE" ]; then
+  hdr=$(curl -s "${CURL_TLS[@]}" -D - -o /dev/null -m 20 -X POST -H 'X-Requested-With: verify' -H 'Content-Type: application/json' -d "$(python3 -c 'import json,sys;print(json.dumps({"username":sys.argv[1],"password":sys.argv[2]}))' "$USER_NAME" "$PASS")" "$BASE/login" | tr -d '\r')
+  echo "$hdr" | grep -i '^set-cookie:' | grep -qi '; *secure' && printf 'PASS  %-52s %s\n' "the session cookie is marked Secure" "yes" || { printf 'FAIL  %-52s %s\n' "the session cookie is marked Secure" "no"; fail=1; }
+else printf 'INFO  %-52s %s\n' "served over HTTPS" "no (plain HTTP: put TLS in front for a real deployment)"; fi
 check "the business user signs in"                    200 "$(code -c "$JAR" -X POST -H 'X-Requested-With: verify' -H 'Content-Type: application/json' -d "$(python3 -c 'import json,sys;print(json.dumps({"username":sys.argv[1],"password":sys.argv[2]}))' "$USER_NAME" "$PASS")" "$BASE/login")"
 check "the session works (/whoami)"                   "$USER_NAME" "$(get -b "$JAR" "$BASE/whoami" | j userId)"
 PK=$(get -b "$JAR" "$BASE/packs"); n=$(echo "$PK" | python3 -c 'import json,sys
