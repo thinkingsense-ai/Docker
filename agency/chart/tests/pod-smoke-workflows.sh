@@ -1,5 +1,5 @@
 #!/bin/bash
-# Smoke test for the Agency workflows pod (agency.workflows.enabled) without a cluster. Uses the SAME files the chart puts in its ConfigMaps (files/agency-workflows) and the
+# Smoke test for the Agency workflows pod (agency.workflows.enabled) without a cluster. Builds the workflow image (demos/payment-workflow/Dockerfile, the one the Build Agency image workflow publishes) and uses the
 # ensure-register-writer script exactly as the chart renders it:
 #  1. a scratch Postgres with the register seed: the init script creates the writer role, which can INSERT but not UPDATE or DELETE;
 #  2. the pod's three containers (Temporal, worker, gateway) under the chart's security settings (uid 10001, read-only root filesystem, no capabilities), sharing one network like a pod,
@@ -8,12 +8,12 @@
 # It does NOT test Kubernetes itself (probes, PVC, network policy, Secret and ConfigMap wiring, scheduling): `helm template` covers the rendering.
 set -u
 cd "$(dirname "$0")/../../.." || exit 1
-CHART=${CHART:-resource-manager/omnigateaksstack/helm/omnigate}; SRC=$PWD/$CHART/files/agency-workflows
+CHART=${CHART:-resource-manager/omnigateaksstack/helm/omnigate}; IMG=${IMAGE:-agency-workflows-smoke:local}
 NETWORK=${NETWORK:?set NETWORK to the stack network}; TOKEN_ADMIN=${ADMIN_TOKEN:?set ADMIN_TOKEN}; ASK=${ASK_URL:-http://omnigate:8080}; GW=smoke-gateway-token-0123456789
 PY=${PYTHON_IMAGE:-docker.io/library/python:3.12-slim}; PG=${POSTGRES_IMAGE:-postgres:16-alpine}; SDK=${SDK_VERSION:-1.30.0}
 TD=${TEMPORAL_IMAGE:-docker.io/temporalio/temporal@sha256:597a5dbbcc6e7716b326dde4a51622d5ea0879eb0cf06ff8a94381361d0a987d}
 fail=0; ok() { echo "  PASS  $*"; }; bad() { echo "  FAIL  $*"; fail=1; }
-cleanup() { for n in awf-gateway awf-worker awf-temporal awfpod awf-pg; do docker rm -f $n >/dev/null 2>&1; done; docker volume rm -f awfdata awfpylib >/dev/null 2>&1; }
+cleanup() { for n in awf-gateway awf-worker awf-temporal awfpod awf-pg; do docker rm -f $n >/dev/null 2>&1; done; docker volume rm -f awfdata >/dev/null 2>&1; }
 trap cleanup EXIT; cleanup
 # 1. the init script, as rendered
 U=$(python3 -c "import sys;sys.path.insert(0,'scripts');import deploy_options as D;print(D.USERS)")
@@ -32,15 +32,16 @@ w "INSERT INTO register.assessments (item_type, item_ref, node_id, rating, set_b
 w "UPDATE register.assessments SET rating='High' WHERE run_id='smoke-1'" | grep -qi "permission denied" && ok "register_writer cannot UPDATE" || bad "UPDATE was not refused for lack of permission"
 w "DELETE FROM register.assessments WHERE run_id='smoke-1'" | grep -qi "permission denied" && ok "register_writer cannot DELETE" || bad "DELETE was not refused for lack of permission"
 # 2. the pod
-docker volume create awfdata >/dev/null; docker volume create awfpylib >/dev/null
-docker run --rm -v awfdata:/d -v awfpylib:/p alpine sh -c 'chown 10001:10001 /d /p && chmod 2775 /d /p'
+docker volume create awfdata >/dev/null
+docker run --rm -v awfdata:/d alpine sh -c 'chown 10001:10001 /d && chmod 2775 /d'
 LOCK=(--user 10001:10001 --read-only --cap-drop ALL --security-opt no-new-privileges --tmpfs /tmp:rw,uid=10001,gid=10001,mode=1777 -e HOME=/tmp)
-docker run --rm "${LOCK[@]}" -v awfpylib:/pylib $PY pip install --no-cache-dir --disable-pip-version-check --target /pylib temporalio==$SDK >/dev/null 2>&1 && ok "SDK installed as non-root" || bad "SDK install failed"
+docker build -q -t "$IMG" demos/payment-workflow >/dev/null && ok "workflow image built" || bad "workflow image build failed"
+docker run --rm --entrypoint psql "$IMG" --version >/dev/null 2>&1 && ok "the image has the psql client the register write needs" || bad "no psql in the image: the register write would fail after an approval"
 docker run -d --name awfpod --network "$NETWORK" alpine sleep 3600 >/dev/null
 docker run -d --name awf-temporal --network container:awfpod "${LOCK[@]}" -e USER=temporal -v awfdata:/data $TD server start-dev --ip 0.0.0.0 --headless --db-filename /data/temporal.db >/dev/null
-ENVS=(-e PYTHONPATH=/pylib:/app -e PYTHONDONTWRITEBYTECODE=1 -e TEMPORAL_ADDRESS=localhost:7233)
-docker run -d --name awf-worker --network container:awfpod "${LOCK[@]}" "${ENVS[@]}" -e ASK_URL=$ASK -e ASK_ADMIN_TOKEN=$TOKEN_ADMIN -e WRITE_BACK=dry-run -e DECISIONS_FILE=/data/decisions.jsonl -e RCA_TABLE_PREFIX=pg. -e RCA_WORKSPACE=it-risk -e QUERY_WORKSPACE=all-data -e SQL_SCHEMA_CONNECTORS="risk=pg,security=mdb" -e REGISTER_WRITE=dry-run -w /app -v "$SRC":/app:ro -v awfpylib:/pylib:ro -v awfdata:/data $PY python /app/worker.py >/dev/null
-docker run -d --name awf-gateway --network container:awfpod "${LOCK[@]}" "${ENVS[@]}" -e GATEWAY_PORT=8094 -e GATEWAY_TOKEN=$GW -w /app -v "$SRC":/app:ro -v awfpylib:/pylib:ro -v awfdata:/data $PY python /app/gateway.py >/dev/null
+ENVS=(-e PYTHONDONTWRITEBYTECODE=1 -e TEMPORAL_ADDRESS=localhost:7233)
+docker run -d --name awf-worker --network container:awfpod "${LOCK[@]}" "${ENVS[@]}" -e ASK_URL=$ASK -e ASK_ADMIN_TOKEN=$TOKEN_ADMIN -e WRITE_BACK=dry-run -e DECISIONS_FILE=/data/decisions.jsonl -e RCA_TABLE_PREFIX=pg. -e RCA_WORKSPACE=it-risk -e QUERY_WORKSPACE=all-data -e SQL_SCHEMA_CONNECTORS="risk=pg,security=mdb" -e REGISTER_WRITE=dry-run -w /app -v awfdata:/data "$IMG" python /app/worker.py >/dev/null
+docker run -d --name awf-gateway --network container:awfpod "${LOCK[@]}" "${ENVS[@]}" -e GATEWAY_PORT=8094 -e GATEWAY_TOKEN=$GW -w /app -v awfdata:/data "$IMG" python /app/gateway.py >/dev/null
 for i in $(seq 1 40); do docker logs awf-worker 2>&1 | grep -q "worker ready" && break; sleep 2; done
 docker logs awf-worker 2>&1 | grep -q "worker ready" && ok "worker ready" || bad "worker did not start: $(docker logs awf-worker 2>&1 | tail -3)"
 g() { docker run --rm --network container:awfpod curlimages/curl -s -m 20 -w '\n%{http_code}' "$@"; }

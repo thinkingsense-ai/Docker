@@ -57,6 +57,9 @@ def agency_values(props, packs, dataset):
     image = str(props.get("AgencyImage") or "").strip()
     if image:
         out["agency.image"] = image
+    wf_image = str(props.get("AgencyWorkflowsImage") or "").strip()
+    if wf_image:
+        out["agency.workflows.image"] = wf_image
     return out
 
 

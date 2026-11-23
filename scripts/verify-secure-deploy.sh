@@ -26,15 +26,19 @@ check "anonymous /api/query refused"        401 "$(code -X POST -H 'Content-Type
 check "wrong token refused"                 401 "$(code -X POST -H 'Authorization: Bearer wrong' -H 'Content-Type: application/json' -d '{"sql":"select 1"}' "$BASE/api/query")"
 # The federated-query check needs one real table, and which one exists depends on the demo pack the deployment was given. Unless VERIFY_SQL is set, try each pack's first
 # table in turn (supply-chain, IT risk, BOM, Treasury, all-packs) and pass on the first that answers; a deployment with none of them fails and shows every reason.
-run_sql() { curl -s "${CURL_TLS[@]}" -m 60 -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d "{\"sql\":\"$1\"}" "$BASE/api/query"; }
+# A statement runs inside a Workspace. Once every source belongs to one (the Agency install loads them), the Default Workspace is empty and a call without `workspaceId` is refused, so
+# each probe is also tried inside `all-data`.
+run_sql() { curl -s "${CURL_TLS[@]}" -m 60 -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d "{\"sql\":\"$1\"${2:+,\"workspaceId\":\"$2\"}}" "$BASE/api/query"; }
 if [ -n "${VERIFY_SQL:-}" ]; then PROBES=("$VERIFY_SQL")
-else PROBES=("SELECT COUNT(*) AS n FROM suppliers.suppliers" "SELECT COUNT(*) AS n FROM risk.business_services" "SELECT COUNT(*) AS n FROM bom.suppliers" "SELECT COUNT(*) AS n FROM treasury.entities" "SELECT COUNT(*) AS n FROM pg.suppliers.suppliers"); fi
+else PROBES=("SELECT COUNT(*) AS n FROM suppliers.suppliers" "SELECT COUNT(*) AS n FROM pg.risk.business_services" "SELECT COUNT(*) AS n FROM risk.business_services" "SELECT COUNT(*) AS n FROM bom.suppliers" "SELECT COUNT(*) AS n FROM treasury.entities" "SELECT COUNT(*) AS n FROM pg.suppliers.suppliers"); fi
 ok=0; why=""
 for sql in "${PROBES[@]}"; do
-  body=$(run_sql "$sql")
-  if echo "$body" | grep -q '"success" *: *true'; then printf 'PASS  %-46s %s\n' "admin token runs a federated query" "$sql -> $(echo "$body" | head -c 100)"; ok=1; break; fi
-  why="$why
-        $sql -> $(echo "$body" | head -c 150)"
+  for ws in "" all-data; do
+    body=$(run_sql "$sql" "$ws")
+    if echo "$body" | grep -q '"success" *: *true'; then printf 'PASS  %-46s %s\n' "admin token runs a federated query" "$sql${ws:+ (in $ws)} -> $(echo "$body" | head -c 100)"; ok=1; break 2; fi
+    why="$why
+        $sql${ws:+ (in $ws)} -> $(echo "$body" | head -c 150)"
+  done
 done
 if [ $ok = 0 ]; then printf 'FAIL  admin token runs a federated query; none of the probes worked (set VERIFY_SQL to a query for this deployment):%s\n' "$why"; fail=1; fi
 if [ $LEGACY = 1 ]; then printf 'INFO  anonymous /mcp/agent/ (open before v0.10.5)         %s\n' "$(code "$BASE/mcp/agent/")"

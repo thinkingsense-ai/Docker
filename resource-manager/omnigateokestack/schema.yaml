@@ -68,6 +68,7 @@ variableGroups:
       - install_agency
       - agency_workflows
       - agency_image
+      - agency_workflows_image
 
   - title: "Demo dataset (optional)"
     visible: true
@@ -442,6 +443,13 @@ variables:
   agency_image:
     type: string
     title: "Agency image (optional)"
+    description: "Blank = the image this release names. Set it to run your own build or a mirror in your own registry."
+    default: ""
+    required: false
+
+  agency_workflows_image:
+    type: string
+    title: "Agency workflows image (optional)"
     description: "Blank = the image this release names. Set it to run your own build or a mirror in your own registry."
     default: ""
     required: false

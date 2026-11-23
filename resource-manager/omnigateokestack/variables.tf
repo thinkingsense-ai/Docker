@@ -350,3 +350,9 @@ variable "agency_image" {
   type        = string
   default     = ""
 }
+
+variable "agency_workflows_image" {
+  description = "Optional. The image the Agency workflow worker and gateway run from (commercial edition only). Blank = the one this release names (ghcr.io/thinkingsense-ai/omnigate-agency-workflows)."
+  type        = string
+  default     = ""
+}

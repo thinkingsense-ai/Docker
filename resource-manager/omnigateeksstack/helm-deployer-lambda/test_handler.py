@@ -63,5 +63,9 @@ class T(unittest.TestCase):
         self.assertEqual(handler.agency_values({"InstallAgency": "true", "AgencyImage": " 123.dkr.ecr.us-east-1.amazonaws.com/agency:x "}, None, "it-risk")["agency.image"], "123.dkr.ecr.us-east-1.amazonaws.com/agency:x")
         self.assertNotIn("agency.image", handler.agency_values({"InstallAgency": "true", "AgencyImage": ""}, None, "it-risk"))
 
+    def test_agency_workflows_image_override(self):
+        v = handler.agency_values({"InstallAgency": "true", "AgencyWorkflows": "true", "AgencyWorkflowsImage": " r.example/wf:1 "}, None, "it-risk")
+        self.assertEqual(v["agency.workflows.image"], "r.example/wf:1")
+
 
 if __name__ == "__main__": unittest.main()

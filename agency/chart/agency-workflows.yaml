@@ -29,8 +29,9 @@
 {{- if include "omnigate.has" (dict "ctx" . "pack" "treasury") }}{{- $connectors = printf "treasury=pg,erp=mdb,%s" $connectors }}{{- end }}
 # The Agency workflows (incident brief, vulnerability exception, risk assessment, major-incident decision, and the payment exception when the Treasury pack is in the selection),
 # behind the app's own workflow API (single source: agency/chart/agency-workflows.yaml). COMMERCIAL EDITION ONLY. One pod holds a Temporal dev server, the worker and the gateway
-# (port 8094, bearer token, reachable only from the app's pods). There is no approval inbox: the app's own API starts and decides runs, and Agency shows them. The code comes from a
-# ConfigMap and runs on the stock python image; the Temporal SDK is installed from PyPI at pod start. Nothing is ever sent to a real system: write-back is a dry run.
+# (port 8094, bearer token, reachable only from the app's pods). There is no approval inbox: the app's own API starts and decides runs, and Agency shows them. The code comes from an
+# image (agency.workflows.image, built from demos/payment-workflow/Dockerfile: the code, the Temporal SDK and the psql client the register write uses), not from chart files: a Helm
+# release is stored in one Secret capped at 1 MiB. Nothing is ever sent to a real system: write-back is a dry run.
 # The worker reads the governed data through the app with the admin API token (it holds admin rights: a reason the pod is private). It adds rows to the risk register as its own
 # database role, which can only INSERT (created at pod start). Recommendations are the rules' only (no model) unless agency.workflows.recommendations is "model".
 apiVersion: v1
@@ -57,15 +58,6 @@ data:
   workflows.json: |
 {{ dict "definitions" $defs | toPrettyJson | indent 4 }}
 ---
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{ $fullname }}-agency-workflows-src
-  labels:
-    {{- include "omnigate.labels" . | nindent 4 }}
-    app.kubernetes.io/component: agency-workflows
-data:
-{{ (.Files.Glob "files/agency-workflows/*.py").AsConfig | indent 2 }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -102,7 +94,7 @@ spec:
         {{- include "omnigate.labels" . | nindent 8 }}
         app.kubernetes.io/component: agency-workflows
       annotations:
-        checksum/src: {{ printf "%s%s" (.Files.Glob "files/agency-workflows/*.py").AsConfig ($defs | toJson) | sha256sum }}
+        checksum/src: {{ printf "%s%s" .Values.agency.workflows.image ($defs | toJson) | sha256sum }}
         checksum/secret: {{ printf "%s%s%s" .Values.omnigate.adminApiToken $token $regpw | sha256sum }}
     spec:
       securityContext:
@@ -113,19 +105,6 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       initContainers:
-        - name: install-sdk
-          image: {{ .Values.agency.pythonImage }}
-          command: ["pip", "install", "--no-cache-dir", "--disable-pip-version-check", "--target", "/pylib", "temporalio=={{ .Values.paymentWorkflow.temporalSdkVersion }}"]
-          env:
-            - { name: HOME, value: /tmp }
-          securityContext: &locked
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
-          volumeMounts:
-            - { name: pylib, mountPath: /pylib }
-            - { name: tmp, mountPath: /tmp }
         # The register's writer role may only ADD rows to the assessments and the major-incident decisions (a trigger also refuses UPDATE and DELETE for everyone). Created or
         # refreshed at every pod start, once the register schema exists (the database seeds it on a fresh volume).
         - name: ensure-register-writer
@@ -154,7 +133,11 @@ spec:
               GRANT INSERT ON register.major_incident_decisions TO register_writer;
               GRANT USAGE ON SEQUENCE register.major_incident_decisions_decision_id_seq TO register_writer;
               SQL
-          securityContext: *locked
+          securityContext: &locked
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
           volumeMounts:
             - { name: tmp, mountPath: /tmp }
       containers:
@@ -178,11 +161,10 @@ spec:
             - { name: data, mountPath: /data }
             - { name: tmp, mountPath: /tmp }
         - name: worker
-          image: {{ .Values.agency.pythonImage }}
+          image: {{ .Values.agency.workflows.image }}
           command: ["python", "/app/worker.py"]
           workingDir: /app
           env:
-            - { name: PYTHONPATH, value: "/pylib:/app" }
             - { name: PYTHONDONTWRITEBYTECODE, value: "1" }
             - { name: HOME, value: /tmp }
             - { name: TEMPORAL_ADDRESS, value: "localhost:7233" }
@@ -204,16 +186,13 @@ spec:
             requests: { cpu: 100m, memory: 160Mi }
             limits: { memory: 384Mi }
           volumeMounts: &mounts
-            - { name: src, mountPath: /app, readOnly: true }
-            - { name: pylib, mountPath: /pylib, readOnly: true }
             - { name: data, mountPath: /data }
             - { name: tmp, mountPath: /tmp }
         - name: gateway
-          image: {{ .Values.agency.pythonImage }}
+          image: {{ .Values.agency.workflows.image }}
           command: ["python", "/app/gateway.py"]
           workingDir: /app
           env:
-            - { name: PYTHONPATH, value: "/pylib:/app" }
             - { name: PYTHONDONTWRITEBYTECODE, value: "1" }
             - { name: HOME, value: /tmp }
             - { name: TEMPORAL_ADDRESS, value: "localhost:7233" }
@@ -235,11 +214,6 @@ spec:
             limits: { memory: 160Mi }
           volumeMounts: *mounts
       volumes:
-        - name: src
-          configMap:
-            name: {{ $fullname }}-agency-workflows-src
-        - name: pylib
-          emptyDir: {}
         - name: tmp
           emptyDir: {}
         - name: data

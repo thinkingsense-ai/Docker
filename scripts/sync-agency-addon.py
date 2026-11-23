@@ -19,20 +19,6 @@ CHARTS = {
 DATA = [("seed-rca-postgres.sql", "demos/it-risk-rca/seed-rca-postgres.sql"), ("seed-estate-postgres.sql", "demos/it-risk-estate/seed-estate-postgres.sql"), ("seed-register-postgres.sql", "demos/it-risk-register/seed-register-postgres.sql"),
         ("demo-questions-rca.json", "demos/it-risk-rca/demo-questions-rca.json"), ("demo-questions-estate.json", "demos/it-risk-estate/demo-questions-estate.json"),
         ("demo-questions-priorities.json", "demos/it-risk-estate/demo-questions-priorities.json"), ("demo-questions-register.json", "demos/it-risk-register/demo-questions-register.json")]
-def closure(start):
-    """The local .py files the worker and the gateway import (so the list cannot go stale), plus the workflow manifest."""
-    import ast
-    src = os.path.join(ROOT, "demos/payment-workflow"); seen, todo = set(), list(start)
-    while todo:
-        f = todo.pop()
-        if f in seen: continue
-        seen.add(f)
-        for n in ast.walk(ast.parse(open(os.path.join(src, f)).read())):
-            names = [a.name for a in n.names] if isinstance(n, ast.Import) else ([n.module] if isinstance(n, ast.ImportFrom) and n.module else [])
-            for m in names:
-                m = m.split(".")[0] + ".py"
-                if os.path.exists(os.path.join(src, m)): todo.append(m)
-    return sorted(seen) + ["manifest.gateway.json"]
 def values(annotations):
     ann = "".join('      %s: "%s"\n' % (k, v) for k, v in annotations.items())
     return '''
@@ -59,6 +45,8 @@ agency:
   # omnigate.adminApiToken; excludes paymentWorkflow.gateway. Write-back is a dry run; recommendations come from the rules unless set to "model" (then omnigate.llmApiKey is used).
   workflows:
     enabled: false
+    # Built from demos/payment-workflow/Dockerfile by the Build Agency image workflow (the code, the Temporal SDK and the psql client).
+    image: ghcr.io/thinkingsense-ai/omnigate-agency-workflows:0.1.0
     writeBack: dry-run
     recommendations: rules-only
     approvalTimeoutMinutes: 2880
@@ -74,6 +62,8 @@ WF = '''  # Commercial edition only. The Agency workflows (incident brief, vulne
   # omnigate.adminApiToken; excludes paymentWorkflow.gateway. Write-back is a dry run; recommendations come from the rules unless set to "model" (then omnigate.llmApiKey is used).
   workflows:
     enabled: false
+    # Built from demos/payment-workflow/Dockerfile by the Build Agency image workflow (the code, the Temporal SDK and the psql client).
+    image: ghcr.io/thinkingsense-ai/omnigate-agency-workflows:0.1.0
     writeBack: dry-run
     recommendations: rules-only
     approvalTimeoutMinutes: 2880
@@ -87,20 +77,30 @@ def main(check):
     tpl = open(os.path.join(ROOT, "agency/chart/agency.yaml"), "rb").read()
     for chart, ann in CHARTS.items():
         base = os.path.join(ROOT, chart)
-        wf = [(os.path.join(base, "files/agency-workflows", f), open(os.path.join(ROOT, "demos/payment-workflow", f), "rb").read()) for f in closure(["worker.py", "gateway.py"])]
+        wf = [(os.path.join(base, "files/agency-workflows", f), open(os.path.join(ROOT, "demos/payment-workflow", f), "rb").read()) for f in ["manifest.gateway.json"]]
         jobs = wf + [(os.path.join(base, "templates/agency-workflows.yaml"), open(os.path.join(ROOT, "agency/chart/agency-workflows.yaml"), "rb").read()), (os.path.join(base, "templates/_agency.tpl"), open(os.path.join(ROOT, "agency/chart/_agency.tpl"), "rb").read())] + [(os.path.join(base, "templates/agency.yaml"), tpl), (os.path.join(base, "templates/agency-bootstrap.yaml"), open(os.path.join(ROOT, "agency/chart/agency-bootstrap.yaml"), "rb").read())] + [(os.path.join(base, "files", n), open(os.path.join(ROOT, src), "rb").read()) for n, src in DATA]
         for path, content in jobs:
             if not want(path, content):
                 bad.append(os.path.relpath(path, ROOT))
                 if not check:
                     os.makedirs(os.path.dirname(path), exist_ok=True); open(path, "wb").write(content)
+        wdir = os.path.join(base, "files/agency-workflows")
+        for f in (sorted(os.listdir(wdir)) if os.path.isdir(wdir) else []):
+            if f != "manifest.gateway.json":
+                bad.append(os.path.relpath(os.path.join(wdir, f), ROOT) + " (the workflow code now ships as an image)")
+                if not check: os.remove(os.path.join(wdir, f))
         stale = os.path.join(base, "files/agency")
         if os.path.isdir(stale):
             bad.append(os.path.relpath(stale, ROOT) + " (the layer's code now ships as an image)")
             if not check:
                 import shutil; shutil.rmtree(stale)
         vp = os.path.join(base, "values.yaml"); v = open(vp).read()
-        if "\nagency:\n" in v and "\n  image: ghcr.io/thinkingsense-ai/omnigate-agency" not in v:
+        if "\n  workflows:\n    enabled: false" in v and "omnigate-agency-workflows" not in v:
+            bad.append(os.path.relpath(vp, ROOT))
+            if not check:
+                v = v.replace("\n  workflows:\n    enabled: false\n", "\n  workflows:\n    enabled: false\n    # Built from demos/payment-workflow/Dockerfile by the Build Agency image workflow (the code, the Temporal SDK and the psql client).\n    image: ghcr.io/thinkingsense-ai/omnigate-agency-workflows:0.1.0\n", 1)
+                open(vp, "w").write(v)
+        if "\nagency:\n" in v and "\n  image: ghcr.io/thinkingsense-ai/omnigate-agency:" not in v:
             bad.append(os.path.relpath(vp, ROOT))
             if not check:
                 assert "\n  pythonImage: docker.io/library/python:3.12-slim" in v, vp

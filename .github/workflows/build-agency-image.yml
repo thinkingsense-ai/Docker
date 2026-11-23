@@ -1,4 +1,5 @@
-# Builds the Agency image (the thinking layer and the built UI: addons/thinking-layer/Dockerfile) and publishes it to ghcr, which is public and needs no secret beyond the
+# Builds the two Agency images and publishes them to ghcr: `omnigate-agency` (the thinking layer and the built UI: addons/thinking-layer/Dockerfile) and `omnigate-agency-workflows`
+# (the workflow worker and gateway with the Temporal SDK and the psql client: demos/payment-workflow/Dockerfile), which is public and needs no secret beyond the
 # workflow's own token. The cloud stacks run it as `agency.image`. It is not tied to an app release: run it by hand, or push a tag `agency-image-vX.Y.Z`.
 #   Actions > Build Agency image > Run workflow (tag: 0.1.1, push on), or: git tag agency-image-v0.1.1 && git push origin agency-image-v0.1.1
 # Multi-architecture (amd64 and arm64: the stacks run on Graviton, Ampere and x86 nodes). After the FIRST publish, set the package's visibility to Public once (Packages >
@@ -22,12 +23,14 @@ permissions:
   contents: read
   packages: write
 
-env:
-  IMAGE: ghcr.io/thinkingsense-ai/omnigate-agency
-
 jobs:
   build:
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - { image: ghcr.io/thinkingsense-ai/omnigate-agency, context: ., file: addons/thinking-layer/Dockerfile }
+          - { image: ghcr.io/thinkingsense-ai/omnigate-agency-workflows, context: demos/payment-workflow, file: demos/payment-workflow/Dockerfile }
     steps:
       - uses: actions/checkout@v4
       - name: Work out the tag
@@ -54,16 +57,17 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: addons/thinking-layer/Dockerfile
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
           platforms: linux/amd64,linux/arm64
           push: ${{ steps.vars.outputs.push == 'true' }}
-          tags: ${{ env.IMAGE }}:${{ steps.vars.outputs.tag }}
+          tags: ${{ matrix.image }}:${{ steps.vars.outputs.tag }}
       - name: Digest to pin
         if: steps.vars.outputs.push == 'true'
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
+          IMAGE: ${{ matrix.image }}
           TAG: ${{ steps.vars.outputs.tag }}
         run: |
           echo "### Agency image published" >> "$GITHUB_STEP_SUMMARY"
-          echo "\`$IMAGE:$TAG\` digest \`$DIGEST\`: set \`agency.image: $IMAGE@$DIGEST\` in the stack charts' values (scripts/sync-agency-addon.py), then run the stack's clean-room." >> "$GITHUB_STEP_SUMMARY"
+          echo "\`$IMAGE:$TAG\` digest \`$DIGEST\`: pin it in the stack charts values (agency.image for omnigate-agency, agency.workflows.image for omnigate-agency-workflows) with scripts/sync-agency-addon.py, then run the stack clean-room." >> "$GITHUB_STEP_SUMMARY"

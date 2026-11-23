@@ -50,6 +50,7 @@ Metadata:
           - InstallAgency
           - AgencyWorkflows
           - AgencyImage
+          - AgencyWorkflowsImage
       - Label:
           default: "NL2SQL (needed to use the Ask app)"
         Parameters:
@@ -106,6 +107,8 @@ Metadata:
         default: "Agency workflows (commercial edition)"
       AgencyImage:
         default: "Agency image (optional)"
+      AgencyWorkflowsImage:
+        default: "Agency workflows image (optional)"
       OmnigateLlmApiKey:
         default: "Anthropic API key"
       ClusterName:
@@ -207,16 +210,20 @@ Parameters:
     Type: String
     Default: "false"
     AllowedValues: ["false", "true"]
-    Description: "Install Agency, the second front end, beside the Ask app: a risk-management screen set (watch, exposure, priorities, notifications, problem records) with its own address and the same sign-in. It adds the IT-risk investigation data (schemas rca, estate and register, 39 approved questions with the IT-risk pack), the embedding model, and Workspaces. It needs about 1 GiB more memory than the Ask app alone: use a node size of 8 GiB or more."
+    Description: "Install Agency, a second front end for risk management, beside the Ask app: own address, same sign-in, plus the IT-risk investigation data. Needs about 1 GiB more memory (use 8 GiB nodes or more)."
   AgencyWorkflows:
     Type: String
     Default: "false"
     AllowedValues: ["false", "true"]
-    Description: "Commercial edition only, and only with Agency installed: run the Agency workflows (incident brief, vulnerability exception, risk assessment, major-incident decision) behind the app's workflow API. Needs the Commercial licence above and the Admin API token. Nothing is ever sent to a real system: write-back is a dry run."
+    Description: "Commercial edition only, with Agency: run the Agency workflows behind the app's workflow API. Needs the licence and the Admin API token. Write-back is a dry run."
   AgencyImage:
     Type: String
     Default: ""
-    Description: "Optional. The image Agency runs from. Blank = the one this release names (ghcr.io/thinkingsense-ai/omnigate-agency). Set it to run your own build or a mirror in your own registry, for example in an air-gapped account."
+    Description: "Optional. Image Agency runs from; blank = the one this release names (ghcr.io/thinkingsense-ai/omnigate-agency). Set it for your own build or a mirror."
+  AgencyWorkflowsImage:
+    Type: String
+    Default: ""
+    Description: "Optional. Image the Agency workflow pod runs from (commercial only); blank = ghcr.io/thinkingsense-ai/omnigate-agency-workflows. Set it for your own build or a mirror."
   OmnigateLlmApiKey:
     Type: String
     NoEcho: true
@@ -994,6 +1001,7 @@ Resources:
       InstallAgency: !Ref InstallAgency
       AgencyWorkflows: !Ref AgencyWorkflows
       AgencyImage: !Ref AgencyImage
+      AgencyWorkflowsImage: !Ref AgencyWorkflowsImage
       LlmApiKey: !Ref OmnigateLlmApiKey
 
   # ============================== Final security-group sweep ==============================

@@ -257,6 +257,8 @@ agency:
   # omnigate.adminApiToken; excludes paymentWorkflow.gateway. Write-back is a dry run; recommendations come from the rules unless set to "model" (then omnigate.llmApiKey is used).
   workflows:
     enabled: false
+    # Built from demos/payment-workflow/Dockerfile by the Build Agency image workflow (the code, the Temporal SDK and the psql client).
+    image: ghcr.io/thinkingsense-ai/omnigate-agency-workflows:0.1.0
     writeBack: dry-run
     recommendations: rules-only
     approvalTimeoutMinutes: 2880
