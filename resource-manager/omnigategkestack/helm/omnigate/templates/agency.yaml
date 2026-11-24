@@ -7,9 +7,33 @@
 #
 # The layer holds nothing but sessions in memory. It signs people in with the app's own business-user logins (it keeps no passwords), asks the app's internal address, and lets
 # the app decide who may see what. It is a client of the released app: nothing from the app's source is copied.
-#   - Public address: its own Service (type from agency.service.type, same allowed client addresses as the Ask app), on port agency.service.port.
+#   - Public address: its own Service (type from agency.service.type, same allowed client addresses as the Ask app), on port agency.service.port. HTTPS by default (agency.tls.enabled):
+#     like the Ask app it uses a self-signed certificate made at install (kept across upgrades), so browsers warn until you supply your own (agency.tls.secretName names a kubernetes.io/tls Secret).
 #   - A restart signs everyone out (sessions, uploads and preferences are in memory).
 #   - Workflow screens need the commercial edition and the workflow engine (agency.workflows); on the free edition the layer reports workflows as off and the screens stay hidden.
+{{- $tlsSecret := .Values.agency.tls.secretName | default (printf "%s-agency-tls" $fullname) }}
+{{- if and .Values.agency.tls.enabled (not .Values.agency.tls.secretName) }}
+{{- $old := lookup "v1" "Secret" .Release.Namespace $tlsSecret }}
+{{- $crt := "" }}{{- $key := "" }}
+{{- if and $old $old.data (hasKey $old.data "tls.crt") }}
+{{- $crt = index $old.data "tls.crt" }}{{- $key = index $old.data "tls.key" }}
+{{- else }}
+{{- $cert := genSelfSignedCert "agency" nil (list "agency" (printf "%s-agency" $fullname)) 3650 }}
+{{- $crt = $cert.Cert | b64enc }}{{- $key = $cert.Key | b64enc }}
+{{- end }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $tlsSecret }}
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agency
+type: kubernetes.io/tls
+data:
+  tls.crt: {{ $crt }}
+  tls.key: {{ $key }}
+---
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -56,16 +80,20 @@ spec:
             - { name: AGENCY_PUBLIC_URL, value: {{ .Values.agency.publicUrl | quote }} }
             - { name: AGENCY_ADMIN_URL, value: {{ .Values.agency.adminUrl | quote }} }
             - { name: AGENCY_SCOPE_HINT, value: "off" }
+{{- if .Values.agency.tls.enabled }}
+            - { name: AGENCY_TLS_CERT, value: /etc/agency-tls/tls.crt }
+            - { name: AGENCY_TLS_KEY, value: /etc/agency-tls/tls.key }
+{{- end }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
           readinessProbe:
-            httpGet: { path: /health, port: http }
+            httpGet: { path: /health, port: http, scheme: {{ ternary "HTTPS" "HTTP" .Values.agency.tls.enabled }} }
             periodSeconds: 10
           livenessProbe:
-            httpGet: { path: /health, port: http }
+            httpGet: { path: /health, port: http, scheme: {{ ternary "HTTPS" "HTTP" .Values.agency.tls.enabled }} }
             initialDelaySeconds: 15
             periodSeconds: 20
           resources:
@@ -73,9 +101,16 @@ spec:
             limits: { memory: 256Mi }
           volumeMounts:
             - { name: tmp, mountPath: /tmp }
+{{- if .Values.agency.tls.enabled }}
+            - { name: tls, mountPath: /etc/agency-tls, readOnly: true }
+{{- end }}
       volumes:
         - name: tmp
           emptyDir: { sizeLimit: 64Mi }
+{{- if .Values.agency.tls.enabled }}
+        - name: tls
+          secret: { secretName: {{ $tlsSecret }} }
+{{- end }}
 ---
 apiVersion: v1
 kind: Service

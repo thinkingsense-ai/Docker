@@ -177,7 +177,7 @@ moves nothing until the pins are bumped and the stacks are re-released):
 1. Merge the pin PR ("Bump pins to vX.Y.Z", opened by the Build images workflow) after the clean-room checks.
    Also run the Agency add-on checks, which fail if a chart copy or the built UI has drifted from its source:
    `scripts/sync-agency-addon.py --check` (the four charts; it also checks `agency/chart/web.tgz` against `agency/web`, rebuild with `scripts/agency_bundle.py build`),
-   `python3 -m unittest discover -s packs` and `python3 agency/chart/tests/test_bootstrap.py` (needs helm), and the AWS deployer's `python3 resource-manager/omnigateeksstack/helm-deployer-lambda/test_handler.py`.
+   `python3 -m unittest discover -s packs`, `python3 agency/chart/tests/test_bootstrap.py`, `test_values.py` and `test_release_size.py` (each needs helm), and the AWS deployer's `python3 resource-manager/omnigateeksstack/helm-deployer-lambda/test_handler.py`.
    After a clean-room deploy with Agency on, run `scripts/verify-agency.sh <agency-url> <user> <password>`.
 2. **Move the self-pins** to the stack release about to be cut, in one PR per stack, and merge it **before tagging**:
    `scripts/version-pins.py bump-self eks vX.Y.Z` (the EKS template's `Release.Current.Tag`, which is what CodeBuild checks out to build the

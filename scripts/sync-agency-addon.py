@@ -19,6 +19,9 @@ CHARTS = {
 DATA = [("seed-rca-postgres.sql", "demos/it-risk-rca/seed-rca-postgres.sql"), ("seed-estate-postgres.sql", "demos/it-risk-estate/seed-estate-postgres.sql"), ("seed-register-postgres.sql", "demos/it-risk-register/seed-register-postgres.sql"),
         ("demo-questions-rca.json", "demos/it-risk-rca/demo-questions-rca.json"), ("demo-questions-estate.json", "demos/it-risk-estate/demo-questions-estate.json"),
         ("demo-questions-priorities.json", "demos/it-risk-estate/demo-questions-priorities.json"), ("demo-questions-register.json", "demos/it-risk-register/demo-questions-register.json")]
+# The published images, pinned by digest (Build Agency image run 45315200946, tag 0.1.0, built from addons/thinking-layer and demos/payment-workflow). Update both after each publish.
+AGENCY_IMAGE = "us-docker.pkg.dev/thinkingsense/omnigate/agency:0.1.0@sha256:e9a4a935d6de757f7874d8ae67309315b90a817c52e806b709a4c08340cd41a9"
+WORKFLOWS_IMAGE = "us-docker.pkg.dev/thinkingsense/omnigate/agency-workflows:0.1.0@sha256:b32011cd5f9ebdbdf8b4e449cb43f97c3475f5b433457e256656df6bbb51d60f"
 def values(annotations):
     ann = "".join('      %s: "%s"\n' % (k, v) for k, v in annotations.items())
     return '''
@@ -29,7 +32,11 @@ agency:
   enabled: false
   pythonImage: docker.io/library/python:3.12-slim   # the bootstrap Job and the workflow pod run on this
   # The Agency image (addons/thinking-layer/Dockerfile: the layer and the built UI), built by the Build images workflow.
-  image: ghcr.io/thinkingsense-ai/omnigate-agency:0.1.0
+  image: @AGENCY_IMAGE@
+  # HTTPS for Agency, like the Ask app: a self-signed certificate is made at install (and kept across upgrades) unless secretName names your own kubernetes.io/tls Secret.
+  tls:
+    enabled: true
+    secretName: ""
   # Where browsers reach Agency (needed only for single sign-on: the provider returns here). Leave empty otherwise.
   publicUrl: ""
   # Optional link shown in the header to the admin console (a convenience, not a control: the console has its own sign-in).
@@ -46,7 +53,7 @@ agency:
   workflows:
     enabled: false
     # Built from demos/payment-workflow/Dockerfile by the Build Agency image workflow (the code, the Temporal SDK and the psql client).
-    image: ghcr.io/thinkingsense-ai/omnigate-agency-workflows:0.1.0
+    image: @WORKFLOWS_IMAGE@
     writeBack: dry-run
     recommendations: rules-only
     approvalTimeoutMinutes: 2880
@@ -56,14 +63,14 @@ agency:
   service:
     type: LoadBalancer
     port: 8097
-    annotations:%s''' % ((" {}\n" if not ann else "\n" + ann))
-WF = '''  # Commercial edition only. The Agency workflows (incident brief, vulnerability exception, risk assessment, major-incident decision; the payment exception too with the Treasury pack)
+    annotations:%s'''.replace("@AGENCY_IMAGE@", AGENCY_IMAGE).replace("@WORKFLOWS_IMAGE@", WORKFLOWS_IMAGE) % ((" {}\n" if not ann else "\n" + ann))
+WF_RAW = '''  # Commercial edition only. The Agency workflows (incident brief, vulnerability exception, risk assessment, major-incident decision; the payment exception too with the Treasury pack)
   # behind the app's own workflow API: one pod with a Temporal dev server, the worker and the gateway. Needs agency.enabled, the agency-risk pack, a signed licence and
   # omnigate.adminApiToken; excludes paymentWorkflow.gateway. Write-back is a dry run; recommendations come from the rules unless set to "model" (then omnigate.llmApiKey is used).
   workflows:
     enabled: false
     # Built from demos/payment-workflow/Dockerfile by the Build Agency image workflow (the code, the Temporal SDK and the psql client).
-    image: ghcr.io/thinkingsense-ai/omnigate-agency-workflows:0.1.0
+    image: @WORKFLOWS_IMAGE@
     writeBack: dry-run
     recommendations: rules-only
     approvalTimeoutMinutes: 2880
@@ -71,6 +78,7 @@ WF = '''  # Commercial edition only. The Agency workflows (incident brief, vulne
     gatewayToken: ""            # empty derives one from omnigate.adminApiToken
     registerWriterPassword: ""  # empty derives one from omnigate.adminApiToken
 '''
+WF = WF_RAW.replace("@WORKFLOWS_IMAGE@", WORKFLOWS_IMAGE)
 def want(path, content): return os.path.exists(path) and open(path, "rb").read() == content
 def main(check):
     bad = []
@@ -95,16 +103,22 @@ def main(check):
             if not check:
                 import shutil; shutil.rmtree(stale)
         vp = os.path.join(base, "values.yaml"); v = open(vp).read()
-        if "\n  workflows:\n    enabled: false" in v and "omnigate-agency-workflows" not in v:
+        if "\nagency:\n" in v and "\n  tls:\n    enabled" not in v.split("\nagency:\n", 1)[1]:
             bad.append(os.path.relpath(vp, ROOT))
             if not check:
-                v = v.replace("\n  workflows:\n    enabled: false\n", "\n  workflows:\n    enabled: false\n    # Built from demos/payment-workflow/Dockerfile by the Build Agency image workflow (the code, the Temporal SDK and the psql client).\n    image: ghcr.io/thinkingsense-ai/omnigate-agency-workflows:0.1.0\n", 1)
+                assert "\n  # Where browsers reach Agency" in v, vp
+                v = v.replace("\n  # Where browsers reach Agency", "\n  # HTTPS for Agency, like the Ask app: a self-signed certificate is made at install (and kept across upgrades) unless secretName names your own kubernetes.io/tls Secret.\n  tls:\n    enabled: true\n    secretName: \"\"\n  # Where browsers reach Agency", 1)
                 open(vp, "w").write(v)
-        if "\nagency:\n" in v and "\n  image: ghcr.io/thinkingsense-ai/omnigate-agency:" not in v:
+        if "\n  workflows:\n    enabled: false" in v and "omnigate-agency-workflows" not in v and "omnigate/agency-workflows" not in v:
+            bad.append(os.path.relpath(vp, ROOT))
+            if not check:
+                v = v.replace("\n  workflows:\n    enabled: false\n", "\n  workflows:\n    enabled: false\n    # Built from demos/payment-workflow/Dockerfile by the Build Agency image workflow (the code, the Temporal SDK and the psql client).\n    image: us-docker.pkg.dev/thinkingsense/omnigate/agency-workflows:0.1.0\n", 1)
+                open(vp, "w").write(v)
+        if "\nagency:\n" in v and "\n  image: us-docker.pkg.dev/thinkingsense/omnigate/agency:" not in v:
             bad.append(os.path.relpath(vp, ROOT))
             if not check:
                 assert "\n  pythonImage: docker.io/library/python:3.12-slim" in v, vp
-                v = v.replace("\n  pythonImage: docker.io/library/python:3.12-slim", "\n  pythonImage: docker.io/library/python:3.12-slim   # the bootstrap Job and the workflow pod run on this\n  # The Agency image (addons/thinking-layer/Dockerfile: the layer and the built UI), built by the Build images workflow.\n  image: ghcr.io/thinkingsense-ai/omnigate-agency:0.1.0", 1)
+                v = v.replace("\n  pythonImage: docker.io/library/python:3.12-slim", "\n  pythonImage: docker.io/library/python:3.12-slim   # the bootstrap Job and the workflow pod run on this\n  # The Agency image (addons/thinking-layer/Dockerfile: the layer and the built UI), built by the Build images workflow.\n  image: us-docker.pkg.dev/thinkingsense/omnigate/agency:0.1.0", 1)
                 open(vp, "w").write(v)
         if "\nagency:\n" not in v:
             bad.append(os.path.relpath(vp, ROOT))
@@ -121,6 +135,25 @@ def main(check):
                 new = block[block.index("  # After install and upgrade"):block.index("  service:")]
                 assert '  adminUrl: ""\n  service:' in v, vp
                 open(vp, "w").write(v.replace('  adminUrl: ""\n  service:', '  adminUrl: ""\n' + new + "  service:", 1))
+    import re
+    for chart in CHARTS:
+        vp = os.path.join(ROOT, chart, "values.yaml"); v = open(vp).read()
+        # The Agency image keys belong to the agency block, and only there. An earlier version of this script put them after the FIRST `pythonImage:` line, which is the paymentWorkflow block's:
+        # repair that, then make sure the agency block has its own `image:`.
+        head, sep, tail = v.partition("\nagency:\n")
+        fixed = re.sub(r"(?m)^  pythonImage: docker\.io/library/python:3\.12-slim[^\n]*\n(?:  # The Agency image[^\n]*\n  image: [^\n]*\n)+", "  pythonImage: docker.io/library/python:3.12-slim\n", head)
+        if sep and not re.search(r"(?m)^  image: ", tail.split("\n  workflows:\n", 1)[0]):
+            tail = tail.replace("  pythonImage: docker.io/library/python:3.12-slim\n", "  pythonImage: docker.io/library/python:3.12-slim   # the bootstrap Job and the workflow pod run on this\n  # The Agency image (addons/thinking-layer/Dockerfile: the layer and the built UI), built by the Build Agency image workflow.\n  image: " + AGENCY_IMAGE + "\n", 1)
+        tail = re.sub(r"(    # Built from demos/payment-workflow[^\n]*\n    image: [^\n]*\n)\1+", r"\1", tail)          # an earlier run of this script could add the pair twice
+        if fixed + sep + tail != v:
+            bad.append(os.path.relpath(vp, ROOT) + " (agency image placement)")
+            if not check: open(vp, "w").write(fixed + sep + tail)
+        v = fixed + sep + tail if not check else v
+        n = re.sub(r"(?m)^  image: (?:ghcr\.io/thinkingsense-ai/omnigate-agency|us-docker\.pkg\.dev/thinkingsense/omnigate/agency)[:@]\S+$", "  image: " + AGENCY_IMAGE, v)
+        n = re.sub(r"(?m)^    image: (?:ghcr\.io/thinkingsense-ai/omnigate-agency-workflows|us-docker\.pkg\.dev/thinkingsense/omnigate/agency-workflows)[:@]\S+$", "    image: " + WORKFLOWS_IMAGE, n)
+        if n != v:
+            bad.append(os.path.relpath(vp, ROOT) + " (image pins)")
+            if not check: open(vp, "w").write(n)
     if check:
         print("out of date:\n  " + "\n  ".join(bad) if bad else "the four charts are in sync"); return 1 if bad else 0
     print("updated %d files" % len(bad)); return 0

@@ -225,7 +225,7 @@ Since app v0.10.5 the Ask app's agent endpoint (`/mcp/agent`) needs the admin AP
 
 ## Agency (optional)
 
-**Install Agency beside the Ask app** (CloudFormation parameter `InstallAgency`, default false) adds Agency, a second front end for risk management, with its own load balancer address and the same sign-in, plus the IT-risk investigation data (schemas `rca`, `estate`, `register`), the embedding model and Workspaces. It needs about 1 GiB more memory than the Ask app alone, so use a node type with 8 GiB or more. `AgencyWorkflows` (default false) is for the commercial edition only. Details and limits: `agency/chart/README.md` in the repository; check a deployment with `scripts/verify-agency.sh`.
+**Install Agency beside the Ask app** (CloudFormation parameter `InstallAgency`, default false) adds Agency, a second front end for risk management, with its own load balancer address and the same sign-in, plus the IT-risk investigation data (schemas `rca`, `estate`, `register`), the embedding model and Workspaces. It needs about 1 GiB more memory than the Ask app alone, so use a node type with 8 GiB or more. `AgencyWorkflows` (default false) is for the commercial edition only. Details and limits: `agency/chart/README.md` in the repository; check a deployment with `scripts/verify-agency.sh`. A demo of two-person approvals needs more logins than the form creates: `scripts/agency-users.py` adds them (see "Operating notes" in `agency/chart/README.md`, which also explains why loading Workspaces empties the app's Default Workspace).
 
 ## Publishing a release (maintainers)
 

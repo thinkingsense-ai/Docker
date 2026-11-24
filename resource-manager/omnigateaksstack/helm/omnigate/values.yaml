@@ -219,9 +219,7 @@ configEncryption:
 # ConfigMap and runs on the stock python image; the Temporal SDK is installed from PyPI when the pod starts. Nothing is ever written to a real ERP.
 paymentWorkflow:
   enabled: false
-  pythonImage: docker.io/library/python:3.12-slim   # the bootstrap Job and the workflow pod run on this
-  # The Agency image (addons/thinking-layer/Dockerfile: the layer and the built UI), built by the Build images workflow.
-  image: ghcr.io/thinkingsense-ai/omnigate-agency:0.1.0
+  pythonImage: docker.io/library/python:3.12-slim
   # Temporal CLI image (its dev server), v1.5.1, pinned by digest.
   temporalImage: docker.io/temporalio/temporal@sha256:597a5dbbcc6e7716b326dde4a51622d5ea0879eb0cf06ff8a94381361d0a987d
   temporalSdkVersion: "1.30.0"
@@ -241,7 +239,13 @@ paymentWorkflow:
 # It gets its own public Service (the same allowed client addresses as the Ask app apply). The workflow screens need the commercial edition and the workflow engine (not wired here yet).
 agency:
   enabled: false
-  pythonImage: docker.io/library/python:3.12-slim
+  pythonImage: docker.io/library/python:3.12-slim   # the bootstrap Job and the workflow pod run on this
+  # The Agency image (addons/thinking-layer/Dockerfile: the layer and the built UI), built by the Build Agency image workflow.
+  image: us-docker.pkg.dev/thinkingsense/omnigate/agency:0.1.0@sha256:e9a4a935d6de757f7874d8ae67309315b90a817c52e806b709a4c08340cd41a9
+  # HTTPS for Agency, like the Ask app: a self-signed certificate is made at install (and kept across upgrades) unless secretName names your own kubernetes.io/tls Secret.
+  tls:
+    enabled: true
+    secretName: ""
   # Where browsers reach Agency (needed only for single sign-on: the provider returns here). Leave empty otherwise.
   publicUrl: ""
   # Optional link shown in the header to the admin console (a convenience, not a control: the console has its own sign-in).
@@ -258,7 +262,7 @@ agency:
   workflows:
     enabled: false
     # Built from demos/payment-workflow/Dockerfile by the Build Agency image workflow (the code, the Temporal SDK and the psql client).
-    image: ghcr.io/thinkingsense-ai/omnigate-agency-workflows:0.1.0
+    image: us-docker.pkg.dev/thinkingsense/omnigate/agency-workflows:0.1.0@sha256:b32011cd5f9ebdbdf8b4e449cb43f97c3475f5b433457e256656df6bbb51d60f
     writeBack: dry-run
     recommendations: rules-only
     approvalTimeoutMinutes: 2880

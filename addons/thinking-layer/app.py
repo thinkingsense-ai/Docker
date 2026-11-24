@@ -382,7 +382,7 @@ class H(BaseHTTPRequestHandler):
             try: SERVER.json("POST", "/app/logout", retire[1].cookie)
             except (OSError, Unauthorized): pass
             SESSIONS.pop(retire[0], None)
-        self.send(200, {"success": True, "username": u}, [("Set-Cookie", "%s=%s; Path=/; HttpOnly; SameSite=Strict; Max-Age=%d" % (COOKIE, token, int(SESSION_SECONDS)))])
+        self.send(200, {"success": True, "username": u}, [("Set-Cookie", "%s=%s; Path=/; HttpOnly; SameSite=Strict; Max-Age=%d%s" % (COOKIE, token, int(SESSION_SECONDS), SECURE))])
 
     # -- single sign-on: the Server's own OIDC redirect, relayed. The Server sets its session cookie on whoever finishes the callback, so the layer finishes it (the provider returns
     # to AGENCY_PUBLIC_URL + /app/oidc/callback, which must be registered with the provider) and keeps that cookie, as it does after a password sign-in. ------------------------
@@ -434,7 +434,7 @@ class H(BaseHTTPRequestHandler):
         try: token = new_session(name, cookie)
         except RuntimeError: return self.redirect("/?sso=failed", [gone])
         threading.Thread(target=prefetch_starters, args=(SESSIONS[token],), daemon=True).start()
-        self.redirect("/", [gone, "%s=%s; Path=/; HttpOnly; SameSite=Strict; Max-Age=%d" % (COOKIE, token, int(SESSION_SECONDS))])
+        self.redirect("/", [gone, "%s=%s; Path=/; HttpOnly; SameSite=Strict; Max-Age=%d%s" % (COOKIE, token, int(SESSION_SECONDS), SECURE)])
 
     def logout(self):
         t, s = self.session()
@@ -692,7 +692,25 @@ class H(BaseHTTPRequestHandler):
 
 
 def main():
-    load_prefs(); port = int(os.environ.get("PORT", "8097")); ThreadingHTTPServer(("0.0.0.0", port), H).serve_forever()
+    load_prefs(); port = int(os.environ.get("PORT", "8097")); make_server(port).serve_forever()
 
+
+
+TLS_CERT, TLS_KEY = os.environ.get("AGENCY_TLS_CERT", "").strip(), os.environ.get("AGENCY_TLS_KEY", "").strip()
+SECURE = "; Secure" if TLS_CERT and TLS_KEY else ""                  # a session cookie travels over HTTPS only when the layer itself serves HTTPS
+
+
+def make_server(port):
+    """The HTTP server; with AGENCY_TLS_CERT and AGENCY_TLS_KEY set it serves HTTPS (TLS 1.2 or later). Each connection is wrapped without handshaking, so the handshake runs in that connection's
+    own thread: a client that stalls in it cannot block the accept loop."""
+    if not (TLS_CERT and TLS_KEY): return ThreadingHTTPServer(("0.0.0.0", port), H)
+    import ssl
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER); ctx.minimum_version = ssl.TLSVersion.TLSv1_2; ctx.load_cert_chain(TLS_CERT, TLS_KEY)
+
+    class TlsServer(ThreadingHTTPServer):
+        def get_request(self):
+            sock, addr = super().get_request(); sock.settimeout(30)
+            return ctx.wrap_socket(sock, server_side=True, do_handshake_on_connect=False), addr
+    return TlsServer(("0.0.0.0", port), H)
 
 if __name__ == "__main__": main()
