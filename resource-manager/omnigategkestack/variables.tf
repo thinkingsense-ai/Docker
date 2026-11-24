@@ -205,13 +205,13 @@ variable "tls_https_only" {
 }
 
 variable "agency_image" {
-  description = "Optional. The image Agency runs from. Blank = the one this release names (ghcr.io/thinkingsense-ai/omnigate-agency). Set it to run your own build or a mirror in your own registry."
+  description = "Optional. The image Agency runs from. Blank = the one this release names (us-docker.pkg.dev/thinkingsense/omnigate/agency). Set it to run your own build or a mirror in your own registry."
   type        = string
   default     = ""
 }
 
 variable "agency_workflows_image" {
-  description = "Optional. The image the Agency workflow worker and gateway run from (commercial edition only). Blank = the one this release names (ghcr.io/thinkingsense-ai/omnigate-agency-workflows)."
+  description = "Optional. The image the Agency workflow worker and gateway run from (commercial edition only). Blank = the one this release names (us-docker.pkg.dev/thinkingsense/omnigate/agency-workflows)."
   type        = string
   default     = ""
 }

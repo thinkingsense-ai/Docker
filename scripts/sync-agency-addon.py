@@ -20,8 +20,8 @@ DATA = [("seed-rca-postgres.sql", "demos/it-risk-rca/seed-rca-postgres.sql"), ("
         ("demo-questions-rca.json", "demos/it-risk-rca/demo-questions-rca.json"), ("demo-questions-estate.json", "demos/it-risk-estate/demo-questions-estate.json"),
         ("demo-questions-priorities.json", "demos/it-risk-estate/demo-questions-priorities.json"), ("demo-questions-register.json", "demos/it-risk-register/demo-questions-register.json")]
 # The published images, pinned by digest (Build Agency image run 45225608506, tag 0.1.0, built from addons/thinking-layer and demos/payment-workflow). Update both after each publish.
-AGENCY_IMAGE = "ghcr.io/thinkingsense-ai/omnigate-agency:0.1.0@sha256:e3c49b58dbbeb64c994e1c881838bbae1108e822ddb65b1672ded968d6cec41f"
-WORKFLOWS_IMAGE = "ghcr.io/thinkingsense-ai/omnigate-agency-workflows:0.1.0@sha256:bc28b2bd929c08b358235e3decc30a8ba420684403dcfc7a1695b0eb6cc90387"
+AGENCY_IMAGE = "us-docker.pkg.dev/thinkingsense/omnigate/agency:0.1.0@sha256:e3c49b58dbbeb64c994e1c881838bbae1108e822ddb65b1672ded968d6cec41f"
+WORKFLOWS_IMAGE = "us-docker.pkg.dev/thinkingsense/omnigate/agency-workflows:0.1.0@sha256:bc28b2bd929c08b358235e3decc30a8ba420684403dcfc7a1695b0eb6cc90387"
 def values(annotations):
     ann = "".join('      %s: "%s"\n' % (k, v) for k, v in annotations.items())
     return '''
@@ -112,13 +112,13 @@ def main(check):
         if "\n  workflows:\n    enabled: false" in v and "omnigate-agency-workflows" not in v:
             bad.append(os.path.relpath(vp, ROOT))
             if not check:
-                v = v.replace("\n  workflows:\n    enabled: false\n", "\n  workflows:\n    enabled: false\n    # Built from demos/payment-workflow/Dockerfile by the Build Agency image workflow (the code, the Temporal SDK and the psql client).\n    image: ghcr.io/thinkingsense-ai/omnigate-agency-workflows:0.1.0\n", 1)
+                v = v.replace("\n  workflows:\n    enabled: false\n", "\n  workflows:\n    enabled: false\n    # Built from demos/payment-workflow/Dockerfile by the Build Agency image workflow (the code, the Temporal SDK and the psql client).\n    image: us-docker.pkg.dev/thinkingsense/omnigate/agency-workflows:0.1.0\n", 1)
                 open(vp, "w").write(v)
-        if "\nagency:\n" in v and "\n  image: ghcr.io/thinkingsense-ai/omnigate-agency:" not in v:
+        if "\nagency:\n" in v and "\n  image: us-docker.pkg.dev/thinkingsense/omnigate/agency:" not in v:
             bad.append(os.path.relpath(vp, ROOT))
             if not check:
                 assert "\n  pythonImage: docker.io/library/python:3.12-slim" in v, vp
-                v = v.replace("\n  pythonImage: docker.io/library/python:3.12-slim", "\n  pythonImage: docker.io/library/python:3.12-slim   # the bootstrap Job and the workflow pod run on this\n  # The Agency image (addons/thinking-layer/Dockerfile: the layer and the built UI), built by the Build images workflow.\n  image: ghcr.io/thinkingsense-ai/omnigate-agency:0.1.0", 1)
+                v = v.replace("\n  pythonImage: docker.io/library/python:3.12-slim", "\n  pythonImage: docker.io/library/python:3.12-slim   # the bootstrap Job and the workflow pod run on this\n  # The Agency image (addons/thinking-layer/Dockerfile: the layer and the built UI), built by the Build images workflow.\n  image: us-docker.pkg.dev/thinkingsense/omnigate/agency:0.1.0", 1)
                 open(vp, "w").write(v)
         if "\nagency:\n" not in v:
             bad.append(os.path.relpath(vp, ROOT))
@@ -138,8 +138,8 @@ def main(check):
     import re
     for chart in CHARTS:
         vp = os.path.join(ROOT, chart, "values.yaml"); v = open(vp).read()
-        n = re.sub(r"(?m)^  image: ghcr\.io/thinkingsense-ai/omnigate-agency[:@]\S+$", "  image: " + AGENCY_IMAGE, v)
-        n = re.sub(r"(?m)^    image: ghcr\.io/thinkingsense-ai/omnigate-agency-workflows[:@]\S+$", "    image: " + WORKFLOWS_IMAGE, n)
+        n = re.sub(r"(?m)^  image: (?:ghcr\.io/thinkingsense-ai/omnigate-agency|us-docker\.pkg\.dev/thinkingsense/omnigate/agency)[:@]\S+$", "  image: " + AGENCY_IMAGE, v)
+        n = re.sub(r"(?m)^    image: (?:ghcr\.io/thinkingsense-ai/omnigate-agency-workflows|us-docker\.pkg\.dev/thinkingsense/omnigate/agency-workflows)[:@]\S+$", "    image: " + WORKFLOWS_IMAGE, n)
         if n != v:
             bad.append(os.path.relpath(vp, ROOT) + " (image pins)")
             if not check: open(vp, "w").write(n)

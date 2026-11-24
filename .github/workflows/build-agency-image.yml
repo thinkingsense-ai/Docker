@@ -1,9 +1,9 @@
-# Builds the two Agency images and publishes them to ghcr: `omnigate-agency` (the thinking layer and the built UI: addons/thinking-layer/Dockerfile) and `omnigate-agency-workflows`
+# Builds the two Agency images and publishes them to Google Artifact Registry (the public `omnigate` repository the app image already uses, so there is no visibility step): `agency` (the thinking layer and the built UI: addons/thinking-layer/Dockerfile) and `agency-workflows`
 # (the workflow worker and gateway with the Temporal SDK and the psql client: demos/payment-workflow/Dockerfile), which is public and needs no secret beyond the
 # workflow's own token. The cloud stacks run it as `agency.image`. It is not tied to an app release: run it by hand, or push a tag `agency-image-vX.Y.Z`.
 #   Actions > Build Agency image > Run workflow (tag: 0.1.1, push on), or: git tag agency-image-v0.1.1 && git push origin agency-image-v0.1.1
-# Multi-architecture (amd64 and arm64: the stacks run on Graviton, Ampere and x86 nodes). After the FIRST publish, set the package's visibility to Public once (Packages >
-# omnigate-agency > Package settings), or the clusters cannot pull it. The step summary prints the digest to pin in the charts' values (agency.image).
+# Multi-architecture (amd64 and arm64: the stacks run on Graviton, Ampere and x86 nodes). It needs the repository secret GAR_SERVICE_ACCOUNT_KEY that the Build images workflow uses (a service account
+# with Artifact Registry Writer on the omnigate repository). The step summary prints the digest to pin in the charts' values (agency.image, agency.workflows.image).
 name: Build Agency image
 
 on:
@@ -21,7 +21,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 jobs:
   build:
@@ -29,8 +28,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - { image: ghcr.io/thinkingsense-ai/omnigate-agency, context: ., file: addons/thinking-layer/Dockerfile }
-          - { image: ghcr.io/thinkingsense-ai/omnigate-agency-workflows, context: demos/payment-workflow, file: demos/payment-workflow/Dockerfile }
+          - { image: us-docker.pkg.dev/thinkingsense/omnigate/agency, context: ., file: addons/thinking-layer/Dockerfile }
+          - { image: us-docker.pkg.dev/thinkingsense/omnigate/agency-workflows, context: demos/payment-workflow, file: demos/payment-workflow/Dockerfile }
     steps:
       - uses: actions/checkout@v4
       - name: Work out the tag
@@ -46,13 +45,13 @@ jobs:
           { echo "tag=$tag"; echo "push=$push"; } >> "$GITHUB_OUTPUT"
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
-      - name: Log in to ghcr
+      - name: Log in to Artifact Registry
         if: steps.vars.outputs.push == 'true'
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: us-docker.pkg.dev
+          username: _json_key
+          password: ${{ secrets.GAR_SERVICE_ACCOUNT_KEY }}
       - name: Build (and push)
         id: build
         uses: docker/build-push-action@v6
@@ -70,4 +69,4 @@ jobs:
           TAG: ${{ steps.vars.outputs.tag }}
         run: |
           echo "### Agency image published" >> "$GITHUB_STEP_SUMMARY"
-          echo "\`$IMAGE:$TAG\` digest \`$DIGEST\`: pin it in the stack charts values (agency.image for omnigate-agency, agency.workflows.image for omnigate-agency-workflows) with scripts/sync-agency-addon.py, then run the stack clean-room." >> "$GITHUB_STEP_SUMMARY"
+          echo "\`$IMAGE:$TAG\` digest \`$DIGEST\`: pin it in the stack charts values (agency.image for agency, agency.workflows.image for agency-workflows) with scripts/sync-agency-addon.py, then run the stack clean-room." >> "$GITHUB_STEP_SUMMARY"

@@ -219,11 +219,11 @@ Parameters:
   AgencyImage:
     Type: String
     Default: ""
-    Description: "Optional. Image Agency runs from; blank = the one this release names (ghcr.io/thinkingsense-ai/omnigate-agency). Set it for your own build or a mirror."
+    Description: "Optional. Image Agency runs from; blank = the one this release names (us-docker.pkg.dev/thinkingsense/omnigate/agency). Set it for your own build or a mirror."
   AgencyWorkflowsImage:
     Type: String
     Default: ""
-    Description: "Optional. Image the Agency workflow pod runs from (commercial only); blank = ghcr.io/thinkingsense-ai/omnigate-agency-workflows. Set it for your own build or a mirror."
+    Description: "Optional. Image the Agency workflow pod runs from (commercial only); blank = us-docker.pkg.dev/thinkingsense/omnigate/agency-workflows. Set it for your own build or a mirror."
   OmnigateLlmApiKey:
     Type: String
     NoEcho: true
