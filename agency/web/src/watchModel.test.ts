@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { actionFor, claimLabel, composeWatch, statusText } from './watchModel'
+import { CIA_QUESTION, actionFor, claimLabel, composeWatch, statusText } from './watchModel'
 
 const cols = ['candidate_id', 'title', 'claim_type', 'status', 'first_seen', 'summary', 'verdict', 'open_incidents', 'incidents', 'sources']
 const rows = [
@@ -50,5 +50,15 @@ describe('feed candidates', () => {
   })
   it('still reads a list without the lead columns (an older stack)', () => {
     const c = composeWatch({ columns: cols.slice(0, 10), rows: [row('x').slice(0, 10)] })[0]; expect(c.leadUrl).toBe(''); expect(c.leadSource).toBe('')
+  })
+})
+
+describe('a case is routed by its case id', () => {
+  const base = composeWatch({ columns: ['candidate_id', 'case_id', ...cols.slice(1)], rows: [['3', 'cia-odni-nov-2026', 'CIA and ODNI breached', 'ai-attack-claimed', 'traced', '2026-11-24', 's3', 'insufficient_evidence', '1', '1', '2']] })[0]
+  it('opens the CIA case through its own question, not the November brief', () => {
+    expect(actionFor(base)).toEqual({ kind: 'ask', question: CIA_QUESTION, label: 'Read it layer by layer' })
+  })
+  it('still opens the brief for the November cluster', () => {
+    expect(actionFor({ ...base, caseId: 'nov-2026-cluster' })).toEqual({ kind: 'brief' })
   })
 })

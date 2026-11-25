@@ -4,6 +4,8 @@ import { records, type Table } from './rcaBrief'
 
 export const WATCH_QUESTION = 'Which incident candidates are we watching, and has each been traced?'
 
+export const CIA_QUESTION = 'How does the CIA and ODNI breach of November 2026 read, layer by layer?'
+
 export const CLAIM_TYPES: Record<string, { label: string; meaning: string }> = {
   'ai-attack-claimed': { label: 'AI attack claimed', meaning: 'Someone says an AI-driven attack caused it. Only a claim until an official source says otherwise.' },
   'ai-attack-confirmed': { label: 'AI attack confirmed', meaning: 'An operator or regulator says an AI-driven attack caused it.' },
@@ -12,7 +14,7 @@ export const CLAIM_TYPES: Record<string, { label: string; meaning: string }> = {
 export const claimLabel = (t: string) => CLAIM_TYPES[t]?.label ?? t
 
 export interface Candidate {
-  id: string; title: string; claimType: string; status: 'traced' | 'not_yet_traced'; firstSeen: string; summary: string
+  id: string; caseId: string; title: string; claimType: string; status: 'traced' | 'not_yet_traced'; firstSeen: string; summary: string
   verdict: string; openIncidents: number; incidents: number; sources: number; leadSource: string; leadUrl: string
 }
 
@@ -23,7 +25,7 @@ const n = (s: string | undefined) => { const v = Number(s); return Number.isFini
 /** Newest first. An unknown status is treated as not yet traced, so nothing looks tested that is not. */
 export function composeWatch(t: Table | undefined): Candidate[] {
   return records(t).map((r) => ({
-    id: r.candidate_id, title: r.title, claimType: r.claim_type, status: r.status === 'traced' ? 'traced' as const : 'not_yet_traced' as const,
+    id: r.candidate_id, caseId: r.case_id ?? '', title: r.title, claimType: r.claim_type, status: r.status === 'traced' ? 'traced' as const : 'not_yet_traced' as const,
     firstSeen: r.first_seen, summary: r.summary, verdict: r.verdict, openIncidents: n(r.open_incidents), incidents: n(r.incidents), sources: n(r.sources), leadSource: r.lead_source ?? '', leadUrl: safeUrl(r.lead_url),
   })).sort((a, b) => b.firstSeen.localeCompare(a.firstSeen))
 }
@@ -32,7 +34,9 @@ export function composeWatch(t: Table | undefined): Candidate[] {
 export type Action = { kind: 'brief' } | { kind: 'ask'; question: string; label: string } | { kind: 'wait'; why: string }
 export function actionFor(c: Candidate): Action {
   if (c.status !== 'traced') return { kind: 'wait', why: 'A lead from the feed, not yet traced. The trace step (finding the primary source and grading each link) is not built yet.' }
-  if (c.claimType === 'ai-attack-claimed') return { kind: 'brief' }
+  if (c.caseId === 'cia-odni-nov-2026') return { kind: 'ask', question: CIA_QUESTION, label: 'Read it layer by layer' }
+  if (c.caseId === 'jul-2026-breakout') return { kind: 'ask', question: 'How does the July 2026 breakout read, layer by layer?', label: 'Read it layer by layer' }
+  if (c.caseId === 'nov-2026-cluster' || (!c.caseId && c.claimType === 'ai-attack-claimed')) return { kind: 'brief' }
   return { kind: 'ask', question: 'How does the July 2026 breakout read, layer by layer?', label: 'Read it layer by layer' }
 }
 
