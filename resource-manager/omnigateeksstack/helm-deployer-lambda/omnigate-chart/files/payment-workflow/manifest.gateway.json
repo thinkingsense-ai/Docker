@@ -1,8 +1,64 @@
 {
   "definitions": [
     {
-      "id": "payment-exception", "title": "Payment exception", "entity": "payment", "keyField": "payment_id",
-      "approverGroup": "treasury", "approvers": [], "requiredApprovals": 2, "inputs": ["payment_id"]
+      "id": "payment-exception",
+      "title": "Payment exception",
+      "entity": "payment",
+      "keyField": "payment_id",
+      "approverGroup": "treasury",
+      "approvers": [],
+      "requiredApprovals": 2,
+      "inputs": [
+        "payment_id"
+      ]
+    },
+    {
+      "id": "vulnerability-exception",
+      "title": "Vulnerability exception",
+      "entity": "vulnerability",
+      "keyField": "vuln_id",
+      "approverGroup": "IT risk",
+      "approvers": [],
+      "requiredApprovals": 2,
+      "inputs": [
+        "vuln_id"
+      ]
+    },
+    {
+      "id": "incident-cluster-rca",
+      "title": "Incident brief",
+      "entity": "claim",
+      "keyField": "claim_id",
+      "approverGroup": "IT risk",
+      "approvers": [],
+      "requiredApprovals": 1,
+      "inputs": [
+        "claim_id"
+      ]
+    },
+    {
+      "id": "risk-assessment",
+      "title": "Risk assessment",
+      "entity": "system",
+      "keyField": "system_id",
+      "approverGroup": "Risk (second line)",
+      "approvers": [],
+      "requiredApprovals": 1,
+      "inputs": [
+        "system_id"
+      ]
+    },
+    {
+      "id": "major-incident",
+      "title": "Major-incident decision",
+      "entity": "incident",
+      "keyField": "incident_id",
+      "approverGroup": "Risk (second line)",
+      "approvers": [],
+      "requiredApprovals": 1,
+      "inputs": [
+        "incident_id"
+      ]
     }
   ]
 }

@@ -23,7 +23,7 @@ class AgencyRisk(unittest.TestCase):
                 rc, out, err = render(chart, "agency-risk"); self.assertEqual(rc, 0, err)
                 self.assertIn('OMNIGATE_FEDERATION_SCHEMA_INCLUDE: "risk,security,rca,estate,register"', out)       # it-risk came in with it
                 for f in ("05-seed-agency-rca.sql", "06-seed-agency-estate.sql", "07-seed-agency-register.sql", "02-seed-it-risk-postgres.sql"): self.assertIn(f + ": |", out)
-                q = questions(chart, "agency-risk"); self.assertEqual(len(q), 39); self.assertEqual(len({x["question"] for x in q}), 39)
+                q = questions(chart, "agency-risk"); self.assertEqual(len(q), 40); self.assertEqual(len({x["question"] for x in q}), 40)
                 self.assertIn("llama.cpp", out)                                                                      # the embedding model, so approved questions are answered from the bank
     def test_it_risk_alone_and_all_packs_do_not_gain_the_data(self):
         for name, chart in D.CHARTS.items():
@@ -37,7 +37,7 @@ class AgencyRisk(unittest.TestCase):
     def test_it_mixes_with_other_packs_and_with_all_six(self):
         chart = D.CHARTS["azure"]
         out = render(chart, "agency-risk,treasury")[1]; self.assertIn("treasury,erp,rca,estate,register", out)
-        self.assertEqual(len(questions(chart, "agency-risk,treasury")), 63)
+        self.assertEqual(len(questions(chart, "agency-risk,treasury")), 64)
         rc, out, err = render(chart, SIX + ",agency-risk"); self.assertEqual(rc, 0, err); self.assertIn("erp,rca,estate,register", out)
     def test_smithsonian_still_needs_all_six(self):
         rc, _, err = render(D.CHARTS["azure"], "smithsonian,agency-risk"); self.assertNotEqual(rc, 0); self.assertIn("Smithsonian", err)
