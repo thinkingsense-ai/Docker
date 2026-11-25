@@ -22,6 +22,7 @@ DATA = [("seed-rca-postgres.sql", "demos/it-risk-rca/seed-rca-postgres.sql"), ("
 # The published images, pinned by digest (Build Agency image run 45315200946, tag 0.1.0, built from addons/thinking-layer and demos/payment-workflow). Update both after each publish.
 AGENCY_IMAGE = "us-docker.pkg.dev/thinkingsense/omnigate/agency:0.1.1@sha256:496d701be290bca0108cf217bd8775636409520da211a08992b494dc40205d22"
 WORKFLOWS_IMAGE = "us-docker.pkg.dev/thinkingsense/omnigate/agency-workflows:0.1.1@sha256:1876a2d324ff6776bbef96ac9b199543ba37bebe6736e13b36c54f36140ae493"
+FEED_IMAGE = "us-docker.pkg.dev/thinkingsense/omnigate/agency-feed:0.1.2@sha256:5ce51badba99bf1cef96610aabb7055eebdcd89666f10865603d9cccb8406c09"
 def values(annotations):
     ann = "".join('      %s: "%s"\n' % (k, v) for k, v in annotations.items())
     return '''
@@ -60,10 +61,10 @@ agency:
     storageSize: 1Gi
     gatewayToken: ""            # empty derives one from omnigate.adminApiToken
     registerWriterPassword: ""  # empty derives one from omnigate.adminApiToken
-  service:
+@FEED@  service:
     type: LoadBalancer
     port: 8097
-    annotations:%s'''.replace("@AGENCY_IMAGE@", AGENCY_IMAGE).replace("@WORKFLOWS_IMAGE@", WORKFLOWS_IMAGE) % ((" {}\n" if not ann else "\n" + ann))
+    annotations:%s'''.replace("@AGENCY_IMAGE@", AGENCY_IMAGE).replace("@WORKFLOWS_IMAGE@", WORKFLOWS_IMAGE).replace("@FEED@", FEED_RAW.replace("@FEED_IMAGE@", FEED_IMAGE).replace("%", "%%")) % ((" {}\n" if not ann else "\n" + ann))
 WF_RAW = '''  # Commercial edition only. The Agency workflows (incident brief, vulnerability exception, risk assessment, major-incident decision; the payment exception too with the Treasury pack)
   # behind the app's own workflow API: one pod with a Temporal dev server, the worker and the gateway. Needs agency.enabled, the agency-risk pack, a signed licence and
   # omnigate.adminApiToken; excludes paymentWorkflow.gateway. Write-back is a dry run; recommendations come from the rules unless set to "model" (then omnigate.llmApiKey is used).
@@ -79,6 +80,17 @@ WF_RAW = '''  # Commercial edition only. The Agency workflows (incident brief, v
     registerWriterPassword: ""  # empty derives one from omnigate.adminApiToken
 '''
 WF = WF_RAW.replace("@WORKFLOWS_IMAGE@", WORKFLOWS_IMAGE)
+FEED_RAW = '''  # The live feed: a small read-only pod reads 12 public news and advisory feeds every intervalMinutes and writes headlines (metadata only, no article text) into the rca feed tables,
+  # so Watch shows events under review and Sources shows each feed's health. Needs agency.enabled and the agency-risk pack; the pod needs the public internet (port 443). The publishers'
+  # reuse terms have not been read, so it is OFF by default. dbPassword empty = a random one kept across upgrades.
+  feed:
+    enabled: false
+    # Built from addons/feed-adapter/Dockerfile by the Build Agency image workflow.
+    image: @FEED_IMAGE@
+    intervalMinutes: 30
+    dbPassword: ""
+'''
+FEED = FEED_RAW.replace("@FEED_IMAGE@", FEED_IMAGE)
 def want(path, content): return os.path.exists(path) and open(path, "rb").read() == content
 def main(check):
     bad = []
@@ -86,7 +98,7 @@ def main(check):
     for chart, ann in CHARTS.items():
         base = os.path.join(ROOT, chart)
         wf = [(os.path.join(base, "files/agency-workflows", f), open(os.path.join(ROOT, "demos/payment-workflow", f), "rb").read()) for f in ["manifest.gateway.json"]]
-        jobs = wf + [(os.path.join(base, "templates/agency-workflows.yaml"), open(os.path.join(ROOT, "agency/chart/agency-workflows.yaml"), "rb").read()), (os.path.join(base, "templates/_agency.tpl"), open(os.path.join(ROOT, "agency/chart/_agency.tpl"), "rb").read())] + [(os.path.join(base, "templates/agency.yaml"), tpl), (os.path.join(base, "templates/agency-bootstrap.yaml"), open(os.path.join(ROOT, "agency/chart/agency-bootstrap.yaml"), "rb").read())] + [(os.path.join(base, "files", n), open(os.path.join(ROOT, src), "rb").read()) for n, src in DATA]
+        jobs = wf + [(os.path.join(base, "templates/agency-workflows.yaml"), open(os.path.join(ROOT, "agency/chart/agency-workflows.yaml"), "rb").read()), (os.path.join(base, "templates/_agency.tpl"), open(os.path.join(ROOT, "agency/chart/_agency.tpl"), "rb").read())] + [(os.path.join(base, "templates/agency.yaml"), tpl), (os.path.join(base, "templates/agency-bootstrap.yaml"), open(os.path.join(ROOT, "agency/chart/agency-bootstrap.yaml"), "rb").read()), (os.path.join(base, "templates/agency-feed.yaml"), open(os.path.join(ROOT, "agency/chart/agency-feed.yaml"), "rb").read())] + [(os.path.join(base, "files", n), open(os.path.join(ROOT, src), "rb").read()) for n, src in DATA]
         for path, content in jobs:
             if not want(path, content):
                 bad.append(os.path.relpath(path, ROOT))
@@ -120,6 +132,12 @@ def main(check):
                 assert "\n  pythonImage: docker.io/library/python:3.12-slim" in v, vp
                 v = v.replace("\n  pythonImage: docker.io/library/python:3.12-slim", "\n  pythonImage: docker.io/library/python:3.12-slim   # the bootstrap Job and the workflow pod run on this\n  # The Agency image (addons/thinking-layer/Dockerfile: the layer and the built UI), built by the Build images workflow.\n  image: us-docker.pkg.dev/thinkingsense/omnigate/agency:0.1.0", 1)
                 open(vp, "w").write(v)
+        if "\nagency:\n" in v and "\n  feed:\n    enabled" not in v:
+            bad.append(os.path.relpath(vp, ROOT) + " (feed block)")
+            if not check:
+                assert "\n  service:\n    type: LoadBalancer" in v, vp
+                v = v.replace("\n  service:\n    type: LoadBalancer", "\n" + FEED.rstrip("\n") + "\n  service:\n    type: LoadBalancer", 1)
+                open(vp, "w").write(v)
         if "\nagency:\n" not in v:
             bad.append(os.path.relpath(vp, ROOT))
             if not check: open(vp, "w").write(v.rstrip("\n") + "\n" + values(ann))
@@ -151,6 +169,7 @@ def main(check):
         v = fixed + sep + tail if not check else v
         n = re.sub(r"(?m)^  image: (?:ghcr\.io/thinkingsense-ai/omnigate-agency|us-docker\.pkg\.dev/thinkingsense/omnigate/agency)[:@]\S+$", "  image: " + AGENCY_IMAGE, v)
         n = re.sub(r"(?m)^    image: (?:ghcr\.io/thinkingsense-ai/omnigate-agency-workflows|us-docker\.pkg\.dev/thinkingsense/omnigate/agency-workflows)[:@]\S+$", "    image: " + WORKFLOWS_IMAGE, n)
+        n = re.sub(r"(?m)^    image: us-docker\.pkg\.dev/thinkingsense/omnigate/agency-feed[:@]\S+$", "    image: " + FEED_IMAGE, n)
         if n != v:
             bad.append(os.path.relpath(vp, ROOT) + " (image pins)")
             if not check: open(vp, "w").write(n)

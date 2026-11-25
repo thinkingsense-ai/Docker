@@ -40,13 +40,16 @@ SIX_PACKS = ("supply-chain", "manufacturing", "it-risk", "smithsonian", "bom", "
 
 
 def agency_values(props, packs, dataset):
-    """The form's `InstallAgency` and `AgencyWorkflows` as chart values. Agency needs the chart-only `agency-risk` pack (the IT-risk investigation data), which is added to whatever
+    """The form's `InstallAgency`, `AgencyWorkflows` and `AgencyFeed` as chart values. Agency needs the chart-only `agency-risk` pack (the IT-risk investigation data), which is added to whatever
     the form chose: the DemoPacks list if it has one, else the single Demo data (all-packs means all six). Returns {} when Agency is not installed. `packs` is pack_selection()'s
     "{a,b}" string or None."""
     install = str(props.get("InstallAgency", "false")).strip().lower() == "true"
     workflows = str(props.get("AgencyWorkflows", "false")).strip().lower() == "true"
+    feed = str(props.get("AgencyFeed", "false")).strip().lower() == "true"
     if workflows and not install:
         raise ValueError("AgencyWorkflows needs InstallAgency=true")
+    if feed and not install:
+        raise ValueError("AgencyFeed needs InstallAgency=true")
     if not install:
         return {}
     base = packs[1:-1].split(",") if packs else (list(SIX_PACKS) if dataset == "all-packs" else [dataset or "supply-chain"])
@@ -54,6 +57,8 @@ def agency_values(props, packs, dataset):
     out = {"agency.enabled": "true", "demoDatasets": "{" + ",".join(sel) + "}"}
     if workflows:
         out["agency.workflows.enabled"] = "true"
+    if feed:
+        out["agency.feed.enabled"] = "true"
     image = str(props.get("AgencyImage") or "").strip()
     if image:
         out["agency.image"] = image

@@ -351,6 +351,12 @@ variable "agency_image" {
   default     = ""
 }
 
+variable "agency_feed" {
+  description = "Only with install_agency: run a small pod that reads 12 public news and advisory feeds every 30 minutes and lists the matching stories on the Watch screen (headlines and links only, no article text). Needs access to the public internet. The publishers' reuse terms have not been reviewed: your decision."
+  type        = bool
+  default     = false
+}
+
 variable "agency_workflows_image" {
   description = "Optional. The image the Agency workflow worker and gateway run from (commercial edition only). Blank = the one this release names (us-docker.pkg.dev/thinkingsense/omnigate/agency-workflows)."
   type        = string
