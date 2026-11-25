@@ -1,7 +1,7 @@
 """Activities: everything that touches the outside world (thinking sense, the model, the ERP, the decision file). A workflow only decides and waits; these do the I/O and can be retried."""
 import json, os, urllib.request
 from temporalio import activity
-import decisions, facts as facts_mod, recommend as rec_mod, rules, sap_facts, sap_rules
+import assess_facts, assess_rules, major_facts, major_rules, decisions, register_write, facts as facts_mod, it_facts, it_rules, rca_facts, rca_rules, recommend as rec_mod, rules, sap_facts, sap_rules
 
 WRITE_BACK = os.environ.get("WRITE_BACK", "dry-run")             # dry-run (default): record the exact call, send nothing. live: send it to the ERP.
 ERP_URL = os.environ.get("ERP_URL", "http://erp-mock:8086").rstrip("/")
@@ -25,6 +25,81 @@ def sap_rules_gate(facts: dict) -> dict:
 @activity.defn
 def recommend(facts: dict, gate: dict) -> dict:
     return rec_mod.recommend(facts, gate)
+
+@activity.defn
+def it_gather_facts(vuln_id: int) -> dict:
+    return it_facts.gather(vuln_id)
+
+@activity.defn
+def it_rules_gate(facts: dict, initiator: str) -> dict:
+    return it_rules.gate(facts, initiator)
+
+@activity.defn
+def it_recommend(facts: dict, gate: dict) -> dict:
+    return rec_mod.recommend(facts, gate, "vulnerability")
+
+def build_it_call(action: dict) -> dict:
+    """The exact call to the (not yet connected) GRC tool for an approved action: what the approver's hash covers and what the dry run shows."""
+    path = {"remediate": "remediation-requests", "grant_exception": "exceptions"}[action["type"]]
+    body = {k: action[k] for k in ("vuln_id", "cve", "service_id", "payload_hash", "approvers") if k in action}
+    if action["type"] == "grant_exception": body["valid_days"] = 30
+    return {"method": "POST", "path": "/grc/%s" % path, "body": body, "idempotency_key": action["idempotency_key"]}
+
+@activity.defn
+def it_write_back(action: dict) -> dict:
+    """Always a dry run: the demo has no GRC or ticketing tool to send to, so the exact call is recorded and nothing is sent, whatever WRITE_BACK says."""
+    return {"mode": "dry-run", "would_send": build_it_call(action), "note": "not sent: this demo has no GRC or ticketing tool connected"}
+
+@activity.defn
+def rca_gather_facts(claim_id: int) -> dict:
+    return rca_facts.gather(claim_id)
+
+@activity.defn
+def rca_rules_gate(facts: dict, initiator: str) -> dict:
+    return rca_rules.gate(facts, initiator)
+
+@activity.defn
+def rca_recommend(facts: dict, gate: dict) -> dict:
+    return rec_mod.recommend(facts, gate, "incident")
+
+def build_rca_call(action: dict) -> dict:
+    """The exact call to the (not yet connected) briefing tool for an approved action: what the approver's hash covers and what the dry run shows."""
+    path = {"publish": "publish", "hold": "hold"}[action["type"]]
+    body = {k: action[k] for k in ("claim_id", "case_id", "brief_digest", "exposure_level", "exposure_set_by", "payload_hash", "approvers", "waiting_for") if k in action}
+    return {"method": "POST", "path": "/briefs/%s/%s" % (action["case_id"], path), "body": body, "idempotency_key": action["idempotency_key"]}
+
+@activity.defn
+def rca_write_back(action: dict) -> dict:
+    """Always a dry run: no distribution or briefing tool is connected, so the exact call is recorded and nothing is sent, whatever WRITE_BACK says."""
+    return {"mode": "dry-run", "would_send": build_rca_call(action), "note": "not sent: no briefing or distribution tool is connected"}
+
+@activity.defn
+def assess_gather_facts(system_id: int) -> dict:
+    return assess_facts.gather(system_id)
+
+@activity.defn
+def assess_rules_gate(facts: dict, initiator: str) -> dict:
+    return assess_rules.gate(facts, initiator)
+
+@activity.defn
+def assess_recommend(facts: dict, gate: dict) -> dict:
+    return rec_mod.recommend(facts, gate, "assessment")
+
+@activity.defn
+def assess_write_back(action: dict, prop: dict) -> dict:
+    return register_write.write(action, prop)
+
+@activity.defn
+def major_gather_facts(incident_id: int) -> dict:
+    return major_facts.gather(incident_id)
+
+@activity.defn
+def major_rules_gate(facts: dict, initiator: str) -> dict:
+    return major_rules.gate(facts, initiator)
+
+@activity.defn
+def major_write_back(action: dict, classified_at: str) -> dict:
+    return register_write.write_major(action, classified_at)
 
 def build_call(action: dict) -> dict:
     """The exact API call for an approved action. This is what the approver's hash covers and what dry-run shows."""

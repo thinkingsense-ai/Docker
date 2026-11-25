@@ -23,7 +23,13 @@ class TemporalEngine:
     def __init__(self):
         import temporal_wait
         from workflows import PaymentException
-        self.W = PaymentException
+        from it_workflow import VulnerabilityException
+        from rca_workflow import IncidentClusterRca
+        from assess_workflow import RiskAssessment
+        from major_workflow import MajorIncidentDecision
+        self.W = PaymentException; self.IW = VulnerabilityException; self.RW = IncidentClusterRca; self.AW = RiskAssessment; self.MW = MajorIncidentDecision
+        from temporalio.common import WorkflowIDReusePolicy
+        self.REUSE = WorkflowIDReusePolicy.REJECT_DUPLICATE     # one run per id, ever: Temporal's default lets a FINISHED id start again, which would collide with the decision record and the register's unique run id
         self.loop = asyncio.new_event_loop(); threading.Thread(target=self.loop.run_forever, daemon=True).start()
         self.client = self._run(temporal_wait.connect())
 
@@ -32,15 +38,18 @@ class TemporalEngine:
     async def _state(self, rid):
         from temporalio.service import RPCError, RPCStatusCode
         h = self.client.get_workflow_handle(rid)
+        W = self._cls(rid)
         try: d = await h.describe()
         except RPCError as e:
             if e.status == RPCStatusCode.NOT_FOUND: return None
             raise
-        try: st = await h.query(self.W.status)
+        try: st = await h.query(W.status)
         except Exception: st = {"stage": "starting"}                                 # the first workflow task has not run yet
         created = d.start_time.isoformat() if d.start_time else None
         updated = (d.close_time or datetime.datetime.now(datetime.timezone.utc)).isoformat()
         return st, created, updated
+
+    def _cls(self, rid): return self.IW if rid.startswith("vuln-") else self.RW if rid.startswith("rca-") else self.AW if rid.startswith("assess-") else self.MW if rid.startswith("major-") else self.W
 
     def state(self, rid): return self._run(self._state(rid))
 
@@ -48,7 +57,12 @@ class TemporalEngine:
         from temporalio.exceptions import WorkflowAlreadyStartedError
         async def go():
             try:
-                await self.client.start_workflow(self.W.run, args=[int(spec["id"].split("-")[1]), "treasury", {"initiator": spec["initiator"], "queryId": spec["queryId"]}], id=spec["id"], task_queue="payment-exceptions")
+                meta = {"initiator": spec["initiator"], "queryId": spec["queryId"]}; n = int(spec["id"].split("-")[1])
+                if spec["id"].startswith("vuln-"): await self.client.start_workflow(self.IW.run, args=[n, meta], id=spec["id"], task_queue="payment-exceptions", id_reuse_policy=self.REUSE)
+                elif spec["id"].startswith("major-"): await self.client.start_workflow(self.MW.run, args=[n, meta], id=spec["id"], task_queue="payment-exceptions", id_reuse_policy=self.REUSE)
+                elif spec["id"].startswith("assess-"): await self.client.start_workflow(self.AW.run, args=[n, meta], id=spec["id"], task_queue="payment-exceptions", id_reuse_policy=self.REUSE)
+                elif spec["id"].startswith("rca-"): await self.client.start_workflow(self.RW.run, args=[n, meta], id=spec["id"], task_queue="payment-exceptions", id_reuse_policy=self.REUSE)
+                else: await self.client.start_workflow(self.W.run, args=[n, "treasury", meta], id=spec["id"], task_queue="payment-exceptions", id_reuse_policy=self.REUSE)
                 created = True
             except WorkflowAlreadyStartedError: created = False
             return created, await self._state(spec["id"])
@@ -57,7 +71,7 @@ class TemporalEngine:
     def awaiting(self):
         async def go():
             out = []
-            async for e in self.client.list_workflows('WorkflowType="PaymentException" AND ExecutionStatus="Running"', limit=100):
+            async for e in self.client.list_workflows('(WorkflowType="PaymentException" OR WorkflowType="VulnerabilityException" OR WorkflowType="IncidentClusterRca" OR WorkflowType="RiskAssessment" OR WorkflowType="MajorIncidentDecision") AND ExecutionStatus="Running"', limit=100):
                 if M.RUN_ID.match(e.id):
                     s = await self._state(e.id)
                     if s and s[0].get("stage") == "awaiting_approval": out.append((e.id, s))
@@ -66,9 +80,9 @@ class TemporalEngine:
 
     def signal(self, rid, kind, user, payload_hash, reason):
         async def go():
-            h = self.client.get_workflow_handle(rid)
-            if kind == "approve": await h.signal(self.W.approve, args=[user, payload_hash])
-            else: await h.signal(self.W.reject, args=[user, reason])
+            h = self.client.get_workflow_handle(rid); W = self._cls(rid)
+            if kind == "approve": await h.signal(W.approve, args=[user, payload_hash])
+            else: await h.signal(W.reject, args=[user, reason])
         self._run(go())
 
 
