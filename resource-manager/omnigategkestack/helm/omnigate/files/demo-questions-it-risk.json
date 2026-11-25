@@ -26,7 +26,7 @@
  },
  {
   "question": "Which critical vulnerabilities are past their patch deadline, and which business service does each affect?",
-  "referenceSql": "SELECT v.cve, v.cvss, a.name AS application, s.name AS service, s.tier, CURRENT_DATE - v.patch_due AS days_overdue FROM security.vulnerabilities v JOIN risk.applications a ON a.app_id = v.app_id JOIN risk.business_services s ON s.service_id = a.service_id WHERE v.severity = 'Critical' AND v.patched_on IS NULL AND v.patch_due < CURRENT_DATE ORDER BY days_overdue DESC",
+  "referenceSql": "SELECT v.cve, v.cvss, a.name AS application, s.name AS service, s.tier, TIMESTAMPDIFF(DAY, v.patch_due, CURRENT_DATE) AS days_overdue FROM security.vulnerabilities v JOIN risk.applications a ON a.app_id = v.app_id JOIN risk.business_services s ON s.service_id = a.service_id WHERE v.severity = 'Critical' AND v.patched_on IS NULL AND v.patch_due < CURRENT_DATE ORDER BY days_overdue DESC",
   "category": "it-risk"
  },
  {
@@ -36,7 +36,7 @@
  },
  {
   "question": "Which critical third parties have not been assessed in the last 12 months, and which services do they support?",
-  "referenceSql": "SELECT v.name AS vendor, v.last_assessed, v.assessment_rating, s.name AS service, s.tier FROM security.vendors v JOIN risk.applications a ON a.vendor_id = v.vendor_id JOIN risk.business_services s ON s.service_id = a.service_id WHERE v.tier = 1 AND v.last_assessed < CURRENT_DATE - 365 ORDER BY v.name, s.name",
+  "referenceSql": "SELECT v.name AS vendor, v.last_assessed, v.assessment_rating, s.name AS service, s.tier FROM security.vendors v JOIN risk.applications a ON a.vendor_id = v.vendor_id JOIN risk.business_services s ON s.service_id = a.service_id WHERE v.tier = 1 AND v.last_assessed < CURRENT_DATE - INTERVAL '365' DAY ORDER BY v.name, s.name",
   "category": "it-risk"
  },
  {
@@ -51,7 +51,7 @@
  },
  {
   "question": "Which tier-1 services have both an open critical vulnerability and an outage in the last 90 days?",
-  "referenceSql": "SELECT s.name AS service, v.open_critical_vulns, o.outage_minutes FROM risk.business_services s JOIN (SELECT a.service_id, COUNT(*) AS open_critical_vulns FROM security.vulnerabilities x JOIN risk.applications a ON a.app_id = x.app_id WHERE x.severity = 'Critical' AND x.patched_on IS NULL GROUP BY a.service_id) v ON v.service_id = s.service_id JOIN (SELECT a.service_id, SUM(i.duration_minutes) AS outage_minutes FROM risk.incidents i JOIN risk.applications a ON a.app_id = i.app_id WHERE i.started_on >= CURRENT_DATE - 90 GROUP BY a.service_id) o ON o.service_id = s.service_id WHERE s.tier = 1 ORDER BY s.name",
+  "referenceSql": "SELECT s.name AS service, v.open_critical_vulns, o.outage_minutes FROM risk.business_services s JOIN (SELECT a.service_id, COUNT(*) AS open_critical_vulns FROM security.vulnerabilities x JOIN risk.applications a ON a.app_id = x.app_id WHERE x.severity = 'Critical' AND x.patched_on IS NULL GROUP BY a.service_id) v ON v.service_id = s.service_id JOIN (SELECT a.service_id, SUM(i.duration_minutes) AS outage_minutes FROM risk.incidents i JOIN risk.applications a ON a.app_id = i.app_id WHERE i.started_on >= CURRENT_DATE - INTERVAL '90' DAY GROUP BY a.service_id) o ON o.service_id = s.service_id WHERE s.tier = 1 ORDER BY s.name",
   "category": "it-risk"
  },
  {
