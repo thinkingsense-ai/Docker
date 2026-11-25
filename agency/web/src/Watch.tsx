@@ -34,7 +34,7 @@ export default function Watch({ table, sources, onLoaded, onSources, onBrief, on
         <h2 id="watch-h">Watch</h2>
         <button onClick={load} disabled={busy}>{busy ? 'Loading…' : 'Refresh'}</button>
       </header>
-      <p className="muted small">Incident stories being followed. Nothing is traced or published without a person pressing a button. Events under review marked &ldquo;claim not yet tested&rdquo; come from the feed and are leads to read, not findings; the two traced ones are the seeded cases.</p>
+      <p className="muted small">Incident stories being followed. Nothing is traced or published without a person pressing a button. Events under review marked &ldquo;claim not yet tested&rdquo; come from the feed and are leads to read, not findings; the traced ones are the seeded cases.</p>
       {health && <p className={health.ok ? 'srcline ok' : 'srcline warn'} role="status">Feed: {health.text}</p>}
       {err && <p role="alert" className="error">{err}</p>}
       {busy && !table && <p role="status" className="muted">Loading events under review…</p>}
