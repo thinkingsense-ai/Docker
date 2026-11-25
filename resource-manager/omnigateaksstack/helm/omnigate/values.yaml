@@ -269,6 +269,15 @@ agency:
     storageSize: 1Gi
     gatewayToken: ""            # empty derives one from omnigate.adminApiToken
     registerWriterPassword: ""  # empty derives one from omnigate.adminApiToken
+  # The live feed: a small read-only pod reads 12 public news and advisory feeds every intervalMinutes and writes headlines (metadata only, no article text) into the rca feed tables,
+  # so Watch shows events under review and Sources shows each feed's health. Needs agency.enabled and the agency-risk pack; the pod needs the public internet (port 443). The publishers'
+  # reuse terms have not been read, so it is OFF by default. dbPassword empty = a random one kept across upgrades.
+  feed:
+    enabled: false
+    # Built from addons/feed-adapter/Dockerfile by the Build Agency image workflow.
+    image: us-docker.pkg.dev/thinkingsense/omnigate/agency-feed:0.1.2@sha256:5ce51badba99bf1cef96610aabb7055eebdcd89666f10865603d9cccb8406c09
+    intervalMinutes: 30
+    dbPassword: ""
   service:
     type: LoadBalancer
     port: 8097

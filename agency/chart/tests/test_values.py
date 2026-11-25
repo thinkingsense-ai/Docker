@@ -25,4 +25,15 @@ class Values(unittest.TestCase):
                 m = re.search(r"- name: agency\n\s+image: (\S+)", r.stdout); self.assertTrue(m and m.group(1).startswith("us-docker.pkg.dev/thinkingsense/omnigate/agency:"), m and m.group(1))
                 r = render(chart, "agency.enabled=true", "agency.workflows.enabled=true", "demoDatasets={agency-risk}", "omnigate.license=x", "omnigate.adminApiToken=t"); self.assertEqual(r.returncode, 0, r.stderr)
                 imgs = set(re.findall(r"image: (\S*agency-workflows\S*)", r.stdout)); self.assertEqual(len(imgs), 1, imgs)
+    def test_the_feed_is_off_by_default_and_renders_when_asked(self):
+        for cloud, chart in D.CHARTS.items():
+            with self.subTest(chart=cloud):
+                off = render(chart, "agency.enabled=true", "demoDatasets={agency-risk}"); self.assertEqual(off.returncode, 0, off.stderr); self.assertNotIn("agency-feed", off.stdout)
+                on = render(chart, "agency.enabled=true", "agency.feed.enabled=true", "demoDatasets={agency-risk}"); self.assertEqual(on.returncode, 0, on.stderr)
+                imgs = set(re.findall(r"image: (\S*agency-feed\S*)", on.stdout)); self.assertEqual(len(imgs), 1, imgs)
+                self.assertRegex(next(iter(imgs)), r"@sha256:[0-9a-f]{64}$"); self.assertIn("feed_writer", on.stdout); self.assertIn("FEED_INTERVAL_MINUTES", on.stdout)
+    def test_the_feed_refuses_to_install_without_what_it_needs(self):
+        chart = D.CHARTS["aws"]
+        self.assertNotEqual(render(chart, "agency.feed.enabled=true").returncode, 0)
+        r = render(chart, "agency.enabled=true", "agency.feed.enabled=true", "demoDataset=treasury"); self.assertNotEqual(r.returncode, 0); self.assertIn("agency-risk", r.stderr)
 if __name__ == "__main__": unittest.main()

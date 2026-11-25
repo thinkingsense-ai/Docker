@@ -1,4 +1,4 @@
-# Builds the two Agency images and publishes them to Google Artifact Registry (the public `omnigate` repository the app image already uses, so there is no visibility step): `agency` (the thinking layer and the built UI: addons/thinking-layer/Dockerfile) and `agency-workflows`
+# Builds the three Agency images and publishes them to Google Artifact Registry (the public `omnigate` repository the app image already uses, so there is no visibility step): `agency` (the thinking layer and the built UI: addons/thinking-layer/Dockerfile) and `agency-workflows`
 # (the workflow worker and gateway with the Temporal SDK and the psql client: demos/payment-workflow/Dockerfile), which is public and needs no secret beyond the
 # workflow's own token. The cloud stacks run it as `agency.image`. It is not tied to an app release: run it by hand, or push a tag `agency-image-vX.Y.Z`.
 #   Actions > Build Agency image > Run workflow (tag: 0.1.1, push on), or: git tag agency-image-v0.1.1 && git push origin agency-image-v0.1.1
@@ -30,6 +30,7 @@ jobs:
         include:
           - { image: us-docker.pkg.dev/thinkingsense/omnigate/agency, context: ., file: addons/thinking-layer/Dockerfile }
           - { image: us-docker.pkg.dev/thinkingsense/omnigate/agency-workflows, context: demos/payment-workflow, file: demos/payment-workflow/Dockerfile }
+          - { image: us-docker.pkg.dev/thinkingsense/omnigate/agency-feed, context: addons/feed-adapter, file: addons/feed-adapter/Dockerfile }
     steps:
       - uses: actions/checkout@v4
       - name: Work out the tag

@@ -67,6 +67,7 @@ variableGroups:
     variables:
       - install_agency
       - agency_workflows
+      - agency_feed
       - agency_image
       - agency_workflows_image
 
@@ -458,6 +459,13 @@ variables:
     type: boolean
     title: "Agency workflows (commercial edition)"
     description: "Only with Agency installed: run the incident-brief, vulnerability-exception, risk-assessment and major-incident workflows behind the app's workflow API. Needs the commercial licence and the admin API token. Write-back is a dry run."
+    default: false
+    required: false
+
+  agency_feed:
+    type: boolean
+    title: "Agency live news feed"
+    description: "Only with Agency installed: a small pod reads 12 public news and advisory feeds every 30 minutes and lists the matching stories on the Watch screen (headlines and links only). Needs access to the public internet. The publishers' reuse terms have not been reviewed."
     default: false
     required: false
 

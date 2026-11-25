@@ -49,6 +49,7 @@ Metadata:
         Parameters:
           - InstallAgency
           - AgencyWorkflows
+          - AgencyFeed
           - AgencyImage
           - AgencyWorkflowsImage
       - Label:
@@ -105,6 +106,8 @@ Metadata:
         default: "Install Agency beside the Ask app"
       AgencyWorkflows:
         default: "Agency workflows (commercial edition)"
+      AgencyFeed:
+        default: "Agency live news feed"
       AgencyImage:
         default: "Agency image (optional)"
       AgencyWorkflowsImage:
@@ -136,7 +139,7 @@ Mappings:
   # OLD release and silently upgrade nothing. Updating the template is what moves the stack to a new release.
   Release:
     Current:
-      Tag: eks-stack-v1.0.36
+      Tag: eks-stack-v1.0.37
 
 Parameters:
   ClusterName:
@@ -216,6 +219,11 @@ Parameters:
     Default: "false"
     AllowedValues: ["false", "true"]
     Description: "Commercial edition only, with Agency: run the Agency workflows behind the app's workflow API. Needs the licence and the Admin API token. Write-back is a dry run."
+  AgencyFeed:
+    Type: String
+    Default: "false"
+    AllowedValues: ["false", "true"]
+    Description: "With Agency: read 12 public news feeds into Watch (headlines and links only). Reuse terms not reviewed."
   AgencyImage:
     Type: String
     Default: ""
@@ -1000,6 +1008,7 @@ Resources:
       AllowedClientCidrs: !Ref AllowedClientCidrs
       InstallAgency: !Ref InstallAgency
       AgencyWorkflows: !Ref AgencyWorkflows
+      AgencyFeed: !Ref AgencyFeed
       AgencyImage: !Ref AgencyImage
       AgencyWorkflowsImage: !Ref AgencyWorkflowsImage
       LlmApiKey: !Ref OmnigateLlmApiKey

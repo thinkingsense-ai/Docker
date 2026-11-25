@@ -48,6 +48,12 @@ class T(unittest.TestCase):
         self.assertEqual(handler.agency_values(on, None, "all-packs")["demoDatasets"], "{" + ",".join(handler.SIX_PACKS) + ",agency-risk}")
         self.assertEqual(handler.agency_values(on, "{it-risk,agency-risk}", "x")["demoDatasets"], "{it-risk,agency-risk}")
 
+    def test_agency_feed_needs_agency_and_is_off_by_default(self):
+        on = {"InstallAgency": "true"}
+        self.assertNotIn("agency.feed.enabled", handler.agency_values(on, None, "it-risk"))
+        self.assertEqual(handler.agency_values({**on, "AgencyFeed": "true"}, None, "it-risk")["agency.feed.enabled"], "true")
+        with self.assertRaises(ValueError): handler.agency_values({"AgencyFeed": "true"}, None, "it-risk")
+
     def test_agency_workflows_need_agency(self):
         self.assertEqual(handler.agency_values({"InstallAgency": "true", "AgencyWorkflows": "true"}, None, "it-risk")["agency.workflows.enabled"], "true")
         with self.assertRaises(ValueError): handler.agency_values({"AgencyWorkflows": "true"}, None, "it-risk")

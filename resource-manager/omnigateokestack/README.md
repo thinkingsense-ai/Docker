@@ -246,7 +246,7 @@ the parallel join, which on a clustered deployment can be shared across replicas
 
 ## Agency (optional)
 
-**Install Agency beside the Ask app** (variable `install_agency`, default false; a checkbox in the Resource Manager form) adds Agency, a second front end for risk management, with its own network load balancer address and the same sign-in, plus the IT-risk investigation data (schemas `rca`, `estate`, `register`), the embedding model and Workspaces. It needs about 1 GiB more memory than the Ask app alone, so use nodes with 8 GiB or more. `agency_workflows` (default false) is for the commercial edition only. Details and limits: `agency/chart/README.md` in the repository; check a deployment with `scripts/verify-agency.sh`.
+**Install Agency beside the Ask app** (variable `install_agency`, default false; a checkbox in the Resource Manager form) adds Agency, a second front end for risk management, with its own network load balancer address and the same sign-in, plus the IT-risk investigation data (schemas `rca`, `estate`, `register`), the embedding model and Workspaces. It needs about 1 GiB more memory than the Ask app alone, so use nodes with 8 GiB or more. `agency_workflows` (default false) is for the commercial edition only. `agency_feed` (default false) adds a small pod that reads 12 public news and advisory feeds every 30 minutes and shows the matching stories on the Watch screen: headlines and links only, no article text; it needs the public internet, and the publishers' reuse terms have not been reviewed, so the choice is yours. Details and limits: `agency/chart/README.md` in the repository; check a deployment with `scripts/verify-agency.sh`.
 
 ## Publishing a release (maintainers)
 

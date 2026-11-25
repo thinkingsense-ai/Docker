@@ -15,4 +15,5 @@ omnigate_llm_api_key   = "CHANGE_ME" # from console.anthropic.com -- required, N
 
 # Agency, the second front end, beside the Ask app (optional; about 1 GiB more memory, so use nodes of 8 GiB or more):
 # install_agency   = true
+# agency_feed = false        # with Agency: read 12 public news feeds into the Watch screen (headlines and links only)
 # agency_workflows = false   # commercial edition only; needs the licence and the admin API token

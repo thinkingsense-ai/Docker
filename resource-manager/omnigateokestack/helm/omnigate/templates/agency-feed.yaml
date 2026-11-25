@@ -1,0 +1,143 @@
+{{- if and .Values.agency.feed.enabled (not .Values.agency.enabled) }}
+{{- fail "agency.feed.enabled needs agency.enabled=true" }}
+{{- end }}
+{{- if and .Values.agency.enabled .Values.agency.feed.enabled }}
+{{- $fullname := include "omnigate.fullname" . }}
+{{- if not (include "omnigate.has" (dict "ctx" . "pack" "agency-risk")) }}
+{{- fail "agency.feed.enabled needs the agency-risk pack (demoDatasets: [agency-risk, ...]): the feed adapter writes the rca feed tables" }}
+{{- end }}
+{{- $secName := printf "%s-agency-feed" $fullname }}
+{{- $existing := lookup "v1" "Secret" .Release.Namespace $secName }}
+{{- $pw := .Values.agency.feed.dbPassword }}
+{{- if not $pw }}{{- if and $existing $existing.data (hasKey $existing.data "FEED_DB_PASSWORD") }}{{- $pw = index $existing.data "FEED_DB_PASSWORD" | b64dec }}{{- else }}{{- $pw = randAlphaNum 32 }}{{- end }}{{- end }}
+# The Agency live feed (single source: agency/chart/agency-feed.yaml). A small, read-only pod reads public RSS and Atom feeds every agency.feed.intervalMinutes (12 starter feeds: security reporting,
+# CISA and the UK NCSC as official sources, and a few reading-only context feeds) and writes METADATA ONLY into the rca feed tables: a headline, its link and date, the source and a hash. No article
+# text is stored. It honours robots.txt, uses a conditional GET, and waits a second between requests to one host. It decides nothing: a story that matches the rules appears on Watch as an event
+# under review with its claim "not yet tested"; a person traces it. It needs access to the public internet (port 443) and to Postgres. It writes as its own database role, which may change the feed tables and the
+# candidates it creates and nothing else (created at pod start). The publishers' reuse terms have NOT been read: this is off by default and is a decision for whoever runs the stack.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $secName }}
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agency-feed
+stringData:
+  FEED_DB_PASSWORD: {{ $pw | quote }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-agency-feed
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agency-feed
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: agency-feed
+  template:
+    metadata:
+      labels:
+        {{- include "omnigate.labels" . | nindent 8 }}
+        app.kubernetes.io/component: agency-feed
+      annotations:
+        checksum/src: {{ printf "%s%v" .Values.agency.feed.image .Values.agency.feed.intervalMinutes | sha256sum }}
+        checksum/secret: {{ $pw | sha256sum }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      # GKE taints its arm64 nodes (kubernetes.io/arch=arm64:NoSchedule); without this the pod sits Pending.
+      tolerations:
+        - key: "kubernetes.io/arch"
+          operator: "Equal"
+          value: "arm64"
+          effect: "NoSchedule"
+      initContainers:
+        # The feed adapter's own role: it may write the feed tables and the candidates it creates, nothing else (it cannot touch the problem records, links or verdicts).
+        # Created or refreshed at every pod start, once the rca schema exists (the database seeds it on a fresh volume).
+        - name: ensure-feed-writer
+          image: {{ .Values.postgres.image }}
+          env:
+            - { name: PGHOST, value: {{ include "omnigate.postgresHost" . | quote }} }
+            - { name: PGDATABASE, value: {{ .Values.postgres.database | quote }} }
+            - name: PGUSER
+              valueFrom: { secretKeyRef: { name: {{ $fullname }}-postgres-secret, key: POSTGRES_USER } }
+            - name: PGPASSWORD
+              valueFrom: { secretKeyRef: { name: {{ $fullname }}-postgres-secret, key: POSTGRES_PASSWORD } }
+            - name: WRITER_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ $secName }}, key: FEED_DB_PASSWORD } }
+          command:
+            - sh
+            - -c
+            - |
+              until [ "$(psql -tAc "SELECT to_regclass('rca.feed_items') IS NOT NULL" 2>/dev/null)" = t ]; do echo "waiting for the rca schema"; sleep 3; done
+              psql -v ON_ERROR_STOP=1 -v pw="$WRITER_PASSWORD" <<'SQL'
+              SELECT format('CREATE ROLE feed_writer LOGIN PASSWORD %L', :'pw') WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'feed_writer') \gexec
+              SELECT format('ALTER ROLE feed_writer PASSWORD %L', :'pw') \gexec
+              GRANT USAGE ON SCHEMA rca TO feed_writer;
+              GRANT SELECT, INSERT, UPDATE, DELETE ON rca.feed_sources, rca.feed_items, rca.candidate_feed_items TO feed_writer;
+              GRANT SELECT, INSERT, UPDATE ON rca.candidates TO feed_writer;
+              GRANT USAGE ON SEQUENCE rca.candidate_seq, rca.feed_items_item_id_seq TO feed_writer;
+              SQL
+          securityContext: &locked
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      containers:
+        - name: feed-adapter
+          image: {{ .Values.agency.feed.image }}
+          env:
+            - { name: PYTHONDONTWRITEBYTECODE, value: "1" }
+            - { name: HOME, value: /tmp }
+            - { name: PGHOST, value: {{ include "omnigate.postgresHost" . | quote }} }
+            - { name: PGDATABASE, value: {{ .Values.postgres.database | quote }} }
+            - { name: PGUSER, value: feed_writer }
+            - { name: FEED_INTERVAL_MINUTES, value: {{ .Values.agency.feed.intervalMinutes | quote }} }
+            - name: PGPASSWORD
+              valueFrom: { secretKeyRef: { name: {{ $secName }}, key: FEED_DB_PASSWORD } }
+          securityContext: *locked
+          resources:
+            requests: { cpu: 20m, memory: 96Mi }
+            limits: { memory: 192Mi }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- if .Values.networkPolicy.enabled }}
+---
+# Lets the feed pod reach Postgres (the database's own policy lists only the app and the workflow pod; policies add up). Enforced only where the cluster's network plugin enforces them.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ $fullname }}-postgres-from-agency-feed
+  labels:
+    {{- include "omnigate.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agency-feed
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: postgres
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ .Release.Name }}
+              app.kubernetes.io/component: agency-feed
+      ports:
+        - { protocol: TCP, port: 5432 }
+{{- end }}
+{{- end }}
