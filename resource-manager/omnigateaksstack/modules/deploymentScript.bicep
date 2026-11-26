@@ -311,7 +311,7 @@ PYEOF
       else
         ASK_APP_URL="pending -- run: kubectl get svc omnigate-omnigate-http"
       fi
-      # Agency has its own LoadBalancer Service (plain HTTP on 8097, same sign-in as the Ask app); its address can take a few minutes to appear.
+      # Agency has its own LoadBalancer Service (HTTPS on 8097 with a self-signed certificate, same sign-in as the Ask app); its address can take a few minutes to appear.
       AGENCY_URL="not installed"
       if [ "$INSTALL_AGENCY" = true ]; then
         AGENCY_IP=""
@@ -320,7 +320,7 @@ PYEOF
           [ -n "$AGENCY_IP" ] && break
           sleep 10
         done
-        if [ -n "$AGENCY_IP" ]; then AGENCY_URL="http://${AGENCY_IP}:8097/"; else AGENCY_URL="pending -- run: kubectl get svc omnigate-agency"; fi
+        if [ -n "$AGENCY_IP" ]; then AGENCY_URL="https://${AGENCY_IP}:8097/"; else AGENCY_URL="pending -- run: kubectl get svc omnigate-agency"; fi
       fi
       # Confirmed live: hand-escaped quotes inside a Bicep triple-quoted string
       # (`\\"..\\"`) do not round-trip the way a plain bash script would expect -- the resulting
