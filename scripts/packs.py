@@ -11,6 +11,8 @@ import json, os, re, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PACKS = os.path.join(ROOT, "packs")
 ALL_DATA = "all-data"
+# The Ask app puts a person in the FIRST Workspace listed when none is chosen yet: IT risk first, then the others in this order, All data last.
+LANDING_ORDER = ["it-risk", "supply-chain", "manufacturing", "bom", "treasury", "smithsonian"]
 REQUIRED = ("id", "title", "summary", "sources", "questions", "modalities", "inAllPacks", "editions", "licence")
 TABLE_RE = re.compile(r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[`\"\w.]+", re.I)
 REF_RE = re.compile(r"\b(pg|mdb|files)\.([a-z_]+)(?:\.([a-z_]+))?")
@@ -86,12 +88,13 @@ def workspaces(ms):
              "# (docs/agency-design.md, \"A pack is a Workspace\"); until then the catalogue's `sources[].schemas` is the intended scope.",
              "namespaces:"]
     every = sorted({s["id"] for p in ms if p["inAllPacks"] for s in p["sources"]})
-    lines += ["  - id: %s" % ALL_DATA, '    name: "All data"', "    backends: [%s]" % ", ".join(json.dumps(b) for b in every)]
-    for p in ms:
+    rank = lambda p: LANDING_ORDER.index(p["id"]) if p["id"] in LANDING_ORDER else len(LANDING_ORDER)
+    for p in sorted(ms, key=rank):
         if not p["inAllPacks"]:
             continue
         lines += ["  - id: %s" % p["id"], "    name: %s" % json.dumps(p["title"]),
                   "    backends: [%s]" % ", ".join(json.dumps(s["id"]) for s in p["sources"])]
+    lines += ["  - id: %s" % ALL_DATA, '    name: "All data"', "    backends: [%s]" % ", ".join(json.dumps(b) for b in every)]
     return "\n".join(lines) + "\n"
 
 

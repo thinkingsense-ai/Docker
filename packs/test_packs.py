@@ -32,6 +32,10 @@ class PackTests(unittest.TestCase):
             ids = {s["id"] for s in p["sources"]}
             self.assertTrue(ids <= {"pg", "mdb", "files"})
 
+    def test_it_risk_is_listed_first_and_all_data_last(self):
+        ids = [l.split(": ")[1].strip() for l in open(os.path.join(HERE, "workspaces.yaml")) if l.startswith("  - id: ")]
+        self.assertEqual(ids[0], "it-risk"); self.assertEqual(ids[-1], "all-data"); self.assertIn("treasury", ids)
+
     def test_workspaces_yaml_parses_when_pyyaml_is_available(self):
         try:
             import yaml
