@@ -21,7 +21,9 @@ check "layer /health answers"                         true "$(get "$BASE/health"
 check "the UI page is served"                         200 "$(code "$BASE/")"
 S=$(get "$BASE/status")
 check "the layer reaches the app"                     true "$(echo "$S" | j server.reachable)"
-check "the demo tour is OFF"                          false "$(echo "$S" | j tour.enabled)"
+# the guided demo tour (named demo people) must be off; the read-only Quickstart tour (tour.readOnly) signs in nobody and is allowed
+T=$(echo "$S" | j tour.enabled); R=$(echo "$S" | j tour.readOnly); if [ "$T" = true ] && [ "$R" != true ]; then TOUR=true; else TOUR=false; fi
+check "the guided demo tour is OFF (read-only tour allowed)" false "$TOUR"
 check "the demo tour sign-in route is closed"         404 "$(code -X POST -H 'X-Requested-With: verify' -H 'Content-Type: application/json' -d '{"persona":"curator"}' "$BASE/tour/signin")"
 for p in /whoami /conversations /workflows/queue; do check "anonymous $p refused" 401 "$(code "$BASE$p")"; done
 check "login without the CSRF header refused"         403 "$(code -b "$JAR" -c "$JAR" -H 'Cookie: x=1' -H 'Content-Type: application/json' -d "{\"username\":\"$USER_NAME\",\"password\":\"x\"}" "$BASE/login")"
