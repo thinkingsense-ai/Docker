@@ -20,7 +20,7 @@ DATA = [("seed-rca-postgres.sql", "demos/it-risk-rca/seed-rca-postgres.sql"), ("
         ("demo-questions-rca.json", "demos/it-risk-rca/demo-questions-rca.json"), ("demo-questions-estate.json", "demos/it-risk-estate/demo-questions-estate.json"),
         ("demo-questions-priorities.json", "demos/it-risk-estate/demo-questions-priorities.json"), ("demo-questions-register.json", "demos/it-risk-register/demo-questions-register.json")]
 # The published images, pinned by digest (Build Agency image run 45315200946, tag 0.1.0, built from addons/thinking-layer and demos/payment-workflow). Update both after each publish.
-AGENCY_IMAGE = "us-docker.pkg.dev/thinkingsense/omnigate/agency:0.1.1@sha256:496d701be290bca0108cf217bd8775636409520da211a08992b494dc40205d22"
+AGENCY_IMAGE = "us-docker.pkg.dev/thinkingsense/omnigate/agency:0.1.3@sha256:adf81dd24da9161ea0748c0060670e7c9328427651f5771a87de6009f336e87a"
 WORKFLOWS_IMAGE = "us-docker.pkg.dev/thinkingsense/omnigate/agency-workflows:0.1.1@sha256:1876a2d324ff6776bbef96ac9b199543ba37bebe6736e13b36c54f36140ae493"
 FEED_IMAGE = "us-docker.pkg.dev/thinkingsense/omnigate/agency-feed:0.1.2@sha256:5ce51badba99bf1cef96610aabb7055eebdcd89666f10865603d9cccb8406c09"
 def values(annotations):

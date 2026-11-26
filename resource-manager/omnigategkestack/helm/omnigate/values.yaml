@@ -232,7 +232,7 @@ agency:
   enabled: false
   pythonImage: docker.io/library/python:3.12-slim   # the bootstrap Job and the workflow pod run on this
   # The Agency image (addons/thinking-layer/Dockerfile: the layer and the built UI), built by the Build Agency image workflow.
-  image: us-docker.pkg.dev/thinkingsense/omnigate/agency:0.1.1@sha256:496d701be290bca0108cf217bd8775636409520da211a08992b494dc40205d22
+  image: us-docker.pkg.dev/thinkingsense/omnigate/agency:0.1.3@sha256:adf81dd24da9161ea0748c0060670e7c9328427651f5771a87de6009f336e87a
   # HTTPS for Agency, like the Ask app: a self-signed certificate is made at install (and kept across upgrades) unless secretName names your own kubernetes.io/tls Secret.
   tls:
     enabled: true
