@@ -1,5 +1,5 @@
 {
- "_note": "A shape is a named hardware target plus the llama-server settings that suit it. 'oci' is the OCI shape and size to launch (needs quota: see the write-up). Memory and speed are MEASURED by the harness and recorded per run; none are promised here. llama.cpp flag names are checked against the installed binary by serve.py --check-flags. 'image' tags must be replaced by digests before a result is quoted.",
+ "_note": "A shape is a named hardware target plus the llama-server settings that suit it. 'oci' is the OCI shape and size to launch (needs quota: see the write-up). Memory and speed are MEASURED by the harness and recorded per run; none are promised here. llama.cpp flag names are checked against the installed binary by serve.py --check-flags. 'image' tags must be replaced by digests before a result is quoted. 'gcp' is the Google Cloud machine type to launch (gce_node.py); its note says how close it is to the OCI shape.",
  "image": {
   "cpu": "ghcr.io/ggml-org/llama.cpp:server",
   "cuda": "ghcr.io/ggml-org/llama.cpp:server-cuda"
@@ -18,7 +18,12 @@
    "threads": 16,
    "gpu_layers": 0,
    "parallel": 1,
-   "flash_attn": false
+   "flash_attn": false,
+   "gcp": {
+    "machine_type": "t2a-standard-16",
+    "boot_gb": 200,
+    "note": "Ampere Altra, 64 GB (OCI's A4 had 128 GB)"
+   }
   },
   "x86-cpu-16": {
    "kind": "cpu",
@@ -33,7 +38,12 @@
    "threads": 16,
    "gpu_layers": 0,
    "parallel": 1,
-   "flash_attn": false
+   "flash_attn": false,
+   "gcp": {
+    "machine_type": "n2d-highmem-16",
+    "boot_gb": 200,
+    "note": "AMD EPYC, 128 GB, like OCI's E6"
+   }
   },
   "a10-1": {
    "kind": "cuda",
@@ -48,7 +58,12 @@
    "threads": 8,
    "gpu_layers": 99,
    "parallel": 2,
-   "flash_attn": true
+   "flash_attn": true,
+   "gcp": {
+    "machine_type": "g2-standard-8",
+    "boot_gb": 200,
+    "note": "1 x NVIDIA L4, 24 GB: the nearest to an A10 on Google Cloud, with about half the memory bandwidth, so speeds are not comparable"
+   }
   },
   "a10-2": {
    "kind": "cuda",
@@ -64,7 +79,12 @@
    "gpu_layers": 99,
    "parallel": 2,
    "flash_attn": true,
-   "split_mode": "layer"
+   "split_mode": "layer",
+   "gcp": {
+    "machine_type": "g2-standard-24",
+    "boot_gb": 300,
+    "note": "2 x NVIDIA L4, 48 GB in total"
+   }
   },
   "l40s-4": {
    "kind": "cuda",
@@ -80,7 +100,12 @@
    "gpu_layers": 99,
    "parallel": 4,
    "flash_attn": true,
-   "split_mode": "layer"
+   "split_mode": "layer",
+   "gcp": {
+    "machine_type": "g2-standard-48",
+    "boot_gb": 300,
+    "note": "4 x NVIDIA L4, 96 GB in total: there is no L40S on Google Cloud, so this is a stand-in, not a like-for-like"
+   }
   },
   "local-docker": {
    "kind": "cpu",
@@ -90,6 +115,34 @@
    "gpu_layers": 0,
    "parallel": 1,
    "flash_attn": false
+  },
+  "a100-80-1": {
+   "kind": "cuda",
+   "arch": "amd64",
+   "oci": null,
+   "gcp": {
+    "machine_type": "a2-ultragpu-1g",
+    "boot_gb": 300,
+    "note": "1 x NVIDIA A100 80 GB"
+   },
+   "threads": 12,
+   "gpu_layers": 99,
+   "parallel": 4,
+   "flash_attn": true
+  },
+  "h100-1": {
+   "kind": "cuda",
+   "arch": "amd64",
+   "oci": null,
+   "gcp": {
+    "machine_type": "a3-highgpu-1g",
+    "boot_gb": 300,
+    "note": "1 x NVIDIA H100 80 GB; may need a reservation or a quota that is not listed as on-demand"
+   },
+   "threads": 12,
+   "gpu_layers": 99,
+   "parallel": 4,
+   "flash_attn": true
   }
  }
 }
