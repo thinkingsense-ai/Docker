@@ -163,6 +163,18 @@ resource "oci_core_security_list" "lb" {
       }
     }
   }
+  # Agency (var.install_agency) has its own load balancer Service on 8097 (HTTPS), in this same subnet, so it needs the same source restriction as 443.
+  dynamic "ingress_security_rules" {
+    for_each = var.install_agency ? local.client_cidrs : []
+    content {
+      protocol = "6"
+      source   = ingress_security_rules.value
+      tcp_options {
+        min = 8097
+        max = 8097
+      }
+    }
+  }
   # Wire-protocol ports (Oracle/Postgres/MySQL/gRPC) -- only opened when the second NLB is
   # actually created (var.expose_wire_protocols), same reasoning as the HTTP rule above.
   dynamic "ingress_security_rules" {
