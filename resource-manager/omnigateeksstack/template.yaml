@@ -50,6 +50,7 @@ Metadata:
           - InstallAgency
           - AgencyWorkflows
           - AgencyFeed
+          - AgencyTour
           - AgencyImage
           - AgencyWorkflowsImage
       - Label:
@@ -108,6 +109,8 @@ Metadata:
         default: "Agency workflows (commercial edition)"
       AgencyFeed:
         default: "Agency live news feed"
+      AgencyTour:
+        default: "Agency read-only tour"
       AgencyImage:
         default: "Agency image (optional)"
       AgencyWorkflowsImage:
@@ -139,7 +142,7 @@ Mappings:
   # OLD release and silently upgrade nothing. Updating the template is what moves the stack to a new release.
   Release:
     Current:
-      Tag: eks-stack-v1.0.38
+      Tag: eks-stack-v1.0.39
 
 Parameters:
   ClusterName:
@@ -224,14 +227,19 @@ Parameters:
     Default: "false"
     AllowedValues: ["false", "true"]
     Description: "With Agency: read 12 public news feeds into Watch (headlines and links only). Reuse terms not reviewed."
+  AgencyTour:
+    Type: String
+    Default: "false"
+    AllowedValues: ["false", "true"]
+    Description: "With Agency: a read-only Quickstart tour (starts nothing)."
   AgencyImage:
     Type: String
     Default: ""
-    Description: "Optional. Image Agency runs from; blank = the one this release names (us-docker.pkg.dev/thinkingsense/omnigate/agency). Set it for your own build or a mirror."
+    Description: "Optional. Image Agency runs from; blank = the one this release names. Set it for your own build or a mirror."
   AgencyWorkflowsImage:
     Type: String
     Default: ""
-    Description: "Optional. Image the Agency workflow pod runs from (commercial only); blank = us-docker.pkg.dev/thinkingsense/omnigate/agency-workflows. Set it for your own build or a mirror."
+    Description: "Optional. Image the Agency workflow pod runs from (commercial only); blank = the one this release names. Set it for your own build or a mirror."
   OmnigateLlmApiKey:
     Type: String
     NoEcho: true
@@ -1009,6 +1017,7 @@ Resources:
       InstallAgency: !Ref InstallAgency
       AgencyWorkflows: !Ref AgencyWorkflows
       AgencyFeed: !Ref AgencyFeed
+      AgencyTour: !Ref AgencyTour
       AgencyImage: !Ref AgencyImage
       AgencyWorkflowsImage: !Ref AgencyWorkflowsImage
       LlmApiKey: !Ref OmnigateLlmApiKey

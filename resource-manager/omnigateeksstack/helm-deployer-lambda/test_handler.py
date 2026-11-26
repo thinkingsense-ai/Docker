@@ -54,6 +54,12 @@ class T(unittest.TestCase):
         self.assertEqual(handler.agency_values({**on, "AgencyFeed": "true"}, None, "it-risk")["agency.feed.enabled"], "true")
         with self.assertRaises(ValueError): handler.agency_values({"AgencyFeed": "true"}, None, "it-risk")
 
+    def test_agency_tour_needs_agency_and_is_off_by_default(self):
+        on = {"InstallAgency": "true"}
+        self.assertNotIn("agency.tour.readOnly", handler.agency_values(on, None, "it-risk"))
+        self.assertEqual(handler.agency_values({**on, "AgencyTour": "true"}, None, "it-risk")["agency.tour.readOnly"], "true")
+        with self.assertRaises(ValueError): handler.agency_values({"AgencyTour": "true"}, None, "it-risk")
+
     def test_agency_workflows_need_agency(self):
         self.assertEqual(handler.agency_values({"InstallAgency": "true", "AgencyWorkflows": "true"}, None, "it-risk")["agency.workflows.enabled"], "true")
         with self.assertRaises(ValueError): handler.agency_values({"AgencyWorkflows": "true"}, None, "it-risk")
