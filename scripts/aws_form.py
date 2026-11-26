@@ -74,8 +74,8 @@ def rules_block(o):
           "      - Assert:",
           "          Fn::Equals:",
           "            - !Ref DemoDataset",
-          "            - supply-chain",
-          "        AssertDescription: " + quote("Use either Demo packs or Demo data, not both: leave Demo data at supply-chain when you list packs."),
+          "            - all-packs",
+          "        AssertDescription: " + quote("Use either Demo packs or Demo data, not both: leave Demo data at its default (all-packs) when you list packs."),
           END]
     return "\n".join(L)
 

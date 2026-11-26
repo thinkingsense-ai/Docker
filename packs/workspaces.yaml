@@ -4,24 +4,24 @@
 # A Workspace scopes by backend only: every pack on `pg` still sees every Postgres schema. Schema-level scope needs a Server change
 # (docs/agency-design.md, "A pack is a Workspace"); until then the catalogue's `sources[].schemas` is the intended scope.
 namespaces:
-  - id: all-data
-    name: "All data"
-    backends: ["files", "mdb", "pg"]
-  - id: bom
-    name: "Manufacturing BOM and sourcing"
-    backends: ["pg"]
   - id: it-risk
     name: "IT and operational risk"
     backends: ["pg", "mdb"]
+  - id: supply-chain
+    name: "Supply chain"
+    backends: ["pg"]
   - id: manufacturing
     name: "Manufacturing sourcing"
     backends: ["pg"]
-  - id: smithsonian
-    name: "Smithsonian Open Access sample"
-    backends: ["pg", "files"]
-  - id: supply-chain
-    name: "Supply chain"
+  - id: bom
+    name: "Manufacturing BOM and sourcing"
     backends: ["pg"]
   - id: treasury
     name: "Treasury"
     backends: ["pg", "mdb"]
+  - id: smithsonian
+    name: "Smithsonian Open Access sample"
+    backends: ["pg", "files"]
+  - id: all-data
+    name: "All data"
+    backends: ["files", "mdb", "pg"]

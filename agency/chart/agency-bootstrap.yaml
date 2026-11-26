@@ -7,12 +7,12 @@
 #   2. Sets what each named login may do (agency.bootstrap.grants), for logins the Server knows. Nothing is granted unless you list it.
 # It never fails the release: if the app is slow or the admin login is refused it logs why and exits 0.
 {{- $packs := list
+      (list "it-risk" "IT and operational risk" (list "pg" "mdb"))
       (list "supply-chain" "Supply chain" (list "pg"))
       (list "manufacturing" "Manufacturing sourcing" (list "pg"))
-      (list "it-risk" "IT and operational risk" (list "pg" "mdb"))
-      (list "smithsonian" "Smithsonian Open Access sample" (list "pg" "files"))
       (list "bom" "Manufacturing BOM and sourcing" (list "pg"))
-      (list "treasury" "Treasury" (list "pg" "mdb")) }}
+      (list "treasury" "Treasury" (list "pg" "mdb"))
+      (list "smithsonian" "Smithsonian Open Access sample" (list "pg" "files")) }}
 {{- $all := list "pg" }}
 {{- if include "omnigate.hasMariadb" . }}{{- $all = append $all "mdb" }}{{- end }}
 {{- if include "omnigate.hasSmithsonian" . }}{{- $all = append $all "files" }}{{- end }}
@@ -44,9 +44,6 @@ metadata:
 data:
   groups.yaml: |
     namespaces:
-      - id: all-data
-        name: "All data"
-        backends: {{ $all | sortAlpha | toJson }}
     {{- range $p := $packs }}
     {{- if include "omnigate.has" (dict "ctx" $ "pack" (index $p 0)) }}
       - id: {{ index $p 0 }}
@@ -54,6 +51,9 @@ data:
         backends: {{ index $p 2 | sortAlpha | toJson }}
     {{- end }}
     {{- end }}
+      - id: all-data
+        name: "All data"
+        backends: {{ $all | sortAlpha | toJson }}
   grants.json: |
 {{ toPrettyJson .Values.agency.bootstrap.grants | indent 4 }}
   bootstrap.py: |
