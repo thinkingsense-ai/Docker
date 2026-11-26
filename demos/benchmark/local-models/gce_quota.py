@@ -21,15 +21,14 @@ def wanted(region="us-central1", zones=("us-central1-a",)):
     out = [("GPUS-ALL-REGIONS-per-project", {}, 4),
            ("NVIDIA-L4-GPUS-per-project-region", {"region": region}, 4),
            ("NVIDIA-A100-80GB-GPUS-per-project-region", {"region": region}, 2)]
-    for z in zones:
-        out += [("NVIDIA-L4-GPUS-per-project-zone", {"zone": z}, 4), ("NVIDIA-A100-80GB-GPUS-per-project-zone", {"zone": z}, 2)]
+    # the per-zone GPU quotas are fixed (Google refuses a change with 'is_fixed'); they follow the region limit
     return [{"quotaId": q, "dimensions": d, "preferredValue": v} for q, d, v in out]
 
 
-def body(project, w):
+def body(project, w, email=None):
     """The quotaPreferences resource sent for one wanted item (pure; tested)."""
     return {"service": "compute.googleapis.com", "quotaId": w["quotaId"], "quotaConfig": {"preferredValue": str(w["preferredValue"])},
-            "dimensions": w["dimensions"], "justification": JUSTIFICATION}
+            "dimensions": w["dimensions"], "justification": JUSTIFICATION, **({"contactEmail": email} if email else {})}
 
 
 def preference_id(project, w):
@@ -76,7 +75,7 @@ def main(argv):
         if "--yes" not in argv: print("add --yes to send these requests (use `plan` to see them)"); return 1
         bad = 0
         for w in items:
-            s, d = call("POST", f"{API}/projects/{project}/locations/global/quotaPreferences?quotaPreferenceId={preference_id(project, w)}", project, body(project, w))
+            s, d = call("POST", f"{API}/projects/{project}/locations/global/quotaPreferences?quotaPreferenceId={preference_id(project, w)}", project, body(project, w, arg(argv, "--email")))
             print(f"{w['quotaId']} {w['dimensions']} -> {w['preferredValue']}: " + ("filed" if s == 200 else f"failed {s} {d.get('error', '')[:160]}")); bad += s != 200
         return 1 if bad else 0
     print(__doc__); return 1

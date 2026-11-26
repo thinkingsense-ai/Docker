@@ -220,6 +220,10 @@ resource "helm_release" "omnigate" {
     name  = "agency.feed.enabled"
     value = var.agency_feed
   }
+  set {
+    name  = "agency.tour.readOnly"
+    value = var.agency_tour
+  }
   dynamic "set" {
     for_each = var.install_agency && var.agency_workflows_image != "" ? [1] : []
     content {
