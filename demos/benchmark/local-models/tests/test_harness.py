@@ -2,7 +2,7 @@
 import hashlib, http.server, json, os, sys, tempfile, threading, unittest, urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import fetch, oci_node, report, serve
+import fetch, gce_node, gce_quota, oci_node, report, serve
 
 DATA = b"gguf-bytes-" * 5000
 SHA = hashlib.sha256(DATA).hexdigest()
@@ -181,6 +181,58 @@ class Oci(unittest.TestCase):
                 {"id": "other", "freeform-tags": {"harness": "something-else", "expires": "100"}, "lifecycle-state": "RUNNING"},
                 {"id": "untagged", "lifecycle-state": "RUNNING"}]
         self.assertEqual([i["id"] for i in oci_node.expired(inst, now=500)], ["ours-old"])
+
+class Gce(unittest.TestCase):
+    ENV = {"GCP_PROJECT": "p", "GCP_ZONE": "us-central1-a", "GCE_IMAGE_FAMILY": "common-cu129-ubuntu-2204", "GCE_IMAGE_PROJECT": "deeplearning-platform-release"}
+
+    def test_a_cpu_shape_defaults_to_ubuntu_and_carries_the_expiry_twice(self):
+        c = gce_node.launch_command("x86-cpu-16", {"GCP_PROJECT": "p"}, 4, now=1000)
+        self.assertEqual(c[c.index("--image-family") + 1], "ubuntu-2404-lts-amd64"); self.assertEqual(c[c.index("--machine-type") + 1], "n2d-highmem-16")
+        self.assertEqual(c[c.index("--labels") + 1], "harness=local-models,expires=%d" % (1000 + 4 * 3600))
+        self.assertEqual((c[c.index("--max-run-duration") + 1], c[c.index("--instance-termination-action") + 1]), ("14400s", "DELETE"))
+        self.assertNotIn("--provisioning-model", c); self.assertIn("SPOT", gce_node.launch_command("x86-cpu-16", {"GCP_PROJECT": "p"}, 4, spot=True))
+
+    def test_arm_cpu_uses_the_arm_image(self):
+        c = gce_node.launch_command("arm-cpu-16", {"GCP_PROJECT": "p"}, 2, now=1)
+        self.assertEqual((c[c.index("--image-family") + 1], c[c.index("--machine-type") + 1]), ("ubuntu-2404-lts-arm64", "t2a-standard-16"))
+
+    def test_a_gpu_shape_needs_a_gpu_image_and_cannot_live_migrate(self):
+        with self.assertRaises(SystemExit): gce_node.launch_command("a10-1", {"GCP_PROJECT": "p"}, 2)
+        c = gce_node.launch_command("a10-1", self.ENV, 2, now=1)
+        self.assertEqual(c[c.index("--machine-type") + 1], "g2-standard-8"); self.assertEqual(c[c.index("--maintenance-policy") + 1], "TERMINATE")
+        self.assertIn("nvidia-container-toolkit", gce_node.startup_script("cuda")); self.assertNotIn("nvidia", gce_node.startup_script("cpu"))
+
+    def test_guards(self):
+        for ttl in (0, 25, -1):
+            with self.assertRaises(SystemExit): gce_node.launch_command("a10-1", self.ENV, ttl)
+        with self.assertRaises(SystemExit): gce_node.launch_command("a10-1", {}, 4)
+        with self.assertRaises(SystemExit): gce_node.launch_command("local-docker", self.ENV, 4)
+
+    def test_every_cuda_shape_with_a_gcp_machine_has_a_note_about_how_close_it_is(self):
+        for sid, sh in gce_node.shapes().items():
+            if sh.get("gcp"): self.assertTrue(sh["gcp"].get("machine_type") and sh["gcp"].get("note"), sid)
+
+    def test_reap_only_touches_expired_nodes_that_are_ours(self):
+        inst = [{"name": "ours-old", "labels": {"harness": "local-models", "expires": "100"}, "status": "RUNNING"},
+                {"name": "ours-new", "labels": {"harness": "local-models", "expires": "9999"}, "status": "RUNNING"},
+                {"name": "ours-bad", "labels": {"harness": "local-models", "expires": "soon"}, "status": "RUNNING"},
+                {"name": "ours-gone", "labels": {"harness": "local-models", "expires": "100"}, "status": "TERMINATED"},
+                {"name": "other", "labels": {"harness": "something-else", "expires": "100"}, "status": "RUNNING"}, {"name": "unlabelled", "status": "RUNNING"}]
+        self.assertEqual([i["name"] for i in gce_node.expired(inst, now=500)], ["ours-old"])
+
+
+class GceQuota(unittest.TestCase):
+    def test_the_request_covers_the_global_limit_that_blocks_every_gpu(self):
+        ids = [w["quotaId"] for w in gce_quota.wanted()]; self.assertIn("GPUS-ALL-REGIONS-per-project", ids)
+        self.assertIn("NVIDIA-L4-GPUS-per-project-zone", ids); self.assertIn("NVIDIA-A100-80GB-GPUS-per-project-region", ids)
+
+    def test_a_body_is_a_string_valued_compute_preference_with_its_dimensions(self):
+        w = gce_quota.wanted("us-central1", ("us-central1-a", "us-central1-c"))
+        self.assertEqual(len([x for x in w if x["quotaId"].endswith("-zone")]), 4)
+        b = gce_quota.body("p", w[1]); self.assertEqual((b["service"], b["quotaConfig"]["preferredValue"], b["dimensions"]), ("compute.googleapis.com", "4", {"region": "us-central1"}))
+        self.assertTrue(b["justification"])
+        ids = [gce_quota.preference_id("p", x) for x in w]; self.assertEqual(len(ids), len(set(ids)))
+
 
 class ExtraArgsTest(unittest.TestCase):
     def test_gemma_runs_with_reasoning_off(self):

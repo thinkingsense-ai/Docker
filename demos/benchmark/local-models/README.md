@@ -17,6 +17,8 @@ Background, candidates and the OCI resources it needs are in the write-up *Local
 | `report.py` | `summary` (accuracy, time, tokens per model and shape) and `calibrate` (escalation threshold vs measured accuracy) |
 | `push_repo.sh` | Copies the repo to a node without secrets; scans what remains and refuses on a key-shaped string |
 | `oci_node.py` | Creates a benchmark node on OCI with a mandatory expiry, lists them, and **reaps** expired ones |
+| `gce_node.py` | The same for Google Cloud (GCE): mandatory expiry that Google itself enforces (`--max-run-duration` with delete), `list`, `reap`, and an `images` helper for the GPU image family |
+| `gce_quota.py` | The GPU quota request for a Google Cloud project, through the Cloud Quotas API: `plan`, `show`, `request --yes` |
 | `results/` | Saved benchmark results with a RESULTS.md each |
 | `tests/` | 24 tests, no network or cloud needed (`python3 -m unittest discover -s demos/benchmark/local-models/tests`) |
 
@@ -81,3 +83,19 @@ will say it found none); the app accepting a local server at `OMNIGATE_ASSISTANT
 **Known gaps:** no prompt adapter for the SQL-specialist models (Arctic-Text2SQL-R1 was trained on SQLite `CREATE TABLE` prompts; its first score is recorded as *unadapted*); no
 Arctic 14B GGUF found; Docker image tags should be replaced by digests before a result is quoted (the meta file records the image id used); GPU shape names are from Oracle's
 published families and are not visible in this tenancy until quota exists (`shape_listed_in_tenancy` in `shapes.json`).
+
+## Google Cloud (GCE) nodes and GPU quota
+
+Each shape in `shapes.json` has a `gcp` block with a machine type and a note on how close it is to the OCI shape (an L4 is not an A10, and there is no L40S on Google Cloud; `a100-80-1` and `h100-1` are new). The launcher mirrors the OCI one:
+
+```bash
+export GCP_PROJECT=thinkingsense
+python3 demos/benchmark/local-models/gce_node.py plan x86-cpu-16 --ttl-hours 4          # prints the gcloud command; creates nothing
+python3 demos/benchmark/local-models/gce_node.py images                                  # a GPU shape needs a Deep Learning VM family: set GCE_IMAGE_FAMILY and GCE_IMAGE_PROJECT
+python3 demos/benchmark/local-models/gce_node.py launch a10-1 --ttl-hours 4 --yes       # billable
+python3 demos/benchmark/local-models/gce_node.py reap --yes
+```
+
+A GPU machine cannot be created until the GPU quota is raised: the project's `GPUS-ALL-REGIONS` limit is 0 whatever the per-region limits say, and a free-trial billing account cannot use GPUs at all (upgrade it first).
+`python3 demos/benchmark/local-models/gce_quota.py show` prints the limits; `plan` prints what would be asked for (4 GPUs in total, 4 L4, 2 A100 80 GB, in one region and the zones named); `request --yes` files it.
+Nothing in the Google Cloud launcher has been run against a real project (the GPU quota is still 0); the tests cover the commands it builds, not a launch.
