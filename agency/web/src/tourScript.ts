@@ -14,6 +14,8 @@ export interface TourStep {
   say: string                 // what to tell the audience
   look: string                // what to point at on the screen
   actions: Action[]
+  ro?: boolean                // part of the read-only tour: the screen only reads, nothing is started and nobody else signs in
+  roActions?: number          // in the read-only tour, press only this many of the actions (the rest start a run)
 }
 
 export const PERSONAS: Record<Persona, string> = {
@@ -25,15 +27,15 @@ export const PERSONAS: Record<Persona, string> = {
 
 const LEFT = 'article.run[data-stage]:not([data-stage="awaiting_approval"])'          // a run card that has moved past waiting
 export const STEPS: TourStep[] = [
-  { id: 'watch', act: 'Act 1. Watch', title: 'Events under review', persona: 'alice', view: 'watch',
+  { id: 'watch', act: 'Act 1. Watch', title: 'Events under review', persona: 'alice', view: 'watch', ro: true,
     say: 'Agency reads public feeds all day. Anything that looks like AI hacking becomes an event under review. A headline is a lead, never a conclusion.',
     look: 'Each card says where the lead came from and what is claimed. Two older ones were already traced.',
     actions: [{ label: 'Load the events', until: '[data-tour="watch-card"]', waitMs: 300000 }] },
-  { id: 'sources', act: 'Act 1. Watch', title: 'Where the feed comes from', persona: 'alice', view: 'sources',
+  { id: 'sources', act: 'Act 1. Watch', title: 'Where the feed comes from', persona: 'alice', view: 'sources', ro: true,
     say: 'Every source has a kind: reporting, official, or context. Only official sources can confirm a cause. Context is for reading and never counts.',
     look: 'The health column: when each feed was last read, and any that failed.',
     actions: [{ label: 'Load the sources', until: '[data-tour="sources-table"]', waitMs: 300000 }] },
-  { id: 'record', act: 'Act 2. Problem record', title: 'Build the problem record', persona: 'alice', view: 'briefs',
+  { id: 'record', act: 'Act 2. Problem record', title: 'Build the problem record', persona: 'alice', view: 'briefs', ro: true,
     say: 'Five approved questions are asked as you, one new conversation each, and composed into one page: each incident, its cause, and how well the cause is supported.',
     look: 'Confirmed is not stated. The verdict names FAA and United as still open, and one confirmed grade is higher than its sources support.',
     actions: [{ label: 'Build the problem record', click: '[data-tour="brief-build"]', until: '[data-tour="brief-headline"]', waitMs: 300000 }] },
@@ -47,11 +49,11 @@ export const STEPS: TourStep[] = [
     say: 'Bob, second line, sees it waiting. His approval is bound to the exact record by a hash. Publishing and holding are dry runs: nothing is sent.',
     look: 'Approvals n of m, the payload hash, and the decision record line once he approves.',
     actions: [{ label: 'Approve the recommendation', click: '[data-tour="wf-approve"]', until: LEFT, waitMs: 90000, findMs: 240000, refresh: '[data-tour="queue-refresh"]' }] },
-  { id: 'exposure', act: 'Act 3. Exposure', title: 'Could it reach our systems?', persona: 'alice', view: 'exposure',
+  { id: 'exposure', act: 'Act 3. Exposure', title: 'Could it reach our systems?', persona: 'alice', view: 'exposure', ro: true,
     say: 'Five approved questions over a simulated estate, each scored by a stated rule. The overall rating is the highest score, never an average, and it names the questions that set it.',
     look: 'Critical, set by the unpatched domain controllers and the untested recovery. Unknown is shown as unknown, never as zero.',
     actions: [{ label: 'Rate the exposure', click: '[data-tour="exposure-run"]', until: '[data-tour="exposure-done"]', waitMs: 300000 }] },
-  { id: 'priorities', act: 'Act 4. Priorities', title: 'Which systems to fix first', persona: 'alice', view: 'priorities',
+  { id: 'priorities', act: 'Act 4. Priorities', title: 'Which systems to fix first', persona: 'alice', view: 'priorities', ro: true,
     say: 'Each system gets likelihood and impact on one four-value scale. Four triggers can lift it. Every row says why. It is a method, not a standard, and the thresholds are demo constants.',
     look: 'The top row, its reasons, and "Not in the risk register yet".',
     actions: [{ label: 'Rank the systems', click: '[data-tour="priorities-run"]', until: '[data-tour="priorities-list"]', waitMs: 300000 }] },
@@ -68,7 +70,7 @@ export const STEPS: TourStep[] = [
     say: 'Carol is the second person. Neither the proposer nor the AI can approve. When she does, one row is added to the register.',
     look: 'The run completes and names both approvers.',
     actions: [{ label: 'Approve', click: '[data-tour="wf-approve"]', until: LEFT, waitMs: 90000, findMs: 240000, refresh: '[data-tour="queue-refresh"]' }] },
-  { id: 'clocks', act: 'Act 6. Notifications', title: 'A major incident starts the clocks', persona: 'alice', view: 'clocks',
+  { id: 'clocks', act: 'Act 6. Notifications', title: 'A major incident starts the clocks', persona: 'alice', view: 'clocks', ro: true, roActions: 1,
     say: 'No rule decides that an incident is major: a person records it. Only then do the regulator clocks start, and nothing is ever sent to a regulator.',
     look: 'Three invented incidents. The first has no decision, so it has no clock.',
     actions: [
@@ -90,5 +92,8 @@ export const STEPS: TourStep[] = [
       { label: 'Check against the register', click: '[data-tour="audit-check"]', until: '[data-tour="audit-result"]', waitMs: 300000 }] },
 ]
 
+/** The steps for this tour: all of them, or (read-only) only the screens that read. A read-only step runs as whoever is signed in and never presses a button that starts a run. */
+export const stepsFor = (readOnly: boolean): TourStep[] => readOnly ? STEPS.filter((x) => x.ro).map((x) => ({ ...x, actions: x.actions.slice(0, x.roActions ?? x.actions.length) })) : STEPS
+
 export type StepState = 'todo' | 'doing' | 'done' | 'skipped' | 'failed'
-export const stepLabel = (i: number) => `Step ${i + 1} of ${STEPS.length}`
+export const stepLabel = (i: number, n: number = STEPS.length) => `Step ${i + 1} of ${n}`

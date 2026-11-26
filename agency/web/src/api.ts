@@ -20,7 +20,7 @@ export interface Answer {
 }
 export interface Status {
   layer: { version: string }; server: { reachable: boolean; llmConfigured?: boolean }
-  edition?: 'free' | 'commercial'; adminUrl?: string; workflows?: { available: boolean; note: string }; decisions: { readable: boolean; via?: 'server' | 'file' | null }; scopeHint: boolean; audit?: { enabled: boolean; allowed: boolean }; tour?: { enabled: boolean }
+  edition?: 'free' | 'commercial'; adminUrl?: string; workflows?: { available: boolean; note: string }; decisions: { readable: boolean; via?: 'server' | 'file' | null }; scopeHint: boolean; audit?: { enabled: boolean; allowed: boolean }; tour?: { enabled: boolean; readOnly?: boolean }
 }
 export interface AuditRow {
   n: number; runId: string; definition: string; outcome: 'approved' | 'declined' | 'expired' | 'escalated'; outcomeText: string; startedAt: string | null; decidedAt: string | null
@@ -59,7 +59,7 @@ import type { Decisions, Definition, Run } from './workflow'
 export const api = {
   login: (username: string, password: string) => call<{ username: string }>('POST', '/login', { username, password }),
   logout: () => call<unknown>('POST', '/logout', {}),
-  tourInfo: () => call<{ enabled: boolean; personas: string[] }>('GET', '/tour'),
+  tourInfo: () => call<{ enabled: boolean; personas: string[]; readOnly?: boolean }>('GET', '/tour'),
   tourSignin: (persona: string) => call<{ username: string }>('POST', '/tour/signin', { persona }),
   whoami: () => call<Record<string, any>>('GET', '/whoami'),
   packs: () => call<{ packs: Pack[]; note: string | null }>('GET', '/packs'),

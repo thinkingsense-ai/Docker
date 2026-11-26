@@ -61,10 +61,10 @@ agency:
     storageSize: 1Gi
     gatewayToken: ""            # empty derives one from omnigate.adminApiToken
     registerWriterPassword: ""  # empty derives one from omnigate.adminApiToken
-@FEED@  service:
+@FEED@@TOUR@  service:
     type: LoadBalancer
     port: 8097
-    annotations:%s'''.replace("@AGENCY_IMAGE@", AGENCY_IMAGE).replace("@WORKFLOWS_IMAGE@", WORKFLOWS_IMAGE).replace("@FEED@", FEED_RAW.replace("@FEED_IMAGE@", FEED_IMAGE).replace("%", "%%")) % ((" {}\n" if not ann else "\n" + ann))
+    annotations:%s'''.replace("@AGENCY_IMAGE@", AGENCY_IMAGE).replace("@WORKFLOWS_IMAGE@", WORKFLOWS_IMAGE).replace("@FEED@", FEED_RAW.replace("@FEED_IMAGE@", FEED_IMAGE).replace("%", "%%")).replace("@TOUR@", TOUR_RAW.replace("%", "%%")) % ((" {}\n" if not ann else "\n" + ann))
 WF_RAW = '''  # Commercial edition only. The Agency workflows (incident brief, vulnerability exception, risk assessment, major-incident decision; the payment exception too with the Treasury pack)
   # behind the app's own workflow API: one pod with a Temporal dev server, the worker and the gateway. Needs agency.enabled, the agency-risk pack, a signed licence and
   # omnigate.adminApiToken; excludes paymentWorkflow.gateway. Write-back is a dry run; recommendations come from the rules unless set to "model" (then omnigate.llmApiKey is used).
@@ -89,6 +89,11 @@ FEED_RAW = '''  # The live feed: a small read-only pod reads 12 public news and 
     image: @FEED_IMAGE@
     intervalMinutes: 30
     dbPassword: ""
+'''
+TOUR_RAW = '''  # A "Quickstart tour" button for the IT-risk screens that only READ (events under review, sources, problem record, exposure, priorities, notifications): it signs in nobody else and starts
+  # no run, so it is safe on a shared stack and can be played again. (The full demo tour, which signs in demo people, is for the local sandbox only and is not wired here.)
+  tour:
+    readOnly: false
 '''
 FEED = FEED_RAW.replace("@FEED_IMAGE@", FEED_IMAGE)
 def want(path, content): return os.path.exists(path) and open(path, "rb").read() == content
@@ -137,6 +142,12 @@ def main(check):
             if not check:
                 assert "\n  service:\n    type: LoadBalancer" in v, vp
                 v = v.replace("\n  service:\n    type: LoadBalancer", "\n" + FEED.rstrip("\n") + "\n  service:\n    type: LoadBalancer", 1)
+                open(vp, "w").write(v)
+        if "\nagency:\n" in v and "\n  tour:\n    readOnly" not in v:
+            bad.append(os.path.relpath(vp, ROOT) + " (tour block)")
+            if not check:
+                assert "\n  service:\n    type: LoadBalancer" in v, vp
+                v = v.replace("\n  service:\n    type: LoadBalancer", "\n" + TOUR_RAW.rstrip("\n") + "\n  service:\n    type: LoadBalancer", 1)
                 open(vp, "w").write(v)
         if "\nagency:\n" not in v:
             bad.append(os.path.relpath(vp, ROOT))

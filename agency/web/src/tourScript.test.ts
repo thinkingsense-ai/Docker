@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { NAV } from './shell'
-import { PERSONAS, STEPS } from './tourScript'
+import { PERSONAS, STEPS, stepsFor } from './tourScript'
 
 describe('the guided tour script', () => {
   it('has unique step ids and only known people and screens', () => {
@@ -21,4 +21,15 @@ describe('the guided tour script', () => {
     const src = ['Brief', 'Workflows', 'Exposure', 'Priorities', 'Clocks', 'Audit', 'Watch', 'Sources'].map((f) => readFileSync(`src/${f}.tsx`, 'utf8')).join('\n')
     for (const q of STEPS.flatMap((s) => s.actions.flatMap((a) => [a.click, a.until, a.refresh].filter(Boolean) as string[]))) { const m = q.match(/data-tour="([a-z-]+)"/); if (m) expect(src).toContain(`data-tour="${m[1]}"`) }
   })
+})
+
+describe('the read-only tour', () => {
+  const ro = stepsFor(true)
+  it('has only the screens that read, and starts nothing', () => {
+    expect(ro.map((s) => s.id)).toEqual(['watch', 'sources', 'record', 'exposure', 'priorities', 'clocks'])
+    const clicks = ro.flatMap((s) => s.actions.map((a) => a.click ?? ''))
+    for (const bad of ['brief-send', 'assess', 'clocks-send', 'wf-approve', 'wf-reject']) expect(clicks.join(' ')).not.toContain(bad)
+  })
+  it('keeps the full tour whole when it is not read-only', () => { expect(stepsFor(false).length).toBe(STEPS.length); expect(stepsFor(false).some((s) => s.id === 'hold')).toBe(true) })
+  it('only the first action of the notifications step runs', () => { expect(ro.find((s) => s.id === 'clocks')!.actions.length).toBe(1) })
 })

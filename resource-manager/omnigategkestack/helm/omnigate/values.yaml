@@ -269,6 +269,10 @@ agency:
     image: us-docker.pkg.dev/thinkingsense/omnigate/agency-feed:0.1.2@sha256:5ce51badba99bf1cef96610aabb7055eebdcd89666f10865603d9cccb8406c09
     intervalMinutes: 30
     dbPassword: ""
+  # A "Quickstart tour" button for the IT-risk screens that only READ (events under review, sources, problem record, exposure, priorities, notifications): it signs in nobody else and starts
+  # no run, so it is safe on a shared stack and can be played again. (The full demo tour, which signs in demo people, is for the local sandbox only and is not wired here.)
+  tour:
+    readOnly: false
   service:
     type: LoadBalancer
     port: 8097
