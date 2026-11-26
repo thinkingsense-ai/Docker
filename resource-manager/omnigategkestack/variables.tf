@@ -216,6 +216,12 @@ variable "agency_feed" {
   default     = false
 }
 
+variable "agency_tour" {
+  description = "Only with install_agency: a Quickstart tour button for the Agency screens that only read (events under review, sources, problem record, exposure, priorities, notifications). It signs in nobody else and starts no run."
+  type        = bool
+  default     = false
+}
+
 variable "agency_workflows_image" {
   description = "Optional. The image the Agency workflow worker and gateway run from (commercial edition only). Blank = the one this release names (us-docker.pkg.dev/thinkingsense/omnigate/agency-workflows)."
   type        = string
