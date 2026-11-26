@@ -6,3 +6,12 @@
 api/infrastructure
 api/column-tags
 api/ontology/change-sets
+# 0.10.23: Tests, Improvements, Builder, Data model, Knowledge, Usage, Destinations, versions (the version bar)
+api/answer-tests
+api/improvements
+api/builder
+api/data-model
+api/knowledge
+api/admin/usage-analytics
+api/destinations
+api/workspace-versions/publish
