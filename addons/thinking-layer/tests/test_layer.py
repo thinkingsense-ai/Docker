@@ -202,6 +202,15 @@ class LayerTests(unittest.TestCase):
             with open(path, "a") as f: f.write("not json\n")                                            # a damaged file is an error, not a silent empty answer
             s, raw, _ = self.c.call("GET", "/audit/records"); self.assertEqual((s, self.J(raw)["error"]["code"]), (502, "audit_unreadable"))
         finally: os.environ.pop("AGENCY_AUDIT_FILE", None); os.environ.pop("AGENCY_AUDIT_USERS", None); d.cleanup()
+    def test_read_only_tour_holds_no_passwords_and_cannot_sign_anyone_in(self):
+        os.environ["AGENCY_DEMO_TOUR"] = "readonly"; os.environ["AGENCY_DEMO_PERSONAS"] = "alice:pw"
+        try:
+            s, raw, _ = self.c.call("GET", "/tour"); d = self.J(raw); self.assertEqual((d["enabled"], d["readOnly"], d["personas"]), (True, True, [])); self.assertNotIn("pw", raw)
+            s, raw, _ = self.c.call("GET", "/status"); t = self.J(raw)["tour"]; self.assertEqual((t["enabled"], t["readOnly"]), (True, True))
+            s, raw, _ = self.c.call("POST", "/tour/signin", {"persona": "alice"}); self.assertEqual((s, self.J(raw)["error"]["code"]), (404, "not_found"))
+        finally:
+            os.environ.pop("AGENCY_DEMO_TOUR", None); os.environ.pop("AGENCY_DEMO_PERSONAS", None)
+
     def test_demo_tour_is_off_by_default_and_signs_in_named_people_without_exposing_passwords(self):
         os.environ.pop("AGENCY_DEMO_TOUR", None); os.environ.pop("AGENCY_DEMO_PERSONAS", None)
         s, raw, _ = self.c.call("GET", "/tour"); self.assertEqual((s, self.J(raw)["enabled"]), (200, False))

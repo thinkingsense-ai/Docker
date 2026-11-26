@@ -3,7 +3,7 @@ import { api, ApiError } from './api'
 import type { View } from './shell'
 import Flow from './Flow'
 import { STEP_FOCUS } from './flowModel'
-import { PERSONAS, STEPS, stepLabel, type StepState, type TourStep } from './tourScript'
+import { PERSONAS, stepsFor, stepLabel, type StepState, type TourStep } from './tourScript'
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 
@@ -23,7 +23,9 @@ async function waitFor(sel: string, ms: number, stop: () => boolean, enabled: bo
  * The guided click-through (tourScript.ts). Local demo sandbox only: the layer offers it when AGENCY_DEMO_TOUR=on. It signs in as the demo person for each step and presses the same buttons a person would,
  * so what the audience sees is the real product on the real Server. It adds no data path of its own.
  */
-export default function Tour({ user, go, switchTo, docked, min, onMin, onFocus, onClose }: { user: string; go: (v: View) => void; switchTo: (persona: string) => Promise<void>; docked: boolean; min: boolean; onMin: (m: boolean) => void; onFocus: (ids: string[]) => void; onClose: () => void }) {
+export default function Tour({ readOnly: readOnlyNow, user, go, switchTo, docked, min, onMin, onFocus, onClose }: { readOnly: boolean; user: string; go: (v: View) => void; switchTo: (persona: string) => Promise<void>; docked: boolean; min: boolean; onMin: (m: boolean) => void; onFocus: (ids: string[]) => void; onClose: () => void }) {
+  const [readOnly] = useState(readOnlyNow)                          // fixed when the tour opens: the status can be reloaded under it
+  const STEPS = stepsFor(readOnly)                                  // read-only: only the screens that read, run as whoever is signed in
   const [idx, setIdx] = useState(-1)                                   // -1 = the start page
   const [states, setStates] = useState<StepState[]>(() => STEPS.map(() => 'todo'))
   const [note, setNote] = useState('')
@@ -40,6 +42,7 @@ export default function Tour({ user, go, switchTo, docked, min, onMin, onFocus, 
   useEffect(() => {
     Promise.all([api.status().catch(() => null), api.tourInfo().catch(() => null), api.workflowRun('rca-1').then((r) => r.run ?? null).catch((e) => (e instanceof ApiError && (e.status === 404 || e.code === 'unknown_run') ? null : undefined))]).then(([st, info, run]) => {
       const need = ['alice', 'bob', 'carol', 'curator']
+      if (readOnly) { setPre([{ ok: !!st?.server.reachable, fatal: true, text: st?.server.reachable ? 'The Server is reachable.' : 'The Server is not reachable.' }, { ok: true, text: 'This tour only reads: nobody else is signed in and no run is started.' }]); return }
       setPre([
         { ok: !!st?.server.reachable, fatal: true, text: st?.server.reachable ? 'The Server is reachable.' : 'The Server is not reachable. Start the sandbox (agency/local/up.sh).' },
         { ok: !!st?.workflows?.available, fatal: true, text: st?.workflows?.available ? 'Workflows are available (commercial edition, engine on).' : 'Workflows are off, so most steps cannot run. Start the sandbox with the workflow gateway.' },
@@ -54,8 +57,8 @@ export default function Tour({ user, go, switchTo, docked, min, onMin, onFocus, 
     const step: TourStep = STEPS[i]
     onFocus(STEP_FOCUS[STEPS[i].id] ?? []); setIdx(i); setBusy(true); setNote(''); setState(i, 'doing')
     try {
-      if (userRef.current !== step.persona) setNote(`Signing in as ${step.persona}…`)
-      await switchTo(step.persona)                         // the app compares with who is signed in now and does nothing when it is already this person
+      if (!readOnly && userRef.current !== step.persona) setNote(`Signing in as ${step.persona}…`)
+      if (!readOnly) await switchTo(step.persona)                         // the app compares with who is signed in now and does nothing when it is already this person
       go(step.view); await sleep(500)
       for (const a of step.actions) {
         if (stopped.current) { setState(i, 'todo'); return 'todo' }
@@ -102,20 +105,20 @@ export default function Tour({ user, go, switchTo, docked, min, onMin, onFocus, 
   const step = idx >= 0 ? STEPS[idx] : null
   const finished = idx === STEPS.length - 1 && states[idx] !== 'todo' && states[idx] !== 'doing'
 
-  if (min) return <aside className="tour mini" aria-label="Guided tour"><button className="primary" onClick={() => onMin(false)}>Tour{step ? `: ${stepLabel(idx)}` : ''}</button></aside>
+  if (min) return <aside className="tour mini" aria-label="Guided tour"><button className="primary" onClick={() => onMin(false)}>Tour{step ? `: ${stepLabel(idx, STEPS.length)}` : ''}</button></aside>
   return (
     <aside className={'tour' + (docked ? ' docked' : '')} aria-label="Guided tour">
       <div className="tour-top"><strong>Guided tour</strong><span><button className="link" onClick={() => onMin(true)}>Minimise</button> <button className="link" onClick={() => { stop(); onClose() }}>Close</button></span></div>
       {!step && <>
-        <p>A click-through of the whole demo: the tour signs in as each demo person, opens the screen and presses the real buttons. The answers come from the real Server, so a step can take up to a minute when the model is busy.</p>
-        <p className="small muted">Seven acts: watch, problem record, exposure, priorities, register, notifications, audit. Each run can only be started once per sandbox; reset it between rehearsals.</p>
+        <p>{readOnly ? 'A click-through of the IT-risk screens that only read: it opens each screen as you and presses the buttons that load or compute an answer. Nobody else is signed in and nothing is sent for approval.' : 'A click-through of the whole demo: the tour signs in as each demo person, opens the screen and presses the real buttons.'} The answers come from the real Server, so a step can take up to a minute when the model is busy.</p>
+        <p className="small muted">{readOnly ? 'Six screens: events under review, sources, problem record, exposure, priorities, notifications. It starts no run, so it can be played again and again.' : 'Seven acts: watch, problem record, exposure, priorities, register, notifications, audit. Each run can only be started once per sandbox; reset it between rehearsals.'}</p>
         {pre ? <ul className="plain small" aria-label="Checks before the tour">{pre.map((c) => <li key={c.text} className={c.ok ? '' : 'error'}><span aria-hidden>{c.ok ? '✓' : '!'}</span> {c.text}</li>)}</ul> : <p className="muted small">Checking the sandbox…</p>}
         <div className="actions"><button className="primary" disabled={busy || !pre || pre.some((c) => c.fatal && !c.ok)} onClick={() => play(0)}>Play the whole demo</button> <button disabled={busy || !pre || pre.some((c) => c.fatal && !c.ok)} onClick={() => manual(0)}>Step by step</button></div>
       </>}
       {step && <>
-        <p className="small muted">{step.act} · {stepLabel(idx)}</p>
+        <p className="small muted">{step.act} · {stepLabel(idx, STEPS.length)}</p>
         <h3>{step.title}</h3>
-        <p className="small">Signed in as <strong>{user}</strong>{user !== step.persona ? <> (this step: <strong>{step.persona}</strong>)</> : null}. <span className="muted">{PERSONAS[step.persona]}</span></p>
+        {readOnly ? <p className="small">Signed in as <strong>{user}</strong>. <span className="muted">This step only reads.</span></p> : <p className="small">Signed in as <strong>{user}</strong>{user !== step.persona ? <> (this step: <strong>{step.persona}</strong>)</> : null}. <span className="muted">{PERSONAS[step.persona]}</span></p>}
         <Flow compact focus={STEP_FOCUS[step.id] ?? []} />
         <p><strong>Say:</strong> {step.say}</p>
         <p className="muted"><strong>Look at:</strong> {step.look}</p>
@@ -133,7 +136,7 @@ export default function Tour({ user, go, switchTo, docked, min, onMin, onFocus, 
         <details><summary className="small">All steps</summary>
           <ol className="small tsteps">{STEPS.map((s, i) => <li key={s.id} className={i === idx ? 'now' : ''}><button className="link" disabled={busy} onClick={() => manual(i)}>{s.title}</button> <span className={'tstate ' + states[i]}>{states[i] === 'todo' ? '' : states[i]}</span></li>)}</ol>
         </details>
-        {finished && <p className="small"><strong>That is the whole demo.</strong>{skipped > 0 ? ` ${skipped} step${skipped === 1 ? ' was' : 's were'} skipped.` : ''} Reset the sandbox before a rehearsal: agency/local/reset-demo.sh.</p>}
+        {finished && <p className="small"><strong>{readOnly ? 'That is the read-only tour.' : 'That is the whole demo.'}</strong>{skipped > 0 ? ` ${skipped} step${skipped === 1 ? ' was' : 's were'} skipped.` : ''} {readOnly ? 'Nothing was started, so you can play it again.' : 'Reset the sandbox before a rehearsal: agency/local/reset-demo.sh.'}</p>}
       </>}
     </aside>
   )

@@ -80,6 +80,9 @@ spec:
             - { name: AGENCY_PUBLIC_URL, value: {{ .Values.agency.publicUrl | quote }} }
             - { name: AGENCY_ADMIN_URL, value: {{ .Values.agency.adminUrl | quote }} }
             - { name: AGENCY_SCOPE_HINT, value: "off" }
+{{- if .Values.agency.tour.readOnly }}
+            - { name: AGENCY_DEMO_TOUR, value: "readonly" }          # a "Quickstart tour" button for the screens that only read: no demo person is signed in and no run is started
+{{- end }}
 {{- if .Values.agency.tls.enabled }}
             - { name: AGENCY_TLS_CERT, value: /etc/agency-tls/tls.crt }
             - { name: AGENCY_TLS_KEY, value: /etc/agency-tls/tls.key }

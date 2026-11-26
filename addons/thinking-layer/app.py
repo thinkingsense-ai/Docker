@@ -89,6 +89,11 @@ def admin_link(user):
     return url if not only or user in only else None
 
 
+def tour_readonly():
+    """AGENCY_DEMO_TOUR=readonly: the click-through of the screens that only READ (no demo person is signed in, no password is held here, no workflow run is started). Safe on a shared stack."""
+    return os.environ.get("AGENCY_DEMO_TOUR") == "readonly"
+
+
 def tour_personas():
     """The demo people the tour may sign in as: AGENCY_DEMO_PERSONAS="alice:pw,bob:pw", honoured only when AGENCY_DEMO_TOUR=on. Local demo sandbox only."""
     if os.environ.get("AGENCY_DEMO_TOUR") != "on": return {}
@@ -363,7 +368,7 @@ class H(BaseHTTPRequestHandler):
 
     # -- demo tour: switch between the demo people without typing a password. Only when AGENCY_DEMO_TOUR=on; the passwords stay here and are never sent to the browser. ---
     def tour_info(self):
-        ps = tour_personas(); self.send(200, {"enabled": bool(ps), "personas": list(ps)})
+        ps = tour_personas(); self.send(200, {"enabled": bool(ps) or tour_readonly(), "personas": list(ps), "readOnly": tour_readonly()})
 
     def tour_signin(self, body):
         ps = tour_personas(); name = body.get("persona")
@@ -459,7 +464,7 @@ class H(BaseHTTPRequestHandler):
         try:
             code, cfg = SERVER.json("GET", "/app/public-config"); out["server"].update(reachable=code == 200, llmConfigured=cfg.get("llmConfigured"))
         except (OSError, Unauthorized): pass
-        out["tour"] = {"enabled": bool(tour_personas())}
+        out["tour"] = {"enabled": bool(tour_personas()) or tour_readonly(), "readOnly": tour_readonly()}
         t, s = self.session()
         out["audit"] = {"enabled": audit_enabled(), "allowed": bool(s and audit_allowed(s.username))}
         if s:

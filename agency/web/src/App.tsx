@@ -268,7 +268,7 @@ export default function App() {
         </form>
         </>}
       </main>
-      {tourOpen && user && <Tour user={user} go={go} switchTo={switchTo} docked={wide} min={tourMin} onMin={setTourMin} onFocus={setTourFocus} onClose={() => { setTourOpen(false); setTourMin(false); setTourFocus([]) }} />}
+      {tourOpen && user && <Tour readOnly={!!status?.tour?.readOnly} user={user} go={go} switchTo={switchTo} docked={wide} min={tourMin} onMin={setTourMin} onFocus={setTourFocus} onClose={() => { setTourOpen(false); setTourMin(false); setTourFocus([]) }} />}
       {paneOpen && (
         <aside id="pane" className="pane" aria-label="Details">
           <button className="link close-pane" onClick={togglePane}>Close</button>

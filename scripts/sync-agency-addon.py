@@ -20,7 +20,7 @@ DATA = [("seed-rca-postgres.sql", "demos/it-risk-rca/seed-rca-postgres.sql"), ("
         ("demo-questions-rca.json", "demos/it-risk-rca/demo-questions-rca.json"), ("demo-questions-estate.json", "demos/it-risk-estate/demo-questions-estate.json"),
         ("demo-questions-priorities.json", "demos/it-risk-estate/demo-questions-priorities.json"), ("demo-questions-register.json", "demos/it-risk-register/demo-questions-register.json")]
 # The published images, pinned by digest (Build Agency image run 45315200946, tag 0.1.0, built from addons/thinking-layer and demos/payment-workflow). Update both after each publish.
-AGENCY_IMAGE = "us-docker.pkg.dev/thinkingsense/omnigate/agency:0.1.1@sha256:496d701be290bca0108cf217bd8775636409520da211a08992b494dc40205d22"
+AGENCY_IMAGE = "us-docker.pkg.dev/thinkingsense/omnigate/agency:0.1.3@sha256:adf81dd24da9161ea0748c0060670e7c9328427651f5771a87de6009f336e87a"
 WORKFLOWS_IMAGE = "us-docker.pkg.dev/thinkingsense/omnigate/agency-workflows:0.1.1@sha256:1876a2d324ff6776bbef96ac9b199543ba37bebe6736e13b36c54f36140ae493"
 FEED_IMAGE = "us-docker.pkg.dev/thinkingsense/omnigate/agency-feed:0.1.2@sha256:5ce51badba99bf1cef96610aabb7055eebdcd89666f10865603d9cccb8406c09"
 def values(annotations):
@@ -61,10 +61,10 @@ agency:
     storageSize: 1Gi
     gatewayToken: ""            # empty derives one from omnigate.adminApiToken
     registerWriterPassword: ""  # empty derives one from omnigate.adminApiToken
-@FEED@  service:
+@FEED@@TOUR@  service:
     type: LoadBalancer
     port: 8097
-    annotations:%s'''.replace("@AGENCY_IMAGE@", AGENCY_IMAGE).replace("@WORKFLOWS_IMAGE@", WORKFLOWS_IMAGE).replace("@FEED@", FEED_RAW.replace("@FEED_IMAGE@", FEED_IMAGE).replace("%", "%%")) % ((" {}\n" if not ann else "\n" + ann))
+    annotations:%s'''.replace("@AGENCY_IMAGE@", AGENCY_IMAGE).replace("@WORKFLOWS_IMAGE@", WORKFLOWS_IMAGE).replace("@FEED@", FEED_RAW.replace("@FEED_IMAGE@", FEED_IMAGE).replace("%", "%%")).replace("@TOUR@", TOUR_RAW.replace("%", "%%")) % ((" {}\n" if not ann else "\n" + ann))
 WF_RAW = '''  # Commercial edition only. The Agency workflows (incident brief, vulnerability exception, risk assessment, major-incident decision; the payment exception too with the Treasury pack)
   # behind the app's own workflow API: one pod with a Temporal dev server, the worker and the gateway. Needs agency.enabled, the agency-risk pack, a signed licence and
   # omnigate.adminApiToken; excludes paymentWorkflow.gateway. Write-back is a dry run; recommendations come from the rules unless set to "model" (then omnigate.llmApiKey is used).
@@ -89,6 +89,11 @@ FEED_RAW = '''  # The live feed: a small read-only pod reads 12 public news and 
     image: @FEED_IMAGE@
     intervalMinutes: 30
     dbPassword: ""
+'''
+TOUR_RAW = '''  # A "Quickstart tour" button for the IT-risk screens that only READ (events under review, sources, problem record, exposure, priorities, notifications): it signs in nobody else and starts
+  # no run, so it is safe on a shared stack and can be played again. (The full demo tour, which signs in demo people, is for the local sandbox only and is not wired here.)
+  tour:
+    readOnly: false
 '''
 FEED = FEED_RAW.replace("@FEED_IMAGE@", FEED_IMAGE)
 def want(path, content): return os.path.exists(path) and open(path, "rb").read() == content
@@ -137,6 +142,12 @@ def main(check):
             if not check:
                 assert "\n  service:\n    type: LoadBalancer" in v, vp
                 v = v.replace("\n  service:\n    type: LoadBalancer", "\n" + FEED.rstrip("\n") + "\n  service:\n    type: LoadBalancer", 1)
+                open(vp, "w").write(v)
+        if "\nagency:\n" in v and "\n  tour:\n    readOnly" not in v:
+            bad.append(os.path.relpath(vp, ROOT) + " (tour block)")
+            if not check:
+                assert "\n  service:\n    type: LoadBalancer" in v, vp
+                v = v.replace("\n  service:\n    type: LoadBalancer", "\n" + TOUR_RAW.rstrip("\n") + "\n  service:\n    type: LoadBalancer", 1)
                 open(vp, "w").write(v)
         if "\nagency:\n" not in v:
             bad.append(os.path.relpath(vp, ROOT))
