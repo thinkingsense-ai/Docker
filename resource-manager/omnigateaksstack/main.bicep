@@ -102,7 +102,19 @@ param imageTag string = 'v0.10.22'
   'treasury'
   'all-packs'
 ])
-param demoDataset string = 'supply-chain'
+param demoDataset string = 'all-packs'
+
+@description('Install Agency, a second front end for risk management, beside the Ask app: its own address, the same sign-in, plus the IT-risk investigation data (schemas rca, estate and register, 39 approved questions with the IT-risk pack), the embedding model and Workspaces. Needs about 1 GiB more memory than the Ask app alone: use nodes of 8 GiB or more. Read on a fresh install only.')
+param installAgency bool = false
+
+@description('Commercial edition only, and only with Agency: run the Agency workflows (incident brief, vulnerability exception, risk assessment, major-incident decision) behind the app\'s workflow API. Needs the licence and the Admin API token. Nothing is ever sent to a real system: write-back is a dry run.')
+param agencyWorkflows bool = false
+
+@description('Only with Agency: a small pod reads 12 public news and advisory feeds every 30 minutes and lists the matching stories on the Watch screen (headlines and links only, no article text). Needs access to the public internet. The publishers\' reuse terms have not been reviewed: your decision.')
+param agencyFeed bool = false
+
+@description('Only with Agency: a Quickstart tour button for the Agency screens that only read. It signs in nobody else and starts no run.')
+param agencyTour bool = false
 
 @description('Tarball URL containing this stack\'s Helm chart (advanced). Pinned to this release\'s own tag so a deploy from this exact "Deploy to Azure" button/azuredeploy.json can never drift from a newer chart on main -- bump this alongside the version tag on every release, see README\'s "Publishing a release".')
 param chartSourceUrl string = 'https://github.com/thinkingsense-ai/Docker/archive/refs/tags/aks-stack-v1.0.29.tar.gz'
@@ -132,6 +144,10 @@ module helmInstall 'modules/deploymentScript.bicep' = {
     imageRepository: imageRepository
     imageTag: imageTag
     demoDataset: demoDataset
+    installAgency: installAgency
+    agencyWorkflows: agencyWorkflows
+    agencyFeed: agencyFeed
+    agencyTour: agencyTour
     llmModel: llmModel
     exposeWireProtocols: exposeWireProtocols
     dataVolumeGb: omnigateDataStorageGb
@@ -157,3 +173,4 @@ module helmInstall 'modules/deploymentScript.bicep' = {
 output clusterName string = aks.outputs.clusterName
 output kubeconfigCommand string = 'az aks get-credentials --resource-group ${resourceGroup().name} --name ${aks.outputs.clusterName}'
 output askAppUrl string = helmInstall.outputs.askAppUrl
+output agencyUrl string = helmInstall.outputs.agencyUrl

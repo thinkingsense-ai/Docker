@@ -330,7 +330,7 @@ An alternative demo data set for customer conversations about technology and ope
 
 ## All demo packs at once (draft)
 
-Choosing **Demo data** = `All packs` on the Azure Portal form (Advanced step; `Supply chain` is the default), or the Bicep parameter `demoDataset=all-packs`, loads every pack together: supply chain, manufacturing, IT & operational risk, the Smithsonian Open Access sample, BOM / sourcing and Treasury. The Ask app shows them as a pack picker (5 + 6 + 12 + 5 + 24 + 24 = 76 trusted questions, `files/demo-questions-all-packs.json`, the same set as `demos/all-packs/`).
+Choosing **Demo data** = `All packs` on the Azure Portal form (Advanced step; `All packs` is the default), or the Bicep parameter `demoDataset=all-packs`, loads every pack together: supply chain, manufacturing, IT & operational risk, the Smithsonian Open Access sample, BOM / sourcing and Treasury. The Ask app shows them as a pack picker (5 + 6 + 12 + 5 + 24 + 24 = 76 trusted questions, `files/demo-questions-all-packs.json`, the same set as `demos/all-packs/`).
 
 - **Three data sources.** The free edition allows three, so each kind is one source with its schemas discovered inside it (`OMNIGATE_FEDERATION_AUTO_DISCOVER_SCHEMAS`): `pg` (Postgres: `suppliers`, `inventory`, `procurement`, `risk`, `smithsonian`, `bom`, `treasury`), `mdb` (MariaDB: `security`, `erp`) and `files` (the museum directory, a CSV in an in-cluster SeaweedFS bucket). Tables are addressed `connector.schema.table`; the CSV is `files.museums`. There are no schema routing rules in this mode (they would rewrite the schema part to the source name).
 - **What is added.** A SeaweedFS Deployment with a small volume, a one-off Job that loads the Smithsonian sample and the CSV, and an embedding Deployment (below). The MariaDB StatefulSet is the one `it-risk` uses.
@@ -340,6 +340,10 @@ Choosing **Demo data** = `All packs` on the Azure Portal form (Advanced step; `S
 - **Size.** It adds about 0.35 vCPU and 0.75 GiB of requests (the embedding model and MariaDB) on top of the default demo. On GKE's 2 vCPU / 8 GB node the whole stack ran at about 80% CPU: check the node size (the default `Standard_D2ps_v5`).
 - **No row filters.** The compose demo hides non-CC0 Smithsonian records from a "public" login with an access policy. The cloud stacks have one generated login, and every record in this sample is CC0, so no policy is installed.
 - **Not reseeded.** Choose it on a fresh install; changing it on an existing deployment does not switch the data. Free-form questions are a different matter: see thinkingsense-ai/Server#43.
+
+## Agency (optional)
+
+Tick **Install Agency beside the Ask app** (Advanced step) to add Agency, a second front end for risk management (Watch, Exposure, Priorities, Notifications, problem records), with its own address and the same sign-in; the deployment's `agencyUrl` output holds it (plain HTTP on port 8097, so restrict the allowed client addresses). It adds the IT-risk investigation data and needs about 1 GiB more memory, so use nodes of 8 GiB or more (the default `Standard_D2ps_v5` has 8 GiB). The live news feed and the read-only Quickstart tour are separate ticks. **Agency workflows** need the commercial edition. The Bicep parameters are `installAgency`, `agencyFeed`, `agencyTour` and `agencyWorkflows`; all are off by default. Status: the form and the deploy script were compiled and rendered, **not yet deployed to a real subscription**.
 
 ## Trusted demo questions
 

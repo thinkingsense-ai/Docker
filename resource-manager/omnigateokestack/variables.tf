@@ -219,9 +219,9 @@ variable "omnigate_debug_federation" {
 # --- Optional demo dataset ------------------------------------------------------------------
 
 variable "demo_dataset" {
-  description = "Which demo data a new install gets: supply-chain (the default), it-risk (IT and operational risk at a financial firm), bom (manufacturing bill of materials and sourcing), treasury (cash, payables, hedges and debt across Postgres and MariaDB), or all-packs (supply chain, manufacturing, IT risk and the Smithsonian sample together, with a pack picker in the Ask app; adds an object store and an embedding model, and needs outbound access to raw.githubusercontent.com and huggingface.co). bom and treasury also run an embedding model and need outbound access to huggingface.co. Read on a fresh install only: changing it on an existing stack does not reseed."
+  description = "Which demo data a new install gets: all-packs (the default: supply chain, manufacturing, IT risk, the Smithsonian sample, bill of materials and treasury together, with a pack picker in the Ask app), or just supply-chain, it-risk (IT and operational risk at a financial firm), bom (manufacturing bill of materials and sourcing), treasury (cash, payables, hedges and debt across Postgres and MariaDB), or all-packs (adds an object store and an embedding model, and needs outbound access to raw.githubusercontent.com and huggingface.co). bom and treasury also run an embedding model and need outbound access to huggingface.co. Read on a fresh install only: changing it on an existing stack does not reseed."
   type        = string
-  default     = "supply-chain"
+  default     = "all-packs"
   validation {
     condition     = contains(["supply-chain", "it-risk", "bom", "treasury", "all-packs"], var.demo_dataset)
     error_message = "demo_dataset must be supply-chain, it-risk, bom, treasury or all-packs."
@@ -353,6 +353,12 @@ variable "agency_image" {
 
 variable "agency_feed" {
   description = "Only with install_agency: run a small pod that reads 12 public news and advisory feeds every 30 minutes and lists the matching stories on the Watch screen (headlines and links only, no article text). Needs access to the public internet. The publishers' reuse terms have not been reviewed: your decision."
+  type        = bool
+  default     = false
+}
+
+variable "agency_tour" {
+  description = "Only with install_agency: a Quickstart tour button for the Agency screens that only read (events under review, sources, problem record, exposure, priorities, notifications). It signs in nobody else and starts no run."
   type        = bool
   default     = false
 }

@@ -14,6 +14,10 @@ param clusterName string
 param imageRepository string
 param imageTag string
 param demoDataset string
+param installAgency bool = false
+param agencyWorkflows bool = false
+param agencyFeed bool = false
+param agencyTour bool = false
 param llmModel string
 param exposeWireProtocols bool
 param dataVolumeGb int
@@ -102,6 +106,10 @@ resource helmInstall 'Microsoft.Resources/deploymentScripts@2023-08-01' = {
       { name: 'IMAGE_REPOSITORY', value: imageRepository }
       { name: 'IMAGE_TAG', value: imageTag }
       { name: 'DEMO_DATASET', value: demoDataset }
+      { name: 'INSTALL_AGENCY', value: toLower(string(installAgency)) }
+      { name: 'AGENCY_WORKFLOWS', value: toLower(string(agencyWorkflows)) }
+      { name: 'AGENCY_FEED', value: toLower(string(agencyFeed)) }
+      { name: 'AGENCY_TOUR', value: toLower(string(agencyTour)) }
       { name: 'LLM_MODEL', value: llmModel }
       { name: 'EXPOSE_WIRE_PROTOCOLS', value: string(exposeWireProtocols) }
       { name: 'DATA_VOLUME_GB', value: string(dataVolumeGb) }
@@ -257,6 +265,12 @@ PYEOF
         printf '%s' "$TLS_KEYSTORE_PASSWORD" > /tmp/omnigate-tls-password
         PULL_ARGS="$PULL_ARGS --set-file tls.keystore=/tmp/omnigate-tls-keystore --set-file tls.keystorePassword=/tmp/omnigate-tls-password"
       fi
+      # Agency (optional): the chart-only agency-risk pack is added to whatever demo data was chosen (all-packs means all six). No spaces, no braces expanded here: helm gets the list as written.
+      AGENCY_ARGS=""
+      if [ "$INSTALL_AGENCY" = true ]; then
+        if [ "$DEMO_DATASET" = all-packs ]; then PACKS="supply-chain,manufacturing,it-risk,smithsonian,bom,treasury"; else PACKS="$DEMO_DATASET"; fi
+        AGENCY_ARGS="--set agency.enabled=true --set demoDatasets={$PACKS,agency-risk} --set agency.feed.enabled=$AGENCY_FEED --set agency.tour.readOnly=$AGENCY_TOUR --set agency.workflows.enabled=$AGENCY_WORKFLOWS"
+      fi
       echo "== Installing the omnigate Helm release =="
       helm upgrade --install omnigate "$CHART_DIR" \
         --set image.repository="$IMAGE_REPOSITORY" \
@@ -269,6 +283,7 @@ PYEOF
         --set-string omnigate.appUsers="$APP_USERS" \
         --set-string omnigate.authUsers="$AUTH_USERS" \
         $PULL_ARGS \
+        $AGENCY_ARGS \
         --set-string omnigate.adminApiToken="$([ "$ADMIN_API_TOKEN" = none ] && echo '' || echo "$ADMIN_API_TOKEN")" \
         --set "service.loadBalancerSourceRanges={${CIDR_LIST}}" \
         --set-string omnigate.llmApiKey="$LLM_API_KEY" \
@@ -296,18 +311,30 @@ PYEOF
       else
         ASK_APP_URL="pending -- run: kubectl get svc omnigate-omnigate-http"
       fi
+      # Agency has its own LoadBalancer Service (plain HTTP on 8097, same sign-in as the Ask app); its address can take a few minutes to appear.
+      AGENCY_URL="not installed"
+      if [ "$INSTALL_AGENCY" = true ]; then
+        AGENCY_IP=""
+        for i in $(seq 1 30); do
+          AGENCY_IP=$(kubectl get svc omnigate-agency -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
+          [ -n "$AGENCY_IP" ] && break
+          sleep 10
+        done
+        if [ -n "$AGENCY_IP" ]; then AGENCY_URL="http://${AGENCY_IP}:8097/"; else AGENCY_URL="pending -- run: kubectl get svc omnigate-agency"; fi
+      fi
       # Confirmed live: hand-escaped quotes inside a Bicep triple-quoted string
       # (`\\"..\\"`) do not round-trip the way a plain bash script would expect -- the resulting
       # scriptoutputs.json was malformed and ARM rejected the whole deployment with
       # "DeploymentScriptInvalidOutputs", even though the Helm install itself had already
       # succeeded. Building the JSON with python3's json.dumps (already a dependency via the
       # jar-resolution step above) sidesteps shell/Bicep escaping entirely.
-      ASK_APP_URL="$ASK_APP_URL" python3 -c "
+      ASK_APP_URL="$ASK_APP_URL" AGENCY_URL="$AGENCY_URL" python3 -c "
 import json, os
-json.dump({'askAppUrl': os.environ['ASK_APP_URL']}, open(os.environ['AZ_SCRIPTS_OUTPUT_PATH'], 'w'))
+json.dump({'askAppUrl': os.environ['ASK_APP_URL'], 'agencyUrl': os.environ['AGENCY_URL']}, open(os.environ['AZ_SCRIPTS_OUTPUT_PATH'], 'w'))
 "
     '''
   }
 }
 
 output askAppUrl string = helmInstall.properties.outputs.askAppUrl
+output agencyUrl string = helmInstall.properties.outputs.agencyUrl
