@@ -224,13 +224,14 @@ class Gce(unittest.TestCase):
 class GceQuota(unittest.TestCase):
     def test_the_request_covers_the_global_limit_that_blocks_every_gpu(self):
         ids = [w["quotaId"] for w in gce_quota.wanted()]; self.assertIn("GPUS-ALL-REGIONS-per-project", ids)
-        self.assertIn("NVIDIA-L4-GPUS-per-project-zone", ids); self.assertIn("NVIDIA-A100-80GB-GPUS-per-project-region", ids)
+        self.assertNotIn("NVIDIA-L4-GPUS-per-project-zone", ids); self.assertIn("NVIDIA-A100-80GB-GPUS-per-project-region", ids)
 
     def test_a_body_is_a_string_valued_compute_preference_with_its_dimensions(self):
         w = gce_quota.wanted("us-central1", ("us-central1-a", "us-central1-c"))
-        self.assertEqual(len([x for x in w if x["quotaId"].endswith("-zone")]), 4)
+        self.assertEqual(len([x for x in w if x["quotaId"].endswith("-zone")]), 0)  # zone quotas are fixed
         b = gce_quota.body("p", w[1]); self.assertEqual((b["service"], b["quotaConfig"]["preferredValue"], b["dimensions"]), ("compute.googleapis.com", "4", {"region": "us-central1"}))
-        self.assertTrue(b["justification"])
+        self.assertTrue(b["justification"]); self.assertNotIn("contactEmail", b)
+        self.assertEqual(gce_quota.body("p", w[1], "a@b.c")["contactEmail"], "a@b.c")
         ids = [gce_quota.preference_id("p", x) for x in w]; self.assertEqual(len(ids), len(set(ids)))
 
 
