@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import { api, ApiError, type Answer as A } from './api'
+import { REASONS } from './answerModel'
 
-const CATEGORIES: [string, string][] = [['WRONG_VALUE', 'A number is wrong'], ['WRONG_DEFINITION', 'It means something else'], ['MISSING_SOURCE', 'Data is missing'], ['OTHER', 'Something else']]
 type Panel = null | 'down' | 'help'
 
 /** What the Server already has for the people who improve answers: a vote (a thumbs-down opens a review case for the analyst), a plain request to an admin, and "save as a reusable question" (an admin approves it before anyone is served it). */
 export default function Feedback({ a, question, onSignedOut }: { a: A; question: string; onSignedOut?: () => void }) {
   const [vote, setVote] = useState<'UP' | 'DOWN' | null>(null)
   const [panel, setPanel] = useState<Panel>(null)
-  const [category, setCategory] = useState('')
+  const [reason, setReason] = useState('')
   const [note, setNote] = useState('')
   const [help, setHelp] = useState('')
   const [msg, setMsg] = useState('')
@@ -24,7 +24,7 @@ export default function Feedback({ a, question, onSignedOut }: { a: A; question:
     finally { setBusy(false) }
   }
   const send = (v: 'UP' | 'DOWN') => run(async () => {
-    await api.feedback({ queryId: a.queryId!, vote: v, question, answer: a.answer.slice(0, 8000), ...(v === 'DOWN' ? { category: category || undefined, note: note.trim() || undefined } : {}) })
+    await api.feedback({ queryId: a.queryId!, vote: v, question, answer: a.answer.slice(0, 8000), ...(v === 'DOWN' ? { reason: reason || undefined, note: note.trim() || undefined } : {}) })
     setVote(v); setPanel(null)
     return v === 'UP' ? 'Thanks. This helps the analyst see what works.' : 'Thanks. An analyst will look at this answer.'
   })
@@ -41,8 +41,8 @@ export default function Feedback({ a, question, onSignedOut }: { a: A; question:
       </div>
       {panel === 'down' && (
         <div className="fbpanel" role="group" aria-label="What was wrong">
-          <div className="follow">{CATEGORIES.map(([id, label]) => <button key={id} className="chip" aria-pressed={category === id} onClick={() => setCategory(category === id ? '' : id)}>{label}</button>)}</div>
-          <label>What should it have said? (optional)<textarea value={note} maxLength={2000} rows={2} onChange={(e) => setNote(e.target.value)} /></label>
+          <div className="follow">{REASONS.map(([id, label]) => <button key={id} className="chip" aria-pressed={reason === id} onClick={() => setReason(reason === id ? '' : id)}>{label}</button>)}</div>
+          <label>What did you expect to see? (optional)<textarea value={note} maxLength={2000} rows={2} onChange={(e) => setNote(e.target.value)} /></label>
           <button disabled={busy} onClick={() => send('DOWN')}>Send</button> <button className="link" onClick={() => setPanel(null)}>Cancel</button>
         </div>)}
       {panel === 'help' && (

@@ -282,3 +282,13 @@ a.button { display: inline-block; border: 1px solid var(--edge); border-radius: 
 .flow-legend { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 10px 0 }
 .flow-legend svg { width: 20px; height: 20px; vertical-align: -5px; background: none; border: 0 } .flow-legend .on { font-weight: 700 }
 .flow.compact > svg { border-radius: 6px } .flow.compact .flow-controls { margin: 4px 0; font-size: .85rem } .flow.compact .flow-controls input[type=range] { width: 100px }
+
+/* The answer card (0.10.23 Ask adaptation): the first sentence as a headline, trust chips that are always visible, a "worth knowing" note. Colours are tokens only. */
+.answer .headline { margin: 0; font-size: 1.15rem; line-height: 1.3; font-weight: 650 }
+.answer .summary { color: var(--muted) }
+.trust { display: flex; flex-wrap: wrap; gap: 6px; align-items: center }
+.tchip { font-size: .8rem; line-height: 1.2; border: 1px solid var(--line); background: var(--chip); border-radius: 999px; padding: .22rem .65rem; color: var(--ink); display: inline-flex; align-items: center; gap: 4px }
+.tchip.good { color: var(--ok); border-color: var(--ok); background: transparent }
+.tchip.warn { color: var(--warn); background: var(--warn-bg); border-color: var(--warn) }
+.tchip.link-chip { color: var(--accent); background: transparent; border-color: var(--edge); cursor: pointer } .tchip.link-chip[aria-pressed="true"] { background: var(--accent-tint); border-color: var(--accent) }
+.worth { background: var(--warn-bg); color: var(--warn); border-radius: 8px; padding: .45rem .75rem; font-size: .88rem } .worth ul { margin: .2rem 0 0; padding-left: 1.1rem }

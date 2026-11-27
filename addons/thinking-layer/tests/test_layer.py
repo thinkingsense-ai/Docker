@@ -520,6 +520,9 @@ class LayerTests(unittest.TestCase):
         self.assertEqual(self.c.call("POST", "/feedback", {"queryId": "q1", "vote": "UP"})[0], 401); self.signin()
         s, raw, _ = self.c.call("POST", "/feedback", {"queryId": "q1", "vote": "DOWN", "category": "WRONG_VALUE", "note": " off by ten ", "question": "How many?", "answer": "5", "user": "mallory", "userId": "x"}); self.assertEqual(s, 200, raw)
         self.assertEqual(Fake.simple_posts[-1], ("/app/feedback", {"queryId": "q1", "vote": "DOWN", "category": "WRONG_VALUE", "note": "off by ten", "question": "How many?", "answer": "5"}, "alice"))
+        s, raw, _ = self.c.call("POST", "/feedback", {"queryId": "q1", "vote": "DOWN", "reason": "WRONG_TIME_PERIOD", "note": "I meant this quarter"}); self.assertEqual(s, 200, raw)
+        self.assertEqual(Fake.simple_posts[-1], ("/app/feedback", {"queryId": "q1", "vote": "DOWN", "reason": "WRONG_TIME_PERIOD", "note": "I meant this quarter"}, "alice"))
+        self.assertEqual(self.c.call("POST", "/feedback", {"queryId": "q1", "vote": "DOWN", "reason": "BECAUSE"})[0], 400)
         for b in ({}, {"queryId": "q1"}, {"queryId": "q1", "vote": "MAYBE"}, {"queryId": "q1", "vote": "UP", "category": "RUDE"}, {"queryId": "q1", "vote": "UP", "note": "x" * 2001}, {"queryId": ["q"], "vote": "UP"}):
             self.assertEqual(self.c.call("POST", "/feedback", b)[0], 400, b)
         self.assertEqual(self.c.call("POST", "/help", {"message": "  I need the Q3 table  ", "who": "x"})[0], 200); self.assertEqual(Fake.simple_posts[-1], ("/app/help-request", {"message": "I need the Q3 table"}, "alice"))
