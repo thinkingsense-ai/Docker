@@ -89,3 +89,24 @@ describe('compact, ticks, description, stats', () => {
     expect(statTiles(['name'], [['x']])).toBeNull(); expect(statTiles(['a', 'b'], [['1', '2'], ['3', '4']])).toBeNull()
   })
 })
+
+describe('scatter', () => {
+  const cols = ['supplier', 'spend_usd', 'late_days']
+  const rows = [['A', '100', '3'], ['B', '250', '9'], ['C', '90', '2'], ['D', '400', '15'], ['E', '60', '1']]
+  it('is offered for two measures over five or more things, and plots the first across and the second up', () => {
+    const p = planChart(cols, rows, { kind: 'scatter' })!
+    expect(p.options).toContain('scatter'); expect(p.kind).toBe('scatter'); expect(p.intent).toBe('relationship')
+    expect(p.measures.map((m) => m.name)).toEqual(['spend_usd', 'late_days']); expect(p.labels).toEqual(['A', 'B', 'C', 'D', 'E'])
+  })
+  it('is not offered for one measure, fewer than five rows, a trend or a ranking question', () => {
+    expect(planChart(['supplier', 'spend_usd'], rows.map((r) => r.slice(0, 2)))!.options).not.toContain('scatter')
+    expect(planChart(cols, rows.slice(0, 4))!.options).not.toContain('scatter')
+    expect(planChart(cols, rows, { question: 'Top suppliers by spend' })!.options).not.toContain('scatter')
+    const trend = rows.map((r, i) => [`2026-0${i + 1}-01`, r[1], r[2]])
+    expect(planChart(['month', 'spend_usd', 'late_days'], trend)!.options).not.toContain('scatter')
+  })
+  it('keeps the chosen pair and describes it in words', () => {
+    const p = planChart(cols, rows, { kind: 'scatter', measures: ['late_days', 'spend_usd'] })!
+    expect(p.measures.map((m) => m.name)).toEqual(['late_days', 'spend_usd']); expect(describePlan(p)).toMatch(/Scatter chart of spend USD against late days/)
+  })
+})
