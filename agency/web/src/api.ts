@@ -17,6 +17,7 @@ export interface Turn { question: string; answer: string; sql?: string; columns:
 export interface Answer {
   answer: string; columns: string[]; rows: (string | null)[][]; sql: string | null; conversationId: string | null; queryId?: string | null
   suggestedQuestions?: string[]; truncated?: boolean; evidence: Evidence | null
+  confidence?: { score?: number; level?: string } | null; answerConfidence?: string | null; assumptions?: string[] | null; rowCap?: number | null   // what the Server says about how sure it is (0.10.23+; absent on older Servers)
 }
 export interface Status {
   layer: { version: string }; server: { reachable: boolean; llmConfigured?: boolean }
@@ -81,7 +82,7 @@ export const api = {
   rejectWorkflow: (id: string, reason: string) => call<{ run: Run }>('POST', '/workflows/' + encodeURIComponent(id) + '/reject', { reason }),
   auditRecords: (f: AuditFilters) => call<AuditView>('GET', '/audit/records?' + auditQuery(f)),
   decisions: (runId: string) => call<Decisions>('GET', '/decisions?runId=' + encodeURIComponent(runId)),
-  feedback: (b: { queryId: string; vote: 'UP' | 'DOWN'; category?: string; note?: string; question?: string; answer?: string }) => call<{ success: boolean }>('POST', '/feedback', b),
+  feedback: (b: { queryId: string; vote: 'UP' | 'DOWN'; category?: string; reason?: string; note?: string; question?: string; answer?: string }) => call<{ success: boolean }>('POST', '/feedback', b),
   askAdmin: (message: string) => call<{ success: boolean }>('POST', '/help', { message }),
   saveReusable: (question: string, sql: string) => call<{ success: boolean; alreadySaved?: boolean }>('POST', '/reusable', { question, sql }),
   setPreference: (pack: string | null) => call<{ pack?: string }>('POST', '/preferences', { pack }),
@@ -103,7 +104,7 @@ export async function ask(question: string, workspaceId: string | null, conversa
     throw new ApiError(res.status, data?.error?.code ?? 'error', data?.error?.message ?? `Request failed (HTTP ${res.status}).`)
   }
   const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = ''
-  let evidence: Evidence | null = null; let final: ProgressEvent | null = null
+  let evidence: Evidence | null = null; let final: ProgressEvent | null = null; let confidence: Answer['confidence'] = null
   // Aborting the browser request does not stop the Server's work. The first event carries the question's queryId; on an abort Agency tells the Server to cancel it (it flags the question and interrupts the
   // running SQL; a model call already in flight is only noticed at the next step, Server#143). An abort before the first event arrives has no id yet, so nothing can be cancelled.
   let queryId: string | null = null
@@ -115,6 +116,7 @@ export async function ask(question: string, workspaceId: string | null, conversa
       let e: ProgressEvent
       try { e = JSON.parse(line.slice(6)) } catch { continue }
       if (e.step === 'evidence') { evidence = e.evidence; continue }
+      if (e.step === 'confidence') confidence = { score: e.score, level: e.level }
       if (!queryId && typeof e.queryId === 'string') { queryId = e.queryId; if (signal.aborted) cancelOnServer() }
       onEvent(e)
       if (['done', 'error', 'stopped', 'approval_needed'].includes(e.step)) final = e
@@ -133,7 +135,8 @@ export async function ask(question: string, workspaceId: string | null, conversa
   if (f.step === 'error') throw new ApiError(200, 'server_error', String(f.error ?? f.message ?? 'The Server could not answer.'))
   if (f.step !== 'done') throw new ApiError(200, f.step, f.step === 'approval_needed' ? 'This question needs an approval before it can run.' : 'The question was stopped.')
   return { answer: f.answer ?? '', columns: f.columns ?? [], rows: f.rows ?? [], sql: f.sql ?? null, conversationId: f.conversationId ?? null, queryId: f.queryId ?? null,
-           suggestedQuestions: f.suggestedQuestions, truncated: f.truncated, evidence }
+           suggestedQuestions: f.suggestedQuestions, truncated: f.truncated, evidence,
+           confidence, answerConfidence: f.answerConfidence ?? null, assumptions: Array.isArray(f.assumptions) ? f.assumptions.map(String) : null, rowCap: typeof f.rowCap === 'number' ? f.rowCap : null }
 }
 
 export async function uploadFile(file: File, workspaceId: string | null): Promise<Upload> {

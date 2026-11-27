@@ -563,6 +563,7 @@ class H(BaseHTTPRequestHandler):
 
     # -- feedback, help, reusable questions: the Server's own routes, as the signed-in user. The Server records who; the layer only validates the shape. ----
     CATEGORIES = ("WRONG_VALUE", "WRONG_DEFINITION", "MISSING_SOURCE", "OTHER")
+    REASONS = ("WRONG_DATA", "WRONG_CALCULATION", "MISREAD_QUESTION", "WRONG_TIME_PERIOD", "PRESENTATION")
 
     def _text(self, b, key, limit, required=False):
         v = (b or {}).get(key)
@@ -605,6 +606,10 @@ class H(BaseHTTPRequestHandler):
             if cat not in (None, ""):
                 if cat not in self.CATEGORIES: raise ValueError("category must be one of %s." % ", ".join(self.CATEGORIES))
                 out["category"] = cat
+            rsn = (body or {}).get("reason")                                   # Server 0.10.23+: why it was wrong (it maps the reason onto the category itself)
+            if rsn not in (None, ""):
+                if rsn not in self.REASONS: raise ValueError("reason must be one of %s." % ", ".join(self.REASONS))
+                out["reason"] = rsn
             for k, n in (("note", 2000), ("question", 4000), ("answer", 8000)):
                 v = self._text(body, k, n)
                 if v: out[k] = v
