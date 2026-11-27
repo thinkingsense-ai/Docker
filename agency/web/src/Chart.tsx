@@ -98,9 +98,25 @@ function Donut({ plan }: { plan: ChartPlan }) {
   )
 }
 
+function Scatter({ plan }: { plan: ChartPlan }) {
+  const [mx, my] = plan.measures, left = 52, right = 16, top = 14, bottom = 40, H = 300, n = plan.labels.length
+  const tx = niceTicks(Math.min(...mx.values, 0), Math.max(...mx.values, 0) || 1), ty = niceTicks(Math.min(...my.values, 0), Math.max(...my.values, 0) || 1)
+  const ax = tx[0], bx = tx[tx.length - 1] || 1, ay = ty[0], by = ty[ty.length - 1] || 1
+  const x = (v: number) => left + ((v - ax) / (bx - ax)) * (W - left - right), y = (v: number) => top + (1 - (v - ay) / (by - ay)) * (H - top - bottom)
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="chart" role="img" aria-label={describePlan(plan, [])}>
+      {ty.map((t) => <g key={'y' + t}><line x1={left} x2={W - right} y1={y(t)} y2={y(t)} className="grid" /><text x={left - 6} y={y(t) + 4} textAnchor="end" className="tick">{compact(t)}</text></g>)}
+      {tx.map((t) => <g key={'x' + t}><line x1={x(t)} x2={x(t)} y1={top} y2={H - bottom} className="grid" /><text x={x(t)} y={H - bottom + 16} textAnchor="middle" className="tick">{compact(t)}</text></g>)}
+      <text x={(left + W - right) / 2} y={H - 6} textAnchor="middle" className="tick">{humanName(mx.name)}</text>
+      <text x={12} y={(top + H - bottom) / 2} textAnchor="middle" className="tick" transform={`rotate(-90 12 ${(top + H - bottom) / 2})`}>{humanName(my.name)}</text>
+      {plan.labels.map((l, i) => <circle key={i} cx={x(mx.values[i])} cy={y(my.values[i])} r={n > 60 ? 3.5 : 5} fill="var(--c1)" fillOpacity={0.75} stroke="var(--panel)" strokeWidth={1}><title>{`${l}: ${humanName(mx.name)} ${full(mx.values[i])}, ${humanName(my.name)} ${full(my.values[i])}`}</title></circle>)}
+    </svg>
+  )
+}
+
 /** One chart, or one panel per measure when the measures are too far apart in size to share an axis. */
 export default function Chart({ plan }: { plan: ChartPlan }) {
-  const draw = (p: ChartPlan) => (p.kind === 'donut' ? <Donut plan={p} /> : p.kind === 'line' ? <Lines plan={p} /> : p.horizontal ? <HBars plan={p} /> : <VBars plan={p} />)
+  const draw = (p: ChartPlan) => (p.kind === 'scatter' ? <Scatter plan={p} /> : p.kind === 'donut' ? <Donut plan={p} /> : p.kind === 'line' ? <Lines plan={p} /> : p.horizontal ? <HBars plan={p} /> : <VBars plan={p} />)
   if (plan.panels) return <div className="panels">{plan.measures.map((m) => <figure key={m.name}><figcaption>{humanName(m.name)}</figcaption>{draw({ ...plan, measures: [m], panels: false })}</figure>)}</div>
   return <div><Legend names={plan.measures.map((m) => m.name)} />{draw(plan)}</div>
 }

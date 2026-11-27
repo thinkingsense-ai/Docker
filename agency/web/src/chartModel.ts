@@ -2,8 +2,8 @@
 // not its code. Everything here is pure so it is unit-tested.
 import { humanName, isNumeric } from './format'
 
-export type Kind = 'bar' | 'line' | 'donut'
-export type Intent = 'comparison' | 'trend' | 'share'
+export type Kind = 'bar' | 'line' | 'donut' | 'scatter'
+export type Intent = 'comparison' | 'trend' | 'share' | 'relationship'
 export interface ChartPlan {
   kind: Kind
   intent: Intent                   // what the answer is: a comparison of categories, a trend over time, or the parts of a whole
@@ -19,7 +19,7 @@ export interface ChartPlan {
   note?: string
 }
 
-export const MIN_ROWS = 3, MAX_ROWS = 100, MAX_BARS = 12, MAX_MEASURES = 3, PANEL_RATIO = 20, MAX_DESCRIPTIVE = 2
+export const MIN_ROWS = 3, MAX_ROWS = 100, MAX_BARS = 12, MAX_MEASURES = 3, PANEL_RATIO = 20, MAX_DESCRIPTIVE = 2, SCATTER_MIN = 5
 const DATE = /^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2})?(\.\d+)?Z?)?$/
 const ID = /(^|_)(id|key|no|num|number|code|zip|postcode)$/i
 // A donut says "these are the parts of one whole", which is only true for amounts that add up: not averages, rates, scores or prices.
@@ -77,7 +77,14 @@ export function planChart(columns: string[], rows: (string | null)[][], want?: {
   // Only the views that say something true about this answer: a trend is a line (bars too only when there are few points); categories are bars (a donut only for amounts that add up).
   const partsOfAWhole = nonNegative && rows.length <= 6 && kind === 'bar' && !isRanking(want?.question) && !NOT_ADDITIVE.test(all[0].name) && texts.includes(category)
   const options: Kind[] = kind === 'line' ? (rows.length <= 12 ? ['line', 'bar'] : ['line']) : partsOfAWhole ? ['bar', 'donut'] : ['bar']
+  // two measures over five or more things can be read against each other (scatter); a trend is not a set of points to correlate
+  if (cand.length >= 2 && rows.length >= SCATTER_MIN && uDates.length === 0 && !isRanking(want?.question)) options.push('scatter')
   if (want?.kind && options.includes(want.kind)) kind = want.kind
+  if (kind === 'scatter') {
+    const pair = (want?.measures?.length ? want.measures.filter((m) => cand.includes(m)) : []).concat(cand).filter((m, i, a) => a.indexOf(m) === i).slice(0, 2)
+    const xy = pair.map((name) => ({ name, index: columns.indexOf(name), values: rows.map((r) => num(r[columns.indexOf(name)])) }))
+    return { kind, intent: 'relationship', category, categoryName: columns[category], labels, measures: xy, horizontal: false, panels: false, omitted: 0, options, candidates: cand }
+  }
   // large results: bars sorted high to low and cut to the top 12; a trend keeps its order and its rows
   let order = rows.map((_, i) => i), omitted = 0
   if (kind !== 'line') {
@@ -113,6 +120,7 @@ export function niceTicks(min: number, max: number, count = 4): number[] {
 /** A sentence for screen readers and for the caption: what is drawn, and the largest value. */
 export function describePlan(p: ChartPlan, _columns?: string[]): string {
   const say = (n: string) => { const h = humanName(n); return /^[A-Z]{2,}/.test(h) ? h : h.charAt(0).toLowerCase() + h.slice(1) }
+  if (p.kind === 'scatter') return `Scatter chart of ${say(p.measures[1].name)} against ${say(p.measures[0].name)}, one point for each of ${p.labels.length} ${say(p.categoryName)} values. Hover a point to see which one it is.`
   const first = p.measures[0]; const top = first.values.reduce((b, v, i) => (v > first.values[b] ? i : b), 0)
   const m = p.measures.map((x) => say(x.name)).join(' and ')
   return `${p.kind === 'donut' ? 'Donut' : p.kind === 'line' ? 'Line' : p.horizontal ? 'Horizontal bar' : 'Bar'} chart of ${m} by ${say(p.categoryName)}, ${p.labels.length} rows${p.omitted ? ` (top ${p.labels.length} of ${p.labels.length + p.omitted})` : ''}. ` +
